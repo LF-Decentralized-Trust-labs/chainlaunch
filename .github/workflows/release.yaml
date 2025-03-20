@@ -64,7 +64,7 @@ jobs:
 
             - name: Build binary
               run: |
-                  GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-X 'github.com/chainlaunch/chainlaunch/pkg/version.Version=${{ github.ref_name }}' -X 'github.com/chainlaunch/chainlaunch/pkg/version.GitCommit=${{ github.sha }}' -X 'github.com/chainlaunch/chainlaunch/pkg/version.BuildTime=$(date -u +'%Y-%m-%dT%H:%M:%SZ')'" -o ${{ matrix.binary_name }} main.go
+                  CGO_ENABLED=1 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-X 'github.com/chainlaunch/chainlaunch/pkg/version.Version=${{ github.ref_name }}' -X 'github.com/chainlaunch/chainlaunch/pkg/version.GitCommit=${{ github.sha }}' -X 'github.com/chainlaunch/chainlaunch/pkg/version.BuildTime=$(date -u +'%Y-%m-%dT%H:%M:%SZ')'" -o ${{ matrix.binary_name }} main.go
             - name: Upload binary as artifact
               uses: actions/upload-artifact@v4
               with:

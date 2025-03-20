@@ -1,0 +1,34 @@
+name: Build and Test ChainLaunch
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test on Linux
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.4'
+          cache: true
+          
+      - name: Install dependencies
+        run: |
+          go mod download
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+      
+      - name: Build ChainLaunch
+        run: |
+          go build -v -o chainlaunch ./cmd/chainlaunch
+          chmod +x chainlaunch
+      
+      - name: Run unit tests
+        run: go test -v ./...

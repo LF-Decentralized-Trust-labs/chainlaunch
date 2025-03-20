@@ -27,7 +27,7 @@ jobs:
       
       - name: Build ChainLaunch
         run: |
-          go build -v -o chainlaunch ./cmd/chainlaunch
+          go build -v -o chainlaunch ./main.go
           chmod +x chainlaunch
       
       - name: Run unit tests

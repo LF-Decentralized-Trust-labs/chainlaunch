@@ -1,0 +1,10 @@
+data
+chaindeploy-ui-dist
+__debug*
+chaindeploy-api-go
+.idea
+.DS_Store
+chainlaunch
+certs
+.cursorrules
+.env

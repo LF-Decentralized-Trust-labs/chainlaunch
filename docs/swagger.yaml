@@ -1,0 +1,4463 @@
+basePath: /api/v1
+definitions:
+  auth.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  auth.LoginResponse:
+    description: Login response
+    properties:
+      message:
+        description: |-
+          Success message
+          @Example "Login successful"
+        type: string
+    type: object
+  auth.LogoutResponse:
+    description: Logout response
+    properties:
+      message:
+        description: |-
+          Success message
+          @Example "Logout successful"
+        type: string
+    type: object
+  auth.UserResponse:
+    description: User information response
+    properties:
+      created_at:
+        description: |-
+          Time when the user was created
+          @Example "2024-01-01T00:00:00Z"
+        type: string
+      last_login_at:
+        description: |-
+          Last time the user logged in
+          @Example "2024-01-01T12:34:56Z"
+        type: string
+      username:
+        description: |-
+          Username of the user
+          @Example "admin"
+        type: string
+    type: object
+  crypto_x509.ExtKeyUsage:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    type: integer
+    x-enum-varnames:
+    - ExtKeyUsageAny
+    - ExtKeyUsageServerAuth
+    - ExtKeyUsageClientAuth
+    - ExtKeyUsageCodeSigning
+    - ExtKeyUsageEmailProtection
+    - ExtKeyUsageIPSECEndSystem
+    - ExtKeyUsageIPSECTunnel
+    - ExtKeyUsageIPSECUser
+    - ExtKeyUsageTimeStamping
+    - ExtKeyUsageOCSPSigning
+    - ExtKeyUsageMicrosoftServerGatedCrypto
+    - ExtKeyUsageNetscapeServerGatedCrypto
+    - ExtKeyUsageMicrosoftCommercialCodeSigning
+    - ExtKeyUsageMicrosoftKernelCodeSigning
+  crypto_x509.KeyUsage:
+    enum:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+    - 32
+    - 64
+    - 128
+    - 256
+    type: integer
+    x-enum-varnames:
+    - KeyUsageDigitalSignature
+    - KeyUsageContentCommitment
+    - KeyUsageKeyEncipherment
+    - KeyUsageDataEncipherment
+    - KeyUsageKeyAgreement
+    - KeyUsageCertSign
+    - KeyUsageCRLSign
+    - KeyUsageEncipherOnly
+    - KeyUsageDecipherOnly
+  github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handler.CreateOrganizationRequest:
+    properties:
+      description:
+        type: string
+      mspId:
+        type: string
+      name:
+        type: string
+      providerId:
+        type: integer
+    required:
+    - mspId
+    - name
+    type: object
+  handler.OrganizationResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      mspId:
+        type: string
+      providerId:
+        type: integer
+      providerName:
+        type: string
+      signCertificate:
+        type: string
+      signPublicKey:
+        type: string
+      tlsCertificate:
+        type: string
+      tlsPublicKey:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  handler.UpdateOrganizationRequest:
+    properties:
+      description:
+        type: string
+    type: object
+  http.AddConsenterPayload:
+    properties:
+      client_tls_cert:
+        type: string
+      host:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      server_tls_cert:
+        type: string
+    required:
+    - client_tls_cert
+    - host
+    - port
+    - server_tls_cert
+    type: object
+  http.AddNodeToNetworkRequest:
+    properties:
+      nodeId:
+        type: integer
+      role:
+        enum:
+        - peer
+        - orderer
+        type: string
+    required:
+    - nodeId
+    - role
+    type: object
+  http.AddOrgPayload:
+    properties:
+      msp_id:
+        type: string
+      root_certs:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      tls_root_certs:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - msp_id
+    - root_certs
+    - tls_root_certs
+    type: object
+  http.AnchorPeer:
+    properties:
+      host:
+        type: string
+      port:
+        type: integer
+    required:
+    - host
+    - port
+    type: object
+  http.BackupResponse:
+    properties:
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      errorMessage:
+        type: string
+      id:
+        type: integer
+      metadata: {}
+      scheduleId:
+        type: integer
+      sizeBytes:
+        type: integer
+      startedAt:
+        type: string
+      status:
+        type: string
+      targetId:
+        type: integer
+    type: object
+  http.BackupScheduleResponse:
+    properties:
+      createdAt:
+        type: string
+      cronExpression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      lastRunAt:
+        type: string
+      name:
+        type: string
+      nextRunAt:
+        type: string
+      retentionDays:
+        type: integer
+      targetId:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  http.BackupTargetResponse:
+    properties:
+      accessKeyId:
+        type: string
+      bucketName:
+        type: string
+      bucketPath:
+        type: string
+      createdAt:
+        type: string
+      endpoint:
+        type: string
+      forcePathStyle:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      region:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  http.BesuNetworkResponse:
+    properties:
+      chainId:
+        type: integer
+      config:
+        items:
+          type: integer
+        type: array
+      createdAt:
+        type: string
+      description:
+        type: string
+      genesisConfig:
+        items:
+          type: integer
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      platform:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  http.ChannelConfigResponse:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+    type: object
+  http.ConsenterConfig:
+    properties:
+      id:
+        type: string
+    required:
+    - id
+    type: object
+  http.CreateBackupRequest:
+    properties:
+      metadata: {}
+      scheduleId:
+        type: integer
+      targetId:
+        type: integer
+    required:
+    - targetId
+    type: object
+  http.CreateBackupScheduleRequest:
+    description: Request body for creating a new backup schedule
+    properties:
+      cronExpression:
+        description: |-
+          Cron expression for schedule
+          @Example "0 0 * * *"
+        type: string
+      description:
+        description: |-
+          Optional description
+          @Example "Daily backup at midnight"
+        type: string
+      enabled:
+        description: |-
+          Whether the schedule is enabled
+          @Example true
+        type: boolean
+      name:
+        description: |-
+          Name of the backup schedule
+          @Example "daily-backup"
+        type: string
+      retentionDays:
+        description: |-
+          Number of days to retain backups
+          @Example 30
+        minimum: 1
+        type: integer
+      targetId:
+        description: |-
+          ID of the backup target to use
+          @Example 1
+        type: integer
+    required:
+    - cronExpression
+    - name
+    - retentionDays
+    - targetId
+    type: object
+  http.CreateBackupTargetRequest:
+    description: Request body for creating a new backup target
+    properties:
+      accessKeyId:
+        description: |-
+          AWS access key ID (required for S3 type)
+          @Example "AKIAXXXXXXXXXXXXXXXX"
+        type: string
+      bucketName:
+        description: |-
+          S3 bucket name (required for S3 type)
+          @Example "my-backup-bucket"
+        type: string
+      bucketPath:
+        description: |-
+          Path within the bucket (required for S3 type)
+          @Example "backups/app1"
+        type: string
+      endpoint:
+        description: |-
+          Custom S3 endpoint (optional)
+          @Example "https://s3.custom-domain.com"
+        type: string
+      forcePathStyle:
+        description: |-
+          Use path-style S3 URLs
+          @Example false
+        type: boolean
+      name:
+        description: |-
+          Name of the backup target
+          @Example "daily-backup-s3"
+        type: string
+      region:
+        description: |-
+          AWS region (required for S3 type)
+          @Example "us-east-1"
+        type: string
+      secretKey:
+        description: AWS secret key (required for S3 type)
+        type: string
+      type:
+        description: |-
+          Type of backup target (S3 or LOCAL)
+          @Example "S3"
+        enum:
+        - S3
+        - LOCAL
+        type: string
+    required:
+    - name
+    - type
+    type: object
+  http.CreateBesuNetworkRequest:
+    description: Request body for creating a new Besu network
+    properties:
+      config:
+        description: '@Description Network configuration'
+        properties:
+          blockPeriod:
+            description: |-
+              @Description Block period in seconds
+              @Default 5
+              @Required
+            example: 5
+            type: integer
+          chainId:
+            description: |-
+              @Description Chain ID for the network
+              @Default 1337
+              @Required
+            example: 1337
+            type: integer
+          coinbase:
+            description: '@Description Optional coinbase address'
+            type: string
+          consensus:
+            description: |-
+              @Description Consensus algorithm (e.g. "qbft")
+              @Required
+            type: string
+          difficulty:
+            description: '@Description Optional difficulty value'
+            type: string
+          epochLength:
+            description: |-
+              @Description Epoch length in blocks
+              @Default 30000
+              @Required
+            example: 30000
+            type: integer
+          gasLimit:
+            description: '@Description Optional gas limit value'
+            type: string
+          initialValidatorsKeyIds:
+            description: |-
+              @Description List of initial validator key IDs
+              @Required
+              @MinItems 1
+            items:
+              type: integer
+            minItems: 1
+            type: array
+          mixHash:
+            description: '@Description Optional mix hash value'
+            type: string
+          nonce:
+            description: '@Description Optional nonce value'
+            type: string
+          requestTimeout:
+            description: |-
+              @Description Request timeout in seconds
+              @Required
+            type: integer
+          timestamp:
+            description: '@Description Optional timestamp value'
+            type: string
+        required:
+        - blockPeriod
+        - chainId
+        - consensus
+        - epochLength
+        - initialValidatorsKeyIds
+        - requestTimeout
+        type: object
+      description:
+        description: '@Description Optional description of the network'
+        type: string
+      name:
+        description: '@Description Name of the network'
+        type: string
+    required:
+    - config
+    - name
+    type: object
+  http.CreateFabricNetworkRequest:
+    properties:
+      config:
+        $ref: '#/definitions/http.FabricNetworkConfig'
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - config
+    - name
+    type: object
+  http.CreateNodeRequest:
+    description: Request payload for creating a new node
+    properties:
+      besuNode:
+        allOf:
+        - $ref: '#/definitions/types.BesuNodeConfig'
+        description: '@Description Besu node configuration, required when creating
+          a Besu node'
+      blockchainPlatform:
+        allOf:
+        - $ref: '#/definitions/types.BlockchainPlatform'
+        description: '@Description Blockchain platform (fabric or besu)'
+        example: fabric
+      fabricOrderer:
+        allOf:
+        - $ref: '#/definitions/types.FabricOrdererConfig'
+        description: '@Description Fabric orderer configuration, required when creating
+          a Fabric orderer node'
+      fabricPeer:
+        allOf:
+        - $ref: '#/definitions/types.FabricPeerConfig'
+        description: '@Description Fabric peer configuration, required when creating
+          a Fabric peer node'
+      name:
+        description: '@Description Name of the node'
+        example: peer0-org1
+        type: string
+    required:
+    - blockchainPlatform
+    - name
+    type: object
+  http.CreateProviderRequest:
+    properties:
+      config: {}
+      isDefault:
+        type: boolean
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      notifyBackupFailure:
+        type: boolean
+      notifyBackupSuccess:
+        type: boolean
+      notifyNodeDowntime:
+        type: boolean
+      notifyS3ConnIssue:
+        type: boolean
+      type:
+        allOf:
+        - $ref: '#/definitions/notifications.ProviderType'
+        enum:
+        - SMTP
+    required:
+    - config
+    - name
+    - type
+    type: object
+  http.ExternalOrgConfig:
+    properties:
+      consenters:
+        items:
+          $ref: '#/definitions/http.ConsenterConfig'
+        type: array
+      id:
+        type: string
+      mspid:
+        type: string
+    required:
+    - id
+    - mspid
+    type: object
+  http.FabricNetworkConfig:
+    properties:
+      externalOrdererOrgs:
+        items:
+          $ref: '#/definitions/http.ExternalOrgConfig'
+        type: array
+      externalPeerOrgs:
+        items:
+          $ref: '#/definitions/http.ExternalOrgConfig'
+        type: array
+      ordererOrganizations:
+        items:
+          $ref: '#/definitions/http.OrganizationConfig'
+        type: array
+      peerOrganizations:
+        items:
+          $ref: '#/definitions/http.OrganizationConfig'
+        type: array
+    type: object
+  http.GetNetworkNodesResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/service.NetworkNode'
+        type: array
+    type: object
+  http.ImportBesuNetworkRequest:
+    properties:
+      chainId:
+        type: integer
+      description:
+        type: string
+      genesisFile:
+        type: string
+      name:
+        type: string
+    required:
+    - chainId
+    - genesisFile
+    - name
+    type: object
+  http.ImportFabricNetworkRequest:
+    properties:
+      description:
+        type: string
+      genesisFile:
+        type: string
+    required:
+    - genesisFile
+    type: object
+  http.ImportFabricNetworkWithOrgRequest:
+    properties:
+      channelId:
+        type: string
+      description:
+        type: string
+      ordererTlsCert:
+        type: string
+      ordererUrl:
+        type: string
+      organizationId:
+        type: integer
+    required:
+    - channelId
+    - ordererTlsCert
+    - ordererUrl
+    - organizationId
+    type: object
+  http.ImportNetworkResponse:
+    properties:
+      message:
+        type: string
+      networkId:
+        type: string
+    type: object
+  http.ListBesuNetworksResponse:
+    properties:
+      networks:
+        items:
+          $ref: '#/definitions/http.BesuNetworkResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  http.ListNetworksResponse:
+    properties:
+      networks:
+        items:
+          $ref: '#/definitions/http.NetworkResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  http.NetworkResponse:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      createdAt:
+        type: string
+      createdBy:
+        type: integer
+      currentConfigBlock:
+        type: string
+      deploymentConfig:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      domain:
+        type: string
+      exposedPorts:
+        items:
+          type: integer
+        type: array
+      genesisBlock:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      platform:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  http.NodeEventResponse:
+    properties:
+      created_at:
+        type: string
+      data: {}
+      id:
+        type: integer
+      node_id:
+        type: integer
+      type:
+        type: string
+    type: object
+  http.NodeResponse:
+    properties:
+      besuNode:
+        $ref: '#/definitions/service.BesuNodeProperties'
+      createdAt:
+        type: string
+      endpoint:
+        type: string
+      fabricOrderer:
+        $ref: '#/definitions/service.FabricOrdererProperties'
+      fabricPeer:
+        $ref: '#/definitions/service.FabricPeerProperties'
+      id:
+        type: integer
+      name:
+        type: string
+      nodeType:
+        type: string
+      platform:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  http.OrganizationConfig:
+    properties:
+      id:
+        type: integer
+      nodeIds:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - id
+    - nodeIds
+    type: object
+  http.PaginatedNodeEventsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/http.NodeEventResponse'
+        type: array
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  http.PaginatedNodesResponse:
+    properties:
+      hasNextPage:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/http.NodeResponse'
+        type: array
+      page:
+        type: integer
+      pageCount:
+        type: integer
+      total:
+        type: integer
+    type: object
+  http.ProviderResponse:
+    properties:
+      config: {}
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isDefault:
+        type: boolean
+      lastTestAt:
+        type: string
+      lastTestMessage:
+        type: string
+      lastTestStatus:
+        type: string
+      name:
+        type: string
+      notifyBackupFailure:
+        type: boolean
+      notifyBackupSuccess:
+        type: boolean
+      notifyNodeDowntime:
+        type: boolean
+      notifyS3ConnIssue:
+        type: boolean
+      type:
+        $ref: '#/definitions/notifications.ProviderType'
+      updatedAt:
+        type: string
+    type: object
+  http.RemoveConsenterPayload:
+    properties:
+      host:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+    required:
+    - host
+    - port
+    type: object
+  http.RemoveOrgPayload:
+    properties:
+      msp_id:
+        type: string
+    required:
+    - msp_id
+    type: object
+  http.SetAnchorPeersPayload:
+    properties:
+      anchor_peers:
+        items:
+          properties:
+            host:
+              type: string
+            port:
+              maximum: 65535
+              minimum: 1
+              type: integer
+          required:
+          - host
+          - port
+          type: object
+        minItems: 1
+        type: array
+      msp_id:
+        type: string
+    required:
+    - anchor_peers
+    - msp_id
+    type: object
+  http.SetAnchorPeersRequest:
+    properties:
+      anchorPeers:
+        items:
+          $ref: '#/definitions/http.AnchorPeer'
+        minItems: 1
+        type: array
+      organizationId:
+        type: integer
+    required:
+    - anchorPeers
+    - organizationId
+    type: object
+  http.SetAnchorPeersResponse:
+    properties:
+      transactionId:
+        type: string
+    type: object
+  http.TestProviderRequest:
+    properties:
+      testEmail:
+        type: string
+    required:
+    - testEmail
+    type: object
+  http.TestProviderResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+      testedAt:
+        type: string
+    type: object
+  http.UpdateBackupScheduleRequest:
+    properties:
+      cronExpression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      retentionDays:
+        minimum: 1
+        type: integer
+      targetId:
+        type: integer
+    required:
+    - cronExpression
+    - name
+    - retentionDays
+    - targetId
+    type: object
+  http.UpdateBackupTargetRequest:
+    properties:
+      accessKeyId:
+        type: string
+      bucketName:
+        type: string
+      bucketPath:
+        type: string
+      endpoint:
+        type: string
+      forcePathStyle:
+        type: boolean
+      name:
+        type: string
+      region:
+        type: string
+      secretKey:
+        type: string
+      type:
+        enum:
+        - S3
+        - LOCAL
+        type: string
+    required:
+    - name
+    - type
+    type: object
+  http.UpdateBatchSizePayload:
+    properties:
+      absolute_max_bytes:
+        minimum: 1
+        type: integer
+      max_message_count:
+        minimum: 1
+        type: integer
+      preferred_max_bytes:
+        minimum: 1
+        type: integer
+    required:
+    - absolute_max_bytes
+    - max_message_count
+    - preferred_max_bytes
+    type: object
+  http.UpdateBatchTimeoutPayload:
+    properties:
+      timeout:
+        description: e.g., "2s"
+        type: string
+    required:
+    - timeout
+    type: object
+  http.UpdateConsenterPayload:
+    properties:
+      client_tls_cert:
+        type: string
+      host:
+        type: string
+      new_host:
+        type: string
+      new_port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      server_tls_cert:
+        type: string
+    required:
+    - client_tls_cert
+    - host
+    - new_host
+    - new_port
+    - port
+    - server_tls_cert
+    type: object
+  http.UpdateEtcdRaftOptionsPayload:
+    properties:
+      election_tick:
+        minimum: 1
+        type: integer
+      heartbeat_tick:
+        minimum: 1
+        type: integer
+      max_inflight_blocks:
+        minimum: 1
+        type: integer
+      snapshot_interval_size:
+        minimum: 1
+        type: integer
+      tick_interval:
+        type: string
+    required:
+    - election_tick
+    - heartbeat_tick
+    - max_inflight_blocks
+    - snapshot_interval_size
+    - tick_interval
+    type: object
+  http.UpdateOrgMSPPayload:
+    properties:
+      msp_id:
+        type: string
+      root_certs:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      tls_root_certs:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - msp_id
+    - root_certs
+    - tls_root_certs
+    type: object
+  http.UpdateProviderRequest:
+    properties:
+      config: {}
+      isDefault:
+        type: boolean
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      notifyBackupFailure:
+        type: boolean
+      notifyBackupSuccess:
+        type: boolean
+      notifyNodeDowntime:
+        type: boolean
+      notifyS3ConnIssue:
+        type: boolean
+      type:
+        allOf:
+        - $ref: '#/definitions/notifications.ProviderType'
+        enum:
+        - SMTP
+    required:
+    - config
+    - name
+    - type
+    type: object
+  models.CertificateRequest:
+    properties:
+      commonName:
+        type: string
+      country:
+        items:
+          type: string
+        type: array
+      dnsNames:
+        items:
+          type: string
+        type: array
+      emailAddresses:
+        items:
+          type: string
+        type: array
+      extKeyUsage:
+        items:
+          $ref: '#/definitions/crypto_x509.ExtKeyUsage'
+        type: array
+      ipAddresses:
+        items:
+          items:
+            type: integer
+          type: array
+        type: array
+      isCA:
+        type: boolean
+      keyUsage:
+        $ref: '#/definitions/crypto_x509.KeyUsage'
+      locality:
+        items:
+          type: string
+        type: array
+      organization:
+        items:
+          type: string
+        type: array
+      organizationalUnit:
+        items:
+          type: string
+        type: array
+      postalCode:
+        items:
+          type: string
+        type: array
+      province:
+        items:
+          type: string
+        type: array
+      streetAddress:
+        items:
+          type: string
+        type: array
+      uris:
+        items:
+          $ref: '#/definitions/url.URL'
+        type: array
+      validFor:
+        $ref: '#/definitions/models.Duration'
+    required:
+    - commonName
+    - validFor
+    type: object
+  models.CreateKeyRequest:
+    description: Supported key algorithms
+    properties:
+      algorithm:
+        allOf:
+        - $ref: '#/definitions/models.KeyAlgorithm'
+        description: |-
+          Key algorithm (RSA, EC, ED25519)
+          @Required
+        enum:
+        - RSA
+        - EC
+        - ED25519
+        example: RSA
+      certificate:
+        allOf:
+        - $ref: '#/definitions/models.CertificateRequest'
+        description: 'Optional: configure CA certificate properties'
+      curve:
+        allOf:
+        - $ref: '#/definitions/models.ECCurve'
+        description: Elliptic curve name (for EC keys)
+        example: P-256
+      description:
+        description: Optional description
+        example: Key for signing certificates
+        type: string
+      isCA:
+        description: Whether this key is a CA
+        example: 0
+        type: integer
+      keySize:
+        description: Key size in bits (for RSA)
+        example: 2048
+        maximum: 8192
+        minimum: 2048
+        type: integer
+      name:
+        description: |-
+          Name of the key
+          @Required
+        example: my-key
+        type: string
+      providerId:
+        description: Optional provider ID
+        example: 1
+        type: integer
+    required:
+    - algorithm
+    - name
+    type: object
+  models.CreateProviderRequest:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      isDefault:
+        enum:
+        - 0
+        - 1
+        type: integer
+      name:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/models.KeyProviderType'
+        enum:
+        - DATABASE
+        - VAULT
+        - HSM
+    required:
+    - isDefault
+    - name
+    - type
+    type: object
+  models.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
+  models.ECCurve:
+    enum:
+    - P-256
+    - P-384
+    - P-521
+    - secp256k1
+    type: string
+    x-enum-varnames:
+    - ECCurveP256
+    - ECCurveP384
+    - ECCurveP521
+    - ECCurveSECP256K1
+  models.KeyAlgorithm:
+    enum:
+    - RSA
+    - EC
+    - ED25519
+    type: string
+    x-enum-varnames:
+    - KeyAlgorithmRSA
+    - KeyAlgorithmEC
+    - KeyAlgorithmED25519
+  models.KeyProviderInfo:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.KeyProviderType:
+    enum:
+    - DATABASE
+    - VAULT
+    - HSM
+    type: string
+    x-enum-varnames:
+    - KeyProviderTypeDatabase
+    - KeyProviderTypeVault
+    - KeyProviderTypeHSM
+  models.KeyResponse:
+    properties:
+      algorithm:
+        $ref: '#/definitions/models.KeyAlgorithm'
+      certificate:
+        type: string
+      createdAt:
+        type: string
+      curve:
+        $ref: '#/definitions/models.ECCurve'
+      description:
+        type: string
+      ethereumAddress:
+        type: string
+      expiresAt:
+        type: string
+      format:
+        type: string
+      id:
+        type: integer
+      keySize:
+        type: integer
+      lastRotatedAt:
+        type: string
+      name:
+        type: string
+      privateKey:
+        type: string
+      provider:
+        $ref: '#/definitions/models.KeyProviderInfo'
+      publicKey:
+        type: string
+      sha1Fingerprint:
+        type: string
+      sha256Fingerprint:
+        type: string
+      status:
+        type: string
+    type: object
+  models.PaginatedResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.KeyResponse'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      totalItems:
+        type: integer
+    type: object
+  models.ProviderResponse:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isDefault:
+        type: integer
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/models.KeyProviderType'
+    type: object
+  notifications.ProviderType:
+    enum:
+    - SMTP
+    type: string
+    x-enum-varnames:
+    - ProviderTypeSMTP
+  response.ErrorResponse:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      message:
+        type: string
+      type:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/response.ErrorResponse'
+      success:
+        type: boolean
+    type: object
+  service.BesuNodeDefaults:
+    properties:
+      externalIP:
+        type: string
+      internalIP:
+        type: string
+      mode:
+        $ref: '#/definitions/service.Mode'
+      networkId:
+        type: integer
+      p2pAddress:
+        type: string
+      rpcAddress:
+        type: string
+    type: object
+  service.BesuNodeProperties:
+    properties:
+      enodeUrl:
+        type: string
+      externalIp:
+        type: string
+      internalIp:
+        type: string
+      keyId:
+        type: integer
+      mode:
+        type: string
+      networkId:
+        type: integer
+      p2pHost:
+        description: Add deployment config fields
+        type: string
+      p2pPort:
+        type: integer
+      rpcHost:
+        type: string
+      rpcPort:
+        type: integer
+    type: object
+  service.FabricOrdererProperties:
+    properties:
+      adminAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      mode:
+        type: string
+      mspId:
+        type: string
+      operationsAddress:
+        type: string
+      organizationId:
+        type: integer
+      signCaCert:
+        type: string
+      signCert:
+        description: Add certificate information
+        type: string
+      signKeyId:
+        description: Add deployment config fields
+        type: integer
+      tlsCaCert:
+        type: string
+      tlsCert:
+        type: string
+      tlsKeyId:
+        type: integer
+    type: object
+  service.FabricPeerProperties:
+    properties:
+      chaincodeAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      eventsAddress:
+        type: string
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      mode:
+        type: string
+      mspId:
+        type: string
+      operationsAddress:
+        type: string
+      organizationId:
+        type: integer
+      signCaCert:
+        type: string
+      signCert:
+        description: Add certificate information
+        type: string
+      signKeyId:
+        description: Add deployment config fields
+        type: integer
+      tlsCaCert:
+        type: string
+      tlsCert:
+        type: string
+      tlsKeyId:
+        type: integer
+    type: object
+  service.Mode:
+    enum:
+    - service
+    - docker
+    type: string
+    x-enum-varnames:
+    - ModeService
+    - ModeDocker
+  service.NetworkNode:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      networkId:
+        type: integer
+      node:
+        $ref: '#/definitions/service.Node'
+      nodeId:
+        type: integer
+      role:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  service.Node:
+    properties:
+      createdAt:
+        type: string
+      deploymentConfig:
+        description: 'Node deployment configuration interface that can be one of:
+          FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig'
+      endpoint:
+        type: string
+      id:
+        type: integer
+      mspId:
+        type: string
+      name:
+        type: string
+      nodeConfig:
+        description: Base interface for all node configurations
+      nodeType:
+        $ref: '#/definitions/types.NodeType'
+      platform:
+        $ref: '#/definitions/types.BlockchainPlatform'
+      publicEndpoint:
+        type: string
+      status:
+        $ref: '#/definitions/types.NodeStatus'
+      updatedAt:
+        type: string
+    type: object
+  service.NodeDefaults:
+    properties:
+      adminAddress:
+        type: string
+      chaincodeAddress:
+        type: string
+      containerName:
+        type: string
+      errorLogPath:
+        type: string
+      eventsAddress:
+        type: string
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      logPath:
+        type: string
+      mode:
+        $ref: '#/definitions/service.Mode'
+      operationsListenAddress:
+        type: string
+      serviceName:
+        type: string
+    type: object
+  service.NodesDefaultsResult:
+    properties:
+      availableAddresses:
+        items:
+          type: string
+        type: array
+      orderers:
+        items:
+          $ref: '#/definitions/service.NodeDefaults'
+        type: array
+      peers:
+        items:
+          $ref: '#/definitions/service.NodeDefaults'
+        type: array
+    type: object
+  types.BesuNodeConfig:
+    properties:
+      bootNodes:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      externalIp:
+        type: string
+      internalIp:
+        type: string
+      keyId:
+        type: integer
+      mode:
+        description: '@Description The deployment mode (service or docker)'
+        example: service
+        type: string
+      networkId:
+        type: integer
+      p2pHost:
+        type: string
+      p2pPort:
+        type: integer
+      rpcHost:
+        type: string
+      rpcPort:
+        type: integer
+      type:
+        description: '@Description The type of node (fabric-peer, fabric-orderer,
+          besu)'
+        example: fabric-peer
+        type: string
+    required:
+    - externalIp
+    - internalIp
+    - keyId
+    - networkId
+    - p2pHost
+    - p2pPort
+    - rpcHost
+    - rpcPort
+    type: object
+  types.BlockchainPlatform:
+    enum:
+    - FABRIC
+    - BESU
+    type: string
+    x-enum-varnames:
+    - PlatformFabric
+    - PlatformBesu
+  types.FabricOrdererConfig:
+    properties:
+      adminAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      mode:
+        description: '@Description The deployment mode (service or docker)'
+        example: service
+        type: string
+      mspId:
+        type: string
+      name:
+        type: string
+      operationsListenAddress:
+        type: string
+      organizationId:
+        type: integer
+      type:
+        description: '@Description The type of node (fabric-peer, fabric-orderer,
+          besu)'
+        example: fabric-peer
+        type: string
+      version:
+        description: Fabric version to use
+        type: string
+    required:
+    - mspId
+    - name
+    - organizationId
+    type: object
+  types.FabricPeerConfig:
+    description: Configuration for creating a new Fabric peer node
+    properties:
+      chaincodeAddress:
+        description: '@Description Chaincode listen address'
+        example: 0.0.0.0:7052
+        type: string
+      domainNames:
+        description: '@Description Domain names for the peer'
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        description: '@Description Environment variables for the peer'
+        type: object
+      eventsAddress:
+        description: '@Description Events listen address'
+        example: 0.0.0.0:7053
+        type: string
+      externalEndpoint:
+        description: '@Description External endpoint for the peer'
+        example: peer0.org1.example.com:7051
+        type: string
+      listenAddress:
+        description: '@Description Listen address for the peer'
+        example: 0.0.0.0:7051
+        type: string
+      mode:
+        description: '@Description The deployment mode (service or docker)'
+        example: service
+        type: string
+      mspId:
+        description: '@Description MSP ID for the organization'
+        example: Org1MSP
+        type: string
+      name:
+        description: '@Description Name of the peer node'
+        example: peer0-org1
+        type: string
+      operationsListenAddress:
+        description: '@Description Operations listen address'
+        example: 0.0.0.0:9443
+        type: string
+      organizationId:
+        description: '@Description Organization ID that owns this peer'
+        example: 1
+        type: integer
+      type:
+        description: '@Description The type of node (fabric-peer, fabric-orderer,
+          besu)'
+        example: fabric-peer
+        type: string
+      version:
+        description: '@Description Fabric version to use'
+        example: 2.2.0
+        type: string
+    required:
+    - mspId
+    - name
+    - organizationId
+    type: object
+  types.NodeStatus:
+    enum:
+    - PENDING
+    - RUNNING
+    - STOPPED
+    - STOPPING
+    - STARTING
+    - ERROR
+    type: string
+    x-enum-varnames:
+    - NodeStatusPending
+    - NodeStatusRunning
+    - NodeStatusStopped
+    - NodeStatusStopping
+    - NodeStatusStarting
+    - NodeStatusError
+  types.NodeType:
+    enum:
+    - FABRIC_PEER
+    - FABRIC_ORDERER
+    - BESU_FULLNODE
+    type: string
+    x-enum-varnames:
+    - NodeTypeFabricPeer
+    - NodeTypeFabricOrderer
+    - NodeTypeBesuFullnode
+  url.URL:
+    properties:
+      forceQuery:
+        description: append a query ('?') even if RawQuery is empty
+        type: boolean
+      fragment:
+        description: fragment for references, without '#'
+        type: string
+      host:
+        description: host or host:port (see Hostname and Port methods)
+        type: string
+      omitHost:
+        description: do not emit empty host (authority)
+        type: boolean
+      opaque:
+        description: encoded opaque data
+        type: string
+      path:
+        description: path (relative paths may omit leading slash)
+        type: string
+      rawFragment:
+        description: encoded fragment hint (see EscapedFragment method)
+        type: string
+      rawPath:
+        description: encoded path hint (see EscapedPath method)
+        type: string
+      rawQuery:
+        description: encoded query values, without '?'
+        type: string
+      scheme:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/url.Userinfo'
+        description: username and password information
+    type: object
+  url.Userinfo:
+    type: object
+host: localhost:8100
+info:
+  contact:
+    email: support@chainlaunch.com
+    name: API Support
+    url: http://www.chainlaunch.com/support
+  description: ChainLaunch API provides services for managing blockchain networks
+    and cryptographic keys
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: ChainLaunch API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a session cookie
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Invalid credentials
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+      summary: Login user
+      tags:
+      - Authentication
+  /auth/logout:
+    post:
+      description: Invalidates the current session and clears the session cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/auth.LogoutResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Logout user
+      tags:
+      - Authentication
+  /auth/me:
+    get:
+      description: Returns information about the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Get current user
+      tags:
+      - Authentication
+  /backups:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all backups
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.BackupResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List all backups
+      tags:
+      - backups
+    post:
+      consumes:
+      - application/json
+      description: Create a new backup with the specified configuration
+      parameters:
+      - description: Backup creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateBackupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.BackupResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a new backup
+      tags:
+      - backups
+  /backups/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a backup and its associated files
+      parameters:
+      - description: Backup ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Backup not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a backup
+      tags:
+      - backups
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific backup
+      parameters:
+      - description: Backup ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupResponse'
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Backup not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get a backup by ID
+      tags:
+      - backups
+  /backups/schedules:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all backup schedules
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.BackupScheduleResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List all backup schedules
+      tags:
+      - backup-schedules
+    post:
+      consumes:
+      - application/json
+      description: Create a new backup schedule with the specified configuration
+      parameters:
+      - description: Backup schedule creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateBackupScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.BackupScheduleResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a new backup schedule
+      tags:
+      - backup-schedules
+  /backups/schedules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a backup schedule and stop its execution
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Schedule not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a backup schedule
+      tags:
+      - backup-schedules
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific backup schedule
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupScheduleResponse'
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Schedule not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get a backup schedule by ID
+      tags:
+      - backup-schedules
+    put:
+      consumes:
+      - application/json
+      description: Update an existing backup schedule with new configuration
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Backup schedule update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateBackupScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupScheduleResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Schedule not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update a backup schedule
+      tags:
+      - backup-schedules
+  /backups/schedules/{id}/disable:
+    put:
+      consumes:
+      - application/json
+      description: Disable a backup schedule to stop it from running
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupScheduleResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Schedule not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Disable a backup schedule
+      tags:
+      - backup-schedules
+  /backups/schedules/{id}/enable:
+    put:
+      consumes:
+      - application/json
+      description: Enable a backup schedule to start running
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupScheduleResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Schedule not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Enable a backup schedule
+      tags:
+      - backup-schedules
+  /backups/targets:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all backup targets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.BackupTargetResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List all backup targets
+      tags:
+      - backup-targets
+    post:
+      consumes:
+      - application/json
+      description: Create a new backup target with the specified configuration
+      parameters:
+      - description: Backup target creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateBackupTargetRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.BackupTargetResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a new backup target
+      tags:
+      - backup-targets
+  /backups/targets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a backup target and all associated backups
+      parameters:
+      - description: Backup Target ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Target not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a backup target
+      tags:
+      - backup-targets
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific backup target
+      parameters:
+      - description: Backup Target ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupTargetResponse'
+        "400":
+          description: Invalid ID format
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Target not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get a backup target by ID
+      tags:
+      - backup-targets
+    put:
+      consumes:
+      - application/json
+      description: Update an existing backup target with new configuration
+      parameters:
+      - description: Backup Target ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Backup target update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateBackupTargetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BackupTargetResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Target not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update a backup target
+      tags:
+      - backup-targets
+  /dummy:
+    post:
+      consumes:
+      - application/json
+      description: Submit a signed config update proposal for execution
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Proposal ID
+        in: path
+        name: proposalId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.RemoveOrgPayload'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.UpdateOrgMSPPayload'
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/http.SetAnchorPeersPayload'
+        "203":
+          description: Non-Authoritative Information
+          schema:
+            $ref: '#/definitions/http.AddConsenterPayload'
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/http.RemoveConsenterPayload'
+        "205":
+          description: Reset Content
+          schema:
+            $ref: '#/definitions/http.UpdateConsenterPayload'
+        "206":
+          description: Partial Content
+          schema:
+            $ref: '#/definitions/http.UpdateEtcdRaftOptionsPayload'
+        "207":
+          description: Multi-Status
+          schema:
+            $ref: '#/definitions/http.UpdateBatchSizePayload'
+        "208":
+          description: Already Reported
+          schema:
+            $ref: '#/definitions/http.UpdateBatchTimeoutPayload'
+      summary: Submit config update proposal
+      tags:
+      - fabric-networks
+  /key-providers:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all configured key providers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ProviderResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all key providers
+      tags:
+      - providers
+    post:
+      consumes:
+      - application/json
+      description: Create a new provider for key management
+      parameters:
+      - description: Provider creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ProviderResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new key provider
+      tags:
+      - providers
+  /key-providers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific key provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Provider not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Provider has existing keys
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a provider
+      tags:
+      - providers
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific key provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProviderResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Provider not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a specific provider
+      tags:
+      - providers
+  /keys:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of keys
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PaginatedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get paginated keys
+      tags:
+      - keys
+    post:
+      consumes:
+      - application/json
+      description: Create a new key pair with specified algorithm and parameters
+      parameters:
+      - description: Key creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.KeyResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new key
+      tags:
+      - keys
+  /keys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific key by ID
+      parameters:
+      - description: Key ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Key not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a key
+      tags:
+      - keys
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific key
+      parameters:
+      - description: Key ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.KeyResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Key not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a specific key by ID
+      tags:
+      - keys
+  /keys/{keyID}/sign:
+    post:
+      consumes:
+      - application/json
+      description: Sign a certificate for a key using a CA key
+      parameters:
+      - description: Key ID to sign
+        in: path
+        name: keyID
+        required: true
+        type: integer
+      - description: Certificate signing request
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.KeyResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Key not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Sign a certificate
+      tags:
+      - keys
+  /keys/all:
+    get:
+      consumes:
+      - application/json
+      description: Get all keys with their certificates and metadata
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.KeyResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all keys
+      tags:
+      - keys
+  /keys/filter:
+    get:
+      consumes:
+      - application/json
+      description: Get keys filtered by algorithm type and/or curve type
+      parameters:
+      - description: Algorithm type (e.g., RSA, ECDSA)
+        in: query
+        name: algorithm
+        type: string
+      - description: Curve type (e.g., P256, P384, P521)
+        in: query
+        name: curve
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PaginatedResponse'
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Filter keys by algorithm and curve
+      tags:
+      - keys
+  /networks/besu:
+    get:
+      description: Get a paginated list of Besu networks
+      parameters:
+      - description: 'Number of items to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of items to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ListBesuNetworksResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: List Besu networks
+      tags:
+      - besu-networks
+    post:
+      consumes:
+      - application/json
+      description: Create a new Besu network with the specified configuration
+      parameters:
+      - description: Network creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateBesuNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.BesuNetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Create a new Besu network
+      tags:
+      - besu-networks
+  /networks/besu/{id}:
+    delete:
+      description: Delete an existing Besu network and all its resources
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Delete a Besu network
+      tags:
+      - besu-networks
+    get:
+      description: Get details of a specific Besu network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BesuNetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get a Besu network by ID
+      tags:
+      - besu-networks
+  /networks/besu/import:
+    post:
+      consumes:
+      - application/json
+      description: Import an existing Besu network using its genesis file
+      parameters:
+      - description: Import network request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.ImportBesuNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ImportNetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Import a Besu network
+      tags:
+      - besu-networks
+  /networks/fabric:
+    get:
+      description: Get a paginated list of Fabric networks
+      parameters:
+      - description: 'Number of items to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of items to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ListNetworksResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: List Fabric networks
+      tags:
+      - fabric-networks
+    post:
+      consumes:
+      - application/json
+      description: Create a new Hyperledger Fabric network with the specified configuration
+      parameters:
+      - description: Network creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateFabricNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Create a new Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}:
+    delete:
+      description: Delete an existing Fabric network and all its resources
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Delete a Fabric network
+      tags:
+      - fabric-networks
+    get:
+      description: Get details of a specific Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get a Fabric network by ID
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/anchor-peers:
+    post:
+      consumes:
+      - application/json
+      description: Set the anchor peers for an organization in a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Anchor peers configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SetAnchorPeersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SetAnchorPeersResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Set anchor peers for an organization
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/channel-config:
+    get:
+      description: Retrieve the channel configuration for a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ChannelConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get Fabric network channel configuration
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/current-channel-config:
+    get:
+      description: Retrieve the current channel configuration for a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ChannelConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get Fabric network current channel configuration
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/nodes:
+    get:
+      description: Get all nodes associated with a network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GetNetworkNodesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get network nodes
+      tags:
+      - fabric-networks
+    post:
+      consumes:
+      - application/json
+      description: Add a node (peer or orderer) to an existing network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Node addition request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.AddNodeToNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Add node to network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/orderers/{ordererId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove an orderer node from an existing Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Orderer ID
+        in: path
+        name: ordererId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Remove orderer from Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/orderers/{ordererId}/join:
+    post:
+      consumes:
+      - application/json
+      description: Join an orderer node to an existing Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Orderer ID
+        in: path
+        name: ordererId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Join orderer to Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/orderers/{ordererId}/unjoin:
+    post:
+      consumes:
+      - application/json
+      description: Remove an orderer node from a channel but keep it in the network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Orderer ID
+        in: path
+        name: ordererId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Unjoin orderer from Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/organizations/{orgId}/config:
+    get:
+      description: Get the network configuration as YAML
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: path
+        name: orgId
+        required: true
+        type: integer
+      produces:
+      - text/yaml
+      responses:
+        "200":
+          description: Network configuration YAML
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get network configuration
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/peers/{peerId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a peer node from an existing Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Remove peer from Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/peers/{peerId}/join:
+    post:
+      consumes:
+      - application/json
+      description: Join a peer node to an existing Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Join peer to Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/peers/{peerId}/unjoin:
+    post:
+      consumes:
+      - application/json
+      description: Remove a peer node from a channel but keep it in the network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Unjoin peer from Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/reload-block:
+    post:
+      consumes:
+      - application/json
+      description: Reloads the current config block for a network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reload network config block
+      tags:
+      - fabric-networks
+  /networks/fabric/by-name/{name}:
+    get:
+      description: Get details of a specific Fabric network using its slug
+      parameters:
+      - description: Network Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get a Fabric network by slug
+      tags:
+      - fabric-networks
+  /networks/fabric/import:
+    post:
+      consumes:
+      - application/json
+      description: Import an existing Fabric network using its genesis block
+      parameters:
+      - description: Import network request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.ImportFabricNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ImportNetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Import a Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/import-with-org:
+    post:
+      consumes:
+      - application/json
+      description: Import an existing Fabric network using organization details
+      parameters:
+      - description: Import network with org request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.ImportFabricNetworkWithOrgRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ImportNetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Import a Fabric network with organization
+      tags:
+      - fabric-networks
+  /nodes:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of nodes with optional platform filter
+      parameters:
+      - description: Filter by blockchain platform
+        in: query
+        name: platform
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PaginatedNodesResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List all nodes
+      tags:
+      - nodes
+    post:
+      consumes:
+      - application/json
+      description: Create a new node with the specified configuration
+      parameters:
+      - description: Node creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateNodeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Create a new node
+      tags:
+      - nodes
+  /nodes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a node by ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete a node
+      tags:
+      - nodes
+    get:
+      consumes:
+      - application/json
+      description: Get a node by ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get a node
+      tags:
+      - nodes
+  /nodes/{id}/events:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of events for a specific node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PaginatedNodeEventsResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get node events
+      tags:
+      - nodes
+  /nodes/{id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: Stream logs from a specific node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: false
+        description: Follow logs
+        in: query
+        name: follow
+        type: boolean
+      - default: 100
+        description: Number of lines to show from the end
+        in: query
+        name: tail
+        type: integer
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Log stream
+          schema:
+            type: string
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Tail node logs
+      tags:
+      - nodes
+  /nodes/{id}/restart:
+    post:
+      consumes:
+      - application/json
+      description: Restart a node by ID (stops and starts the node)
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Restart a node
+      tags:
+      - nodes
+  /nodes/{id}/start:
+    post:
+      consumes:
+      - application/json
+      description: Start a node by ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Start a node
+      tags:
+      - nodes
+  /nodes/{id}/stop:
+    post:
+      consumes:
+      - application/json
+      description: Stop a node by ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Stop a node
+      tags:
+      - nodes
+  /nodes/defaults/besu-node:
+    get:
+      description: Get default configuration values for a Besu node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.BesuNodeDefaults'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get default values for Besu node
+      tags:
+      - nodes
+  /nodes/defaults/fabric:
+    get:
+      description: Get default configuration values for multiple Fabric nodes
+      parameters:
+      - default: 1
+        description: Number of peer nodes
+        in: query
+        minimum: 0
+        name: peerCount
+        type: integer
+      - default: 1
+        description: Number of orderer nodes
+        in: query
+        minimum: 0
+        name: ordererCount
+        type: integer
+      - default: service
+        description: Deployment mode
+        enum:
+        - service
+        - docker
+        in: query
+        name: mode
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.NodesDefaultsResult'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get default values for multiple Fabric nodes
+      tags:
+      - nodes
+  /nodes/defaults/fabric-orderer:
+    get:
+      description: Get default configuration values for a Fabric orderer node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.NodeDefaults'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get default values for Fabric orderer node
+      tags:
+      - nodes
+  /nodes/defaults/fabric-peer:
+    get:
+      description: Get default configuration values for a Fabric peer node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.NodeDefaults'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get default values for Fabric peer node
+      tags:
+      - nodes
+  /nodes/platform/{platform}:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of nodes filtered by blockchain platform
+      parameters:
+      - description: Blockchain platform (FABRIC/BESU)
+        enum:
+        - FABRIC
+        - BESU
+        in: path
+        name: platform
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PaginatedNodesResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List nodes by platform
+      tags:
+      - nodes
+  /notifications/providers:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all notification providers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.ProviderResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: List notification providers
+      tags:
+      - notifications
+    post:
+      consumes:
+      - application/json
+      description: Create a new notification provider with the specified configuration
+      parameters:
+      - description: Provider creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.ProviderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: Create a notification provider
+      tags:
+      - notifications
+  /notifications/providers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a notification provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: Delete a notification provider
+      tags:
+      - notifications
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific notification provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ProviderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: Get a notification provider
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      description: Update an existing notification provider with new configuration
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Provider update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ProviderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: Update a notification provider
+      tags:
+      - notifications
+  /notifications/providers/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: Test a notification provider
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Test provider request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.TestProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.TestProviderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
+      summary: Test a notification provider
+      tags:
+      - notifications
+  /organizations:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all Fabric organizations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handler.OrganizationResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all Fabric organizations
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: Create a new Fabric organization with the specified configuration
+      parameters:
+      - description: Organization creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.OrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new Fabric organization
+      tags:
+      - organizations
+  /organizations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Fabric organization by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a Fabric organization
+      tags:
+      - organizations
+    get:
+      consumes:
+      - application/json
+      description: Get a Fabric organization by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a Fabric organization
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Fabric organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a Fabric organization
+      tags:
+      - organizations
+  /organizations/by-mspid/{mspid}:
+    get:
+      consumes:
+      - application/json
+      description: Get a Fabric organization by MSP ID
+      parameters:
+      - description: MSP ID
+        in: path
+        name: mspid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a Fabric organization by MSP ID
+      tags:
+      - organizations
+schemes:
+- http
+- https
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  CookieAuth:
+    in: cookie
+    name: session_id
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Cryptographic key management operations
+  name: Keys
+- description: Key provider management operations
+  name: Providers
+- description: Blockchain network management operations
+  name: Networks
+- description: Network node management operations
+  name: Nodes

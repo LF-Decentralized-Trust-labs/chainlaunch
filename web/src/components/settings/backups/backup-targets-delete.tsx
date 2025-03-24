@@ -1,9 +1,19 @@
 import { type HttpBackupTargetResponse } from '@/api/client'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { deleteBackupsTargetsByIdMutation } from '@/api/client/@tanstack/react-query.gen'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { deleteBackupsTargetsById } from '@/api/client'
 
 interface BackupTargetsDeleteProps {
 	target: HttpBackupTargetResponse
@@ -12,16 +22,8 @@ interface BackupTargetsDeleteProps {
 
 export function BackupTargetsDelete({ target, onSuccess }: BackupTargetsDeleteProps) {
 	const deleteMutation = useMutation({
-		mutationFn: async () => {
-			try {
-				await deleteBackupsTargetsById({ path: { id: target.id! } })
-			} catch (error: any) {
-				if (error.status === 500) {
-					throw new Error('Internal server error. Please try again later.')
-				}
-				throw error
-			}
-		},
+		...deleteBackupsTargetsByIdMutation(),
+
 		onSuccess: () => {
 			toast.success('Backup target deleted successfully')
 			onSuccess()
@@ -43,17 +45,13 @@ export function BackupTargetsDelete({ target, onSuccess }: BackupTargetsDeletePr
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-					<AlertDialogDescription>
-						This will permanently delete the backup target. This action cannot be undone.
-					</AlertDialogDescription>
+					<AlertDialogDescription>This will permanently delete the backup target. This action cannot be undone.</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction variant="destructive" onClick={() => deleteMutation.mutate()}>
-						Delete
-					</AlertDialogAction>
+					<AlertDialogAction onClick={() => deleteMutation.mutate({ path: { id: target.id! } })}>Delete</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
 	)
-} 
+}

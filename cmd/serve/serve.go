@@ -241,7 +241,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService)
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
-	backupService := backupservice.NewBackupService(queries, logger, notificationService)
+	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath)
 
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)

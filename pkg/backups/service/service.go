@@ -37,6 +37,7 @@ type BackupService struct {
 	cronEntryIDs        map[int64]cron.EntryID
 	mu                  sync.Mutex
 	stopCh              chan struct{}
+	databasePath        string
 }
 
 // NewBackupService creates a new backup service
@@ -44,6 +45,7 @@ func NewBackupService(
 	queries *db.Queries,
 	logger *logger.Logger,
 	notificationSvc *notificationService.NotificationService,
+	databasePath string,
 ) *BackupService {
 	c := cron.New(cron.WithSeconds())
 	c.Start()
@@ -55,6 +57,7 @@ func NewBackupService(
 		notificationService: notificationSvc,
 		cronEntryIDs:        make(map[int64]cron.EntryID),
 		stopCh:              make(chan struct{}),
+		databasePath:        databasePath,
 	}
 
 	// Load and schedule existing backup schedules
@@ -333,6 +336,56 @@ func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, t
 	if _, err := os.Stat(chainlaunchPath); os.IsNotExist(err) {
 		return fmt.Errorf("backup source error: .chainlaunch directory does not exist at %s", chainlaunchPath)
 	}
+
+	// Create dbs directory if it doesn't exist
+	dbsPath := filepath.Join(chainlaunchPath, "dbs")
+	if err := os.MkdirAll(dbsPath, 0755); err != nil {
+		return fmt.Errorf("backup preparation error: failed to create dbs directory: %w", err)
+	}
+
+	// Generate a custom filename with timestamp
+	timestamp := time.Now().Format("20060102-150405")
+	dbFileName := fmt.Sprintf("chainlaunch-%s.db", timestamp)
+	dbBackupPath := filepath.Join(dbsPath, dbFileName)
+
+	// Create a copy of the database file
+	s.logger.Infof("Copying database from %s to %s", s.databasePath, dbBackupPath)
+
+	// Open source file
+	sourceFile, err := os.Open(s.databasePath)
+	if err != nil {
+		return fmt.Errorf("backup preparation error: failed to open source database file: %w", err)
+	}
+	defer sourceFile.Close()
+
+	// Create destination file
+	destFile, err := os.Create(dbBackupPath)
+	if err != nil {
+		return fmt.Errorf("backup preparation error: failed to create destination database file: %w", err)
+	}
+	defer destFile.Close()
+
+	// Copy the contents
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return fmt.Errorf("backup preparation error: failed to copy database file: %w", err)
+	}
+
+	// Ensure all data is written to disk
+	if err := destFile.Sync(); err != nil {
+		return fmt.Errorf("backup preparation error: failed to sync database file: %w", err)
+	}
+
+	// Close files explicitly before backup
+	sourceFile.Close()
+	destFile.Close()
+
+	// Set up deferred cleanup to remove the database copy after backup
+	defer func() {
+		s.logger.Infof("Cleaning up database copy at %s", dbBackupPath)
+		if err := os.Remove(dbBackupPath); err != nil {
+			s.logger.Errorf("Failed to remove database copy: %v", err)
+		}
+	}()
 
 	// Perform backup using restic with JSON output
 	cmd := exec.CommandContext(ctx, "restic", "backup", chainlaunchPath, "--json")

@@ -415,6 +415,91 @@ func (s *NotificationService) SendNodeDowntimeNotification(ctx context.Context, 
 	return nil
 }
 
+// SendNodeRecoveryNotification sends a notification for node recovery
+func (s *NotificationService) SendNodeRecoveryNotification(ctx context.Context, data notifications.NodeUpData) error {
+	// Get default notification provider for node downtime (same provider handles recovery)
+	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "NODE_DOWNTIME")
+	if err != nil {
+		return fmt.Errorf("failed to get default notification provider: %w", err)
+	}
+
+	if !provider.NotifyNodeDowntime {
+		// Provider is configured to not notify for node events
+		return nil
+	}
+
+	var config notifications.SMTPConfig
+	if err := json.Unmarshal([]byte(provider.Config), &config); err != nil {
+		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Create notification content
+	content := s.createNodeRecoveryContent(data)
+
+	// Send the email
+	if err := s.sendEmail(config, config.From, []string{config.From}, content); err != nil {
+		return fmt.Errorf("failed to send node recovery notification: %w", err)
+	}
+
+	s.logger.Info("Sent node recovery notification", "nodeID", data.NodeID, "nodeName", data.NodeName)
+	return nil
+}
+
+// createNodeRecoveryContent creates the email content for node recovery notifications
+func (s *NotificationService) createNodeRecoveryContent(data notifications.NodeUpData) EmailContent {
+	// Create plain text content
+	plainText := fmt.Sprintf(`Node Recovery Detected
+		
+A node in your infrastructure has recovered and is now online.
+
+Details:
+- Node ID: %d
+- Node Name: %s
+- Node URL: %s
+- Down Since: %s
+- Recovered At: %s
+- Downtime Duration: %s
+- Response Time: %s
+
+Your node is now functioning normally.`,
+		data.NodeID, data.NodeName, data.NodeURL,
+		data.DownSince.Format(time.RFC3339), data.RecoveredAt.Format(time.RFC3339),
+		data.Duration, data.ResponseTime)
+
+	// Create HTML content
+	html := fmt.Sprintf(`
+	<html>
+		<body>
+			<h2>Node Recovery Detected</h2>
+			<p>A node in your infrastructure has recovered and is now online.</p>
+			
+			<h3>Details:</h3>
+			<ul>
+				<li><strong>Node ID:</strong> %d</li>
+				<li><strong>Node Name:</strong> %s</li>
+				<li><strong>Node URL:</strong> %s</li>
+				<li><strong>Down Since:</strong> %s</li>
+				<li><strong>Recovered At:</strong> %s</li>
+				<li><strong>Downtime Duration:</strong> %s</li>
+				<li><strong>Response Time:</strong> %s</li>
+			</ul>
+			
+			<p style="color: green;">Your node is now functioning normally.</p>
+			<hr>
+			<small>Sent from ChainDeploy</small>
+		</body>
+	</html>`,
+		data.NodeID, data.NodeName, data.NodeURL,
+		data.DownSince.Format(time.RFC3339), data.RecoveredAt.Format(time.RFC3339),
+		data.Duration, data.ResponseTime)
+
+	return EmailContent{
+		Subject:   fmt.Sprintf("Node Recovery: %s", data.NodeName),
+		PlainText: plainText,
+		HTML:      html,
+	}
+}
+
 func (s *NotificationService) createNotificationContent(notificationType notifications.NotificationType, data interface{}) EmailContent {
 	switch notificationType {
 	case notifications.NotificationTypeNodeDowntime:

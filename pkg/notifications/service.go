@@ -6,9 +6,6 @@ import (
 
 // Service defines the interface for notification services
 type Service interface {
-	// SendNotification sends a notification of the specified type with the provided data
-	SendNotification(ctx context.Context, notificationType NotificationType, data interface{}) error
-
 	// SendBackupSuccessNotification sends a notification about a successful backup
 	SendBackupSuccessNotification(ctx context.Context, data BackupSuccessData) error
 
@@ -20,4 +17,7 @@ type Service interface {
 
 	// SendNodeDowntimeNotification sends a notification about node downtime
 	SendNodeDowntimeNotification(ctx context.Context, data NodeDowntimeData) error
+
+	// SendNodeRecoveryNotification sends a notification about a node that has recovered
+	SendNodeRecoveryNotification(ctx context.Context, data NodeUpData) error
 }

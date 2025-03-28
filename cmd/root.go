@@ -4,6 +4,7 @@ Copyright © 2025 ChainLaunch <dviejo@chainlaunch.dev>
 package cmd
 
 import (
+	"github.com/chainlaunch/chainlaunch/cmd/backup"
 	"github.com/chainlaunch/chainlaunch/cmd/fabric"
 	"github.com/chainlaunch/chainlaunch/cmd/serve"
 	"github.com/chainlaunch/chainlaunch/cmd/version"
@@ -25,5 +26,6 @@ func NewRootCmd(configCMD config.ConfigCMD) *cobra.Command {
 	rootCmd.AddCommand(serve.Command(configCMD, logger))
 	rootCmd.AddCommand(fabric.NewFabricCmd(logger))
 	rootCmd.AddCommand(version.NewVersionCmd())
+	rootCmd.AddCommand(backup.NewBackupCmd())
 	return rootCmd
 }

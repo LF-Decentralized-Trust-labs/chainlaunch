@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/config"
 	_ "github.com/chainlaunch/chainlaunch/docs" // swagger docs
@@ -25,6 +26,9 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/handler"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
+	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+
 	networkshttp "github.com/chainlaunch/chainlaunch/pkg/networks/http"
 	networksservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
 	nodeshttp "github.com/chainlaunch/chainlaunch/pkg/nodes/http"
@@ -223,6 +227,30 @@ func ensureKeyExists(filename string) (string, error) {
 	return string(keyBytes), nil
 }
 
+// Add formatDuration helper function to format time.Duration to human-readable string
+func formatDuration(d time.Duration) string {
+	days := int(d.Hours() / 24)
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	parts := []string{}
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%dd", days))
+	}
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%dh", hours))
+	}
+	if minutes > 0 {
+		parts = append(parts, fmt.Sprintf("%dm", minutes))
+	}
+	if seconds > 0 || len(parts) == 0 {
+		parts = append(parts, fmt.Sprintf("%ds", seconds))
+	}
+
+	return strings.Join(parts, " ")
+}
+
 // setupServer configures and returns the HTTP server
 func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS) *chi.Mux {
 	// Initialize services
@@ -241,13 +269,84 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService)
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
-	backupService := backupservice.NewBackupService(queries, logger, notificationService)
+	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath)
+
+	// Initialize and start monitoring service
+	monitoringConfig := &monitoring.Config{
+		DefaultCheckInterval:    1 * time.Minute,  // Check nodes every minute by default
+		DefaultTimeout:          10 * time.Second, // 10 second timeout for checks
+		DefaultFailureThreshold: 3,                // Alert after 3 consecutive failures
+		Workers:                 3,                // Use 3 worker goroutines
+	}
+	monitoringService := monitoring.NewService(monitoringConfig, notificationService)
+
+	// Start the monitoring service with a background context
+	monitoringCtx, monitoringCancel := context.WithCancel(context.Background())
+	if err := monitoringService.Start(monitoringCtx); err != nil {
+		log.Fatal("Failed to start monitoring service:", err)
+	}
+
+	// Register shutdown handler for the monitoring service
+	go func() {
+		// This is a simple channel to catch SIGINT/SIGTERM
+		// In a real app, you would tie this to your app's shutdown logic
+		c := make(chan os.Signal, 1)
+		<-c
+		monitoringCancel()
+		if err := monitoringService.Stop(); err != nil {
+			log.Printf("Error stopping monitoring service: %v", err)
+		}
+	}()
+
+	// Add nodes to monitor based on existing nodes in the system
+	go func() {
+		// Give other services time to initialize
+		time.Sleep(5 * time.Second)
+
+		// Get all nodes from the node service
+		ctx := context.Background()
+		fabricPlatform := nodeTypes.PlatformFabric
+		nodes, err := nodesService.ListNodes(ctx, &fabricPlatform, 1, 100)
+		if err != nil {
+			log.Printf("Failed to fetch nodes for monitoring: %v", err)
+			return
+		}
+
+		// Add each node to monitoring
+		for _, node := range nodes.Items {
+			// Skip nodes without endpoints
+			if node.Endpoint == "" {
+				continue
+			}
+
+			// Create a monitoring node from the node data
+			monitorNode := &monitoring.Node{
+				ID:               node.ID,
+				Name:             node.Name,
+				URL:              node.Endpoint + "/health", // Assuming a health endpoint
+				CheckInterval:    1 * time.Minute,
+				Timeout:          10 * time.Second,
+				FailureThreshold: 3,
+			}
+
+			if monitoringService.NodeExists(node.ID) {
+				logger.Infof("Node %s already exists in monitoring", node.Name)
+				continue
+			}
+
+			if err := monitoringService.AddNode(monitorNode); err != nil {
+				logger.Infof("Failed to add node %s to monitoring: %v", node.ID, err)
+				continue
+			}
+
+			logger.Infof("Added node %s (%s) to monitoring", node.Name, node.ID)
+		}
+	}()
 
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)
 	organizationHandler := fabrichandler.NewOrganizationHandler(organizationService)
 	nodesHandler := nodeshttp.NewNodeHandler(nodesService, logger)
-	// Start periodic ping service
 	networksHandler := networkshttp.NewHandler(
 		networksService,
 		nodesService,
@@ -300,7 +399,6 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			backupHandler.RegisterRoutes(r)
 			// Mount notifications routes
 			notificationHandler.RegisterRoutes(r)
-
 		})
 	})
 

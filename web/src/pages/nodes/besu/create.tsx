@@ -337,7 +337,7 @@ export default function CreateBesuNodePage() {
 														</FormControl>
 														<SelectContent>
 															{besuNodes?.items?.map((node) => (
-																<SelectItem key={node.id} value={(node.deploymentConfig as any).enodeUrl}>
+																<SelectItem key={node.id} value={node.besuNode?.enodeUrl ?? ''}>
 																	{node.name}
 																</SelectItem>
 															))}

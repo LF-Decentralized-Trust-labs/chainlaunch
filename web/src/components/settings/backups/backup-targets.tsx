@@ -1,37 +1,15 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { deleteBackupsTargetsById, postBackupsTargets, type HttpBackupTargetResponse, getBackupsTargets } from '@/api/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EllipsisVertical, Plus } from 'lucide-react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Skeleton } from '@/components/ui/skeleton'
-import { toast } from 'sonner'
+import { deleteBackupsTargetsById, postBackupsTargets } from '@/api/client'
 import { getBackupsTargetsOptions } from '@/api/client/@tanstack/react-query.gen'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
 import { BackupTargetsCreate } from './backup-targets-create'
-import { BackupTargetsUpdate } from './backup-targets-update'
-import { BackupTargetsDelete } from './backup-targets-delete'
-import { BackupTargetsSkeleton } from './backup-targets-skeleton'
 import { BackupTargetsEmpty } from './backup-targets-empty'
+import { BackupTargetsSkeleton } from './backup-targets-skeleton'
 import { BackupTargetsTable } from './backup-targets-table'
 
 const targetFormSchema = z.object({
@@ -126,7 +104,7 @@ export function BackupTargets() {
 				</div>
 				<BackupTargetsCreate onSuccess={refetch} />
 			</CardHeader>
-			<CardContent>{targets.length === 0 ? <BackupTargetsEmpty /> : <BackupTargetsTable targets={targets} onSuccess={refetch} />}</CardContent>
+			<CardContent>{targets.length === 0 ? <BackupTargetsEmpty /> : <BackupTargetsTable targets={targets} onSuccess={() => refetch()} />}</CardContent>
 		</Card>
 	)
 }

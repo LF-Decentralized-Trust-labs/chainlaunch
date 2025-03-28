@@ -122,7 +122,7 @@ export CHAINCODE_ADDRESS="localhost:9996"  # Chaincode listening address
 export USER_NAME=admin
 export MSP_ID=${mspId}
 
-chainlaunch fabric start --local \\
+chainlaunch fabric install --local \\
     --config=$PWD/network-config.yaml \\
     --channel=$CHANNEL_NAME \\
     --chaincode=$CHAINCODE_NAME \\

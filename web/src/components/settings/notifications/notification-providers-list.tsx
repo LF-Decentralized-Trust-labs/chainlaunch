@@ -1,4 +1,4 @@
-import { getNotificationsProvidersOptions, postNotificationsProvidersByIdTestMutation } from '@/api/client/@tanstack/react-query.gen'
+import { deleteNotificationsProvidersByIdMutation, getNotificationsProvidersOptions, postNotificationsProvidersByIdTestMutation } from '@/api/client/@tanstack/react-query.gen'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 const testEmailSchema = z.object({
 	email: z.string().email('Please enter a valid email address'),
@@ -26,6 +27,7 @@ type TestEmailFormValues = z.infer<typeof testEmailSchema>
 export function NotificationProvidersList() {
 	const navigate = useNavigate()
 	const [testProviderId, setTestProviderId] = useState<number | null>(null)
+	const [deleteProviderId, setDeleteProviderId] = useState<number | null>(null)
 
 	const form = useForm<TestEmailFormValues>({
 		resolver: zodResolver(testEmailSchema),
@@ -59,10 +61,27 @@ export function NotificationProvidersList() {
 		},
 		onError: (error) => {
 			toast.error('Failed to send test email', {
-				description: error.message,
+				description: error.response?.data?.message || 'An unknown error occurred',
 			})
 			refetch()
 			setTestProviderId(null)
+		},
+	})
+
+	const deleteMutation = useMutation({
+		...deleteNotificationsProvidersByIdMutation({
+			path: { id: deleteProviderId! },
+		}),
+		onSuccess: () => {
+			toast.success('Provider deleted successfully')
+			refetch()
+			setDeleteProviderId(null)
+		},
+		onError: (error) => {
+			toast.error('Failed to delete provider', {
+				description: error.response?.data?.message || 'An unknown error occurred',
+			})
+			setDeleteProviderId(null)
 		},
 	})
 
@@ -72,6 +91,14 @@ export function NotificationProvidersList() {
 		testMutation.mutate({
 			path: { id: testProviderId },
 			body: { testEmail: values.email },
+		})
+	}
+
+	const handleDelete = () => {
+		if (!deleteProviderId) return
+		
+		deleteMutation.mutate({
+			path: { id: deleteProviderId }
 		})
 	}
 
@@ -116,7 +143,7 @@ export function NotificationProvidersList() {
 										<Button
 											variant="outline"
 											size="sm"
-											onClick={() => setTestProviderId(provider.id)}
+											onClick={() => setTestProviderId(provider.id ?? null)}
 											disabled={testMutation.isPending && testMutation.variables?.path.id === provider.id}
 										>
 											{testMutation.isPending && testMutation.variables?.path.id === provider.id ? (
@@ -137,7 +164,12 @@ export function NotificationProvidersList() {
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem onClick={() => navigate(`/monitoring/providers/${provider.id}`)}>Edit</DropdownMenuItem>
 												<DropdownMenuSeparator />
-												<DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+												<DropdownMenuItem 
+													className="text-destructive"
+													onClick={() => setDeleteProviderId(provider.id ?? null)}
+												>
+													Delete
+												</DropdownMenuItem>
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</div>
@@ -224,6 +256,34 @@ export function NotificationProvidersList() {
 					</Form>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={deleteProviderId !== null} onOpenChange={(open) => !open && setDeleteProviderId(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you sure you want to delete this provider?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete this notification provider and remove it from our servers.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction 
+							onClick={handleDelete} 
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={deleteMutation.isPending}
+						>
+							{deleteMutation.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								'Delete'
+							)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	)
 }

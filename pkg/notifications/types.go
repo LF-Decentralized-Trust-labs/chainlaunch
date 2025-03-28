@@ -9,6 +9,7 @@ const (
 	NotificationTypeNodeDowntime  NotificationType = "NODE_DOWNTIME"
 	NotificationTypeBackupSuccess NotificationType = "BACKUP_SUCCESS"
 	NotificationTypeBackupFailure NotificationType = "BACKUP_FAILURE"
+	
 	NotificationTypeS3ConnIssue   NotificationType = "S3_CONNECTION_ISSUE"
 )
 
@@ -143,4 +144,19 @@ type NodeDowntimeData struct {
 	LastSeen      time.Time `json:"lastSeen"`
 	Duration      string    `json:"duration"`
 	ErrorMessage  string    `json:"errorMessage"`
+	NodeURL       string    `json:"nodeURL"`
+	DownSince     time.Time `json:"downSince"`
+	FailureCount  int       `json:"failureCount"`
+	Error         string    `json:"error"`
+}
+
+type NodeUpData struct {
+	NodeID           int64         `json:"nodeId"`
+	NodeName         string        `json:"nodeName"`
+	NodeURL          string        `json:"nodeURL"`
+	DownSince        time.Time     `json:"downSince"`
+	RecoveredAt      time.Time     `json:"recoveredAt"`
+	Duration         string        `json:"duration"`
+	ResponseTime     time.Duration `json:"responseTime"`
+	DowntimeDuration time.Duration `json:"downtimeDuration"`
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
-	monitoringhttp "github.com/chainlaunch/chainlaunch/pkg/monitoring/http"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 
 	networkshttp "github.com/chainlaunch/chainlaunch/pkg/networks/http"
@@ -354,7 +353,6 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	)
 	backupHandler := backuphttp.NewHandler(backupService)
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
-	monitoringHandler := monitoringhttp.NewHandler(monitoringService)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -401,8 +399,6 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			backupHandler.RegisterRoutes(r)
 			// Mount notifications routes
 			notificationHandler.RegisterRoutes(r)
-			// Mount monitoring routes
-			monitoringHandler.RegisterRoutes(r)
 		})
 	})
 

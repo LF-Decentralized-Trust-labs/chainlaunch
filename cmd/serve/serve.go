@@ -331,16 +331,16 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			}
 
 			if monitoringService.NodeExists(node.ID) {
-				log.Printf("Node %s already exists in monitoring", node.Name)
+				logger.Infof("Node %s already exists in monitoring", node.Name)
 				continue
 			}
 
 			if err := monitoringService.AddNode(monitorNode); err != nil {
-				log.Printf("Failed to add node %s to monitoring: %v", node.ID, err)
+				logger.Infof("Failed to add node %s to monitoring: %v", node.ID, err)
 				continue
 			}
 
-			log.Printf("Added node %s (%s) to monitoring", node.Name, node.ID)
+			logger.Infof("Added node %s (%s) to monitoring", node.Name, node.ID)
 		}
 	}()
 

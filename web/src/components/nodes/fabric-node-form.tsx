@@ -4,8 +4,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useMemo } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
@@ -46,9 +46,10 @@ interface FabricNodeFormProps {
 	hideOrganization?: boolean
 	hideNodeType?: boolean
 	defaultValues?: FabricNodeFormValues
+	onChange?: (values: FabricNodeFormValues) => void
 }
 
-export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults, onNodeTypeChange, hideSubmit, hideOrganization, hideNodeType, defaultValues }: FabricNodeFormProps) {
+export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults, onNodeTypeChange, hideSubmit, hideOrganization, hideNodeType, defaultValues, onChange }: FabricNodeFormProps) {
 	const form = useForm<FabricNodeFormValues>({
 		resolver: zodResolver(fabricNodeFormSchema),
 		defaultValues: defaultValues || {
@@ -65,6 +66,11 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 			},
 		},
 	})
+	const values = useWatch({ control: form.control })
+
+	useEffect(() => {
+		onChange?.(values)
+	}, [values])
 
 	const nodeType = form.watch('fabricProperties.nodeType')
 

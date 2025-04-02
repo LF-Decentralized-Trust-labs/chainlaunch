@@ -13,7 +13,6 @@
 			"args": [
 				"serve",
 				"--port=8100",
-				"--dev=false",
 				"--db=./data/chainlaunch.db",
 			],
 			"env": {

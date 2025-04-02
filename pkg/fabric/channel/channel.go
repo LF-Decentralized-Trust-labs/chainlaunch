@@ -104,7 +104,7 @@ func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, err
 			Host: ap.Host,
 			Port: ap.Port,
 		}); err != nil {
-			return nil, fmt.Errorf("failed to remove anchor peer: %w", err)
+			continue
 		}
 	}
 

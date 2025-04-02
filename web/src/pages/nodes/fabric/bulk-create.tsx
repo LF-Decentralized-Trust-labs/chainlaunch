@@ -1,7 +1,6 @@
 import { getNodesDefaultsFabric } from '@/api/client'
 import { getNodesDefaultsFabricOptions, getNodesOptions, getOrganizationsOptions, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
 import { HttpCreateNodeRequest, TypesFabricOrdererConfig, TypesFabricPeerConfig } from '@/api/client/types.gen'
-// CreateFabricOrdererDto, CreateFabricPeerDto, CreateNodeDto
 import { FabricNodeForm, FabricNodeFormValues } from '@/components/nodes/fabric-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -380,6 +379,12 @@ export default function BulkCreateNodesPage() {
 												onSubmit={(values) => {
 													const newConfigs = [...nodeConfigs]
 													newConfigs[index] = { ...values, name: config.name }
+													setNodeConfigs(newConfigs)
+												}}
+												onChange={(values) => {
+													const newConfigs = [...nodeConfigs]
+													newConfigs[index] = { ...values, name: config.name }
+													console.log('values', values, 'onChange')
 													setNodeConfigs(newConfigs)
 												}}
 												organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}

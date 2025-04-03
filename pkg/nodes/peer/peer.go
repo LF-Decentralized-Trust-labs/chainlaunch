@@ -566,14 +566,27 @@ func (p *LocalPeer) stopLaunchdService() error {
 
 	return nil
 }
-
 // execSystemctl executes a systemctl command
 func (p *LocalPeer) execSystemctl(command string, args ...string) error {
-	cmdArgs := append([]string{"systemctl", command}, args...)
-	cmd := exec.Command("sudo", cmdArgs...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("systemctl %s failed: %w", command, err)
+	cmdArgs := append([]string{command}, args...)
+	
+	// Check if sudo is available
+	sudoPath, err := exec.LookPath("sudo")
+	if err == nil {
+		// sudo is available, use it
+		cmdArgs = append([]string{"systemctl"}, cmdArgs...)
+		cmd := exec.Command(sudoPath, cmdArgs...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("systemctl %s failed: %w", command, err)
+		}
+	} else {
+		// sudo is not available, run directly
+		cmd := exec.Command("systemctl", cmdArgs...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("systemctl %s failed: %w", command, err)
+		}
 	}
+	
 	return nil
 }
 

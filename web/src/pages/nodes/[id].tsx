@@ -46,7 +46,7 @@ interface DeploymentConfig {
 }
 
 function isFabricNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
-	return node.platform === 'FABRIC' && node.fabricPeer !== undefined && node.fabricOrderer !== undefined
+	return node.platform === 'FABRIC' && (node.fabricPeer !== undefined || node.fabricOrderer !== undefined)
 }
 
 function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse {

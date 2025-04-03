@@ -255,7 +255,7 @@ export default function BulkCreateNodesPage() {
 			navigate('/nodes')
 		} catch (error: any) {
 			toast.error('Failed to create nodes', {
-				description: error.message,
+				description: error.error.message,
 			})
 		}
 	}

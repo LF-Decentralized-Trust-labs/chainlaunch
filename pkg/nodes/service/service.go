@@ -1013,6 +1013,7 @@ func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
 	}
 
 	if startErr != nil {
+		s.logger.Error("Failed to start node", "error", startErr)
 		// Update status to error if start failed
 		if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusError); err != nil {
 			s.logger.Error("Failed to update node status after start error", "error", err)

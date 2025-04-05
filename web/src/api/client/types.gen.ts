@@ -173,6 +173,44 @@ export type HttpChannelResponse = {
     name?: string;
 };
 
+/**
+ * A single configuration update operation
+ */
+export type HttpConfigUpdateOperationRequest = {
+    /**
+     * Payload contains the operation-specific data
+     * The structure depends on the operation type:
+     * - add_org: AddOrgPayload
+     * - remove_org: RemoveOrgPayload
+     * - update_org_msp: UpdateOrgMSPPayload
+     * - set_anchor_peers: SetAnchorPeersPayload
+     * - add_consenter: AddConsenterPayload
+     * - remove_consenter: RemoveConsenterPayload
+     * - update_consenter: UpdateConsenterPayload
+     * - update_etcd_raft_options: UpdateEtcdRaftOptionsPayload
+     * - update_batch_size: UpdateBatchSizePayload
+     * - update_batch_timeout: UpdateBatchTimeoutPayload
+     * @Description The payload for the configuration update operation
+     * @Description Can be one of:
+     * @Description - AddOrgPayload when type is "add_org"
+     * @Description - RemoveOrgPayload when type is "remove_org"
+     * @Description - UpdateOrgMSPPayload when type is "update_org_msp"
+     * @Description - SetAnchorPeersPayload when type is "set_anchor_peers"
+     * @Description - AddConsenterPayload when type is "add_consenter"
+     * @Description - RemoveConsenterPayload when type is "remove_consenter"
+     * @Description - UpdateConsenterPayload when type is "update_consenter"
+     * @Description - UpdateEtcdRaftOptionsPayload when type is "update_etcd_raft_options"
+     * @Description - UpdateBatchSizePayload when type is "update_batch_size"
+     * @Description - UpdateBatchTimeoutPayload when type is "update_batch_timeout"
+     */
+    payload: Array<number>;
+    /**
+     * Type is the type of configuration update operation
+     * enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
+     */
+    type: 'add_org' | 'remove_org' | 'update_org_msp' | 'set_anchor_peers' | 'add_consenter' | 'remove_consenter' | 'update_consenter' | 'update_etcd_raft_options' | 'update_batch_size' | 'update_batch_timeout';
+};
+
 export type HttpConsenterConfig = {
     id: string;
 };
@@ -504,6 +542,21 @@ export type HttpPaginatedNodesResponse = {
     total?: number;
 };
 
+export type HttpPrepareConfigUpdateRequest = {
+    operations: Array<HttpConfigUpdateOperationRequest>;
+};
+
+export type HttpPrepareConfigUpdateResponse = {
+    channel_name?: string;
+    created_at?: string;
+    created_by?: string;
+    id?: string;
+    network_id?: number;
+    operations?: Array<HttpConfigUpdateOperationRequest>;
+    preview_json?: string;
+    status?: string;
+};
+
 export type HttpProviderResponse = {
     config?: unknown;
     createdAt?: string;
@@ -722,6 +775,7 @@ export type ModelsKeyResponse = {
     publicKey?: string;
     sha1Fingerprint?: string;
     sha256Fingerprint?: string;
+    signingKeyID?: number;
     status?: string;
 };
 
@@ -3100,6 +3154,43 @@ export type PostNetworksFabricByIdReloadBlockResponses = {
 };
 
 export type PostNetworksFabricByIdReloadBlockResponse = PostNetworksFabricByIdReloadBlockResponses[keyof PostNetworksFabricByIdReloadBlockResponses];
+
+export type PostNetworksFabricByIdUpdateConfigData = {
+    /**
+     * Config update operations
+     */
+    body: HttpPrepareConfigUpdateRequest;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/update-config';
+};
+
+export type PostNetworksFabricByIdUpdateConfigErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigError = PostNetworksFabricByIdUpdateConfigErrors[keyof PostNetworksFabricByIdUpdateConfigErrors];
+
+export type PostNetworksFabricByIdUpdateConfigResponses = {
+    /**
+     * OK
+     */
+    200: HttpPrepareConfigUpdateResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigResponse = PostNetworksFabricByIdUpdateConfigResponses[keyof PostNetworksFabricByIdUpdateConfigResponses];
 
 export type GetNodesData = {
     body?: never;

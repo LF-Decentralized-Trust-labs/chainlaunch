@@ -916,3 +916,96 @@ func (s *NetworkService) importBesuNetwork(ctx context.Context, params ImportNet
 		Message:   "Besu network imported successfully",
 	}, nil
 }
+
+// UpdateFabricNetwork prepares a config update proposal for a Fabric network
+func (s *NetworkService) UpdateFabricNetwork(ctx context.Context, networkID int64, operations []fabric.ConfigUpdateOperation) (*fabric.ConfigUpdateProposal, error) {
+	// Get deployer for the network
+	deployer, err := s.deployerFactory.GetDeployer(string(BlockchainTypeFabric))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	// Assert that it's a Fabric deployer
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return nil, fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	// Prepare the config update
+	proposal, err := fabricDeployer.PrepareConfigUpdate(ctx, networkID, operations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare config update: %w", err)
+	}
+
+	// Get organizations managed by us that can sign the config update
+	orgs, err := s.db.ListFabricOrganizations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network organizations: %w", err)
+	}
+	var signingOrgIDs []string
+	for _, org := range orgs {
+		signingOrgIDs = append(signingOrgIDs, org.MspID)
+	}
+
+	ordererAddress, ordererTLSCert, err := s.getOrdererAddressAndCertForNetwork(ctx, networkID, fabricDeployer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orderer address and TLS certificate: %w", err)
+	}
+
+	res, err := fabricDeployer.UpdateChannelConfig(ctx, networkID, proposal.ConfigUpdateEnvelope, signingOrgIDs, ordererAddress, ordererTLSCert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel config: %w", err)
+	}
+	s.logger.Info("Channel config updated", "txID", res)
+	return proposal, nil
+}
+
+func (s *NetworkService) getOrdererAddressAndCertForNetwork(ctx context.Context, networkID int64, fabricDeployer *fabric.FabricDeployer) (string, string, error) {
+
+	// Try to get orderer info from network nodes first
+	networkNodes, err := s.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var ordererAddress, ordererTLSCert string
+
+	// Look for orderer in our registry
+	for _, node := range networkNodes {
+		if node.Node.NodeType == nodetypes.NodeTypeFabricOrderer {
+			ordererConfig, ok := node.Node.DeploymentConfig.(*nodetypes.FabricOrdererDeploymentConfig)
+			if !ok {
+				continue
+			}
+			ordererAddress = ordererConfig.ExternalEndpoint
+			ordererTLSCert = ordererConfig.TLSCACert
+			break
+		}
+	}
+
+	// If no orderer found in registry, try to get from current config block
+	if ordererAddress == "" {
+		// Get current config block
+		configBlock, err := fabricDeployer.GetCurrentChannelConfig(networkID)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get current config block: %w", err)
+		}
+
+		// Extract orderer info from config block
+		ordererInfo, err := fabricDeployer.GetOrderersFromConfigBlock(ctx, configBlock)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get orderer info from config: %w", err)
+		}
+		if len(ordererInfo) == 0 {
+			return "", "", fmt.Errorf("no orderer found in config block")
+		}
+		ordererAddress = ordererInfo[0].URL
+		ordererTLSCert = ordererInfo[0].TLSCert
+	}
+
+	if ordererAddress == "" {
+		return "", "", fmt.Errorf("no orderer found in network or config block")
+	}
+
+	return ordererAddress, ordererTLSCert, nil
+}

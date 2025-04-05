@@ -278,6 +278,79 @@ definitions:
       name:
         type: string
     type: object
+  http.ConfigUpdateOperationRequest:
+    description: A single configuration update operation
+    properties:
+      payload:
+        description: |-
+          Payload contains the operation-specific data
+          The structure depends on the operation type:
+          - add_org: AddOrgPayload
+          - remove_org: RemoveOrgPayload
+          - update_org_msp: UpdateOrgMSPPayload
+          - set_anchor_peers: SetAnchorPeersPayload
+          - add_consenter: AddConsenterPayload
+          - remove_consenter: RemoveConsenterPayload
+          - update_consenter: UpdateConsenterPayload
+          - update_etcd_raft_options: UpdateEtcdRaftOptionsPayload
+          - update_batch_size: UpdateBatchSizePayload
+          - update_batch_timeout: UpdateBatchTimeoutPayload
+          @Description The payload for the configuration update operation
+          @Description Can be one of:
+          @Description - AddOrgPayload when type is "add_org"
+          @Description - RemoveOrgPayload when type is "remove_org"
+          @Description - UpdateOrgMSPPayload when type is "update_org_msp"
+          @Description - SetAnchorPeersPayload when type is "set_anchor_peers"
+          @Description - AddConsenterPayload when type is "add_consenter"
+          @Description - RemoveConsenterPayload when type is "remove_consenter"
+          @Description - UpdateConsenterPayload when type is "update_consenter"
+          @Description - UpdateEtcdRaftOptionsPayload when type is "update_etcd_raft_options"
+          @Description - UpdateBatchSizePayload when type is "update_batch_size"
+          @Description - UpdateBatchTimeoutPayload when type is "update_batch_timeout"
+        items:
+          type: integer
+        type: array
+      type:
+        description: |-
+          Type is the type of configuration update operation
+          enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
+        enum:
+        - add_org
+        - remove_org
+        - update_org_msp
+        - set_anchor_peers
+        - add_consenter
+        - remove_consenter
+        - update_consenter
+        - update_etcd_raft_options
+        - update_batch_size
+        - update_batch_timeout
+        type: string
+    required:
+    - payload
+    - type
+    type: object
+  http.ConfigUpdateResponse:
+    properties:
+      channel_name:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
+      network_id:
+        type: integer
+      operations:
+        items:
+          $ref: '#/definitions/http.ConfigUpdateOperationRequest'
+        type: array
+      preview_json:
+        type: string
+      status:
+        type: string
+    type: object
   http.ConsenterConfig:
     properties:
       id:
@@ -996,6 +1069,16 @@ definitions:
     - snapshot_interval_size
     - tick_interval
     type: object
+  http.UpdateFabricNetworkRequest:
+    properties:
+      operations:
+        items:
+          $ref: '#/definitions/http.ConfigUpdateOperationRequest'
+        minItems: 1
+        type: array
+    required:
+    - operations
+    type: object
   http.UpdateOrgMSPPayload:
     properties:
       msp_id:
@@ -1277,6 +1360,8 @@ definitions:
         type: string
       sha256Fingerprint:
         type: string
+      signingKeyID:
+        type: integer
       status:
         type: string
     type: object
@@ -3536,6 +3621,53 @@ paths:
               type: string
             type: object
       summary: Reload network config block
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/update-config:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Prepare a config update proposal for a Fabric network using the provided operations.
+        The following operation types are supported:
+        - add_org: Add a new organization to the channel
+        - remove_org: Remove an organization from the channel
+        - update_org_msp: Update an organization's MSP configuration
+        - set_anchor_peers: Set anchor peers for an organization
+        - add_consenter: Add a new consenter to the orderer
+        - remove_consenter: Remove a consenter from the orderer
+        - update_consenter: Update a consenter in the orderer
+        - update_etcd_raft_options: Update etcd raft options for the orderer
+        - update_batch_size: Update batch size for the orderer
+        - update_batch_timeout: Update batch timeout for the orderer
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Config update operations
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateFabricNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ConfigUpdateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Prepare a config update for a Fabric network
       tags:
       - fabric-networks
   /networks/fabric/by-name/{name}:

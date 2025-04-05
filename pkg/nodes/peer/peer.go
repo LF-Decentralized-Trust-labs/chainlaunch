@@ -2189,6 +2189,7 @@ func (p *LocalPeer) SaveChannelConfig(ctx context.Context, channelID string, ord
 	if err != nil {
 		return nil, fmt.Errorf("failed to set anchor peers: %w", err)
 	}
+
 	ordererConn, err := p.CreateOrdererConnection(ctx, ordererUrl, ordererTlsCACert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create orderer connection: %w", err)

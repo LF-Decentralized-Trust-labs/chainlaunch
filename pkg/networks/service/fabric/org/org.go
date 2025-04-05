@@ -114,9 +114,6 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 	return ordererBlock, nil
 }
 
-
-
-
 // getAdminIdentity retrieves the admin identity for the organization
 func (s *FabricOrg) getAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
 	// Get organization details
@@ -284,7 +281,7 @@ func (s *FabricOrg) GetGenesisBlock(ctx context.Context, channelID string, order
 }
 
 // CreateConfigSignature creates a signature for a config update using the organization's admin credentials
-func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string, configUpdateBytes []byte) (*cb.ConfigSignature, error) {
+func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string, configUpdateBytes *cb.Envelope) (*cb.Envelope, error) {
 	s.logger.Info("Creating config signature",
 		"mspID", s.mspID,
 		"channel", channelID)
@@ -315,13 +312,8 @@ func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string,
 		return nil, fmt.Errorf("failed to create signing identity: %w", err)
 	}
 
-	var envelope cb.Envelope
-	err = proto.Unmarshal(configUpdateBytes, &envelope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal envelope: %w", err)
-	}
 	// Create config signature from the config update bytes
-	signature, err := SignConfigTx(channelID, &envelope, signingIdentity)
+	signature, err := SignConfigTx(channelID, configUpdateBytes, signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config signature: %w", err)
 	}
@@ -333,7 +325,7 @@ const (
 	epoch      = 0
 )
 
-func SignConfigTx(channelID string, envConfigUpdate *cb.Envelope, signer identity.SigningIdentity) (*cb.ConfigSignature, error) {
+func SignConfigTx(channelID string, envConfigUpdate *cb.Envelope, signer identity.SigningIdentity) (*cb.Envelope, error) {
 	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
 		return nil, errors.New("bad payload")
@@ -375,8 +367,11 @@ func SignConfigTx(channelID string, envConfigUpdate *cb.Envelope, signer identit
 		return nil, err
 	}
 
-	return configSig, nil
+	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
+
+	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, msgVersion, epoch)
 }
+
 func Concatenate[T any](slices ...[]T) []T {
 	size := 0
 	for _, slice := range slices {

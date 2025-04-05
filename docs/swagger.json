@@ -3143,6 +3143,56 @@
                 }
             }
         },
+        "/nodes/{id}/certificates/renew": {
+            "post": {
+                "description": "Renews the TLS and signing certificates for a Fabric node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Renew node certificates",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.NodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{id}/channels": {
             "get": {
                 "description": "Retrieves all channels for a specific Fabric node",
@@ -4098,66 +4148,6 @@
                     "type": "string"
                 }
             }
-        },
-        "crypto_x509.ExtKeyUsage": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-                11,
-                12,
-                13
-            ],
-            "x-enum-varnames": [
-                "ExtKeyUsageAny",
-                "ExtKeyUsageServerAuth",
-                "ExtKeyUsageClientAuth",
-                "ExtKeyUsageCodeSigning",
-                "ExtKeyUsageEmailProtection",
-                "ExtKeyUsageIPSECEndSystem",
-                "ExtKeyUsageIPSECTunnel",
-                "ExtKeyUsageIPSECUser",
-                "ExtKeyUsageTimeStamping",
-                "ExtKeyUsageOCSPSigning",
-                "ExtKeyUsageMicrosoftServerGatedCrypto",
-                "ExtKeyUsageNetscapeServerGatedCrypto",
-                "ExtKeyUsageMicrosoftCommercialCodeSigning",
-                "ExtKeyUsageMicrosoftKernelCodeSigning"
-            ]
-        },
-        "crypto_x509.KeyUsage": {
-            "type": "integer",
-            "enum": [
-                1,
-                2,
-                4,
-                8,
-                16,
-                32,
-                64,
-                128,
-                256
-            ],
-            "x-enum-varnames": [
-                "KeyUsageDigitalSignature",
-                "KeyUsageContentCommitment",
-                "KeyUsageKeyEncipherment",
-                "KeyUsageDataEncipherment",
-                "KeyUsageKeyAgreement",
-                "KeyUsageCertSign",
-                "KeyUsageCRLSign",
-                "KeyUsageEncipherOnly",
-                "KeyUsageDecipherOnly"
-            ]
         },
         "github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse": {
             "type": "object",
@@ -5591,7 +5581,7 @@
                 "extKeyUsage": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/crypto_x509.ExtKeyUsage"
+                        "$ref": "#/definitions/x509.ExtKeyUsage"
                     }
                 },
                 "ipAddresses": {
@@ -5607,7 +5597,7 @@
                     "type": "boolean"
                 },
                 "keyUsage": {
-                    "$ref": "#/definitions/crypto_x509.KeyUsage"
+                    "$ref": "#/definitions/x509.KeyUsage"
                 },
                 "locality": {
                     "type": "array",
@@ -6503,6 +6493,7 @@
                 "STOPPED",
                 "STOPPING",
                 "STARTING",
+                "UPDATING",
                 "ERROR"
             ],
             "x-enum-varnames": [
@@ -6511,6 +6502,7 @@
                 "NodeStatusStopped",
                 "NodeStatusStopping",
                 "NodeStatusStarting",
+                "NodeStatusUpdating",
                 "NodeStatusError"
             ]
         },
@@ -6581,6 +6573,66 @@
         },
         "url.Userinfo": {
             "type": "object"
+        },
+        "x509.ExtKeyUsage": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13
+            ],
+            "x-enum-varnames": [
+                "ExtKeyUsageAny",
+                "ExtKeyUsageServerAuth",
+                "ExtKeyUsageClientAuth",
+                "ExtKeyUsageCodeSigning",
+                "ExtKeyUsageEmailProtection",
+                "ExtKeyUsageIPSECEndSystem",
+                "ExtKeyUsageIPSECTunnel",
+                "ExtKeyUsageIPSECUser",
+                "ExtKeyUsageTimeStamping",
+                "ExtKeyUsageOCSPSigning",
+                "ExtKeyUsageMicrosoftServerGatedCrypto",
+                "ExtKeyUsageNetscapeServerGatedCrypto",
+                "ExtKeyUsageMicrosoftCommercialCodeSigning",
+                "ExtKeyUsageMicrosoftKernelCodeSigning"
+            ]
+        },
+        "x509.KeyUsage": {
+            "type": "integer",
+            "enum": [
+                1,
+                2,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256
+            ],
+            "x-enum-varnames": [
+                "KeyUsageDigitalSignature",
+                "KeyUsageContentCommitment",
+                "KeyUsageKeyEncipherment",
+                "KeyUsageDataEncipherment",
+                "KeyUsageKeyAgreement",
+                "KeyUsageCertSign",
+                "KeyUsageCRLSign",
+                "KeyUsageEncipherOnly",
+                "KeyUsageDecipherOnly"
+            ]
         }
     },
     "securityDefinitions": {

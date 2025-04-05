@@ -1157,3 +1157,145 @@ func (o *LocalOrderer) GetChannels(ctx context.Context) ([]OrdererChannel, error
 
 	return channels, nil
 }
+
+// RenewCertificates renews the orderer's TLS and signing certificates
+func (o *LocalOrderer) RenewCertificates(ordererDeploymentConfig *types.FabricOrdererDeploymentConfig) error {
+	ctx := context.Background()
+	o.logger.Info("Starting certificate renewal for orderer", "ordererID", o.opts.ID)
+
+	// Stop the orderer before renewing certificates
+	if err := o.Stop(); err != nil {
+		return fmt.Errorf("failed to stop orderer before certificate renewal: %w", err)
+	}
+	o.logger.Info("Successfully stopped orderer before certificate renewal")
+
+	// Get organization details
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if ordererDeploymentConfig.SignKeyID == 0 || ordererDeploymentConfig.TLSKeyID == 0 {
+		return fmt.Errorf("orderer node does not have required key IDs")
+	}
+
+	// Get the CA certificates
+	signCAKey, err := o.keyService.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get sign CA key: %w", err)
+	}
+
+	tlsCAKey, err := o.keyService.GetKey(ctx, int(org.TlsRootKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS CA key: %w", err)
+	}
+
+	// Renew signing certificate
+	validFor := kmodels.Duration(time.Hour * 24 * 365) // 1 year validity
+	signKeyDB, err := o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
+		CommonName:         o.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"orderer"},
+		DNSNames:           []string{o.opts.ID},
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew signing certificate: %w", err)
+	}
+
+	// Renew TLS certificate
+	domainNames := o.opts.DomainNames
+	var ipAddresses []net.IP
+	var domains []string
+
+	// Ensure localhost and 127.0.0.1 are included
+	hasLocalhost := false
+	hasLoopback := false
+	for _, domain := range domainNames {
+		if domain == "localhost" {
+			hasLocalhost = true
+			domains = append(domains, domain)
+			continue
+		}
+		if domain == "127.0.0.1" {
+			hasLoopback = true
+			ipAddresses = append(ipAddresses, net.ParseIP(domain))
+			continue
+		}
+		if ip := net.ParseIP(domain); ip != nil {
+			ipAddresses = append(ipAddresses, ip)
+		} else {
+			domains = append(domains, domain)
+		}
+	}
+	if !hasLocalhost {
+		domains = append(domains, "localhost")
+	}
+	if !hasLoopback {
+		ipAddresses = append(ipAddresses, net.ParseIP("127.0.0.1"))
+	}
+
+	tlsKeyDB, err := o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
+		CommonName:         o.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"orderer"},
+		DNSNames:           domains,
+		IPAddresses:        ipAddresses,
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew TLS certificate: %w", err)
+	}
+
+	// Get the private keys
+	signKey, err := o.keyService.GetDecryptedPrivateKey(int(ordererDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+
+	tlsKey, err := o.keyService.GetDecryptedPrivateKey(int(ordererDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	// Update the certificates in the MSP directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
+	dirPath := filepath.Join(homeDir, ".chainlaunch", "orderers", slugifiedID)
+	mspConfigPath := filepath.Join(dirPath, "config")
+
+	err = o.writeCertificatesAndKeys(
+		mspConfigPath,
+		tlsKeyDB,
+		signKeyDB,
+		tlsKey,
+		signKey,
+		signCAKey,
+		tlsCAKey,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to write renewed certificates: %w", err)
+	}
+
+	o.logger.Info("Successfully renewed orderer certificates", "ordererID", o.opts.ID)
+	o.logger.Info("Starting orderer after certificate renewal")
+
+	// Start the orderer with renewed certificates
+	_, err = o.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start orderer after certificate renewal: %w", err)
+	}
+
+	o.logger.Info("Successfully started orderer after certificate renewal")
+	return nil
+}

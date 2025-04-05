@@ -789,6 +789,7 @@ func (p *DatabaseProvider) SignCertificate(ctx context.Context, req types.SignCe
 		Sha1Fingerprint:   key.Sha1Fingerprint,
 		ProviderID:        key.ProviderID,
 		UserID:            key.UserID,
+		SigningKeyID:      sql.NullInt64{Int64: int64(req.CAKeyID), Valid: true},
 	}
 
 	updatedKey, err := p.queries.UpdateKey(ctx, params)

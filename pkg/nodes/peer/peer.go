@@ -590,9 +590,143 @@ func (p *LocalPeer) execSystemctl(command string, args ...string) error {
 	return nil
 }
 
-// RenewCertificates renews the peer's certificates
-func (p *LocalPeer) RenewCertificates() error {
-	// Implementation details for certificate renewal
+// RenewCertificates renews the peer's TLS and signing certificates
+func (p *LocalPeer) RenewCertificates(peerDeploymentConfig *types.FabricPeerDeploymentConfig) error {
+
+	ctx := context.Background()
+	p.logger.Info("Starting certificate renewal for peer", "peerID", p.opts.ID)
+
+	// Get organization details
+	org, err := p.orgService.GetOrganization(ctx, p.organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if peerDeploymentConfig.SignKeyID == 0 || peerDeploymentConfig.TLSKeyID == 0 {
+		return fmt.Errorf("peer node does not have required key IDs")
+	}
+
+	// Get the CA certificates
+	signCAKey, err := p.keyService.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get sign CA key: %w", err)
+	}
+
+	tlsCAKey, err := p.keyService.GetKey(ctx, int(org.TlsRootKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS CA key: %w", err)
+	}
+
+	// Renew signing certificate
+	validFor := kmodels.Duration(time.Hour * 24 * 365) // 1 year validity
+	signKeyDB, err := p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
+		CommonName:         p.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"peer"},
+		DNSNames:           []string{p.opts.ID},
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew signing certificate: %w", err)
+	}
+
+	// Renew TLS certificate
+	domainNames := p.opts.DomainNames
+	var ipAddresses []net.IP
+	var domains []string
+
+	// Ensure localhost and 127.0.0.1 are included
+	hasLocalhost := false
+	hasLoopback := false
+	for _, domain := range domainNames {
+		if domain == "localhost" {
+			hasLocalhost = true
+			domains = append(domains, domain)
+			continue
+		}
+		if domain == "127.0.0.1" {
+			hasLoopback = true
+			ipAddresses = append(ipAddresses, net.ParseIP(domain))
+			continue
+		}
+		if ip := net.ParseIP(domain); ip != nil {
+			ipAddresses = append(ipAddresses, ip)
+		} else {
+			domains = append(domains, domain)
+		}
+	}
+	if !hasLocalhost {
+		domains = append(domains, "localhost")
+	}
+	if !hasLoopback {
+		ipAddresses = append(ipAddresses, net.ParseIP("127.0.0.1"))
+	}
+
+	tlsKeyDB, err := p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
+		CommonName:         p.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"peer"},
+		DNSNames:           domains,
+		IPAddresses:        ipAddresses,
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew TLS certificate: %w", err)
+	}
+
+	// Get the private keys
+	signKey, err := p.keyService.GetDecryptedPrivateKey(int(peerDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+
+	tlsKey, err := p.keyService.GetDecryptedPrivateKey(int(peerDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	// Update the certificates in the MSP directory
+	peerPath := p.getPeerPath()
+	mspConfigPath := filepath.Join(peerPath, "config")
+
+	err = p.writeCertificatesAndKeys(
+		mspConfigPath,
+		tlsKeyDB,
+		signKeyDB,
+		tlsKey,
+		signKey,
+		signCAKey,
+		tlsCAKey,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to write renewed certificates: %w", err)
+	}
+
+	// Restart the peer
+	_, err = p.Start()
+	if err != nil {
+		return fmt.Errorf("failed to restart peer after certificate renewal: %w", err)
+	}
+
+	p.logger.Info("Successfully renewed peer certificates", "peerID", p.opts.ID)
+	p.logger.Info("Restarting peer after certificate renewal")
+	// Stop the peer before renewing certificates
+	if err := p.Stop(); err != nil {
+		return fmt.Errorf("failed to stop peer before certificate renewal: %w", err)
+	}
+	p.logger.Info("Successfully stopped peer before certificate renewal")
+	p.logger.Info("Starting peer after certificate renewal")
+	_, err = p.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start peer after certificate renewal: %w", err)
+	}
+	p.logger.Info("Successfully started peer after certificate renewal")
 	return nil
 }
 

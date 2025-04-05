@@ -38,6 +38,7 @@ const (
 	NodeStatusStopped  NodeStatus = "STOPPED"
 	NodeStatusStopping NodeStatus = "STOPPING"
 	NodeStatusStarting NodeStatus = "STARTING"
+	NodeStatusUpdating NodeStatus = "UPDATING"
 	NodeStatusError    NodeStatus = "ERROR"
 )
 

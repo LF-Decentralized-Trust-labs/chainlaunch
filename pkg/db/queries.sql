@@ -207,7 +207,8 @@ SET name = ?,
     provider_id = ?,
     user_id = ?,
     ethereum_address = ?,
-    updated_at = CURRENT_TIMESTAMP
+    updated_at = CURRENT_TIMESTAMP,
+    signing_key_id = ?
 WHERE id = ?
 RETURNING *;
 

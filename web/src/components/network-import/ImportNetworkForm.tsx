@@ -60,7 +60,7 @@ type FormValues = z.infer<typeof formSchema>
 export function ImportNetworkForm() {
 	const [error, setError] = useState<string | null>(null)
 	const navigate = useNavigate()
-	const [fabricImportMethod, setFabricImportMethod] = useState<'genesis' | 'organization'>('genesis')
+	const [fabricImportMethod, setFabricImportMethod] = useState<'genesis' | 'organization'>('organization')
 
 	const { data: organizations } = useQuery({
 		...getOrganizationsOptions(),
@@ -241,22 +241,22 @@ export function ImportNetworkForm() {
 								<div className="space-y-2">
 									<FormLabel>Import Method</FormLabel>
 									<RadioGroup
-										defaultValue="genesis"
+										defaultValue="organization"
 										value={fabricImportMethod}
 										onValueChange={(value) => handleImportMethodChange(value as 'genesis' | 'organization')}
 										className="flex flex-col space-y-1"
 									>
 										<FormItem className="flex items-center space-x-3 space-y-0">
 											<FormControl>
-												<RadioGroupItem value="genesis" />
-											</FormControl>
-											<FormLabel className="font-normal">Import using genesis block</FormLabel>
-										</FormItem>
-										<FormItem className="flex items-center space-x-3 space-y-0">
-											<FormControl>
 												<RadioGroupItem value="organization" />
 											</FormControl>
 											<FormLabel className="font-normal">Import using organization, orderer URL and TLS certificate</FormLabel>
+										</FormItem>
+										<FormItem className="flex items-center space-x-3 space-y-0">
+											<FormControl>
+												<RadioGroupItem value="genesis" />
+											</FormControl>
+											<FormLabel className="font-normal">Import using genesis block</FormLabel>
 										</FormItem>
 									</RadioGroup>
 								</div>

@@ -4022,7 +4022,8 @@ SET name = ?,
     provider_id = ?,
     user_id = ?,
     ethereum_address = ?,
-    updated_at = CURRENT_TIMESTAMP
+    updated_at = CURRENT_TIMESTAMP,
+    signing_key_id = ?
 WHERE id = ?
 RETURNING id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address
 `
@@ -4044,6 +4045,7 @@ type UpdateKeyParams struct {
 	ProviderID        int64          `json:"provider_id"`
 	UserID            int64          `json:"user_id"`
 	EthereumAddress   sql.NullString `json:"ethereum_address"`
+	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
 	ID                int64          `json:"id"`
 }
 
@@ -4065,6 +4067,7 @@ func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, erro
 		arg.ProviderID,
 		arg.UserID,
 		arg.EthereumAddress,
+		arg.SigningKeyID,
 		arg.ID,
 	)
 	var i Key

@@ -48,10 +48,6 @@ export type AuthUserResponse = {
     username?: string;
 };
 
-export type CryptoX509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
-
-export type CryptoX509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
-
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -634,10 +630,10 @@ export type ModelsCertificateRequest = {
     country?: Array<string>;
     dnsNames?: Array<string>;
     emailAddresses?: Array<string>;
-    extKeyUsage?: Array<CryptoX509ExtKeyUsage>;
+    extKeyUsage?: Array<X509ExtKeyUsage>;
     ipAddresses?: Array<Array<number>>;
     isCA?: boolean;
-    keyUsage?: CryptoX509KeyUsage;
+    keyUsage?: X509KeyUsage;
     locality?: Array<string>;
     organization?: Array<string>;
     organizationalUnit?: Array<string>;
@@ -998,7 +994,7 @@ export type TypesFabricPeerConfig = {
     version?: string;
 };
 
-export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'ERROR';
+export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
 
@@ -1049,6 +1045,10 @@ export type UrlUrl = {
 export type UrlUserinfo = {
     [key: string]: unknown;
 };
+
+export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+
+export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
 
 export type PostAuthLoginData = {
     /**
@@ -3408,6 +3408,44 @@ export type GetNodesByIdResponses = {
 };
 
 export type GetNodesByIdResponse = GetNodesByIdResponses[keyof GetNodesByIdResponses];
+
+export type PostNodesByIdCertificatesRenewData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/certificates/renew';
+};
+
+export type PostNodesByIdCertificatesRenewErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PostNodesByIdCertificatesRenewError = PostNodesByIdCertificatesRenewErrors[keyof PostNodesByIdCertificatesRenewErrors];
+
+export type PostNodesByIdCertificatesRenewResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeResponse;
+};
+
+export type PostNodesByIdCertificatesRenewResponse = PostNodesByIdCertificatesRenewResponses[keyof PostNodesByIdCertificatesRenewResponses];
 
 export type GetNodesByIdChannelsData = {
     body?: never;

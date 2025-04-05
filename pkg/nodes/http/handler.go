@@ -60,6 +60,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/logs", h.TailLogs)
 		r.Get("/{id}/events", response.Middleware(h.GetNodeEvents))
 		r.Get("/{id}/channels", response.Middleware(h.GetNodeChannels))
+		r.Post("/{id}/certificates/renew", response.Middleware(h.RenewCertificates))
 	})
 }
 
@@ -692,4 +693,35 @@ func toNodeEventResponse(event service.NodeEvent) NodeEventResponse {
 		Data:      event.Data,
 		CreatedAt: event.CreatedAt,
 	}
+}
+
+// RenewCertificates godoc
+// @Summary Renew node certificates
+// @Description Renews the TLS and signing certificates for a Fabric node
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Success 200 {object} NodeResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id}/certificates/renew [post]
+func (h *NodeHandler) RenewCertificates(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	node, err := h.service.RenewCertificates(r.Context(), id)
+	if err != nil {
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to renew certificates", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(node))
 }

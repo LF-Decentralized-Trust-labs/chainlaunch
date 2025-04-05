@@ -114,6 +114,9 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 	return ordererBlock, nil
 }
 
+
+
+
 // getAdminIdentity retrieves the admin identity for the organization
 func (s *FabricOrg) getAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
 	// Get organization details

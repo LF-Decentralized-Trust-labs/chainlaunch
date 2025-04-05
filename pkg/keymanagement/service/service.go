@@ -195,6 +195,7 @@ func (s *KeyManagementService) GetKey(ctx context.Context, id int) (*models.KeyR
 	}
 	keySize := int(key.KeySize.Int64)
 	curve := models.ECCurve(key.Curve.String)
+	signingKeyID := int(key.SigningKeyID.Int64)
 	return &models.KeyResponse{
 		ID:                int(key.ID),
 		Name:              key.Name,
@@ -217,6 +218,7 @@ func (s *KeyManagementService) GetKey(ctx context.Context, id int) (*models.KeyR
 		},
 		PrivateKey:      key.PrivateKey,
 		EthereumAddress: key.EthereumAddress.String,
+		SigningKeyID:    &signingKeyID,
 	}, err
 }
 
@@ -608,6 +610,66 @@ type KeyInfo struct {
 	KeyType   string
 	PublicKey string
 }
+
+// SetSigningKeyIDForKey updates a key with the ID of the key that signed its certificate
+func (s *KeyManagementService) SetSigningKeyIDForKey(ctx context.Context, keyID, signingKeyID int) error {
+	// Validate that both keys exist
+	key, err := s.queries.GetKey(ctx, int64(keyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("key not found")
+		}
+		return fmt.Errorf("failed to get key: %w", err)
+	}
+
+	signingKey, err := s.queries.GetKey(ctx, int64(signingKeyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("signing key not found")
+		}
+		return fmt.Errorf("failed to get signing key: %w", err)
+	}
+
+	// Verify that the signing key is a CA
+	if signingKey.IsCa != 1 {
+		return fmt.Errorf("signing key %d is not a CA", signingKeyID)
+	}
+
+	// Verify that the key has a certificate
+	if !key.Certificate.Valid {
+		return fmt.Errorf("key %d does not have a certificate", keyID)
+	}
+
+	// Update the key with the signing key ID
+	params := db.UpdateKeyParams{
+		ID:                key.ID,
+		Name:              key.Name,
+		Description:       key.Description,
+		Algorithm:         key.Algorithm,
+		KeySize:           key.KeySize,
+		Curve:             key.Curve,
+		Format:            key.Format,
+		PublicKey:         key.PublicKey,
+		PrivateKey:        key.PrivateKey,
+		Certificate:       key.Certificate,
+		Status:            key.Status,
+		ExpiresAt:         key.ExpiresAt,
+		Sha256Fingerprint: key.Sha256Fingerprint,
+		Sha1Fingerprint:   key.Sha1Fingerprint,
+		ProviderID:        key.ProviderID,
+		UserID:            key.UserID,
+		EthereumAddress:   key.EthereumAddress,
+		SigningKeyID:      sql.NullInt64{Int64: int64(signingKeyID), Valid: true},
+	}
+
+	_, err = s.queries.UpdateKey(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to update key with signing key ID: %w", err)
+	}
+
+	return nil
+}
+
 
 // RenewCertificate renews a certificate using the same keypair and CA that was used to generate it
 func (s *KeyManagementService) RenewCertificate(ctx context.Context, keyID int, certReq models.CertificateRequest) (*models.KeyResponse, error) {

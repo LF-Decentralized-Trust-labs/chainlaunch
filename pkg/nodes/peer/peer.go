@@ -616,10 +616,34 @@ func (p *LocalPeer) RenewCertificates(peerDeploymentConfig *types.FabricPeerDepl
 	if err != nil {
 		return fmt.Errorf("failed to get TLS CA key: %w", err)
 	}
+	// In case the sign key is not signed by the CA, set the signing key ID to the CA key ID
+	signKeyDB, err := p.keyService.GetKey(ctx, int(peerDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+	if signKeyDB.SigningKeyID == nil || *signKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = p.keyService.SetSigningKeyIDForKey(ctx, int(peerDeploymentConfig.SignKeyID), int(signCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for sign key: %w", err)
+		}
+	}
 
+	tlsKeyDB, err := p.keyService.GetKey(ctx, int(peerDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	if tlsKeyDB.SigningKeyID == nil || *tlsKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = p.keyService.SetSigningKeyIDForKey(ctx, int(peerDeploymentConfig.TLSKeyID), int(tlsCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for TLS key: %w", err)
+		}
+	}
 	// Renew signing certificate
 	validFor := kmodels.Duration(time.Hour * 24 * 365) // 1 year validity
-	signKeyDB, err := p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
+	_, err = p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
 		CommonName:         p.opts.ID,
 		Organization:       []string{org.MspID},
 		OrganizationalUnit: []string{"peer"},
@@ -665,7 +689,7 @@ func (p *LocalPeer) RenewCertificates(peerDeploymentConfig *types.FabricPeerDepl
 		ipAddresses = append(ipAddresses, net.ParseIP("127.0.0.1"))
 	}
 
-	tlsKeyDB, err := p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
+	_, err = p.keyService.RenewCertificate(ctx, int(peerDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
 		CommonName:         p.opts.ID,
 		Organization:       []string{org.MspID},
 		OrganizationalUnit: []string{"peer"},

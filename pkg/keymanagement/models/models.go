@@ -122,6 +122,7 @@ type KeyResponse struct {
 	Provider          KeyProviderInfo `json:"provider"`
 	PrivateKey        string          `json:"privateKey"`
 	EthereumAddress   string          `json:"ethereumAddress"`
+	SigningKeyID      *int            `json:"signingKeyID,omitempty"`
 }
 
 type KeyProviderInfo struct {

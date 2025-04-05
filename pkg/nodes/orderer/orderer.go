@@ -1190,9 +1190,35 @@ func (o *LocalOrderer) RenewCertificates(ordererDeploymentConfig *types.FabricOr
 		return fmt.Errorf("failed to get TLS CA key: %w", err)
 	}
 
+	// In case the sign key is not signed by the CA, set the signing key ID to the CA key ID
+	signKeyDB, err := o.keyService.GetKey(ctx, int(ordererDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+	if signKeyDB.SigningKeyID == nil || *signKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = o.keyService.SetSigningKeyIDForKey(ctx, int(ordererDeploymentConfig.SignKeyID), int(signCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for sign key: %w", err)
+		}
+	}
+
+	tlsKeyDB, err := o.keyService.GetKey(ctx, int(ordererDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	if tlsKeyDB.SigningKeyID == nil || *tlsKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = o.keyService.SetSigningKeyIDForKey(ctx, int(ordererDeploymentConfig.TLSKeyID), int(tlsCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for TLS key: %w", err)
+		}
+	}
+
 	// Renew signing certificate
 	validFor := kmodels.Duration(time.Hour * 24 * 365) // 1 year validity
-	signKeyDB, err := o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
+	_, err = o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
 		CommonName:         o.opts.ID,
 		Organization:       []string{org.MspID},
 		OrganizationalUnit: []string{"orderer"},
@@ -1238,7 +1264,7 @@ func (o *LocalOrderer) RenewCertificates(ordererDeploymentConfig *types.FabricOr
 		ipAddresses = append(ipAddresses, net.ParseIP("127.0.0.1"))
 	}
 
-	tlsKeyDB, err := o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
+	_, err = o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
 		CommonName:         o.opts.ID,
 		Organization:       []string{org.MspID},
 		OrganizationalUnit: []string{"orderer"},

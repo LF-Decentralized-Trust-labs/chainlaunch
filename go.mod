@@ -28,7 +28,11 @@ require (
 	gopkg.in/mail.v2 v2.3.1
 )
 
-require github.com/hyperledger/fabric-sdk-go v1.0.0
+require (
+	github.com/hyperledger/fabric-gateway v1.5.0
+	github.com/hyperledger/fabric-sdk-go v1.0.0
+	google.golang.org/grpc v1.71.0
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
@@ -62,7 +66,6 @@ require (
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
-	github.com/hyperledger/fabric-gateway v1.5.0 // indirect
 	github.com/hyperledger/fabric-lib-go v1.0.0 // indirect
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -114,7 +117,6 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
-	google.golang.org/grpc v1.71.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -145,4 +147,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/hyperledger/fabric-admin-sdk => /Users/davidviejo/github-libs/fabric-admin-sdk
+replace github.com/hyperledger/fabric-admin-sdk => github.com/kfsoftware/fabric-admin-sdk v0.0.0-20250405175109-fd063100bb3f

@@ -10,6 +10,7 @@ import {
 import { BesuNodeConfig } from '@/components/nodes/BesuNodeConfig'
 import { FabricOrdererConfig } from '@/components/nodes/FabricOrdererConfig'
 import { FabricPeerConfig } from '@/components/nodes/FabricPeerConfig'
+import { FabricNodeChannels } from '@/components/nodes/FabricNodeChannels'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +23,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns/format'
 import { AlertCircle, CheckCircle2, Clock, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 interface DeploymentConfig {
@@ -123,9 +124,19 @@ function getEventStatusColor(status: string) {
 export default function NodeDetailPage() {
 	const { id } = useParams<{ id: string }>()
 	const navigate = useNavigate()
+	const [searchParams, setSearchParams] = useSearchParams()
 	const [logs, setLogs] = useState<string>('')
 	const logsRef = useRef<HTMLTextAreaElement>(null)
 	const abortControllerRef = useRef<AbortController | null>(null)
+
+	// Get the active tab from URL or default to 'logs'
+	const activeTab = searchParams.get('tab') || 'logs'
+
+	// Update URL when tab changes
+	const handleTabChange = (value: string) => {
+		searchParams.set('tab', value)
+		setSearchParams(searchParams)
+	}
 
 	const {
 		data: node,
@@ -282,9 +293,11 @@ export default function NodeDetailPage() {
 	}
 
 	if (error) {
-		return <div>Error loading node: {(error as ResponseErrorResponse).error.message}</div>
+		return <div>Error loading node: {(error as any).error.message}</div>
 	}
-
+	if (!node) {
+		return <div>Node not found</div>
+	}
 	return (
 		<div className="flex-1 space-y-6 p-8">
 			<div className="flex items-center justify-between">
@@ -345,11 +358,12 @@ export default function NodeDetailPage() {
 				</>
 			</div>
 
-			<Tabs defaultValue="logs" className="space-y-4">
+			<Tabs defaultValue={activeTab} className="space-y-4" onValueChange={handleTabChange}>
 				<TabsList>
 					<TabsTrigger value="logs">Logs</TabsTrigger>
 					<TabsTrigger value="crypto">Crypto Material</TabsTrigger>
 					<TabsTrigger value="events">Events</TabsTrigger>
+					{isFabricNode(node) && <TabsTrigger value="channels">Channels</TabsTrigger>}
 				</TabsList>
 
 				<TabsContent value="logs" className="space-y-4">
@@ -442,6 +456,10 @@ export default function NodeDetailPage() {
 							</div>
 						</CardContent>
 					</Card>
+				</TabsContent>
+
+				<TabsContent value="channels">
+					{isFabricNode(node) && <FabricNodeChannels nodeId={node.id!} />}
 				</TabsContent>
 			</Tabs>
 		</div>

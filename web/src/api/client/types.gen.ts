@@ -171,6 +171,12 @@ export type HttpChannelConfigResponse = {
     name?: string;
 };
 
+export type HttpChannelResponse = {
+    blockNum?: number;
+    createdAt?: string;
+    name?: string;
+};
+
 export type HttpConsenterConfig = {
     id: string;
 };
@@ -454,6 +460,11 @@ export type HttpNetworkResponse = {
     platform?: string;
     status?: string;
     updatedAt?: string;
+};
+
+export type HttpNodeChannelsResponse = {
+    channels?: Array<HttpChannelResponse>;
+    nodeId?: number;
 };
 
 export type HttpNodeEventResponse = {
@@ -3397,6 +3408,44 @@ export type GetNodesByIdResponses = {
 };
 
 export type GetNodesByIdResponse = GetNodesByIdResponses[keyof GetNodesByIdResponses];
+
+export type GetNodesByIdChannelsData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/channels';
+};
+
+export type GetNodesByIdChannelsErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type GetNodesByIdChannelsError = GetNodesByIdChannelsErrors[keyof GetNodesByIdChannelsErrors];
+
+export type GetNodesByIdChannelsResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeChannelsResponse;
+};
+
+export type GetNodesByIdChannelsResponse = GetNodesByIdChannelsResponses[keyof GetNodesByIdChannelsResponses];
 
 export type GetNodesByIdEventsData = {
     body?: never;

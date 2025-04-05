@@ -14,10 +14,10 @@ import (
 	"github.com/hyperledger/fabric-config/configtx/membership"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ChannelService handles channel operations
@@ -88,7 +88,7 @@ func (s *ChannelService) CreateChannel(input CreateChannelInput) (*CreateChannel
 }
 
 // SetAnchorPeers updates the anchor peers for an organization in a channel
-func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, error) {
+func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) (*cb.Envelope, error) {
 	// Create config manager and update anchor peers
 	cftxGen := configtx.New(input.CurrentConfig)
 	app := cftxGen.Application().Organization(input.MSPID)
@@ -130,14 +130,14 @@ func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, err
 	}
 
 	// Create envelope
-	envelopeBytes, err := s.createConfigUpdateEnvelope(input.ChannelName, configUpdate)
+	configEnvelope, err := s.createConfigUpdateEnvelope(input.ChannelName, configUpdate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config update envelope: %w", err)
 	}
 
-	return envelopeBytes, nil
+	return configEnvelope, nil
 }
-func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate) ([]byte, error) {
+func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate) (*cb.Envelope, error) {
 	configUpdate.ChannelId = channelID
 	configUpdateData, err := proto.Marshal(configUpdate)
 	if err != nil {
@@ -149,11 +149,8 @@ func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpda
 	if err != nil {
 		return nil, err
 	}
-	envelopeData, err := proto.Marshal(envelope)
-	if err != nil {
-		return nil, err
-	}
-	return envelopeData, nil
+
+	return envelope, nil
 }
 
 // DecodeBlock decodes a base64 encoded block into JSON

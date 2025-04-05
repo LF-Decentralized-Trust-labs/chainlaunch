@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -18,18 +20,15 @@ import (
 	// add sprig/v3
 	"github.com/Masterminds/sprig/v3"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/msp"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite/bccsp/sw"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab/resource"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
-	mspimpl "github.com/hyperledger/fabric-sdk-go/pkg/msp"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"google.golang.org/grpc"
 
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/chainlaunch/chainlaunch/pkg/binaries"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
@@ -566,10 +565,11 @@ func (p *LocalPeer) stopLaunchdService() error {
 
 	return nil
 }
+
 // execSystemctl executes a systemctl command
 func (p *LocalPeer) execSystemctl(command string, args ...string) error {
 	cmdArgs := append([]string{command}, args...)
-	
+
 	// Check if sudo is available
 	sudoPath, err := exec.LookPath("sudo")
 	if err == nil {
@@ -586,7 +586,7 @@ func (p *LocalPeer) execSystemctl(command string, args ...string) error {
 			return fmt.Errorf("systemctl %s failed: %w", command, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -754,7 +754,7 @@ func (p *LocalPeer) generateNetworkConfigForPeer(
 	org := &Org{
 		MSPID:     peerMspID,
 		CertAuths: []string{},
-		Peers:     []string{"peer0"},
+		Peers:     []string{},
 		Orderers:  []string{},
 	}
 	orgs = append(orgs, org)
@@ -764,15 +764,17 @@ func (p *LocalPeer) generateNetworkConfigForPeer(
 			URL:       peerUrl,
 			TLSCACert: peerTlsCACert,
 		}
+		org.Peers = append(org.Peers, "peer0")
 		peers = append(peers, peer)
 	}
-
-	orderer := &Orderer{
-		URL:       ordererUrl,
-		Name:      "orderer0",
-		TLSCACert: ordererTlsCACert,
+	if ordererTlsCACert != "" && ordererUrl != "" {
+		orderer := &Orderer{
+			URL:       ordererUrl,
+			Name:      "orderer0",
+			TLSCACert: ordererTlsCACert,
+		}
+		ordererNodes = append(ordererNodes, orderer)
 	}
-	ordererNodes = append(ordererNodes, orderer)
 	err = tmpl.Execute(&buf, map[string]interface{}{
 		"Peers":         peers,
 		"Orderers":      ordererNodes,
@@ -784,6 +786,7 @@ func (p *LocalPeer) generateNetworkConfigForPeer(
 	if err != nil {
 		return nil, err
 	}
+	p.logger.Debugf("Network config: %s", buf.String())
 	return &NetworkConfigResponse{
 		NetworkConfig: buf.String(),
 	}, nil
@@ -792,55 +795,34 @@ func (p *LocalPeer) generateNetworkConfigForPeer(
 // JoinChannel joins the peer to a channel
 func (p *LocalPeer) JoinChannel(genesisBlock []byte) error {
 	p.logger.Info("Joining peer to channel", "peer", p.opts.ID)
-
-	// Create temporary file for genesis block
-	tmpFile, err := os.CreateTemp("", "genesis-block-*.block")
+	var genesisBlockProto cb.Block
+	err := proto.Unmarshal(genesisBlock, &genesisBlockProto)
 	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
+		return fmt.Errorf("failed to unmarshal genesis block: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
-
-	homeDir, err := os.UserHomeDir()
+	ctx := context.Background()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
+		return fmt.Errorf("failed to get TLS root CA cert: %w", err)
 	}
-	slugifiedID := strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-")
-	peerConfigPath := filepath.Join(homeDir, ".chainlaunch/peers", slugifiedID, "config")
-
-	// Write genesis block to file
-	if err := os.WriteFile(tmpFile.Name(), genesisBlock, 0644); err != nil {
-		return fmt.Errorf("failed to write genesis block: %w", err)
-	}
-
-	// Build peer channel join command
-	peerBinary, err := p.findPeerBinary()
+	peerConn, err := p.CreatePeerConnection(ctx, p.opts.ExternalEndpoint, tlsCACert)
 	if err != nil {
-		return fmt.Errorf("failed to find peer binary: %w", err)
+		return fmt.Errorf("failed to create peer connection: %w", err)
 	}
-	mspConfigPath, err := p.PrepareAdminCertMSP(p.org.MspID)
-	if err != nil {
-		return fmt.Errorf("failed to prepare admin cert MSP: %w", err)
-	}
-	cmd := exec.Command(peerBinary, "channel", "join", "-b", tmpFile.Name())
-	listenAddress := strings.Replace(p.opts.ListenAddress, "0.0.0.0", "localhost", 1)
-	// Set environment variables
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", mspConfigPath),
-		fmt.Sprintf("CORE_PEER_ADDRESS=%s", listenAddress),
-		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", p.mspID),
-		"CORE_PEER_TLS_ENABLED=true",
-		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", filepath.Join(mspConfigPath, "tlscacerts", "cacert.pem")),
-		fmt.Sprintf("FABRIC_CFG_PATH=%s", peerConfigPath),
-	)
+	defer peerConn.Close()
 
-	// Execute command
-	output, err := cmd.CombinedOutput()
+	adminIdentity, err := p.GetAdminIdentity(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to join channel: %w, output: %s", err, string(output))
+		return fmt.Errorf("failed to get admin identity: %w", err)
 	}
 
-	p.logger.Info("Successfully joined channel", "peer", p.opts.ID)
+	err = channel.JoinChannel(ctx, peerConn, adminIdentity, &genesisBlockProto)
+	if err != nil {
+		return fmt.Errorf("failed to join channel: %w", err)
+	}
+
 	return nil
+
 }
 
 // writeCertificatesAndKeys writes the certificates and keys to the MSP directory structure
@@ -2010,6 +1992,10 @@ func (p *LocalPeer) GetPeerURL() string {
 	return fmt.Sprintf("grpcs://%s", p.opts.ExternalEndpoint)
 }
 
+func (p *LocalPeer) GetPeerAddress() string {
+	return p.opts.ExternalEndpoint
+}
+
 func (p *LocalPeer) GetTLSRootCACert(ctx context.Context) (string, error) {
 	tlsCAKeyDB, err := p.keyService.GetKey(ctx, int(p.org.TlsRootKeyID.Int64))
 	if err != nil {
@@ -2036,58 +2022,146 @@ type SaveChannelConfigResponse struct {
 	TransactionID string
 }
 
-func (p *LocalPeer) SaveChannelConfig(ctx context.Context, channelID string, ordererUrl string, ordererTlsCACert string, channelData []byte) (*SaveChannelConfigResponse, error) {
-	peerUrl := p.GetPeerURL()
-	tlsCACert, err := p.GetTLSRootCACert(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
-	}
-
-	networkConfig, err := p.generateNetworkConfigForPeer(
-		peerUrl,
-		p.mspID,
-		tlsCACert,
-		ordererUrl,
-		ordererTlsCACert,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
-	}
-	configBackend := config.FromRaw([]byte(networkConfig.NetworkConfig), "yaml")
-	sdk, err := fabsdk.New(configBackend)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sdk: %w", err)
-	}
-	defer sdk.Close()
-	adminIdentity, err := p.GetAdminIdentity(ctx, sdk)
+func (p *LocalPeer) SaveChannelConfig(ctx context.Context, channelID string, ordererUrl string, ordererTlsCACert string, channelData *cb.Envelope) (*SaveChannelConfigResponse, error) {
+	adminIdentity, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
-	sdkContext := sdk.Context(
-		fabsdk.WithIdentity(adminIdentity),
-		fabsdk.WithOrg(p.mspID),
-	)
-	resClient, err := resmgmt.New(sdkContext)
+	envelope, err := SignConfigTx(channelID, channelData, adminIdentity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
+		return nil, fmt.Errorf("failed to set anchor peers: %w", err)
 	}
-	configUpdateReader := bytes.NewReader(channelData)
-	chResponse, err := resClient.SaveChannel(resmgmt.SaveChannelRequest{
-		ChannelID:     channelID,
-		ChannelConfig: configUpdateReader,
-	})
+	ordererConn, err := p.CreateOrdererConnection(ctx, ordererUrl, ordererTlsCACert)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save channel config: %w", err)
+		return nil, fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	defer ordererConn.Close()
+	ordererClient, err := orderer.NewAtomicBroadcastClient(ordererConn).Broadcast(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer client: %w", err)
+	}
+	err = ordererClient.Send(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send envelope: %w", err)
+	}
+	response, err := ordererClient.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive response: %w", err)
 	}
 	return &SaveChannelConfigResponse{
-		TransactionID: string(chResponse.TransactionID),
+		TransactionID: response.String(),
 	}, nil
+}
+
+// SaveChannelConfigResponse contains the transaction ID of the saved channel configuration
+
+// CreateOrdererConnection establishes a gRPC connection to an orderer
+func (p *LocalPeer) CreateOrdererConnection(ctx context.Context, ordererURL string, ordererTLSCACert string) (*grpc.ClientConn, error) {
+	p.logger.Info("Creating orderer connection",
+		"ordererURL", ordererURL)
+
+	// Create a network node with the orderer details
+	networkNode := network.Node{
+		Addr:          ordererURL,
+		TLSCACertByte: []byte(ordererTLSCACert),
+	}
+
+	// Establish connection to the orderer
+	ordererConn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial orderer connection: %w", err)
+	}
+
+	return ordererConn, nil
+}
+
+const (
+	msgVersion = int32(0)
+	epoch      = 0
+)
+
+func SignConfigTx(channelID string, envConfigUpdate *cb.Envelope, signer identity.SigningIdentity) (*cb.Envelope, error) {
+	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
+	if err != nil {
+		return nil, errors.New("bad payload")
+	}
+
+	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+		return nil, errors.New("bad header")
+	}
+
+	ch, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, errors.New("could not unmarshall channel header")
+	}
+
+	if ch.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+		return nil, errors.New("bad type")
+	}
+
+	if ch.ChannelId == "" {
+		return nil, errors.New("empty channel id")
+	}
+
+	configUpdateEnv, err := protoutil.UnmarshalConfigUpdateEnvelope(payload.Data)
+	if err != nil {
+		return nil, errors.New("bad config update env")
+	}
+
+	sigHeader, err := protoutil.NewSignatureHeader(signer)
+	if err != nil {
+		return nil, err
+	}
+
+	configSig := &cb.ConfigSignature{
+		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
+	}
+
+	configSig.Signature, err = signer.Sign(Concatenate(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	if err != nil {
+		return nil, err
+	}
+
+	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
+
+	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, msgVersion, epoch)
+}
+
+func Concatenate[T any](slices ...[]T) []T {
+	size := 0
+	for _, slice := range slices {
+		size += len(slice)
+	}
+
+	result := make([]T, size)
+	i := 0
+	for _, slice := range slices {
+		copy(result[i:], slice)
+		i += len(slice)
+	}
+
+	return result
+}
+
+// CreatePeerConnection establishes a gRPC connection to a peer
+func (p *LocalPeer) CreatePeerConnection(ctx context.Context, peerURL string, peerTLSCACert string) (*grpc.ClientConn, error) {
+	// Create a temporary file for the TLS CA certificate
+
+	networkNode := network.Node{
+		Addr:          peerURL,
+		TLSCACertByte: []byte(peerTLSCACert),
+	}
+	peerConn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial peer connection: %w", err)
+	}
+	return peerConn, nil
 }
 
 func (p *LocalPeer) GetMSPID() string {
 	return p.mspID
 }
-func (p *LocalPeer) GetAdminIdentity(ctx context.Context, sdk *fabsdk.FabricSDK) (msp.SigningIdentity, error) {
+func (p *LocalPeer) GetAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
 	adminSignKeyDB, err := p.keyService.GetKey(ctx, int(p.org.AdminSignKeyID.Int64))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TLS CA key: %w", err)
@@ -2100,32 +2174,22 @@ func (p *LocalPeer) GetAdminIdentity(ctx context.Context, sdk *fabsdk.FabricSDK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get decrypted private key: %w", err)
 	}
-	sdkConfig, err := sdk.Config()
+
+	cert, err := gwidentity.CertificateFromPEM([]byte(certificate))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sdk config: %w", err)
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
 	}
-	cryptoConfig := cryptosuite.ConfigFromBackend(sdkConfig)
-	cryptoSuite, err := sw.GetSuiteByConfig(cryptoConfig)
+
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKey))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get crypto suite: %w", err)
+		return nil, fmt.Errorf("failed to read private key: %w", err)
 	}
-	userStore := mspimpl.NewMemoryUserStore()
-	endpointConfig, err := fab.ConfigFromBackend(sdkConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get endpoint config: %w", err)
-	}
-	mspID := p.GetMSPID()
-	identityManager, err := mspimpl.NewIdentityManager(mspID, userStore, cryptoSuite, endpointConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get identity manager: %w", err)
-	}
-	signingIdentity, err := identityManager.CreateSigningIdentity(
-		msp.WithPrivateKey([]byte(privateKey)),
-		msp.WithCert([]byte(certificate)),
-	)
+
+	signingIdentity, err := identity.NewPrivateKeySigningIdentity(p.mspID, cert, priv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signing identity: %w", err)
 	}
+
 	return signingIdentity, nil
 }
 
@@ -2141,58 +2205,55 @@ func (p *LocalPeer) GetChannelBlock(ctx context.Context, channelID string, order
 		"channel", channelID,
 		"ordererUrl", ordererUrl)
 
-	// Get peer URL and TLS cert
-	peerUrl := p.GetPeerURL()
-	tlsCACert, err := p.GetTLSRootCACert(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
-	}
-
-	// Generate network config for SDK
-	networkConfig, err := p.generateNetworkConfigForPeer(
-		peerUrl,
-		p.mspID,
-		tlsCACert,
-		ordererUrl,
-		ordererTlsCACert,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
-	}
-
-	// Initialize SDK with network config
-	configBackend := config.FromRaw([]byte(networkConfig.NetworkConfig), "yaml")
-	sdk, err := fabsdk.New(configBackend)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sdk: %w", err)
-	}
-	defer sdk.Close()
-
 	// Get admin identity
-	adminIdentity, err := p.GetAdminIdentity(ctx, sdk)
+	adminIdentity, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
-
-	// Create SDK context with admin identity
-	sdkContext := sdk.Context(
-		fabsdk.WithIdentity(adminIdentity),
-		fabsdk.WithOrg(p.mspID),
-	)
-
-	// Create resource management client
-	resClient, err := resmgmt.New(sdkContext)
+	peerUrl := p.GetPeerAddress()
+	peerTLSCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
 	}
-
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, peerTLSCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
 	// Fetch channel configuration
-	configBlock, err := resClient.QueryConfigBlockFromOrderer(channelID)
+	configBlock, err := channel.GetConfigBlock(ctx, peerConn, adminIdentity, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel config: %w", err)
 	}
 	return configBlock, nil
 
+}
+
+// getOrdererTLSKeyPair creates a TLS key pair for secure communication with the orderer
+func (p *LocalPeer) getOrdererTLSKeyPair(ctx context.Context, ordererTLSCert string) (tls.Certificate, error) {
+	// Get organization details
+	org, err := p.orgService.GetOrganizationByMspID(ctx, p.mspID)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.AdminSignKeyID.Valid {
+		return tls.Certificate{}, fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := p.keyService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	// Parse the orderer TLS certificate
+	ordererTLSCertParsed, err := tls.X509KeyPair([]byte(ordererTLSCert), []byte(privateKeyPEM))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to parse orderer TLS certificate: %w", err)
+	}
+
+	return ordererTLSCertParsed, nil
 }
 
 // Add this new method to the LocalPeer struct
@@ -2204,7 +2265,7 @@ func (p *LocalPeer) GetChannelConfig(ctx context.Context, channelID string, orde
 		return nil, fmt.Errorf("failed to query channel config: %w", err)
 	}
 
-	cmnConfig, err := resource.ExtractConfigFromBlock(configBlock)
+	cmnConfig, err := ExtractConfigFromBlock(configBlock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -2227,65 +2288,129 @@ func (p *LocalPeer) SaveChannelConfigWithSignatures(
 	envelopeBytes []byte,
 	signatures [][]byte,
 ) (*SaveChannelConfigWithSignaturesResponse, error) {
-	// Create a network config for the SDK
-	netConfig, err := p.generateNetworkConfigForPeer(
-		p.GetPeerURL(),
-		p.mspID,
-		"", // We don't need the peer TLS CA cert for this operation
-		ordererUrl,
-		ordererTlsCACert,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
+	var cbEnvelope *cb.Envelope
+	if err := proto.Unmarshal(envelopeBytes, cbEnvelope); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal envelope: %w", err)
 	}
 
-	// Initialize the SDK with the network config
-	configProvider := config.FromRaw([]byte(netConfig.NetworkConfig), "yaml")
-	sdk, err := fabsdk.New(configProvider)
+	signedEnvelope, err := protoutil.FormSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, cbEnvelope, signatures, 1, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SDK: %w", err)
+		return nil, fmt.Errorf("failed to form signed envelope: %w", err)
 	}
-	defer sdk.Close()
 
-	// Get admin identity for signing
-	adminIdentity, err := p.GetAdminIdentity(ctx, sdk)
+	ordererConn, err := p.CreateOrdererConnection(ctx, ordererUrl, ordererTlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	defer ordererConn.Close()
+	ordererClient, err := orderer.NewAtomicBroadcastClient(ordererConn).Broadcast(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer client: %w", err)
+	}
+
+	err = ordererClient.Send(signedEnvelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save channel config with signatures: %w", err)
+	}
+	response, err := ordererClient.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive response: %w", err)
+	}
+	return &SaveChannelConfigWithSignaturesResponse{
+		TransactionID: response.String(),
+	}, nil
+}
+
+type PeerChannel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetChannels returns a list of channels the peer has joined
+func (p *LocalPeer) GetChannels(ctx context.Context) ([]PeerChannel, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+	adminIdentity, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
 
-	// Create a resource management client
-	sdkContext := sdk.Context(
-		fabsdk.WithIdentity(adminIdentity),
-		fabsdk.WithOrg(p.mspID),
-	)
-	resClient, err := resmgmt.New(sdkContext)
+	channelList, err := channel.ListChannelOnPeer(ctx, peerConn, adminIdentity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
+		return nil, fmt.Errorf("failed to list channels on peer: %w", err)
 	}
 
-	var cbSignatures []*common.ConfigSignature
-	for _, sig := range signatures {
-		configSig := &common.ConfigSignature{}
-		if err := proto.Unmarshal(sig, configSig); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal signature: %w", err)
+	channels := make([]PeerChannel, len(channelList))
+	for i, channel := range channelList {
+		blockInfo, err := p.getChannelBlockInfo(ctx, channel.ChannelId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block height for channel: %w", err)
 		}
-
-		cbSignatures = append(cbSignatures, configSig)
+		channels[i] = PeerChannel{
+			Name:      channel.ChannelId,
+			BlockNum:  int64(blockInfo.Height),
+			CreatedAt: time.Now(),
+		}
 	}
-	// Submit the config update to the orderer
-	configUpdateReader := bytes.NewReader(envelopeBytes)
-	chResponse, err := resClient.SaveChannel(
-		resmgmt.SaveChannelRequest{
-			ChannelID:     channelID,
-			ChannelConfig: configUpdateReader,
-		},
-		resmgmt.WithConfigSignatures(cbSignatures...),
-	)
+	return channels, nil
+}
+
+// getChannelBlockInfo gets the current block height for a channel
+func (p *LocalPeer) getChannelBlockInfo(ctx context.Context, channelID string) (*cb.BlockchainInfo, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save channel config with signatures: %w", err)
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+	adminIdentity, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
 
-	return &SaveChannelConfigWithSignaturesResponse{
-		TransactionID: string(chResponse.TransactionID),
-	}, nil
+	// Query info for the channel
+	channelInfo, err := channel.GetBlockChainInfo(ctx, peerConn, adminIdentity, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channel info: %w", err)
+	}
+
+	// Get the block number from the channel info
+
+	return channelInfo, nil
+}
+
+// ExtractConfigFromBlock extracts channel configuration from block
+func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
+	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, errors.New("invalid block")
+	}
+	blockPayload := block.Data.Data[0]
+
+	envelope := &cb.Envelope{}
+	if err := proto.Unmarshal(blockPayload, envelope); err != nil {
+		return nil, err
+	}
+	payload := &cb.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return nil, err
+	}
+
+	cfgEnv := &cb.ConfigEnvelope{}
+	if err := proto.Unmarshal(payload.Data, cfgEnv); err != nil {
+		return nil, err
+	}
+	return cfgEnv.Config, nil
 }

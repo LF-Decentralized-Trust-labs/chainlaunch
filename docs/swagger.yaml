@@ -323,6 +323,15 @@ definitions:
       name:
         type: string
     type: object
+  http.ChannelResponse:
+    properties:
+      blockNum:
+        type: integer
+      createdAt:
+        type: string
+      name:
+        type: string
+    type: object
   http.ConsenterConfig:
     properties:
       id:
@@ -728,6 +737,15 @@ definitions:
         type: string
       updatedAt:
         type: string
+    type: object
+  http.NodeChannelsResponse:
+    properties:
+      channels:
+        items:
+          $ref: '#/definitions/http.ChannelResponse'
+        type: array
+      nodeId:
+        type: integer
     type: object
   http.NodeEventResponse:
     properties:
@@ -3737,6 +3755,39 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get a node
+      tags:
+      - nodes
+  /nodes/{id}/channels:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all channels for a specific Fabric node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeChannelsResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get channels for a Fabric node
       tags:
       - nodes
   /nodes/{id}/events:

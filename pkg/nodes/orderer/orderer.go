@@ -6,11 +6,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +22,12 @@ import (
 	kmodels "github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/chainlaunch/chainlaunch/pkg/nodes/orderer/osnadmin"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
+	"google.golang.org/grpc"
 )
 
 // LocalOrderer represents a local Fabric orderer node
@@ -951,26 +952,12 @@ func (o *LocalOrderer) JoinChannel(genesisBlock []byte) error {
 		return fmt.Errorf("couldn't append certs")
 	}
 	ordererAdminUrl := fmt.Sprintf("https://%s", strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1))
-	chResponse, err := osnadmin.Join(ordererAdminUrl, genesisBlock, certPool, adminTlsCertX509)
-	if err != nil {
-		return err
-	}
-	if chResponse.StatusCode == 405 {
-		return fmt.Errorf("orderer already joined the channel")
-	}
-	responseData, err := io.ReadAll(chResponse.Body)
-	if err != nil {
-		return err
-	}
-	if chResponse.StatusCode != 201 {
-		return fmt.Errorf("error joining orderer to channel: %d", chResponse.StatusCode)
-	}
 
-	var response osnadmin.ChannelInfo
-	err = json.Unmarshal(responseData, &response)
+	channelInfo, err := channel.JoinOrderer(ordererAdminUrl, genesisBlock, certPool, adminTlsCertX509)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to join orderer to channel: %w", err)
 	}
+	o.logger.Info("Successfully joined orderer to channel", "orderer", o.opts.ID, "channel", channelInfo.Name)
 
 	return nil
 }
@@ -1025,17 +1012,148 @@ func (o *LocalOrderer) LeaveChannel(channelID string) error {
 	}
 	adminAddress := strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1)
 	// Call osnadmin Remove API
-	resp, err := osnadmin.Remove(fmt.Sprintf("https://%s", adminAddress), channelID, caCertPool, cert)
+	err = channel.RemoveChannelFromOrderer(fmt.Sprintf("https://%s", adminAddress), channelID, caCertPool, cert)
 	if err != nil {
 		return fmt.Errorf("failed to remove orderer from channel: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to remove orderer from channel: status=%d, body=%s", resp.StatusCode, string(body))
 	}
 
 	o.logger.Info("Successfully removed orderer from channel", "orderer", o.opts.ID, "channel", channelID)
 	return nil
+}
+
+type OrdererChannel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetOrdererAddress returns the orderer's external endpoint
+func (o *LocalOrderer) GetOrdererAddress() string {
+	return o.opts.ExternalEndpoint
+}
+
+// GetTLSRootCACert returns the TLS root CA certificate for the orderer
+func (o *LocalOrderer) GetTLSRootCACert(ctx context.Context) (string, error) {
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization: %w", err)
+	}
+	return org.TlsCertificate, nil
+}
+
+// CreateOrdererConnection creates a gRPC connection to an orderer
+func (o *LocalOrderer) CreateOrdererConnection(ctx context.Context, ordererUrl string, ordererTlsCACert string) (*grpc.ClientConn, error) {
+	o.logger.Debug("Creating orderer connection", "url", ordererUrl)
+	networkNode := network.Node{
+		Addr:          ordererUrl,
+		TLSCACertByte: []byte(ordererTlsCACert),
+	}
+	conn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	return conn, nil
+}
+
+// GetAdminIdentity returns the admin identity for the orderer
+func (o *LocalOrderer) GetAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get admin signing key
+	adminSignKeyDB, err := o.keyService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin signing key: %w", err)
+	}
+	adminSignCert := adminSignKeyDB.Certificate
+	if adminSignCert == nil {
+		return nil, fmt.Errorf("admin signing certificate is nil")
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := o.keyService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignCert))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	privateKey, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	id, err := identity.NewPrivateKeySigningIdentity(org.MspID, cert, privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+
+	return id, nil
+}
+
+// GetChannels returns a list of channels the orderer is participating in
+func (o *LocalOrderer) GetChannels(ctx context.Context) ([]OrdererChannel, error) {
+	// Get organization
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get admin TLS credentials
+	adminTlsKeyDB, err := o.keyService.GetKey(ctx, int(org.AdminTlsKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin TLS key: %w", err)
+	}
+	adminTlsCert := adminTlsKeyDB.Certificate
+	if adminTlsCert == nil {
+		return nil, fmt.Errorf("admin TLS certificate is nil")
+	}
+	if *adminTlsCert == "" {
+		return nil, fmt.Errorf("admin TLS certificate is empty")
+	}
+	adminTlsPK, err := o.keyService.GetDecryptedPrivateKey(int(org.AdminTlsKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin TLS private key: %w", err)
+	}
+
+	// Create client certificate
+	cert, err := tls.X509KeyPair([]byte(*adminTlsCert), []byte(adminTlsPK))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client certificate: %w", err)
+	}
+
+	// Create CA cert pool
+	certPool := x509.NewCertPool()
+	ok := certPool.AppendCertsFromPEM([]byte(org.TlsCertificate))
+	if !ok {
+		return nil, fmt.Errorf("failed to append TLS root certificate to CA cert pool")
+	}
+
+	// Call osnadmin List API
+	adminAddress := strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1)
+	channelList, err := channel.ListChannel(fmt.Sprintf("https://%s", adminAddress), certPool, cert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list channels: %w", err)
+	}
+
+	// Convert to service.Channel format
+	var channels []OrdererChannel
+	for _, ch := range channelList.Channels {
+		blockInfo, err := channel.ListSingleChannel(fmt.Sprintf("https://%s", adminAddress), ch.Name, certPool, cert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block height for channel: %w", err)
+		}
+		channels = append(channels, OrdererChannel{
+			Name:      ch.Name,
+			BlockNum:  int64(blockInfo.Height),
+			CreatedAt: time.Now(), // We don't have the actual creation time
+		})
+	}
+
+	return channels, nil
 }

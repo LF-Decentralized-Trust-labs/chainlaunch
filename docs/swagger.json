@@ -3143,6 +3143,56 @@
                 }
             }
         },
+        "/nodes/{id}/channels": {
+            "get": {
+                "description": "Retrieves all channels for a specific Fabric node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Get channels for a Fabric node",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.NodeChannelsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{id}/events": {
             "get": {
                 "description": "Get a paginated list of events for a specific node",
@@ -4446,6 +4496,20 @@
                 }
             }
         },
+        "http.ChannelResponse": {
+            "type": "object",
+            "properties": {
+                "blockNum": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "http.ConsenterConfig": {
             "type": "object",
             "required": [
@@ -4968,6 +5032,20 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "http.NodeChannelsResponse": {
+            "type": "object",
+            "properties": {
+                "channels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/http.ChannelResponse"
+                    }
+                },
+                "nodeId": {
+                    "type": "integer"
                 }
             }
         },

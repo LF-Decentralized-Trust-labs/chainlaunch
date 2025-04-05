@@ -59,6 +59,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Delete("/{id}", response.Middleware(h.DeleteNode))
 		r.Get("/{id}/logs", h.TailLogs)
 		r.Get("/{id}/events", response.Middleware(h.GetNodeEvents))
+		r.Get("/{id}/channels", response.Middleware(h.GetNodeChannels))
 	})
 }
 
@@ -593,99 +594,68 @@ func (h *NodeHandler) GetNodeEvents(w http.ResponseWriter, r *http.Request) erro
 	return response.WriteJSON(w, http.StatusOK, eventsResponse)
 }
 
-// Mapping functions
+// GetNodeChannels godoc
+// @Summary Get channels for a Fabric node
+// @Description Retrieves all channels for a specific Fabric node
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Success 200 {object} NodeChannelsResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id}/channels [get]
+func (h *NodeHandler) GetNodeChannels(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 
-func mapHTTPToServiceFabricPeerConfig(config *types.FabricPeerConfig) *types.FabricPeerConfig {
-	if config == nil {
-		return nil
+	channels, err := h.service.GetNodeChannels(r.Context(), id)
+	if err != nil {
+		if err == service.ErrNotFound {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		if err == service.ErrInvalidNodeType {
+			return errors.NewValidationError("node is not a Fabric node", nil)
+		}
+		return errors.NewInternalError("failed to get node channels", err, nil)
 	}
-	return &types.FabricPeerConfig{
-		Name:                    config.Name,
-		OrganizationID:          config.OrganizationID,
-		ExternalEndpoint:        config.ExternalEndpoint,
-		ListenAddress:           config.ListenAddress,
-		EventsAddress:           config.EventsAddress,
-		OperationsListenAddress: config.OperationsListenAddress,
-		ChaincodeAddress:        config.ChaincodeAddress,
-		DomainNames:             config.DomainNames,
-		Env:                     config.Env,
-		MSPID:                   config.MSPID,
+
+	channelsResponse := NodeChannelsResponse{
+		NodeID:   id,
+		Channels: make([]ChannelResponse, len(channels)),
 	}
+
+	for i, channel := range channels {
+		channelsResponse.Channels[i] = toChannelResponse(channel)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, channelsResponse)
 }
 
-func mapHTTPToServiceFabricOrdererConfig(config *types.FabricOrdererConfig) *types.FabricOrdererConfig {
-	if config == nil {
-		return nil
-	}
-	return &types.FabricOrdererConfig{
-		Name:           config.Name,
-		OrganizationID: config.OrganizationID,
-		// Mode:                    "service",
-		ExternalEndpoint:        config.ExternalEndpoint,
-		ListenAddress:           config.ListenAddress,
-		AdminAddress:            config.AdminAddress,
-		OperationsListenAddress: config.OperationsListenAddress,
-		DomainNames:             config.DomainNames,
-		Env:                     config.Env,
-		MSPID:                   config.MSPID,
-	}
+// NodeChannelsResponse represents the response for node channels
+type NodeChannelsResponse struct {
+	NodeID   int64             `json:"nodeId"`
+	Channels []ChannelResponse `json:"channels"`
 }
 
-func mapHTTPToServiceBesuNodeConfig(config *types.BesuNodeConfig) *types.BesuNodeConfig {
-	if config == nil {
-		return nil
-	}
-	return &types.BesuNodeConfig{
-		NetworkID: config.NetworkID,
-		P2PPort:   config.P2PPort,
-		RPCPort:   config.RPCPort,
-		BaseNodeConfig: types.BaseNodeConfig{
-			Type: "besu",
-			Mode: config.Mode,
-		},
-		KeyID:      config.KeyID,
-		P2PHost:    config.P2PHost,
-		RPCHost:    config.RPCHost,
-		InternalIP: config.InternalIP,
-		ExternalIP: config.ExternalIP,
-		Env:        config.Env,
-	}
-}
-func mapServiceToHTTPFabricPeerDeploymentConfig(config *types.FabricPeerDeploymentConfig) *types.FabricPeerDeploymentConfig {
-	if config == nil {
-		return nil
-	}
-	return config
+// ChannelResponse represents a Fabric channel in the response
+type ChannelResponse struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
-func mapServiceToHTTPNodeResponse(node *service.NodeResponse) NodeResponse {
-	return NodeResponse{
-		ID:                 node.ID,
-		Name:               node.Name,
-		BlockchainPlatform: string(node.Platform),
-		NodeType:           string(node.NodeType),
-		Status:             string(node.Status),
-		Endpoint:           node.Endpoint,
-		CreatedAt:          node.CreatedAt,
-		UpdatedAt:          node.UpdatedAt,
-		FabricPeer:         node.FabricPeer,
-		FabricOrderer:      node.FabricOrderer,
-		BesuNode:           node.BesuNode,
-	}
-}
-
-func mapServiceToHTTPPaginatedResponse(nodes *service.PaginatedNodes) PaginatedNodesResponse {
-	items := make([]NodeResponse, len(nodes.Items))
-	for i, node := range nodes.Items {
-		items[i] = mapServiceToHTTPNodeResponse(&node)
-	}
-
-	return PaginatedNodesResponse{
-		Items:       items,
-		Total:       nodes.Total,
-		Page:        nodes.Page,
-		PageCount:   nodes.PageCount,
-		HasNextPage: nodes.HasNextPage,
+// Helper function to convert service channel to response channel
+func toChannelResponse(channel service.Channel) ChannelResponse {
+	return ChannelResponse{
+		Name:      channel.Name,
+		BlockNum:  channel.BlockNum,
+		CreatedAt: channel.CreatedAt,
 	}
 }
 
@@ -703,18 +673,6 @@ func toNodeResponse(node *service.NodeResponse) NodeResponse {
 		FabricOrderer:      node.FabricOrderer,
 		BesuNode:           node.BesuNode,
 	}
-}
-
-func isValidEventType(eventType service.NodeEventType) bool {
-	switch eventType {
-	case service.NodeEventStarting,
-		service.NodeEventStarted,
-		service.NodeEventStopping,
-		service.NodeEventStopped,
-		service.NodeEventError:
-		return true
-	}
-	return false
 }
 
 // Helper function to validate platform

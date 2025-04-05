@@ -684,7 +684,7 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 		return "", fmt.Errorf("failed to get network nodes: %w", err)
 	}
 
-	var ordererURL, ordererTLSCert string
+	var ordererAddress, ordererTLSCert string
 
 	// Look for orderer in our registry
 	for _, node := range networkNodes {
@@ -693,14 +693,14 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 			if !ok {
 				continue
 			}
-			ordererURL = fmt.Sprintf("grpcs://%s", ordererConfig.ExternalEndpoint)
+			ordererAddress = ordererConfig.ExternalEndpoint
 			ordererTLSCert = ordererConfig.TLSCACert
 			break
 		}
 	}
 
 	// If no orderer found in registry, try to get from current config block
-	if ordererURL == "" {
+	if ordererAddress == "" {
 		// Get current config block
 		configBlock, err := fabricDeployer.GetCurrentChannelConfig(networkID)
 		if err != nil {
@@ -715,16 +715,16 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 		if len(ordererInfo) == 0 {
 			return "", fmt.Errorf("no orderer found in config block")
 		}
-		ordererURL = ordererInfo[0].URL
+		ordererAddress = ordererInfo[0].URL
 		ordererTLSCert = ordererInfo[0].TLSCert
 	}
 
-	if ordererURL == "" {
+	if ordererAddress == "" {
 		return "", fmt.Errorf("no orderer found in network or config block")
 	}
 
 	// Set anchor peers using deployer with the found orderer info
-	txID, err := fabricDeployer.SetAnchorPeersWithOrderer(ctx, networkID, organizationID, deployerAnchorPeers, ordererURL, ordererTLSCert)
+	txID, err := fabricDeployer.SetAnchorPeersWithOrderer(ctx, networkID, organizationID, deployerAnchorPeers, ordererAddress, ordererTLSCert)
 	if err != nil {
 		return "", err
 	}

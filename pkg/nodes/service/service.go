@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
@@ -2023,4 +2024,73 @@ func (s *NodeService) GetNodeWithConfig(ctx context.Context, id int64) (*Node, e
 // Update the fabric deployer to use this method
 func (s *NodeService) GetNodeForDeployment(ctx context.Context, id int64) (*Node, error) {
 	return s.GetNodeWithConfig(ctx, id)
+}
+
+// Channel represents a Fabric channel
+type Channel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetNodeChannels retrieves the list of channels for a Fabric node
+func (s *NodeService) GetNodeChannels(ctx context.Context, id int64) ([]Channel, error) {
+	// Get the node first
+	node, err := s.db.GetNode(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	nodeType := types.NodeType(node.NodeType.String)
+	if nodeType != types.NodeTypeFabricPeer && nodeType != types.NodeTypeFabricOrderer {
+		return nil, errors.NewValidationError("node is not a Fabric node", nil)
+	}
+
+	switch nodeType {
+	case types.NodeTypeFabricPeer:
+		// Get peer instance
+		peer, err := s.GetFabricPeer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer: %w", err)
+		}
+		peerChannels, err := peer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer channels: %w", err)
+		}
+		channels := make([]Channel, len(peerChannels))
+		for i, channel := range peerChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+
+	case types.NodeTypeFabricOrderer:
+		// Get orderer instance
+		orderer, err := s.GetFabricOrderer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer: %w", err)
+		}
+		ordererChannels, err := orderer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer channels: %w", err)
+		}
+		channels := make([]Channel, len(ordererChannels))
+		for i, channel := range ordererChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+	}
+
+	return nil, fmt.Errorf("unsupported node type: %s", nodeType)
 }

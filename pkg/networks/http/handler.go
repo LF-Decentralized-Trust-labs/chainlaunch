@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
@@ -57,6 +58,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/by-name/{name}", h.FabricNetworkGetByName)
 		r.Post("/import", h.ImportFabricNetwork)
 		r.Post("/import-with-org", h.ImportFabricNetworkWithOrg)
+		r.Post("/{id}/update-config", h.FabricUpdateChannelConfig)
 	})
 
 	// New Besu routes
@@ -1387,8 +1389,8 @@ type UpdateBatchTimeoutPayload struct {
 	Timeout string `json:"timeout" validate:"required"` // e.g., "2s"
 }
 
-// PrepareConfigUpdateRequest represents a request to prepare a config update
-type PrepareConfigUpdateRequest struct {
+// UpdateFabricNetworkRequest represents a request to update a Fabric network
+type UpdateFabricNetworkRequest struct {
 	Operations []ConfigUpdateOperationRequest `json:"operations" validate:"required,min=1,dive"`
 }
 
@@ -1412,4 +1414,204 @@ type PrepareConfigUpdateRequest struct {
 // @Router /dummy [post]
 func (h *Handler) DummyHandler(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusBadRequest, "dummy_error", "Dummy error")
+}
+
+// @Summary Prepare a config update for a Fabric network
+// @Description Prepare a config update proposal for a Fabric network using the provided operations.
+// @Description The following operation types are supported:
+// @Description - add_org: Add a new organization to the channel
+// @Description - remove_org: Remove an organization from the channel
+// @Description - update_org_msp: Update an organization's MSP configuration
+// @Description - set_anchor_peers: Set anchor peers for an organization
+// @Description - add_consenter: Add a new consenter to the orderer
+// @Description - remove_consenter: Remove a consenter from the orderer
+// @Description - update_consenter: Update a consenter in the orderer
+// @Description - update_etcd_raft_options: Update etcd raft options for the orderer
+// @Description - update_batch_size: Update batch size for the orderer
+// @Description - update_batch_timeout: Update batch timeout for the orderer
+// @Tags fabric-networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param request body UpdateFabricNetworkRequest true "Config update operations"
+// @Success 200 {object} ConfigUpdateResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/update-config [post]
+func (h *Handler) FabricUpdateChannelConfig(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse request body
+	var req UpdateFabricNetworkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	// Validate each operation's payload
+	for i, op := range req.Operations {
+		switch op.Type {
+		case "add_org":
+			var payload AddOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_org":
+			var payload RemoveOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_org_msp":
+			var payload UpdateOrgMSPPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "set_anchor_peers":
+			var payload SetAnchorPeersPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "add_consenter":
+			var payload AddConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_consenter":
+			var payload RemoveConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_consenter":
+			var payload UpdateConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_etcd_raft_options":
+			var payload UpdateEtcdRaftOptionsPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_size":
+			var payload UpdateBatchSizePayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_timeout":
+			var payload UpdateBatchTimeoutPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			// Validate that the timeout is a valid duration
+			if _, err := time.ParseDuration(payload.Timeout); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid timeout for operation %d: %s", i, err.Error()))
+				return
+			}
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_operation_type", fmt.Sprintf("Unsupported operation type: %s", op.Type))
+			return
+		}
+	}
+
+	// Convert operations to fabric.ConfigUpdateOperation
+	operations := make([]fabric.ConfigUpdateOperation, len(req.Operations))
+	for i, op := range req.Operations {
+		operations[i] = fabric.ConfigUpdateOperation{
+			Type:    fabric.ConfigUpdateOperationType(op.Type),
+			Payload: op.Payload,
+		}
+	}
+
+	// Call service to prepare config update
+	proposal, err := h.networkService.UpdateFabricNetwork(r.Context(), networkID, operations)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "prepare_config_update_failed", err.Error())
+		return
+	}
+
+	// Create response
+	resp := ConfigUpdateResponse{
+		ID:          proposal.ID,
+		NetworkID:   proposal.NetworkID,
+		ChannelName: proposal.ChannelName,
+		Status:      proposal.Status,
+		CreatedAt:   proposal.CreatedAt,
+		CreatedBy:   proposal.CreatedBy,
+		Operations:  req.Operations,
+	}
+
+	// Return response
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ConfigUpdateResponse represents the response from preparing a config update
+type ConfigUpdateResponse struct {
+	ID          string                         `json:"id"`
+	NetworkID   int64                          `json:"network_id"`
+	ChannelName string                         `json:"channel_name"`
+	Status      string                         `json:"status"`
+	CreatedAt   time.Time                      `json:"created_at"`
+	CreatedBy   string                         `json:"created_by"`
+	Operations  []ConfigUpdateOperationRequest `json:"operations"`
+	PreviewJSON string                         `json:"preview_json,omitempty"`
 }

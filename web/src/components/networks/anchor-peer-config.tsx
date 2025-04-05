@@ -66,14 +66,14 @@ export function AnchorPeerConfig({ organization, peers, currentAnchorPeers, onUp
 
 	const handleRemoveAnchorPeer = async (host: string, port: number) => {
 		const newAnchorPeers = currentAnchorPeers.filter((peer) => !(peer.host === host && peer.port === port))
-		const peerToRemove = availablePeers.find((p) => {
-			const endpoint = parseEndpoint(p.node!.deploymentConfig!.externalEndpoint!)
-			return endpoint?.host === host && endpoint?.port === port
-		})
+		// const peerToRemove = availablePeers.find((p) => {
+		// 	const endpoint = parseEndpoint(p.node!.deploymentConfig!.externalEndpoint!)
+		// 	return endpoint?.host === host && endpoint?.port === port
+		// })
 
-		if (!peerToRemove) {
-			throw new Error('Peer not found')
-		}
+		// if (!peerToRemove) {
+		// 	throw new Error('Peer not found')
+		// }
 
 		await onUpdateAnchorPeers(newAnchorPeers)
 	}

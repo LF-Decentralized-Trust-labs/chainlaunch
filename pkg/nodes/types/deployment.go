@@ -157,6 +157,10 @@ func (c *FabricOrdererDeploymentConfig) GetURL() string {
 	return fmt.Sprintf("grpcs://%s", c.ExternalEndpoint)
 }
 
+func (c *FabricOrdererDeploymentConfig) GetAddress() string {
+	return c.ExternalEndpoint
+}
+
 func (c *FabricOrdererDeploymentConfig) GetMode() string { return c.Mode }
 func (c *FabricOrdererDeploymentConfig) Validate() error {
 	if c.Mode != "service" && c.Mode != "docker" {

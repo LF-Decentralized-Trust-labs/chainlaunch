@@ -4,26 +4,29 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 
 	"io"
 	"strings"
-	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab/ccpackager/lifecycle"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/common/policydsl"
+	"github.com/chainlaunch/chainlaunch/pkg/fabric/networkconfig"
+	"github.com/chainlaunch/chainlaunch/pkg/fabric/policydsl"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/spf13/cobra"
 )
 
@@ -45,9 +48,75 @@ type installCmd struct {
 	logger           *logger.Logger
 }
 
+func (c *installCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkConfig, org string, peerID string, userID string) (*grpc.ClientConn, identity.SigningIdentity, error) {
+	peerConfig, ok := nc.Peers[peerID]
+	if !ok {
+		return nil, nil, fmt.Errorf("peer %s not found in network config", peerID)
+	}
+	conn, err := c.getPeerConnection(peerConfig.URL, peerConfig.TLSCACerts.PEM)
+	if err != nil {
+		return nil, nil, err
+	}
+	orgConfig, ok := nc.Organizations[org]
+	if !ok {
+		return nil, nil, fmt.Errorf("organization %s not found in network config", org)
+	}
+	user, ok := orgConfig.Users[userID]
+	if !ok {
+		return nil, nil, fmt.Errorf("user %s not found in network config", userID)
+	}
+	userCert, err := identity.ReadCertificate(user.Cert.PEM)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to read user certificate for user %s and org %s", userID, org)
+	}
+	userPrivateKey, err := identity.ReadPrivateKey(user.Key.PEM)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to read user private key for user %s and org %s", userID, org)
+	}
+	userIdentity, err := identity.NewPrivateKeySigningIdentity(user.Cert.PEM, userCert, userPrivateKey)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to create user identity for user %s and org %s", userID, org)
+	}
+	return conn, userIdentity, nil
+}
+
+func (c *installCmd) getPeerConnection(address string, tlsCACert string) (*grpc.ClientConn, error) {
+	// Parse the TLS CA certificate
+	if tlsCACert == "" {
+		return nil, fmt.Errorf("TLS CA certificate is required")
+	}
+	// Read the certificate file
+	certBytes, err := os.ReadFile(tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TLS CA certificate file: %w", err)
+	}
+
+	// Decode the PEM block
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block from TLS CA certificate")
+	}
+	// Parse the certificate
+	_, err = x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
+	}
+
+	networkNode := network.Node{
+		Addr:      address,
+		TLSCACert: tlsCACert,
+	}
+	conn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial connection: %w", err)
+	}
+	return conn, nil
+
+}
+
 func (c installCmd) start() error {
 	var chaincodeEndpoint string
-
+	ctx := context.Background()
 	if c.local {
 		// Use local chaincode address directly
 		chaincodeEndpoint = c.chaincodeAddress
@@ -71,50 +140,85 @@ func (c installCmd) start() error {
 		return err
 	}
 	_ = pkg
-	packageID := lifecycle.ComputePackageID(label, pkg)
+	packageID := chaincode.GetPackageID(label, pkg)
 	c.logger.Infof("packageID: %s", packageID)
-
-	// install chaincode in peers
-	configBackend := config.FromFile(c.networkConfig)
-
-	clientsMap := map[string]*resmgmt.Client{}
-	sdk, err := fabsdk.New(configBackend)
+	nc, err := networkconfig.LoadFromFile(c.networkConfig)
 	if err != nil {
 		return err
 	}
-	for idx, mspID := range c.organizations {
-		clientContext := sdk.Context(fabsdk.WithUser(c.users[idx]), fabsdk.WithOrg(mspID))
-		clientsMap[mspID], err = resmgmt.New(clientContext)
-		if err != nil {
-			return err
+
+	// // install chaincode in peers
+	// configBackend := config.FromFile(c.networkConfig)
+
+	// clientsMap := map[string]*resmgmt.Client{}
+	// sdk, err := fabsdk.New(configBackend)
+	// if err != nil {
+	// 	return err
+	// }
+	// for idx, mspID := range c.organizations {
+	// 	clientContext := sdk.Context(fabsdk.WithUser(c.users[idx]), fabsdk.WithOrg(mspID))
+	// 	clientsMap[mspID], err = resmgmt.New(clientContext)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+	for idx, org := range c.organizations {
+		orgConfig, ok := nc.Organizations[org]
+		if !ok {
+			return fmt.Errorf("organization %s not found in network config", org)
+		}
+		for _, peerID := range orgConfig.Peers {
+			peerConfig, ok := nc.Peers[peerID]
+			if !ok {
+				return fmt.Errorf("peer %s not found in network config", peerID)
+			}
+			conn, userIdentity, err := c.getPeerAndIdentityForOrg(nc, org, peerID, c.users[idx])
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			peerClient := chaincode.NewPeer(conn, userIdentity)
+			result, err := peerClient.Install(ctx, bytes.NewReader(pkg))
+			if err != nil {
+				return errors.Wrapf(err, "failed to install chaincode for user %s and org %s", c.users[idx], org)
+			}
+			c.logger.Infof("Chaincode installed %s in %s", result.PackageId, peerConfig.URL)
 		}
 	}
-	for mspID, resmgmtClient := range clientsMap {
-		_, err = resmgmtClient.LifecycleInstallCC(
-			resmgmt.LifecycleInstallCCRequest{
-				Label:   label,
-				Package: pkg,
-			},
-			resmgmt.WithTimeout(fab.ResMgmt, 20*time.Minute),
-			resmgmt.WithTimeout(fab.PeerResponse, 20*time.Minute),
-		)
-		if err != nil {
-			return err
-		}
-		c.logger.Infof("Chaincode installed in %s", mspID)
-	}
-	sp, err := policydsl.FromString(c.signaturePolicy)
+
+	// sp, err := policydsl.FromString(c.signaturePolicy)
+	// if err != nil {
+	// 	return err
+	// }
+	applicationPolicy, err := chaincode.NewApplicationPolicy(c.signaturePolicy, "")
 	if err != nil {
 		return err
 	}
 
 	version := "1"
 	sequence := 1
-	resmgmtClient := clientsMap[c.organizations[0]]
-	committedCCs, err := resmgmtClient.LifecycleQueryCommittedCC(
+	allOrgGateways := []*chaincode.Gateway{}
+	for idx, org := range c.organizations {
+		orgConfig, ok := nc.Organizations[org]
+		if !ok {
+			return fmt.Errorf("organization %s not found in network config", org)
+		}
+		if len(orgConfig.Peers) == 0 {
+			return fmt.Errorf("organization %s has no peers", org)
+		}
+		conn, userIdentity, err := c.getPeerAndIdentityForOrg(nc, org, orgConfig.Peers[0], c.users[idx])
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		gateway := chaincode.NewGateway(conn, userIdentity)
+		allOrgGateways = append(allOrgGateways, gateway)
+	}
+	firstGateway := allOrgGateways[0]
+	committedCC, err := firstGateway.QueryCommittedWithName(
+		ctx,
 		c.channel,
-		resmgmt.LifecycleQueryCommittedCCRequest{Name: c.chaincode},
-		resmgmt.WithTargetFilter(&multipleMSPFilter{mspIDs: c.organizations}),
+		c.chaincode,
 	)
 	if err != nil {
 		c.logger.Warnf("Error when getting commited chaincodes: %v", err)
@@ -132,12 +236,22 @@ func (c installCmd) start() error {
 			return err
 		}
 	}
-	c.logger.Infof("Commited CCs=%d", len(committedCCs))
-	shouldCommit := len(committedCCs) == 0
-	if len(committedCCs) > 0 {
-		firstCommittedCC := committedCCs[0]
-		signaturePolicyString := firstCommittedCC.SignaturePolicy.String()
-		newSignaturePolicyString := sp.String()
+	c.logger.Infof("Commited CC=%v", committedCC)
+	shouldCommit := committedCC == nil
+	if committedCC != nil {
+		appPolicy := pb.ApplicationPolicy{}
+		err = proto.Unmarshal(committedCC.GetValidationParameter(), &appPolicy)
+		if err != nil {
+			return err
+		}
+		var signaturePolicyString string
+		switch policy := appPolicy.Type.(type) {
+		case *pb.ApplicationPolicy_SignaturePolicy:
+			signaturePolicyString = policy.SignaturePolicy.String()
+		default:
+			return errors.Errorf("unsupported policy type %T", policy)
+		}
+		newSignaturePolicyString := applicationPolicy.String()
 		if signaturePolicyString != newSignaturePolicyString {
 			c.logger.Infof("Signature policy changed, old=%s new=%s", signaturePolicyString, newSignaturePolicyString)
 			shouldCommit = true
@@ -145,7 +259,7 @@ func (c installCmd) start() error {
 			c.logger.Infof("Signature policy not changed, signaturePolicy=%s", signaturePolicyString)
 		}
 		// compare collections
-		oldCollections := firstCommittedCC.CollectionConfig
+		oldCollections := committedCC.GetCollections().GetConfig()
 		newCollections := collections
 		if len(oldCollections) != len(newCollections) {
 			c.logger.Infof("Collection config changed, old=%d new=%d", len(oldCollections), len(newCollections))
@@ -170,68 +284,69 @@ func (c installCmd) start() error {
 			}
 		}
 	}
-	if len(committedCCs) > 0 {
+	if committedCC != nil {
 		if shouldCommit {
-			version = committedCCs[len(committedCCs)-1].Version
-			sequence = int(committedCCs[len(committedCCs)-1].Sequence) + 1
+			version = committedCC.GetVersion()
+			sequence = int(committedCC.GetSequence()) + 1
 		} else {
-			version = committedCCs[len(committedCCs)-1].Version
-			sequence = int(committedCCs[len(committedCCs)-1].Sequence)
+			version = committedCC.GetVersion()
+			sequence = int(committedCC.GetSequence())
 		}
 		c.logger.Infof("Chaincode already committed, version=%s sequence=%d", version, sequence)
 	}
 	c.logger.Infof("Should commit=%v", shouldCommit)
-	// approve chaincode in orgs
-	approveCCRequest := resmgmt.LifecycleApproveCCRequest{
-		Name:              label,
-		Version:           version,
+	// // approve chaincode in orgs
+	// approveCCRequest := resmgmt.LifecycleApproveCCRequest{
+	// 	Name:              label,
+	// 	Version:           version,
+	// 	PackageID:         packageID,
+	// 	Sequence:          int64(sequence),
+	// 	CollectionConfig:  collections,
+	// 	EndorsementPlugin: "escc",
+	// 	ValidationPlugin:  "vscc",
+	// 	SignaturePolicy:   sp,
+	// 	InitRequired:      false,
+	// }
+
+	chaincodeDef := &chaincode.Definition{
+		ChannelName:       c.channel,
 		PackageID:         packageID,
-		Sequence:          int64(sequence),
-		CollectionConfig:  collections,
+		Name:              c.chaincode,
+		Version:           version,
 		EndorsementPlugin: "escc",
 		ValidationPlugin:  "vscc",
-		SignaturePolicy:   sp,
+		Sequence:          int64(sequence),
+		ApplicationPolicy: applicationPolicy,
 		InitRequired:      false,
+		Collections:       nil,
 	}
-	for mspID, resmgmtClient := range clientsMap {
-
-		txID, err := resmgmtClient.LifecycleApproveCC(
-			c.channel,
-			approveCCRequest,
-			resmgmt.WithTargetFilter(&mspFilter{mspID: mspID}),
-			resmgmt.WithTimeout(fab.ResMgmt, 20*time.Minute),
-			resmgmt.WithTimeout(fab.PeerResponse, 20*time.Minute),
-		)
+	for idx, gateway := range allOrgGateways {
+		err := gateway.Approve(ctx, chaincodeDef)
+		if err != nil {
+			c.logger.Errorf("Error when approving chaincode: %v", err)
+			return err
+		}
+		c.logger.Infof("Chaincode approved, org=%s", c.organizations[idx])
 		if err != nil && !strings.Contains(err.Error(), "redefine uncommitted") {
 			c.logger.Errorf("Error when approving chaincode: %v", err)
 			return err
 		}
-		c.logger.Infof("Chaincode approved, org=%s tx=%s", mspID, txID)
+		c.logger.Infof("Chaincode approved, org=%s", c.organizations[idx])
 	}
 	if shouldCommit {
+
 		// commit chaincode in orgs
-		txID, err := resmgmtClient.LifecycleCommitCC(
-			c.channel,
-			resmgmt.LifecycleCommitCCRequest{
-				Name:              label,
-				Version:           version,
-				Sequence:          int64(sequence),
-				CollectionConfig:  collections,
-				EndorsementPlugin: "escc",
-				ValidationPlugin:  "vscc",
-				SignaturePolicy:   sp,
-				InitRequired:      false,
-			},
-			resmgmt.WithTimeout(fab.ResMgmt, 2*time.Minute),
-			resmgmt.WithTimeout(fab.PeerResponse, 2*time.Minute),
-			resmgmt.WithTargetFilter(&multipleMSPFilter{mspIDs: c.organizations}),
+		err := firstGateway.Commit(
+			ctx,
+			chaincodeDef,
 		)
 		if err != nil {
+			c.logger.Errorf("Error when committing chaincode: %v", err)
 			return err
 		}
-		c.logger.Infof("Chaincode committed, tx=%s", txID)
+		c.logger.Infof("Chaincode committed")
+
 	}
-	sdk.Close()
 
 	if c.envFile != "" {
 		err = os.WriteFile(c.envFile, []byte(fmt.Sprintf(`
@@ -245,30 +360,6 @@ CORE_PEER_TLS_ENABLED=false
 		}
 	}
 	return nil
-}
-
-type multipleMSPFilter struct {
-	mspIDs []string
-}
-
-// Accept returns true if this peer is to be included in the target list
-func (f *multipleMSPFilter) Accept(peer fab.Peer) bool {
-	// check if its of one of the mspIDs
-	for _, mspID := range f.mspIDs {
-		if peer.MSPID() == mspID {
-			return true
-		}
-	}
-	return false
-}
-
-type mspFilter struct {
-	mspID string
-}
-
-// Accept returns true if this peer is to be included in the target list
-func (f *mspFilter) Accept(peer fab.Peer) bool {
-	return peer.MSPID() == f.mspID
 }
 
 func (c *installCmd) getChaincodePackage(label string, codeTarGz []byte) ([]byte, error) {

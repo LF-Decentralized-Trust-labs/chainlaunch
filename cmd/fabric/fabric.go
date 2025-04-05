@@ -21,7 +21,7 @@ func NewFabricCmd(logger *logger.Logger) *cobra.Command {
 	rootCmd.AddCommand(
 		install.NewInstallCmd(logger),
 		create.NewCreateCmd(logger),
-		query.NewQueryChaincodeCMD(os.Stdout, os.Stderr),
+		query.NewQueryChaincodeCMD(os.Stdout, os.Stderr, logger),
 		invoke.NewInvokeChaincodeCMD(os.Stdout, os.Stderr, logger),
 		nc.NewNCCmd(logger),
 	)

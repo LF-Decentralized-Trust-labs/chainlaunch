@@ -48,10 +48,6 @@ export type AuthUserResponse = {
     username?: string;
 };
 
-export type CryptoX509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
-
-export type CryptoX509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
-
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -169,6 +165,50 @@ export type HttpChannelConfigResponse = {
         [key: string]: unknown;
     };
     name?: string;
+};
+
+export type HttpChannelResponse = {
+    blockNum?: number;
+    createdAt?: string;
+    name?: string;
+};
+
+/**
+ * A single configuration update operation
+ */
+export type HttpConfigUpdateOperationRequest = {
+    /**
+     * Payload contains the operation-specific data
+     * The structure depends on the operation type:
+     * - add_org: AddOrgPayload
+     * - remove_org: RemoveOrgPayload
+     * - update_org_msp: UpdateOrgMSPPayload
+     * - set_anchor_peers: SetAnchorPeersPayload
+     * - add_consenter: AddConsenterPayload
+     * - remove_consenter: RemoveConsenterPayload
+     * - update_consenter: UpdateConsenterPayload
+     * - update_etcd_raft_options: UpdateEtcdRaftOptionsPayload
+     * - update_batch_size: UpdateBatchSizePayload
+     * - update_batch_timeout: UpdateBatchTimeoutPayload
+     * @Description The payload for the configuration update operation
+     * @Description Can be one of:
+     * @Description - AddOrgPayload when type is "add_org"
+     * @Description - RemoveOrgPayload when type is "remove_org"
+     * @Description - UpdateOrgMSPPayload when type is "update_org_msp"
+     * @Description - SetAnchorPeersPayload when type is "set_anchor_peers"
+     * @Description - AddConsenterPayload when type is "add_consenter"
+     * @Description - RemoveConsenterPayload when type is "remove_consenter"
+     * @Description - UpdateConsenterPayload when type is "update_consenter"
+     * @Description - UpdateEtcdRaftOptionsPayload when type is "update_etcd_raft_options"
+     * @Description - UpdateBatchSizePayload when type is "update_batch_size"
+     * @Description - UpdateBatchTimeoutPayload when type is "update_batch_timeout"
+     */
+    payload: Array<number>;
+    /**
+     * Type is the type of configuration update operation
+     * enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
+     */
+    type: 'add_org' | 'remove_org' | 'update_org_msp' | 'set_anchor_peers' | 'add_consenter' | 'remove_consenter' | 'update_consenter' | 'update_etcd_raft_options' | 'update_batch_size' | 'update_batch_timeout';
 };
 
 export type HttpConsenterConfig = {
@@ -456,6 +496,11 @@ export type HttpNetworkResponse = {
     updatedAt?: string;
 };
 
+export type HttpNodeChannelsResponse = {
+    channels?: Array<HttpChannelResponse>;
+    nodeId?: number;
+};
+
 export type HttpNodeEventResponse = {
     created_at?: string;
     data?: unknown;
@@ -495,6 +540,21 @@ export type HttpPaginatedNodesResponse = {
     page?: number;
     pageCount?: number;
     total?: number;
+};
+
+export type HttpPrepareConfigUpdateRequest = {
+    operations: Array<HttpConfigUpdateOperationRequest>;
+};
+
+export type HttpPrepareConfigUpdateResponse = {
+    channel_name?: string;
+    created_at?: string;
+    created_by?: string;
+    id?: string;
+    network_id?: number;
+    operations?: Array<HttpConfigUpdateOperationRequest>;
+    preview_json?: string;
+    status?: string;
 };
 
 export type HttpProviderResponse = {
@@ -623,10 +683,10 @@ export type ModelsCertificateRequest = {
     country?: Array<string>;
     dnsNames?: Array<string>;
     emailAddresses?: Array<string>;
-    extKeyUsage?: Array<CryptoX509ExtKeyUsage>;
+    extKeyUsage?: Array<X509ExtKeyUsage>;
     ipAddresses?: Array<Array<number>>;
     isCA?: boolean;
-    keyUsage?: CryptoX509KeyUsage;
+    keyUsage?: X509KeyUsage;
     locality?: Array<string>;
     organization?: Array<string>;
     organizationalUnit?: Array<string>;
@@ -715,6 +775,7 @@ export type ModelsKeyResponse = {
     publicKey?: string;
     sha1Fingerprint?: string;
     sha256Fingerprint?: string;
+    signingKeyID?: number;
     status?: string;
 };
 
@@ -987,7 +1048,7 @@ export type TypesFabricPeerConfig = {
     version?: string;
 };
 
-export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'ERROR';
+export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
 
@@ -1038,6 +1099,10 @@ export type UrlUrl = {
 export type UrlUserinfo = {
     [key: string]: unknown;
 };
+
+export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+
+export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
 
 export type PostAuthLoginData = {
     /**
@@ -3090,6 +3155,43 @@ export type PostNetworksFabricByIdReloadBlockResponses = {
 
 export type PostNetworksFabricByIdReloadBlockResponse = PostNetworksFabricByIdReloadBlockResponses[keyof PostNetworksFabricByIdReloadBlockResponses];
 
+export type PostNetworksFabricByIdUpdateConfigData = {
+    /**
+     * Config update operations
+     */
+    body: HttpPrepareConfigUpdateRequest;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/update-config';
+};
+
+export type PostNetworksFabricByIdUpdateConfigErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigError = PostNetworksFabricByIdUpdateConfigErrors[keyof PostNetworksFabricByIdUpdateConfigErrors];
+
+export type PostNetworksFabricByIdUpdateConfigResponses = {
+    /**
+     * OK
+     */
+    200: HttpPrepareConfigUpdateResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigResponse = PostNetworksFabricByIdUpdateConfigResponses[keyof PostNetworksFabricByIdUpdateConfigResponses];
+
 export type GetNodesData = {
     body?: never;
     path?: never;
@@ -3397,6 +3499,82 @@ export type GetNodesByIdResponses = {
 };
 
 export type GetNodesByIdResponse = GetNodesByIdResponses[keyof GetNodesByIdResponses];
+
+export type PostNodesByIdCertificatesRenewData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/certificates/renew';
+};
+
+export type PostNodesByIdCertificatesRenewErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PostNodesByIdCertificatesRenewError = PostNodesByIdCertificatesRenewErrors[keyof PostNodesByIdCertificatesRenewErrors];
+
+export type PostNodesByIdCertificatesRenewResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeResponse;
+};
+
+export type PostNodesByIdCertificatesRenewResponse = PostNodesByIdCertificatesRenewResponses[keyof PostNodesByIdCertificatesRenewResponses];
+
+export type GetNodesByIdChannelsData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/channels';
+};
+
+export type GetNodesByIdChannelsErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type GetNodesByIdChannelsError = GetNodesByIdChannelsErrors[keyof GetNodesByIdChannelsErrors];
+
+export type GetNodesByIdChannelsResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeChannelsResponse;
+};
+
+export type GetNodesByIdChannelsResponse = GetNodesByIdChannelsResponses[keyof GetNodesByIdChannelsResponses];
 
 export type GetNodesByIdEventsData = {
     body?: never;

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
@@ -1013,6 +1014,7 @@ func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
 	}
 
 	if startErr != nil {
+		s.logger.Error("Failed to start node", "error", startErr)
 		// Update status to error if start failed
 		if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusError); err != nil {
 			s.logger.Error("Failed to update node status after start error", "error", err)
@@ -2022,4 +2024,189 @@ func (s *NodeService) GetNodeWithConfig(ctx context.Context, id int64) (*Node, e
 // Update the fabric deployer to use this method
 func (s *NodeService) GetNodeForDeployment(ctx context.Context, id int64) (*Node, error) {
 	return s.GetNodeWithConfig(ctx, id)
+}
+
+// Channel represents a Fabric channel
+type Channel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetNodeChannels retrieves the list of channels for a Fabric node
+func (s *NodeService) GetNodeChannels(ctx context.Context, id int64) ([]Channel, error) {
+	// Get the node first
+	node, err := s.db.GetNode(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	nodeType := types.NodeType(node.NodeType.String)
+	if nodeType != types.NodeTypeFabricPeer && nodeType != types.NodeTypeFabricOrderer {
+		return nil, errors.NewValidationError("node is not a Fabric node", nil)
+	}
+
+	switch nodeType {
+	case types.NodeTypeFabricPeer:
+		// Get peer instance
+		peer, err := s.GetFabricPeer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer: %w", err)
+		}
+		peerChannels, err := peer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer channels: %w", err)
+		}
+		channels := make([]Channel, len(peerChannels))
+		for i, channel := range peerChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+
+	case types.NodeTypeFabricOrderer:
+		// Get orderer instance
+		orderer, err := s.GetFabricOrderer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer: %w", err)
+		}
+		ordererChannels, err := orderer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer channels: %w", err)
+		}
+		channels := make([]Channel, len(ordererChannels))
+		for i, channel := range ordererChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+	}
+
+	return nil, fmt.Errorf("unsupported node type: %s", nodeType)
+}
+
+// RenewCertificates renews the certificates for a node
+func (s *NodeService) RenewCertificates(ctx context.Context, id int64) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Update status to indicate certificate renewal is in progress
+	if err := s.updateNodeStatus(ctx, id, types.NodeStatusUpdating); err != nil {
+		return nil, fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	var renewErr error
+	switch types.NodeType(node.NodeType.String) {
+	case types.NodeTypeFabricPeer:
+		renewErr = s.renewPeerCertificates(ctx, node, deploymentConfig)
+	case types.NodeTypeFabricOrderer:
+		renewErr = s.renewOrdererCertificates(ctx, node, deploymentConfig)
+	default:
+		renewErr = fmt.Errorf("certificate renewal not supported for node type: %s", node.NodeType.String)
+	}
+
+	if renewErr != nil {
+		// Update status to error if renewal failed
+		if err := s.updateNodeStatus(ctx, id, types.NodeStatusError); err != nil {
+			s.logger.Error("Failed to update node status after renewal error", "error", err)
+		}
+		return nil, fmt.Errorf("failed to renew certificates: %w", renewErr)
+	}
+
+	// Update status to running after successful renewal
+	if err := s.updateNodeStatus(ctx, id, types.NodeStatusRunning); err != nil {
+		return nil, fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Get updated node
+	updatedNode, err := s.GetNode(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated node: %w", err)
+	}
+
+	return updatedNode, nil
+}
+
+// renewPeerCertificates handles certificate renewal for a Fabric peer
+func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer config type")
+	}
+
+	peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer deployment config type")
+	}
+
+	org, err := s.orgService.GetOrganization(ctx, peerConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	localPeer := s.getPeerFromConfig(dbNode, org, peerConfig)
+	err = localPeer.RenewCertificates(peerDeployConfig)
+	if err != nil {
+		return fmt.Errorf("failed to renew peer certificates: %w", err)
+	}
+
+	return nil
+}
+
+// renewOrdererCertificates handles certificate renewal for a Fabric orderer
+func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+	if !ok {
+		return fmt.Errorf("invalid orderer config type")
+	}
+
+	ordererDeployConfig, ok := deploymentConfig.(*types.FabricOrdererDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid orderer deployment config type")
+	}
+
+	org, err := s.orgService.GetOrganization(ctx, ordererConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	localOrderer := s.getOrdererFromConfig(dbNode, org, ordererConfig)
+	err = localOrderer.RenewCertificates(ordererDeployConfig)
+	if err != nil {
+		return fmt.Errorf("failed to renew orderer certificates: %w", err)
+	}
+
+	return nil
 }

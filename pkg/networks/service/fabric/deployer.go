@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -18,24 +19,28 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/chainlaunch/chainlaunch/pkg/certutils"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/channel"
 	orgservicefabric "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	fabricorg "github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
+	ordererapi "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"google.golang.org/grpc"
+
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab/resource"
-	"github.com/hyperledger/fabric/protoutil"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 )
 
 // ConfigUpdateOperationType represents the type of configuration update operation
@@ -602,6 +607,73 @@ func CreateConfigModifier(operation ConfigUpdateOperation) (ConfigModifier, erro
 	return modifier, nil
 }
 
+// UpdateChannelConfig updates the channel configuration with the provided config update envelope and signatures
+func (d *FabricDeployer) UpdateChannelConfig(ctx context.Context, networkID int64, configUpdateEnvelope []byte, signingOrgIDs []string, ordererAddress string, ordererTLSCert string) (string, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Unmarshal the config update envelope
+	envelope := &cb.Envelope{}
+	if err := proto.Unmarshal(configUpdateEnvelope, envelope); err != nil {
+		return "", fmt.Errorf("failed to unmarshal config update envelope: %w", err)
+	}
+
+	// Collect signatures from the specified organizations
+	for _, orgID := range signingOrgIDs {
+		// Get organization details and MSP
+		orgService := org.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, orgID)
+
+		// Sign the config update
+		envelope, err = orgService.CreateConfigSignature(ctx, network.Name, envelope)
+		if err != nil {
+			return "", fmt.Errorf("failed to sign config update for org %s: %w", orgID, err)
+		}
+	}
+
+	ordererConn, err := d.createOrdererConnection(ordererAddress, ordererTLSCert)
+	if err != nil {
+		return "", fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	defer ordererConn.Close()
+	ordererClient, err := ordererapi.NewAtomicBroadcastClient(ordererConn).Broadcast(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to create orderer client: %w", err)
+	}
+	err = ordererClient.Send(envelope)
+	if err != nil {
+		return "", fmt.Errorf("failed to send envelope: %w", err)
+	}
+	response, err := ordererClient.Recv()
+	if err != nil {
+		return "", fmt.Errorf("failed to receive response: %w", err)
+	}
+	return response.String(), nil
+
+}
+
+// CreateOrdererConnection establishes a gRPC connection to an orderer
+func (d *FabricDeployer) createOrdererConnection(ordererURL string, ordererTLSCACert string) (*grpc.ClientConn, error) {
+	d.logger.Info("Creating orderer connection",
+		"ordererURL", ordererURL)
+
+	// Create a network node with the orderer details
+	networkNode := network.Node{
+		Addr:          ordererURL,
+		TLSCACertByte: []byte(ordererTLSCACert),
+	}
+
+	// Establish connection to the orderer
+	ordererConn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial orderer connection: %w", err)
+	}
+
+	return ordererConn, nil
+}
+
 // PrepareConfigUpdate prepares a config update for the given operations
 func (d *FabricDeployer) PrepareConfigUpdate(ctx context.Context, networkID int64, operations []ConfigUpdateOperation) (*ConfigUpdateProposal, error) {
 	// Get network details
@@ -622,7 +694,7 @@ func (d *FabricDeployer) PrepareConfigUpdate(ctx context.Context, networkID int6
 		return nil, fmt.Errorf("failed to unmarshal config block: %w", err)
 	}
 
-	config, err := resource.ExtractConfigFromBlock(block)
+	config, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -1363,7 +1435,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 	if ordererTLSKey.Certificate == nil {
 		return "", fmt.Errorf("orderer TLS certificate not found")
 	}
-	ordererURL := ordererConfig.GetURL()
+	ordererURL := ordererConfig.GetAddress()
 	ordererCert := *ordererTLSKey.Certificate
 
 	p, err := d.nodes.GetFabricPeer(ctx, peer.ID)
@@ -1412,7 +1484,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 		fabricConfig.ChannelName,
 		ordererURL,
 		*ordererTLSKey.Certificate,
-		[]byte(channelUpdate),
+		channelUpdate,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to save channel config: %w", err)
@@ -1662,7 +1734,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID)
 
 	// First try to get orderer from active nodes
-	var ordererURL, ordererTLSCert string
+	var ordererURL, ordererAddress, ordererTLSCert string
 	for _, node := range networkNodes {
 		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) && node.Status == "joined" {
 			ordererNode, err := d.nodes.GetNodeByID(ctx, node.NodeID)
@@ -1671,7 +1743,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 			}
 			ordererConfig := ordererNode.FabricOrderer
 			ordererURL = fmt.Sprintf("grpcs://%s", ordererConfig.ExternalEndpoint)
-
+			ordererAddress = ordererConfig.ExternalEndpoint
 			// Get orderer TLS cert
 			ordererTLSKey, err := d.keyMgmt.GetKey(ctx, int(ordererConfig.TLSKeyID))
 			if err != nil || ordererTLSKey.Certificate == nil {
@@ -1697,7 +1769,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	}
 
 	// Fetch channel config from peer
-	channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, ordererURL, ordererTLSCert)
+	channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, ordererAddress, ordererTLSCert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel config from peer: %w", err)
 	}
@@ -1880,7 +1952,7 @@ func (d *FabricDeployer) GetOrderersFromConfigBlock(ctx context.Context, blockBy
 		return nil, fmt.Errorf("failed to unmarshal block: %w", err)
 	}
 
-	cmnConfig, err := resource.ExtractConfigFromBlock(block)
+	cmnConfig, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -1934,7 +2006,7 @@ func (d *FabricDeployer) GetOrderersFromGenesisBlock(ctx context.Context, networ
 		return nil, fmt.Errorf("failed to unmarshal genesis block: %w", err)
 	}
 
-	cmnConfig, err := resource.ExtractConfigFromBlock(block)
+	cmnConfig, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -2113,4 +2185,27 @@ func CreateConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate)
 		return nil, err
 	}
 	return envelopeData, nil
+}
+
+// ExtractConfigFromBlock extracts channel configuration from block
+func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
+	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, errors.New("invalid block")
+	}
+	blockPayload := block.Data.Data[0]
+
+	envelope := &cb.Envelope{}
+	if err := proto.Unmarshal(blockPayload, envelope); err != nil {
+		return nil, err
+	}
+	payload := &cb.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return nil, err
+	}
+
+	cfgEnv := &cb.ConfigEnvelope{}
+	if err := proto.Unmarshal(payload.Data, cfgEnv); err != nil {
+		return nil, err
+	}
+	return cfgEnv.Config, nil
 }

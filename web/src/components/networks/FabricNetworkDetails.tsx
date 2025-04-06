@@ -34,6 +34,7 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import rehypeRaw from 'rehype-raw'
 import { toast } from 'sonner'
 import { AddMultipleNodesDialog } from './add-multiple-nodes-dialog'
+import { ChannelUpdateForm } from '../nodes/ChannelUpdateForm'
 
 interface FabricNetworkDetailsProps {
 	network: HttpNetworkResponse
@@ -607,7 +608,14 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 						}
 						channelUpdate={
 							<div className="space-y-6">
-								<p>Coming Soon</p>
+								<ChannelUpdateForm
+									network={network}
+									channelConfig={channelConfig}
+									onSuccess={() => {
+										refetchCurrentChannelConfig()
+										refetchNetworkNodes()
+									}}
+								/>
 							</div>
 						}
 						proposals={

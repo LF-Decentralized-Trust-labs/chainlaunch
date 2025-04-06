@@ -20,33 +20,28 @@ interface NetworkTabsProps {
 export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consenters, chaincode, share, channelUpdate, proposals }: NetworkTabsProps) {
 	// Check if current tab is a pro feature and redirect to details if needed
 	useEffect(() => {
-		const proTabs: TabValue[] = ['share', 'channel-update', 'proposals'];
+		const proTabs: TabValue[] = ['share', 'proposals']
 		if (proTabs.includes(tab)) {
-			setTab('details');
+			setTab('details')
 		}
-	}, [tab, setTab]);
+	}, [tab, setTab])
 
 	// Handle tab change with pro feature check
 	const handleTabChange = (value: string) => {
-		const proTabs: TabValue[] = ['share', 'channel-update', 'proposals'];
-		
+		const proTabs: TabValue[] = ['share', 'proposals']
+
 		if (proTabs.includes(value as TabValue)) {
 			// Don't change tab, it will be handled by the TabsTrigger onClick
-			return;
+			return
 		}
-		
-		setTab(value as TabValue);
-	};
+
+		setTab(value as TabValue)
+	}
 
 	// Render pro feature gate for specific tabs
 	const renderProContent = (title: string, description: string) => {
-		return (
-			<ProFeatureGate
-				title={title}
-				description={description}
-			/>
-		);
-	};
+		return <ProFeatureGate title={title} description={description} />
+	}
 
 	return (
 		<Tabs value={tab} onValueChange={handleTabChange}>
@@ -55,72 +50,67 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 				{anchorPeers && <TabsTrigger value="anchor-peers">Anchor Peers</TabsTrigger>}
 				{consenters && <TabsTrigger value="consenters">Consenters</TabsTrigger>}
 				{chaincode && <TabsTrigger value="chaincode">Chaincode</TabsTrigger>}
-				
+
 				{channelUpdate && (
-					<TabsTrigger 
-						value="channel-update" 
-						onClick={() => window.open("https://chainlaunch.dev/premium", "_blank")}
-						className="flex items-center gap-2"
-					>
-						Channel Update
-						<ProBadge />
-					</TabsTrigger>
+					<>
+						<TabsTrigger value="channel-update" className="flex items-center gap-2">
+							Channel Update
+						</TabsTrigger>
+					</>
 				)}
-				
+
 				{proposals && (
-					<TabsTrigger 
-						value="proposals" 
-						onClick={() => window.open("https://chainlaunch.dev/premium", "_blank")}
-						className="flex items-center gap-2"
-					>
+					<TabsTrigger value="proposals" onClick={() => window.open('https://chainlaunch.dev/premium', '_blank')} className="flex items-center gap-2">
 						Proposals
 						<ProBadge />
 					</TabsTrigger>
 				)}
-				
+
 				{share && (
-					<TabsTrigger 
-						value="share" 
-						onClick={() => window.open("https://chainlaunch.dev/premium", "_blank")}
-						className="flex items-center gap-2"
-					>
+					<TabsTrigger value="share" onClick={() => window.open('https://chainlaunch.dev/premium', '_blank')} className="flex items-center gap-2">
 						Share
 						<ProBadge />
 					</TabsTrigger>
 				)}
 			</TabsList>
-			
+
 			<TabsContent className="mt-8" value="details">
 				{networkDetails}
 			</TabsContent>
-			
-			{anchorPeers && <TabsContent className="mt-8" value="anchor-peers">{anchorPeers}</TabsContent>}
-			{consenters && <TabsContent className="mt-8" value="consenters">{consenters}</TabsContent>}
-			{chaincode && <TabsContent className="mt-8" value="chaincode">{chaincode}</TabsContent>}
-			
+
+			{anchorPeers && (
+				<TabsContent className="mt-8" value="anchor-peers">
+					{anchorPeers}
+				</TabsContent>
+			)}
+			{consenters && (
+				<TabsContent className="mt-8" value="consenters">
+					{consenters}
+				</TabsContent>
+			)}
+			{chaincode && (
+				<TabsContent className="mt-8" value="chaincode">
+					{chaincode}
+				</TabsContent>
+			)}
+
 			{channelUpdate && (
 				<TabsContent className="mt-8" value="channel-update">
-					{renderProContent(
-						"Channel Update Pro Feature",
-						"Upgrade to ChainLaunch Pro to access advanced channel update capabilities, enabling seamless network configuration changes."
-					)}
+					{channelUpdate}
 				</TabsContent>
 			)}
-			
+
 			{proposals && (
 				<TabsContent className="mt-8" value="proposals">
-					{renderProContent(
-						"Proposals Pro Feature",
-						"Upgrade to ChainLaunch Pro to manage network proposals, enabling collaborative governance and decision-making across organizations."
-					)}
+					{renderProContent('Proposals Pro Feature', 'Upgrade to ChainLaunch Pro to manage network proposals, enabling collaborative governance and decision-making across organizations.')}
 				</TabsContent>
 			)}
-			
+
 			{share && (
 				<TabsContent className="mt-8" value="share">
 					{renderProContent(
-						"Network Sharing Pro Feature",
-						"Upgrade to ChainLaunch Pro to share networks with other organizations, enabling cross-organizational collaboration and network participation."
+						'Network Sharing Pro Feature',
+						'Upgrade to ChainLaunch Pro to share networks with other organizations, enabling cross-organizational collaboration and network participation.'
 					)}
 				</TabsContent>
 			)}

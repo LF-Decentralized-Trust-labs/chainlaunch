@@ -35,6 +35,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	"github.com/hyperledger/fabric-config/configtx"
+	"github.com/hyperledger/fabric-config/configtx/membership"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	ordererapi "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"google.golang.org/grpc"
@@ -139,10 +140,6 @@ func (op *AddOrgOperation) Modify(ctx context.Context, c *configtx.ConfigTx) err
 	mspID := op.MSPID
 
 	// Create a new organization in the application group
-	appOrg := c.Application().Organization(mspID)
-	if appOrg == nil {
-		return fmt.Errorf("failed to create application organization")
-	}
 
 	var rootCerts []*x509.Certificate
 	for _, rootCertStr := range op.RootCerts {
@@ -161,13 +158,56 @@ func (op *AddOrgOperation) Modify(ctx context.Context, c *configtx.ConfigTx) err
 		}
 		tlsRootCerts = append(tlsRootCerts, tlsRootCert)
 	}
+	signCACert := rootCerts[0]
 
 	// Set MSP configuration
-	err := appOrg.SetMSP(configtx.MSP{
-		Name:         mspID,
-		RootCerts:    rootCerts,
-		TLSRootCerts: tlsRootCerts,
-		Admins:       []*x509.Certificate{},
+	err := c.Application().SetOrganization(configtx.Organization{
+		Name: mspID,
+		MSP: configtx.MSP{
+			Name:         mspID,
+			RootCerts:    rootCerts,
+			TLSRootCerts: tlsRootCerts,
+			Admins:       []*x509.Certificate{},
+			NodeOUs: membership.NodeOUs{
+				Enable: true,
+				ClientOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "client",
+				},
+				PeerOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "peer",
+				},
+				AdminOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "admin",
+				},
+				OrdererOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "orderer",
+				},
+			},
+		},
+		AnchorPeers:      []configtx.Address{},
+		OrdererEndpoints: []string{},
+		Policies: map[string]configtx.Policy{
+			"Admins": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.admin')", mspID),
+			},
+			"Readers": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+			"Writers": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+			"Endorsement": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set MSP configuration: %w", err)
@@ -1733,67 +1773,104 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	}
 	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID)
 
-	// First try to get orderer from active nodes
-	var ordererURL, ordererAddress, ordererTLSCert string
+	// Get all available orderers - first from active nodes
+	var orderersList []struct {
+		address string
+		tlsCert string
+	}
+
+	// First try to get orderers from active nodes
 	for _, node := range networkNodes {
 		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) && node.Status == "joined" {
 			ordererNode, err := d.nodes.GetNodeByID(ctx, node.NodeID)
 			if err != nil {
+				d.logger.Warn("Failed to get orderer node", "nodeID", node.NodeID, "error", err)
 				continue
 			}
 			ordererConfig := ordererNode.FabricOrderer
-			ordererURL = fmt.Sprintf("grpcs://%s", ordererConfig.ExternalEndpoint)
-			ordererAddress = ordererConfig.ExternalEndpoint
 			// Get orderer TLS cert
 			ordererTLSKey, err := d.keyMgmt.GetKey(ctx, int(ordererConfig.TLSKeyID))
 			if err != nil || ordererTLSKey.Certificate == nil {
+				d.logger.Warn("Failed to get orderer TLS cert", "nodeID", node.NodeID, "error", err)
 				continue
 			}
-			ordererTLSCert = *ordererTLSKey.Certificate
-			break
+			orderersList = append(orderersList, struct {
+				address string
+				tlsCert string
+			}{
+				address: ordererConfig.ExternalEndpoint,
+				tlsCert: *ordererTLSKey.Certificate,
+			})
 		}
 	}
 
-	// If no active orderer found, try to get from genesis block
-	if ordererURL == "" {
+	// If no active orderers found, try to get from genesis block
+	if len(orderersList) == 0 {
 		orderers, err := d.GetOrderersFromGenesisBlock(ctx, networkID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get orderers from genesis block: %w", err)
 		}
-		if len(orderers) > 0 {
-			ordererURL = orderers[0].URL
-			ordererTLSCert = orderers[0].TLSCert
-		} else {
-			return nil, fmt.Errorf("no orderers found in network or genesis block")
+		for _, orderer := range orderers {
+			// Remove the grpcs:// prefix if present
+			address := orderer.URL
+			if strings.HasPrefix(address, "grpcs://") {
+				address = strings.TrimPrefix(address, "grpcs://")
+			}
+			orderersList = append(orderersList, struct {
+				address string
+				tlsCert string
+			}{
+				address: address,
+				tlsCert: orderer.TLSCert,
+			})
 		}
 	}
 
-	// Fetch channel config from peer
-	channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, ordererAddress, ordererTLSCert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get channel config from peer: %w", err)
+	if len(orderersList) == 0 {
+		return nil, fmt.Errorf("no orderers found in network or genesis block")
 	}
 
-	// Marshal the config block
-	configBytes, err := proto.Marshal(channelConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config block: %w", err)
+	// Try each orderer until one succeeds
+	var lastErr error
+	for _, orderer := range orderersList {
+		d.logger.Info("Attempting to fetch channel config from orderer", "address", orderer.address)
+
+		// Fetch channel config from orderer
+		channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, orderer.address, orderer.tlsCert)
+		if err != nil {
+			d.logger.Warn("Failed to get channel config from orderer", "address", orderer.address, "error", err)
+			lastErr = err
+			continue
+		}
+
+		// Marshal the config block
+		configBytes, err := proto.Marshal(channelConfig)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to marshal config block: %w", err)
+			continue
+		}
+
+		// Update the current config block in the database
+		configBase64 := base64.StdEncoding.EncodeToString(configBytes)
+		err = d.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
+			ID: networkID,
+			CurrentConfigBlockB64: sql.NullString{
+				String: configBase64,
+				Valid:  true,
+			},
+		})
+		if err != nil {
+			lastErr = fmt.Errorf("failed to update network current config block: %w", err)
+			continue
+		}
+
+		// Successfully fetched and stored config
+		d.logger.Info("Successfully fetched channel config from orderer", "address", orderer.address)
+		return configBytes, nil
 	}
 
-	// Update the current config block in the database
-	configBase64 := base64.StdEncoding.EncodeToString(configBytes)
-	err = d.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
-		ID: networkID,
-		CurrentConfigBlockB64: sql.NullString{
-			String: configBase64,
-			Valid:  true,
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to update network current config block: %w", err)
-	}
-
-	return configBytes, nil
+	// If we get here, all orderers failed
+	return nil, fmt.Errorf("failed to fetch channel config from any orderer: %w", lastErr)
 }
 
 // GetOrdererInfoFromConfig extracts orderer information from a channel config

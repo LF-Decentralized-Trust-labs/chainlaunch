@@ -42,3 +42,9 @@ type StartDockerResponse struct {
 	Mode          string `json:"mode"`
 	ContainerName string `json:"containerName"`
 }
+
+type BlockInfo struct {
+	Height            uint64 `json:"height"`
+	CurrentBlockHash  string `json:"currentBlockHash"`
+	PreviousBlockHash string `json:"previousBlockHash"`
+}

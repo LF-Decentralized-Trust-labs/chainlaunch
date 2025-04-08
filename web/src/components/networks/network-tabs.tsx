@@ -3,7 +3,7 @@ import { ProBadge } from '@/components/pro/ProBadge'
 import { ProFeatureGate } from '@/components/pro/ProFeatureGate'
 import { useState, useEffect } from 'react'
 
-export type TabValue = 'details' | 'genesis' | 'anchor-peers' | 'consenters' | 'chaincode' | 'share' | 'channel-update' | 'proposals'
+export type TabValue = 'details' | 'genesis' | 'anchor-peers' | 'consenters' | 'chaincode' | 'share' | 'channel-update' | 'proposals' | 'explorer'
 
 interface NetworkTabsProps {
 	tab: TabValue
@@ -15,9 +15,10 @@ interface NetworkTabsProps {
 	share?: React.ReactNode
 	channelUpdate?: React.ReactNode
 	proposals?: React.ReactNode
+	explorer?: React.ReactNode
 }
 
-export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consenters, chaincode, share, channelUpdate, proposals }: NetworkTabsProps) {
+export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consenters, chaincode, share, channelUpdate, proposals, explorer }: NetworkTabsProps) {
 	// Check if current tab is a pro feature and redirect to details if needed
 	useEffect(() => {
 		const proTabs: TabValue[] = ['share', 'proposals']
@@ -72,6 +73,12 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 						<ProBadge />
 					</TabsTrigger>
 				)}
+
+				{explorer && (
+					<TabsTrigger value="explorer">
+						Explorer
+					</TabsTrigger>
+				)}
 			</TabsList>
 
 			<TabsContent className="mt-8" value="details">
@@ -112,6 +119,12 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 						'Network Sharing Pro Feature',
 						'Upgrade to ChainLaunch Pro to share networks with other organizations, enabling cross-organizational collaboration and network participation.'
 					)}
+				</TabsContent>
+			)}
+
+			{explorer && (
+				<TabsContent className="mt-8" value="explorer">
+					{explorer}
 				</TabsContent>
 			)}
 		</Tabs>

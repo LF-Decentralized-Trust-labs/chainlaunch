@@ -60,7 +60,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory={{.DirPath}}
-ExecStart={{.Cmd}}
+ExecStart=/bin/bash -c "{{.Cmd}} > {{.LogPath}} 2>&1"
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536

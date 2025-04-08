@@ -160,6 +160,16 @@ export type HttpBesuNetworkResponse = {
     updatedAt?: string;
 };
 
+export type HttpBlockListResponse = {
+    blocks?: Array<ServiceBlock>;
+    total?: number;
+};
+
+export type HttpBlockTransactionsResponse = {
+    block_number?: number;
+    transactions?: Array<ServiceTransaction>;
+};
+
 export type HttpChannelConfigResponse = {
     config?: {
         [key: string]: unknown;
@@ -209,6 +219,17 @@ export type HttpConfigUpdateOperationRequest = {
      * enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
      */
     type: 'add_org' | 'remove_org' | 'update_org_msp' | 'set_anchor_peers' | 'add_consenter' | 'remove_consenter' | 'update_consenter' | 'update_etcd_raft_options' | 'update_batch_size' | 'update_batch_timeout';
+};
+
+export type HttpConfigUpdateResponse = {
+    channel_name?: string;
+    created_at?: string;
+    created_by?: string;
+    id?: string;
+    network_id?: number;
+    operations?: Array<HttpConfigUpdateOperationRequest>;
+    preview_json?: string;
+    status?: string;
 };
 
 export type HttpConsenterConfig = {
@@ -542,21 +563,6 @@ export type HttpPaginatedNodesResponse = {
     total?: number;
 };
 
-export type HttpPrepareConfigUpdateRequest = {
-    operations: Array<HttpConfigUpdateOperationRequest>;
-};
-
-export type HttpPrepareConfigUpdateResponse = {
-    channel_name?: string;
-    created_at?: string;
-    created_by?: string;
-    id?: string;
-    network_id?: number;
-    operations?: Array<HttpConfigUpdateOperationRequest>;
-    preview_json?: string;
-    status?: string;
-};
-
 export type HttpProviderResponse = {
     config?: unknown;
     createdAt?: string;
@@ -610,6 +616,10 @@ export type HttpTestProviderResponse = {
     testedAt?: string;
 };
 
+export type HttpTransactionResponse = {
+    transaction?: ServiceTransaction;
+};
+
 export type HttpUpdateBackupScheduleRequest = {
     cronExpression: string;
     description?: string;
@@ -659,6 +669,10 @@ export type HttpUpdateEtcdRaftOptionsPayload = {
     max_inflight_blocks: number;
     snapshot_interval_size: number;
     tick_interval: string;
+};
+
+export type HttpUpdateFabricNetworkRequest = {
+    operations: Array<HttpConfigUpdateOperationRequest>;
 };
 
 export type HttpUpdateOrgMspPayload = {
@@ -836,6 +850,15 @@ export type ServiceBesuNodeProperties = {
     rpcPort?: number;
 };
 
+export type ServiceBlock = {
+    data?: Array<number>;
+    hash?: string;
+    number?: number;
+    previous_hash?: string;
+    timestamp?: string;
+    tx_count?: number;
+};
+
 export type ServiceFabricOrdererProperties = {
     adminAddress?: string;
     domainNames?: Array<string>;
@@ -935,6 +958,15 @@ export type ServiceNodesDefaultsResult = {
     availableAddresses?: Array<string>;
     orderers?: Array<ServiceNodeDefaults>;
     peers?: Array<ServiceNodeDefaults>;
+};
+
+export type ServiceTransaction = {
+    block_number?: number;
+    creator?: string;
+    payload?: Array<number>;
+    timestamp?: string;
+    tx_id?: string;
+    type?: string;
 };
 
 export type TypesBesuNodeConfig = {
@@ -2696,6 +2728,99 @@ export type PostNetworksFabricByIdAnchorPeersResponses = {
 
 export type PostNetworksFabricByIdAnchorPeersResponse = PostNetworksFabricByIdAnchorPeersResponses[keyof PostNetworksFabricByIdAnchorPeersResponses];
 
+export type GetNetworksFabricByIdBlocksData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: {
+        /**
+         * Number of blocks to return (default: 10)
+         */
+        limit?: number;
+        /**
+         * Number of blocks to skip (default: 0)
+         */
+        offset?: number;
+        /**
+         * Get blocks in reverse order (default: false)
+         */
+        reverse?: boolean;
+    };
+    url: '/networks/fabric/{id}/blocks';
+};
+
+export type GetNetworksFabricByIdBlocksErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdBlocksError = GetNetworksFabricByIdBlocksErrors[keyof GetNetworksFabricByIdBlocksErrors];
+
+export type GetNetworksFabricByIdBlocksResponses = {
+    /**
+     * OK
+     */
+    200: HttpBlockListResponse;
+};
+
+export type GetNetworksFabricByIdBlocksResponse = GetNetworksFabricByIdBlocksResponses[keyof GetNetworksFabricByIdBlocksResponses];
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+        /**
+         * Block Number
+         */
+        blockNum: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/blocks/{blockNum}/transactions';
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsError = GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors];
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses = {
+    /**
+     * OK
+     */
+    200: HttpBlockTransactionsResponse;
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponse = GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses];
+
 export type GetNetworksFabricByIdChannelConfigData = {
     body?: never;
     path: {
@@ -3155,11 +3280,53 @@ export type PostNetworksFabricByIdReloadBlockResponses = {
 
 export type PostNetworksFabricByIdReloadBlockResponse = PostNetworksFabricByIdReloadBlockResponses[keyof PostNetworksFabricByIdReloadBlockResponses];
 
+export type GetNetworksFabricByIdTransactionsByTxIdData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+        /**
+         * Transaction ID
+         */
+        txId: string;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/transactions/{txId}';
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdError = GetNetworksFabricByIdTransactionsByTxIdErrors[keyof GetNetworksFabricByIdTransactionsByTxIdErrors];
+
+export type GetNetworksFabricByIdTransactionsByTxIdResponses = {
+    /**
+     * OK
+     */
+    200: HttpTransactionResponse;
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdResponse = GetNetworksFabricByIdTransactionsByTxIdResponses[keyof GetNetworksFabricByIdTransactionsByTxIdResponses];
+
 export type PostNetworksFabricByIdUpdateConfigData = {
     /**
      * Config update operations
      */
-    body: HttpPrepareConfigUpdateRequest;
+    body: HttpUpdateFabricNetworkRequest;
     path: {
         /**
          * Network ID
@@ -3187,7 +3354,7 @@ export type PostNetworksFabricByIdUpdateConfigResponses = {
     /**
      * OK
      */
-    200: HttpPrepareConfigUpdateResponse;
+    200: HttpConfigUpdateResponse;
 };
 
 export type PostNetworksFabricByIdUpdateConfigResponse = PostNetworksFabricByIdUpdateConfigResponses[keyof PostNetworksFabricByIdUpdateConfigResponses];

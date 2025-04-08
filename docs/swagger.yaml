@@ -261,6 +261,24 @@ definitions:
       updatedAt:
         type: string
     type: object
+  http.BlockListResponse:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/service.Block'
+        type: array
+      total:
+        type: integer
+    type: object
+  http.BlockTransactionsResponse:
+    properties:
+      block_number:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/service.Transaction'
+        type: array
+    type: object
   http.ChannelConfigResponse:
     properties:
       config:
@@ -948,6 +966,11 @@ definitions:
       testedAt:
         type: string
     type: object
+  http.TransactionResponse:
+    properties:
+      transaction:
+        $ref: '#/definitions/service.Transaction'
+    type: object
   http.UpdateBackupScheduleRequest:
     properties:
       cronExpression:
@@ -1458,6 +1481,23 @@ definitions:
       rpcPort:
         type: integer
     type: object
+  service.Block:
+    properties:
+      data:
+        items:
+          type: integer
+        type: array
+      hash:
+        type: string
+      number:
+        type: integer
+      previous_hash:
+        type: string
+      timestamp:
+        type: string
+      tx_count:
+        type: integer
+    type: object
   service.FabricOrdererProperties:
     properties:
       adminAddress:
@@ -1624,6 +1664,23 @@ definitions:
         items:
           $ref: '#/definitions/service.NodeDefaults'
         type: array
+    type: object
+  service.Transaction:
+    properties:
+      block_number:
+        type: integer
+      creator:
+        type: string
+      payload:
+        items:
+          type: integer
+        type: array
+      timestamp:
+        type: string
+      tx_id:
+        type: string
+      type:
+        type: string
     type: object
   types.BesuNodeConfig:
     properties:
@@ -3223,6 +3280,85 @@ paths:
       summary: Set anchor peers for an organization
       tags:
       - fabric-networks
+  /networks/fabric/{id}/blocks:
+    get:
+      description: Get a paginated list of blocks from a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Number of blocks to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of blocks to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - description: 'Get blocks in reverse order (default: false)'
+        in: query
+        name: reverse
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BlockListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get list of blocks from Fabric network
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/blocks/{blockNum}/transactions:
+    get:
+      description: Get all transactions from a specific block in a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Block Number
+        in: path
+        name: blockNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BlockTransactionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get transactions from a specific block
+      tags:
+      - fabric-networks
   /networks/fabric/{id}/channel-config:
     get:
       description: Retrieve the channel configuration for a Fabric network
@@ -3621,6 +3757,43 @@ paths:
               type: string
             type: object
       summary: Reload network config block
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/transactions/{txId}:
+    get:
+      description: Get detailed information about a specific transaction in a Fabric
+        network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Transaction ID
+        in: path
+        name: txId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get transaction details by transaction ID
       tags:
       - fabric-networks
   /networks/fabric/{id}/update-config:

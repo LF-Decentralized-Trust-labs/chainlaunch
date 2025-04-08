@@ -2144,6 +2144,125 @@
                 }
             }
         },
+        "/networks/fabric/{id}/blocks": {
+            "get": {
+                "description": "Get a paginated list of blocks from a Fabric network",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fabric-networks"
+                ],
+                "summary": "Get list of blocks from Fabric network",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of blocks to return (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of blocks to skip (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get blocks in reverse order (default: false)",
+                        "name": "reverse",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.BlockListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/networks/fabric/{id}/blocks/{blockNum}/transactions": {
+            "get": {
+                "description": "Get all transactions from a specific block in a Fabric network",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fabric-networks"
+                ],
+                "summary": "Get transactions from a specific block",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Block Number",
+                        "name": "blockNum",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.BlockTransactionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/networks/fabric/{id}/channel-config": {
             "get": {
                 "description": "Retrieve the channel configuration for a Fabric network",
@@ -2741,6 +2860,60 @@
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/networks/fabric/{id}/transactions/{txId}": {
+            "get": {
+                "description": "Get detailed information about a specific transaction in a Fabric network",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fabric-networks"
+                ],
+                "summary": "Get transaction details by transaction ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Transaction ID",
+                        "name": "txId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.TransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
                         }
                     }
                 }
@@ -4527,6 +4700,34 @@
                 }
             }
         },
+        "http.BlockListResponse": {
+            "type": "object",
+            "properties": {
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.Block"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "http.BlockTransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "block_number": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.Transaction"
+                    }
+                }
+            }
+        },
         "http.ChannelConfigResponse": {
             "type": "object",
             "properties": {
@@ -5430,6 +5631,14 @@
                 }
             }
         },
+        "http.TransactionResponse": {
+            "type": "object",
+            "properties": {
+                "transaction": {
+                    "$ref": "#/definitions/service.Transaction"
+                }
+            }
+        },
         "http.UpdateBackupScheduleRequest": {
             "type": "object",
             "required": [
@@ -6163,6 +6372,32 @@
                 }
             }
         },
+        "service.Block": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "integer"
+                },
+                "previous_hash": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "tx_count": {
+                    "type": "integer"
+                }
+            }
+        },
         "service.FabricOrdererProperties": {
             "type": "object",
             "properties": {
@@ -6409,6 +6644,32 @@
                     "items": {
                         "$ref": "#/definitions/service.NodeDefaults"
                     }
+                }
+            }
+        },
+        "service.Transaction": {
+            "type": "object",
+            "properties": {
+                "block_number": {
+                    "type": "integer"
+                },
+                "creator": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "tx_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },

@@ -1009,3 +1009,108 @@ func (s *NetworkService) getOrdererAddressAndCertForNetwork(ctx context.Context,
 
 	return ordererAddress, ordererTLSCert, nil
 }
+
+// GetBlocks retrieves a paginated list of blocks from the network
+func (s *NetworkService) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get blocks
+	fabricBlocks, total, err := fabricDeployer.GetBlocks(ctx, networkID, limit, offset, reverse)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get blocks: %w", err)
+	}
+
+	// Map fabric.Block to service.Block
+	blocks := make([]Block, len(fabricBlocks))
+	for i, fb := range fabricBlocks {
+		blocks[i] = Block{
+			Number:       fb.Number,
+			Hash:         fb.Hash,
+			PreviousHash: fb.PreviousHash,
+			Timestamp:    fb.Timestamp,
+			TxCount:      fb.TxCount,
+			Data:         fb.Data,
+		}
+	}
+
+	return blocks, total, nil
+}
+
+// GetBlockTransactions retrieves all transactions from a specific block
+func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) ([]Transaction, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get block transactions
+	fabricTransactions, err := fabricDeployer.GetBlockTransactions(ctx, networkID, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block transactions: %w", err)
+	}
+
+	// Map fabric.Transaction to service.Transaction
+	transactions := make([]Transaction, len(fabricTransactions))
+	for i, ft := range fabricTransactions {
+		transactions[i] = Transaction{
+			TxID:        ft.ID,
+			BlockNumber: ft.BlockNum,
+			Timestamp:   ft.Timestamp,
+			Type:        ft.Type,
+			Creator:     ft.Creator,
+		}
+	}
+
+	return transactions, nil
+}
+
+// GetTransaction retrieves a specific transaction by its ID
+func (s *NetworkService) GetTransaction(ctx context.Context, networkID int64, txID string) (Transaction, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get transaction
+	ft, err := fabricDeployer.GetTransaction(ctx, networkID, txID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get transaction: %w", err)
+	}
+
+	// Map fabric.Transaction to service.Transaction
+	transaction := Transaction{
+		TxID:        ft.ID,
+		BlockNumber: ft.BlockNum,
+		Timestamp:   ft.Timestamp,
+		Type:        ft.Type,
+		Creator:     ft.Creator,
+	}
+
+	return transaction, nil
+}
+
+// getFabricDeployerForNetwork creates and returns a fabric deployer for the specified network
+func (s *NetworkService) getFabricDeployerForNetwork(ctx context.Context, networkID int64) (*fabric.FabricDeployer, error) {
+	// Get network details to verify it exists and is a Fabric network
+	network, err := s.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+	deployer, err := s.deployerFactory.GetDeployer(network.Platform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return nil, fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	return fabricDeployer, nil
+}

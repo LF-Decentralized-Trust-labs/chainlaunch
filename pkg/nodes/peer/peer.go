@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
 	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
@@ -969,7 +970,7 @@ func (p *LocalPeer) JoinChannel(genesisBlock []byte) error {
 	}
 	defer peerConn.Close()
 
-	adminIdentity, err := p.GetAdminIdentity(ctx)
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get admin identity: %w", err)
 	}
@@ -2181,7 +2182,7 @@ type SaveChannelConfigResponse struct {
 }
 
 func (p *LocalPeer) SaveChannelConfig(ctx context.Context, channelID string, ordererUrl string, ordererTlsCACert string, channelData *cb.Envelope) (*SaveChannelConfigResponse, error) {
-	adminIdentity, err := p.GetAdminIdentity(ctx)
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
@@ -2320,36 +2321,40 @@ func (p *LocalPeer) CreatePeerConnection(ctx context.Context, peerURL string, pe
 func (p *LocalPeer) GetMSPID() string {
 	return p.mspID
 }
-func (p *LocalPeer) GetAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
+func (p *LocalPeer) GetAdminIdentity(ctx context.Context) (identity.SigningIdentity, gwidentity.Sign, error) {
 	adminSignKeyDB, err := p.keyService.GetKey(ctx, int(p.org.AdminSignKeyID.Int64))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS CA key: %w", err)
+		return nil, nil, fmt.Errorf("failed to get TLS CA key: %w", err)
 	}
 	if adminSignKeyDB.Certificate == nil {
-		return nil, fmt.Errorf("TLS CA key is not set")
+		return nil, nil, fmt.Errorf("TLS CA key is not set")
 	}
 	certificate := *adminSignKeyDB.Certificate
 	privateKey, err := p.keyService.GetDecryptedPrivateKey(int(p.org.AdminSignKeyID.Int64))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get decrypted private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to get decrypted private key: %w", err)
 	}
 
 	cert, err := gwidentity.CertificateFromPEM([]byte(certificate))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read certificate: %w", err)
+		return nil, nil, fmt.Errorf("failed to read certificate: %w", err)
 	}
 
 	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKey))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to read private key: %w", err)
 	}
 
 	signingIdentity, err := identity.NewPrivateKeySigningIdentity(p.mspID, cert, priv)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create signing identity: %w", err)
+		return nil, nil, fmt.Errorf("failed to create signing identity: %w", err)
 	}
 
-	return signingIdentity, nil
+	signer, err := gwidentity.NewPrivateKeySign(priv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create signer: %w", err)
+	}
+	return signingIdentity, signer, nil
 }
 
 // Add this struct near the top with other type definitions
@@ -2365,7 +2370,7 @@ func (p *LocalPeer) GetChannelBlock(ctx context.Context, channelID string, order
 		"ordererUrl", ordererUrl)
 
 	// Get admin identity
-	adminIdentity, err := p.GetAdminIdentity(ctx)
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
@@ -2498,7 +2503,7 @@ func (p *LocalPeer) GetChannels(ctx context.Context) ([]PeerChannel, error) {
 		return nil, fmt.Errorf("failed to create peer connection: %w", err)
 	}
 	defer peerConn.Close()
-	adminIdentity, err := p.GetAdminIdentity(ctx)
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
@@ -2535,7 +2540,7 @@ func (p *LocalPeer) getChannelBlockInfo(ctx context.Context, channelID string) (
 		return nil, fmt.Errorf("failed to create peer connection: %w", err)
 	}
 	defer peerConn.Close()
-	adminIdentity, err := p.GetAdminIdentity(ctx)
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
@@ -2572,4 +2577,171 @@ func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
 		return nil, err
 	}
 	return cfgEnv.Config, nil
+}
+func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, blockNum uint64) ([]*cb.Envelope, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	defer gateway.Close()
+	network := gateway.GetNetwork(channelID)
+	blockEvents, err := network.BlockAndPrivateDataEvents(ctx, client.WithStartBlock(blockNum))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block: %w", err)
+	}
+
+	for blockEvent := range blockEvents {
+		var transactions []*cb.Envelope
+		for _, data := range blockEvent.Block.Data.Data {
+			envelope := &cb.Envelope{}
+			if err := proto.Unmarshal(data, envelope); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal transaction envelope: %w", err)
+			}
+			transactions = append(transactions, envelope)
+		}
+		return transactions, nil
+	}
+	return nil, fmt.Errorf("block not found")
+}
+
+// GetBlocksInRange retrieves blocks from startBlock to endBlock (inclusive)
+func (p *LocalPeer) GetBlocksInRange(ctx context.Context, channelID string, startBlock, endBlock uint64) ([]*cb.Block, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	defer gateway.Close()
+
+	network := gateway.GetNetwork(channelID)
+	blockEvents, err := network.BlockEvents(ctx, client.WithStartBlock(startBlock))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blocks: %w", err)
+	}
+
+	var blocks []*cb.Block
+	blockCount := uint64(0)
+	maxBlocks := endBlock - startBlock + 1
+
+	for blockEvent := range blockEvents {
+		blocks = append(blocks, blockEvent)
+		blockCount++
+
+		if blockCount >= maxBlocks || blockEvent.Header.Number >= endBlock {
+			break
+		}
+	}
+
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no blocks found in range %d to %d", startBlock, endBlock)
+	}
+
+	return blocks, nil
+}
+
+// GetChannelBlockInfo retrieves information about the blockchain for a specific channel
+func (p *LocalPeer) GetChannelBlockInfo(ctx context.Context, channelID string) (*BlockInfo, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	blockInfo, err := channel.GetBlockChainInfo(ctx, peerConn, adminIdentity, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block chain info: %w", err)
+	}
+
+	return &BlockInfo{
+		Height:            blockInfo.Height,
+		CurrentBlockHash:  fmt.Sprintf("%x", blockInfo.CurrentBlockHash),
+		PreviousBlockHash: fmt.Sprintf("%x", blockInfo.PreviousBlockHash),
+	}, nil
+
+}
+
+const (
+	qscc                = "qscc"
+	qsccTransactionByID = "GetTransactionByID"
+	qsccChannelInfo     = "GetChainInfo"
+	qsccBlockByHash     = "GetBlockByHash"
+	qsccBlockByNumber   = "GetBlockByNumber"
+	qsccBlockByTxID     = "GetBlockByTxID"
+)
+
+// GetBlockByTxID retrieves a block containing the specified transaction ID
+func (p *LocalPeer) GetBlockByTxID(ctx context.Context, channelID string, txID string) (*cb.Block, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	defer gateway.Close()
+	network := gateway.GetNetwork(channelID)
+	contract := network.GetContract(qscc)
+	response, err := contract.EvaluateTransaction(qsccBlockByTxID, channelID, txID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query block by transaction ID: %w", err)
+	}
+
+	// Unmarshal block
+	block := &cb.Block{}
+	if err := proto.Unmarshal(response, block); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal block: %w", err)
+	}
+
+	return block, nil
 }

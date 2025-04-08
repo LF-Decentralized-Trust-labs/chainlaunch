@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"bytes"
 
 	"text/template"
@@ -2285,4 +2287,262 @@ func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
 		return nil, err
 	}
 	return cfgEnv.Config, nil
+}
+
+// GetBlocks retrieves a paginated list of blocks from the network
+func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = &node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, 0, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get channel info to get total blocks
+	channelInfo, err := peer.GetChannelBlockInfo(ctx, network.Name)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get channel info: %w", err)
+	}
+
+	total := int64(channelInfo.Height)
+
+	// Calculate start and end blocks based on reverse flag
+	var startBlock, endBlock uint64
+	if reverse {
+		// If reverse is true, we start from the newest blocks
+		endBlock = channelInfo.Height - 1 - uint64(offset)
+
+		// Calculate endBlock based on startBlock and limit
+		startBlock = endBlock - uint64(limit)
+
+		// Example: if height is 31, limit is 10, offset is 0
+		// endBlock = 30, startBlock = 21
+	} else {
+		// Normal order (oldest first)
+		startBlock = uint64(offset)
+		endBlock = uint64(offset + limit - 1)
+		if endBlock >= channelInfo.Height {
+			endBlock = channelInfo.Height - 1
+		}
+	}
+
+	// Get blocks in range
+	blocks, err := peer.GetBlocksInRange(ctx, network.Name, startBlock, endBlock)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get blocks: %w", err)
+	}
+
+	// Convert blocks to response type
+	result := make([]Block, len(blocks))
+	for i, block := range blocks {
+		timestamp := time.Now()
+		for _, txData := range block.Data.Data {
+			env := &cb.Envelope{}
+			err = proto.Unmarshal(txData, env)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to unmarshal envelope: %w", err)
+			}
+			payload := &cb.Payload{}
+			err = proto.Unmarshal(env.Payload, payload)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to unmarshal payload: %w", err)
+			}
+			chdr := &cb.ChannelHeader{}
+			err = proto.Unmarshal(payload.Header.ChannelHeader, chdr)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to unmarshal channel header: %w", err)
+			}
+			txDate, err := ptypes.Timestamp(chdr.Timestamp)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to parse timestamp: %w", err)
+			}
+			timestamp = txDate
+			break
+		}
+		buffer := &bytes.Buffer{}
+		err = protolator.DeepMarshalJSON(buffer, block)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to marshal block data: %w", err)
+		}
+		blockDataJson := buffer.Bytes()
+		result[i] = Block{
+			Number:       block.Header.Number,
+			Hash:         fmt.Sprintf("%x", block.Header.DataHash),
+			PreviousHash: fmt.Sprintf("%x", block.Header.PreviousHash),
+			Timestamp:    timestamp,
+			TxCount:      len(block.Data.Data),
+			Data:         blockDataJson,
+		}
+	}
+
+	return result, total, nil
+}
+
+// GetBlockTransactions retrieves all transactions from a specific block
+func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) ([]Transaction, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = &node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get transactions from block
+	envelopes, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block transactions: %w", err)
+	}
+
+	// Convert envelopes to transactions
+	transactions := make([]Transaction, len(envelopes))
+	for i, env := range envelopes {
+		payload := &cb.Payload{}
+		if err := proto.Unmarshal(env.Payload, payload); err != nil {
+			continue
+		}
+
+		chdr := &cb.ChannelHeader{}
+		if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
+			continue
+		}
+
+		shdr := &cb.SignatureHeader{}
+		if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
+			continue
+		}
+
+		transactions[i] = Transaction{
+			ID:        chdr.TxId,
+			BlockNum:  blockNum,
+			Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
+			Type:      cb.HeaderType_name[int32(chdr.Type)],
+			Creator:   string(shdr.Creator),
+			Status:    "success",
+		}
+	}
+
+	return transactions, nil
+}
+
+// GetTransaction retrieves a specific transaction by its ID
+func (d *FabricDeployer) GetTransaction(ctx context.Context, networkID int64, txID string) (Transaction, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = &node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return Transaction{}, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get channel info
+	channelInfo, err := peer.GetChannelBlockInfo(ctx, network.Name)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get channel info: %w", err)
+	}
+
+	// Search for transaction in blocks
+	for blockNum := uint64(0); blockNum < channelInfo.Height; blockNum++ {
+		transactions, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
+		if err != nil {
+			continue
+		}
+
+		for _, tx := range transactions {
+			payload := &cb.Payload{}
+			if err := proto.Unmarshal(tx.Payload, payload); err != nil {
+				continue
+			}
+
+			chdr := &cb.ChannelHeader{}
+			if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
+				continue
+			}
+
+			if chdr.TxId == txID {
+				shdr := &cb.SignatureHeader{}
+				if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
+					continue
+				}
+
+				return Transaction{
+					ID:        chdr.TxId,
+					BlockNum:  blockNum,
+					Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
+					Type:      cb.HeaderType_name[int32(chdr.Type)],
+					Creator:   string(shdr.Creator),
+					Status:    "success",
+				}, nil
+			}
+		}
+	}
+
+	return Transaction{}, fmt.Errorf("transaction not found")
 }

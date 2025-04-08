@@ -186,12 +186,12 @@ func (s *FabricOrg) getOrdererMSP(ctx context.Context) (identity.SigningIdentity
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	cert, err := identity.ReadCertificate(*adminSignKey.Certificate)
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificate: %w", err)
 	}
 
-	priv, err := identity.ReadPrivateKey(privateKeyPEM)
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key: %w", err)
 	}

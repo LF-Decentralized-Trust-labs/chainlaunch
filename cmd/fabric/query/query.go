@@ -1,12 +1,10 @@
 package query
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"math/rand/v2"
-	"os"
+	"strings"
 
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/networkconfig"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -70,26 +68,10 @@ func (c *queryChaincodeCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkCo
 }
 
 func (c *queryChaincodeCmd) getPeerConnection(address string, tlsCACert string) (*grpc.ClientConn, error) {
-	if tlsCACert == "" {
-		return nil, fmt.Errorf("TLS CA certificate is required")
-	}
-	certBytes, err := os.ReadFile(tlsCACert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read TLS CA certificate file: %w", err)
-	}
-
-	block, _ := pem.Decode(certBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block from TLS CA certificate")
-	}
-	_, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
-	}
 
 	networkNode := network.Node{
-		Addr:      address,
-		TLSCACert: tlsCACert,
+		Addr:          strings.Replace(address, "grpcs://", "", 1),
+		TLSCACertByte: []byte(tlsCACert),
 	}
 	conn, err := network.DialConnection(networkNode)
 	if err != nil {

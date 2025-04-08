@@ -1,5 +1,9 @@
 package service
 
+import (
+	"time"
+)
+
 type ImportNetworkParams struct {
 	NetworkType string
 	GenesisFile []byte
@@ -65,4 +69,24 @@ type RemoveOrdererResponse struct {
 	Message   string `json:"message"`
 	NetworkID int64  `json:"network_id"`
 	OrdererID int64  `json:"orderer_id"`
+}
+
+// Block represents a block in the blockchain
+type Block struct {
+	Number       uint64    `json:"number"`
+	Hash         string    `json:"hash"`
+	PreviousHash string    `json:"previous_hash"`
+	Timestamp    time.Time `json:"timestamp"`
+	TxCount      int       `json:"tx_count"`
+	Data         []byte    `json:"data"`
+}
+
+// Transaction represents a transaction in a block
+type Transaction struct {
+	TxID        string    `json:"tx_id"`
+	BlockNumber uint64    `json:"block_number"`
+	Timestamp   time.Time `json:"timestamp"`
+	Type        string    `json:"type"`
+	Creator     string    `json:"creator"`
+	Payload     []byte    `json:"payload"`
 }

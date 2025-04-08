@@ -1,12 +1,10 @@
 package invoke
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"math/rand/v2"
-	"os"
+	"strings"
 
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/networkconfig"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -70,30 +68,10 @@ func (c *invokeChaincodeCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkC
 }
 
 func (c *invokeChaincodeCmd) getPeerConnection(address string, tlsCACert string) (*grpc.ClientConn, error) {
-	// Parse the TLS CA certificate
-	if tlsCACert == "" {
-		return nil, fmt.Errorf("TLS CA certificate is required")
-	}
-	// Read the certificate file
-	certBytes, err := os.ReadFile(tlsCACert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read TLS CA certificate file: %w", err)
-	}
-
-	// Decode the PEM block
-	block, _ := pem.Decode(certBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block from TLS CA certificate")
-	}
-	// Parse the certificate
-	_, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
-	}
 
 	networkNode := network.Node{
-		Addr:      address,
-		TLSCACert: tlsCACert,
+		Addr:          strings.Replace(address, "grpcs://", "", 1),
+		TLSCACertByte: []byte(tlsCACert),
 	}
 	conn, err := network.DialConnection(networkNode)
 	if err != nil {
@@ -167,32 +145,9 @@ func (c *invokeChaincodeCmd) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	c.logger.Infof("txid=%s", submitResponse.TransactionID)
+	c.logger.Infof("txid=%s", submitResponse.TransactionID())
 	return nil
 
-	// var args [][]byte
-	// for _, arg := range c.args {
-	// 	args = append(args, []byte(arg))
-	// }
-	// response, err := ch.Execute(
-	// 	channel.Request{
-	// 		ChaincodeID:     c.chaincode,
-	// 		Fcn:             c.fcn,
-	// 		Args:            args,
-	// 		TransientMap:    nil,
-	// 		InvocationChain: nil,
-	// 		IsInit:          false,
-	// 	},
-	// )
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = fmt.Fprint(out, string(response.Payload))
-	// if err != nil {
-	// 	return err
-	// }
-	// c.logger.Infof("txid=%s", response.TransactionID)
-	// return nil
 }
 
 func NewInvokeChaincodeCMD(out io.Writer, errOut io.Writer, logger *logger.Logger) *cobra.Command {

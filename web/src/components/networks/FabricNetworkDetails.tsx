@@ -25,7 +25,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, Anchor, ArrowLeft, Check, Code, Copy, Network, Plus, Settings } from 'lucide-react'
+import { Activity, AlertTriangle, Anchor, ArrowLeft, Check, Code, Copy, Network, Plus, Settings, Blocks } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -35,6 +35,7 @@ import rehypeRaw from 'rehype-raw'
 import { toast } from 'sonner'
 import { AddMultipleNodesDialog } from './add-multiple-nodes-dialog'
 import { ChannelUpdateForm } from '../nodes/ChannelUpdateForm'
+import { BlockExplorer } from './block-explorer'
 
 interface FabricNetworkDetailsProps {
 	network: HttpNetworkResponse
@@ -624,6 +625,21 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 							</div>
 						}
 						share={<p>Pro Only</p>}
+						explorer={
+							<div className="space-y-4">
+								<div className="flex items-center gap-4 mb-6">
+									<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+										<Blocks className="h-6 w-6 text-primary" />
+									</div>
+									<div>
+										<h2 className="text-lg font-semibold">Block Explorer</h2>
+										<p className="text-sm text-muted-foreground">Explore blocks, transactions, and chaincode data</p>
+									</div>
+								</div>
+
+								<BlockExplorer networkId={network.id!} />
+							</div>
+						}
 					/>
 				</Card>
 			</div>

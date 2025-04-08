@@ -5,9 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/spf13/cobra"
 )
@@ -65,15 +64,15 @@ func (c *installCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkConfig, o
 	if !ok {
 		return nil, nil, fmt.Errorf("user %s not found in network config", userID)
 	}
-	userCert, err := identity.ReadCertificate(user.Cert.PEM)
+	userCert, err := gwidentity.CertificateFromPEM([]byte(user.Cert.PEM))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read user certificate for user %s and org %s", userID, org)
 	}
-	userPrivateKey, err := identity.ReadPrivateKey(user.Key.PEM)
+	userPrivateKey, err := gwidentity.PrivateKeyFromPEM([]byte(user.Key.PEM))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read user private key for user %s and org %s", userID, org)
 	}
-	userIdentity, err := identity.NewPrivateKeySigningIdentity(user.Cert.PEM, userCert, userPrivateKey)
+	userIdentity, err := identity.NewPrivateKeySigningIdentity(org, userCert, userPrivateKey)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to create user identity for user %s and org %s", userID, org)
 	}
@@ -81,30 +80,9 @@ func (c *installCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkConfig, o
 }
 
 func (c *installCmd) getPeerConnection(address string, tlsCACert string) (*grpc.ClientConn, error) {
-	// Parse the TLS CA certificate
-	if tlsCACert == "" {
-		return nil, fmt.Errorf("TLS CA certificate is required")
-	}
-	// Read the certificate file
-	certBytes, err := os.ReadFile(tlsCACert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read TLS CA certificate file: %w", err)
-	}
-
-	// Decode the PEM block
-	block, _ := pem.Decode(certBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block from TLS CA certificate")
-	}
-	// Parse the certificate
-	_, err = x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
-	}
-
 	networkNode := network.Node{
-		Addr:      address,
-		TLSCACert: tlsCACert,
+		Addr:          strings.Replace(address, "grpcs://", "", 1),
+		TLSCACertByte: []byte(tlsCACert),
 	}
 	conn, err := network.DialConnection(networkNode)
 	if err != nil {
@@ -179,10 +157,14 @@ func (c installCmd) start() error {
 			defer conn.Close()
 			peerClient := chaincode.NewPeer(conn, userIdentity)
 			result, err := peerClient.Install(ctx, bytes.NewReader(pkg))
-			if err != nil {
+			if err != nil && !strings.Contains(err.Error(), "chaincode already successfully installed") {
 				return errors.Wrapf(err, "failed to install chaincode for user %s and org %s", c.users[idx], org)
 			}
-			c.logger.Infof("Chaincode installed %s in %s", result.PackageId, peerConfig.URL)
+			if result != nil {
+				c.logger.Infof("Chaincode installed %s in %s", result.PackageId, peerConfig.URL)
+			} else {
+				c.logger.Infof("Chaincode already installed in %s", peerConfig.URL)
+			}
 		}
 	}
 
@@ -326,7 +308,6 @@ func (c installCmd) start() error {
 			c.logger.Errorf("Error when approving chaincode: %v", err)
 			return err
 		}
-		c.logger.Infof("Chaincode approved, org=%s", c.organizations[idx])
 		if err != nil && !strings.Contains(err.Error(), "redefine uncommitted") {
 			c.logger.Errorf("Error when approving chaincode: %v", err)
 			return err

@@ -1,5 +1,7 @@
 package fabric
 
+import "time"
+
 // NodeType represents the type of a Fabric node
 type NodeType string
 
@@ -61,4 +63,67 @@ type NetworkConfig struct {
 	OrdererEndpoints []string               `json:"ordererEndpoints"`
 	Capabilities     map[string][]string    `json:"capabilities"`
 	Policies         map[string]interface{} `json:"policies"`
+}
+
+// Block represents a block in the Fabric blockchain
+type Block struct {
+	Number       uint64    `json:"number"`
+	Hash         string    `json:"hash"`
+	PreviousHash string    `json:"previousHash"`
+	DataHash     string    `json:"dataHash"`
+	Timestamp    time.Time `json:"timestamp"`
+	TxCount      int       `json:"txCount"`
+	Data         []byte    `json:"data"`
+}
+
+// Transaction represents a transaction in a Fabric block
+type Transaction struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Timestamp time.Time `json:"timestamp"`
+	Creator   string    `json:"creator"`
+	Status    string    `json:"status"`
+	BlockNum  uint64    `json:"blockNum"`
+}
+
+// BlockInfo represents information about the blockchain
+type BlockInfo struct {
+	Height            uint64 `json:"height"`
+	CurrentBlockHash  string `json:"currentBlockHash"`
+	PreviousBlockHash string `json:"previousBlockHash"`
+}
+
+// DeployerOptions contains options for the Fabric deployer
+type DeployerOptions struct {
+	NetworkID       int64  `json:"networkId"`
+	ChannelID       string `json:"channelId"`
+	ConsortiumName  string `json:"consortiumName"`
+	OrdererEndpoint string `json:"ordererEndpoint"`
+	PeerEndpoint    string `json:"peerEndpoint"`
+}
+
+// NetworkQueryOptions contains options for querying network data
+type NetworkQueryOptions struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// BlockQueryOptions contains options for querying blocks
+type BlockQueryOptions struct {
+	StartBlock uint64 `json:"startBlock"`
+	EndBlock   uint64 `json:"endBlock"`
+	Limit      int32  `json:"limit"`
+	Offset     int32  `json:"offset"`
+}
+
+// PaginatedBlocks represents a paginated list of blocks
+type PaginatedBlocks struct {
+	Items      []Block `json:"items"`
+	TotalCount int64   `json:"totalCount"`
+}
+
+// PaginatedTransactions represents a paginated list of transactions
+type PaginatedTransactions struct {
+	Items      []Transaction `json:"items"`
+	TotalCount int64         `json:"totalCount"`
 }

@@ -59,6 +59,9 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/import", h.ImportFabricNetwork)
 		r.Post("/import-with-org", h.ImportFabricNetworkWithOrg)
 		r.Post("/{id}/update-config", h.FabricUpdateChannelConfig)
+		r.Get("/{id}/blocks", h.FabricGetBlocks)
+		r.Get("/{id}/blocks/{blockNum}/transactions", h.FabricGetBlockTransactions)
+		r.Get("/{id}/transactions/{txId}", h.FabricGetTransaction)
 	})
 
 	// New Besu routes
@@ -1614,4 +1617,150 @@ type ConfigUpdateResponse struct {
 	CreatedBy   string                         `json:"created_by"`
 	Operations  []ConfigUpdateOperationRequest `json:"operations"`
 	PreviewJSON string                         `json:"preview_json,omitempty"`
+}
+
+// @Summary Get list of blocks from Fabric network
+// @Description Get a paginated list of blocks from a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param limit query int false "Number of blocks to return (default: 10)"
+// @Param offset query int false "Number of blocks to skip (default: 0)"
+// @Param reverse query bool false "Get blocks in reverse order (default: false)"
+// @Success 200 {object} BlockListResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks [get]
+func (h *Handler) FabricGetBlocks(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse pagination parameters
+	limit := int32(10) // Default limit
+	offset := int32(0) // Default offset
+	reverse := false   // Default order
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		limitInt, err := strconv.ParseInt(limitStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_limit", "Invalid limit parameter")
+			return
+		}
+		limit = int32(limitInt)
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		offsetInt, err := strconv.ParseInt(offsetStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_offset", "Invalid offset parameter")
+			return
+		}
+		offset = int32(offsetInt)
+	}
+
+	if reverseStr := r.URL.Query().Get("reverse"); reverseStr != "" {
+		reverseBool, err := strconv.ParseBool(reverseStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_reverse", "Invalid reverse parameter")
+			return
+		}
+		reverse = reverseBool
+	}
+
+	blocks, total, err := h.networkService.GetBlocks(r.Context(), networkID, limit, offset, reverse)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "get_blocks_failed", err.Error())
+		return
+	}
+
+	resp := BlockListResponse{
+		Blocks: blocks,
+		Total:  total,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transactions from a specific block
+// @Description Get all transactions from a specific block in a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param blockNum path int true "Block Number"
+// @Success 200 {object} BlockTransactionsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks/{blockNum}/transactions [get]
+func (h *Handler) FabricGetBlockTransactions(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	blockNum, err := strconv.ParseUint(chi.URLParam(r, "blockNum"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_block_number", "Invalid block number")
+		return
+	}
+
+	transactions, err := h.networkService.GetBlockTransactions(r.Context(), networkID, blockNum)
+	if err != nil {
+		if err.Error() == "block not found" {
+			writeError(w, http.StatusNotFound, "block_not_found", "Block not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transactions_failed", err.Error())
+		return
+	}
+
+	resp := BlockTransactionsResponse{
+		BlockNumber:  blockNum,
+		Transactions: transactions,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transaction details by transaction ID
+// @Description Get detailed information about a specific transaction in a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param txId path string true "Transaction ID"
+// @Success 200 {object} TransactionResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/transactions/{txId} [get]
+func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	txID := chi.URLParam(r, "txId")
+	if txID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_transaction_id", "Invalid transaction ID")
+		return
+	}
+
+	transaction, err := h.networkService.GetTransaction(r.Context(), networkID, txID)
+	if err != nil {
+		if err.Error() == "transaction not found" {
+			writeError(w, http.StatusNotFound, "transaction_not_found", "Transaction not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transaction_failed", err.Error())
+		return
+	}
+
+	resp := TransactionResponse{
+		Transaction: transaction,
+	}
+	writeJSON(w, http.StatusOK, resp)
 }

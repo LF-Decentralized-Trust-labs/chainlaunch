@@ -76,11 +76,13 @@ WantedBy=multi-user.target
 		DirPath string
 		Cmd     string
 		EnvVars []string
+		LogPath string
 	}{
 		ID:      p.opts.ID,
 		DirPath: dirPath,
 		Cmd:     cmd,
 		EnvVars: envStrings,
+		LogPath: p.GetStdOutPath(),
 	}
 
 	var buf bytes.Buffer

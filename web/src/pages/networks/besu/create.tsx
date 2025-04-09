@@ -16,6 +16,7 @@ import { Progress } from '@/components/ui/progress'
 import { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { postKeys } from '@/api/client'
+import { numberToHex, hexToNumber, isValidHex } from '@/lib/utils'
 
 const besuFormSchema = z
 	.object({
@@ -28,14 +29,14 @@ const besuFormSchema = z
 		chainId: z.number(),
 		coinbase: z.string(),
 		consensus: z.enum(['qbft']).default('qbft'),
-		difficulty: z.string(),
+		difficulty: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 		epochLength: z.number(),
-		gasLimit: z.string(),
+		gasLimit: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 		initialValidatorsKeyIds: z.array(z.number()),
-		mixHash: z.string(),
-		nonce: z.string(),
+		mixHash: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
+		nonce: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 		requestTimeout: z.number(),
-		timestamp: z.string(),
+		timestamp: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 	})
 	.refine(
 		(data) => {
@@ -61,14 +62,14 @@ const defaultValues: Partial<BesuFormValues> = {
 	chainId: 1337,
 	coinbase: '0x0000000000000000000000000000000000000000',
 	consensus: 'qbft',
-	difficulty: '0x1',
+	difficulty: numberToHex(1),
 	epochLength: 30000,
-	gasLimit: '0x29b92700',
+	gasLimit: numberToHex(700000000),
 	initialValidatorsKeyIds: [],
 	mixHash: '0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365',
-	nonce: '0x0',
+	nonce: numberToHex(0),
 	requestTimeout: 10,
-	timestamp: '0x67b1a088',
+	timestamp: numberToHex(1740000392),
 }
 
 export default function CreateBesuNetworkPage() {
@@ -87,7 +88,10 @@ export default function CreateBesuNetworkPage() {
 
 	const form = useForm<BesuFormValues>({
 		resolver: zodResolver(besuFormSchema),
-		defaultValues,
+		defaultValues: {
+			...defaultValues,
+			timestamp: numberToHex(new Date().getTime()),
+		},
 	})
 	const { data: providersData } = useQuery({
 		...getKeyProvidersOptions({}),
@@ -317,9 +321,14 @@ export default function CreateBesuNetworkPage() {
 											<FormItem>
 												<FormLabel>Difficulty</FormLabel>
 												<FormControl>
-													<Input {...field} placeholder="0x1" />
+													<Input
+														type="number"
+														value={field.value === '0x0' ? 0 : hexToNumber(field.value)}
+														onChange={(e) => field.onChange(numberToHex(Number(e.target.value)))}
+														min={0}
+													/>
 												</FormControl>
-												<FormDescription>Initial mining difficulty</FormDescription>
+												<FormDescription>Initial mining difficulty (will be converted to hex)</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -349,9 +358,14 @@ export default function CreateBesuNetworkPage() {
 											<FormItem>
 												<FormLabel>Gas Limit</FormLabel>
 												<FormControl>
-													<Input {...field} placeholder="0x29b92700" />
+													<Input
+														type="number"
+														value={field.value === '0x0' ? 0 : hexToNumber(field.value)}
+														onChange={(e) => field.onChange(numberToHex(Number(e.target.value)))}
+														min={0}
+													/>
 												</FormControl>
-												<FormDescription>Maximum gas per block</FormDescription>
+												<FormDescription>Maximum gas per block (will be converted to hex)</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -383,7 +397,7 @@ export default function CreateBesuNetworkPage() {
 												<FormControl>
 													<Input {...field} />
 												</FormControl>
-												<FormDescription>Consensus-specific hash</FormDescription>
+												<FormDescription>Consensus-specific hash (Only used in PoW networks)</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -398,9 +412,14 @@ export default function CreateBesuNetworkPage() {
 											<FormItem>
 												<FormLabel>Nonce</FormLabel>
 												<FormControl>
-													<Input {...field} placeholder="0x0" />
+													<Input
+														type="number"
+														value={field.value === '0x0' ? 0 : hexToNumber(field.value)}
+														onChange={(e) => field.onChange(numberToHex(Number(e.target.value)))}
+														min={0}
+													/>
 												</FormControl>
-												<FormDescription>Genesis block nonce</FormDescription>
+												<FormDescription>Genesis block nonce (will be converted to hex)</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -413,16 +432,21 @@ export default function CreateBesuNetworkPage() {
 											<FormItem>
 												<FormLabel>Timestamp</FormLabel>
 												<FormControl>
-													<Input {...field} placeholder="0x0" />
+													<Input
+														type="number"
+														value={field.value === '0x0' ? 0 : hexToNumber(field.value)}
+														onChange={(e) => field.onChange(numberToHex(Number(e.target.value)))}
+														min={0}
+													/>
 												</FormControl>
-												<FormDescription>Genesis block timestamp</FormDescription>
+												<FormDescription>Genesis block timestamp (will be converted to hex)</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
 									/>
 								</div>
 
-								<div className="grid grid-cols-2 gap-4">
+								<div className="grid grid-2 gap-4">
 									<FormField
 										control={form.control}
 										name="consensus"

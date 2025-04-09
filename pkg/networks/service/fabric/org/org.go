@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -209,7 +210,7 @@ func (s *FabricOrg) getOrdererConnection(ctx context.Context, ordererURL string,
 
 	// Create orderer connection
 	ordererConn, err := network.DialConnection(network.Node{
-		Addr:          ordererURL,
+		Addr:          strings.TrimPrefix(ordererURL, "grpcs://"),
 		TLSCACertByte: []byte(ordererTLSCert),
 	})
 	if err != nil {
@@ -264,9 +265,12 @@ func (s *FabricOrg) GetGenesisBlock(ctx context.Context, channelID string, order
 		return nil, fmt.Errorf("failed to get orderer msp: %w", err)
 	}
 
-	ordererTLSKeyPair, err := s.getOrdererTLSKeyPair(ctx, string(ordererTLSCert))
+	// Create TLS certificate from orderer TLS cert
+	ordererTLSKeyPair := tls.Certificate{
+		Certificate: [][]byte{ordererTLSCert},
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get orderer tls key pair: %w", err)
+		return nil, fmt.Errorf("failed to create orderer TLS certificate: %w", err)
 	}
 	genesisBlock, err := channel.GetGenesisBlock(ctx, ordererConn, ordererMSP, channelID, ordererTLSKeyPair)
 	if err != nil {

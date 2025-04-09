@@ -87,6 +87,13 @@ export function ImportNetworkForm() {
 			toast.success('Network imported successfully')
 			navigate('/networks')
 		},
+		onError: (error: Error) => {
+			const errorMessage = error.message || 'Failed to import Fabric network'
+			setError(errorMessage)
+			toast.error('Failed to import network', {
+				description: errorMessage,
+			})
+		},
 	})
 
 	const importBesuNetwork = useMutation({
@@ -109,7 +116,7 @@ export function ImportNetworkForm() {
 		defaultValues: {
 			networkType: 'fabric',
 			fabricImport: {
-				importMethod: 'genesis',
+				importMethod: 'organization',
 			},
 		},
 	})
@@ -126,6 +133,7 @@ export function ImportNetworkForm() {
 		setError(null)
 
 		if (data.networkType === 'fabric') {
+			console.log('data.fabricImport', data.fabricImport)
 			if (data.fabricImport.importMethod === 'genesis') {
 				if (!data.fabricImport.genesisBlock) {
 					setError('Genesis block is required')
@@ -194,7 +202,7 @@ export function ImportNetworkForm() {
 		}
 	}
 
-	const isLoading = importFabricNetwork.isPending || importBesuNetwork.isPending
+	const isLoading = importFabricNetwork.isPending || importBesuNetwork.isPending || importFabricNetworkByOrg.isPending
 
 	return (
 		<Card className="w-full max-w-2xl">

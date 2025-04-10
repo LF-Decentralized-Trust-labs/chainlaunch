@@ -203,7 +203,7 @@ func (o *LocalOrderer) buildOrdererEnvironment(mspConfigPath string) map[string]
 	env["ORDERER_GENERAL_TLS_CERTIFICATE"] = filepath.Join(mspConfigPath, "tls.crt")
 	env["ORDERER_GENERAL_TLS_PRIVATEKEY"] = filepath.Join(mspConfigPath, "tls.key")
 	env["ORDERER_GENERAL_TLS_ROOTCAS"] = filepath.Join(mspConfigPath, "tlscacerts/cacert.pem")
-	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminAddress
+	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminListenAddress
 	env["ORDERER_GENERAL_LISTENADDRESS"] = strings.Split(o.opts.ListenAddress, ":")[0]
 	env["ORDERER_OPERATIONS_LISTENADDRESS"] = o.opts.OperationsListenAddress
 	env["ORDERER_GENERAL_LOCALMSPID"] = o.mspID
@@ -466,7 +466,7 @@ func (o *LocalOrderer) Init() (interface{}, error) {
 		OrganizationID:          o.organizationID,
 		MSPID:                   o.mspID,
 		ListenAddress:           o.opts.ListenAddress,
-		AdminAddress:            o.opts.AdminAddress,
+		AdminAddress:            o.opts.AdminListenAddress,
 		OperationsListenAddress: o.opts.OperationsListenAddress,
 		ExternalEndpoint:        o.opts.ExternalEndpoint,
 		DomainNames:             o.opts.DomainNames,
@@ -901,7 +901,7 @@ Consensus:
 		ListenAddress:           strings.Split(o.opts.ListenAddress, ":")[0],
 		ListenPort:              strings.Split(o.opts.ListenAddress, ":")[1],
 		OperationsListenAddress: o.opts.OperationsListenAddress,
-		AdminAddress:            o.opts.AdminAddress,
+		AdminAddress:            o.opts.AdminListenAddress,
 		DataPath:                dataConfigPath,
 		MSPID:                   o.mspID,
 	}
@@ -951,7 +951,7 @@ func (o *LocalOrderer) JoinChannel(genesisBlock []byte) error {
 	if !ok {
 		return fmt.Errorf("couldn't append certs")
 	}
-	ordererAdminUrl := fmt.Sprintf("https://%s", strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1))
+	ordererAdminUrl := fmt.Sprintf("https://%s", strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1))
 
 	channelInfo, err := channel.JoinOrderer(ordererAdminUrl, genesisBlock, certPool, adminTlsCertX509)
 	if err != nil {
@@ -1010,7 +1010,7 @@ func (o *LocalOrderer) LeaveChannel(channelID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load client certificate: %w", err)
 	}
-	adminAddress := strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1)
+	adminAddress := strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1)
 	// Call osnadmin Remove API
 	err = channel.RemoveChannelFromOrderer(fmt.Sprintf("https://%s", adminAddress), channelID, caCertPool, cert)
 	if err != nil {
@@ -1135,7 +1135,7 @@ func (o *LocalOrderer) GetChannels(ctx context.Context) ([]OrdererChannel, error
 	}
 
 	// Call osnadmin List API
-	adminAddress := strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1)
+	adminAddress := strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1)
 	channelList, err := channel.ListChannel(fmt.Sprintf("https://%s", adminAddress), certPool, cert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list channels: %w", err)

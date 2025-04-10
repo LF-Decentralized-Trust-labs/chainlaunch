@@ -1043,6 +1043,23 @@ definitions:
     required:
     - timeout
     type: object
+  http.UpdateBesuNodeRequest:
+    properties:
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      networkConfig:
+        additionalProperties:
+          type: string
+        type: object
+      p2pPort:
+        type: integer
+      rpcPort:
+        type: integer
+      wsPort:
+        type: integer
+    type: object
   http.UpdateConsenterPayload:
     properties:
       client_tls_cert:
@@ -1101,6 +1118,66 @@ definitions:
         type: array
     required:
     - operations
+    type: object
+  http.UpdateFabricOrdererRequest:
+    properties:
+      adminAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      operationsListenAddress:
+        type: string
+    type: object
+  http.UpdateFabricPeerRequest:
+    properties:
+      addressOverrides:
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
+      chaincodeAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      eventsAddress:
+        type: string
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      operationsListenAddress:
+        type: string
+    type: object
+  http.UpdateNodeRequest:
+    properties:
+      besuNode:
+        $ref: '#/definitions/http.UpdateBesuNodeRequest'
+      blockchainPlatform:
+        $ref: '#/definitions/types.BlockchainPlatform'
+      fabricOrderer:
+        $ref: '#/definitions/http.UpdateFabricOrdererRequest'
+      fabricPeer:
+        allOf:
+        - $ref: '#/definitions/http.UpdateFabricPeerRequest'
+        description: Platform-specific configurations
+      name:
+        description: Common fields
+        type: string
     type: object
   http.UpdateOrgMSPPayload:
     properties:
@@ -1535,6 +1612,10 @@ definitions:
     type: object
   service.FabricPeerProperties:
     properties:
+      addressOverrides:
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       chaincodeAddress:
         type: string
       domainNames:
@@ -1569,6 +1650,8 @@ definitions:
         type: string
       tlsKeyId:
         type: integer
+      version:
+        type: string
     type: object
   service.Mode:
     enum:
@@ -1682,6 +1765,15 @@ definitions:
       type:
         type: string
     type: object
+  types.AddressOverride:
+    properties:
+      from:
+        type: string
+      tlsCACert:
+        type: string
+      to:
+        type: string
+    type: object
   types.BesuNodeConfig:
     properties:
       bootNodes:
@@ -1737,6 +1829,11 @@ definitions:
     - PlatformBesu
   types.FabricOrdererConfig:
     properties:
+      addressOverrides:
+        description: '@Description Address overrides for the orderer'
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       adminAddress:
         type: string
       domainNames:
@@ -1779,6 +1876,11 @@ definitions:
   types.FabricPeerConfig:
     description: Configuration for creating a new Fabric peer node
     properties:
+      addressOverrides:
+        description: '@Description Address overrides for the peer'
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       chaincodeAddress:
         description: '@Description Chaincode listen address'
         example: 0.0.0.0:7052
@@ -1821,6 +1923,11 @@ definitions:
         description: '@Description Operations listen address'
         example: 0.0.0.0:9443
         type: string
+      ordererAddressOverrides:
+        description: '@Description Orderer address overrides for the peer'
+        items:
+          $ref: '#/definitions/types.OrdererAddressOverride'
+        type: array
       organizationId:
         description: '@Description Organization ID that owns this peer'
         example: 1
@@ -1867,6 +1974,22 @@ definitions:
     - NodeTypeFabricPeer
     - NodeTypeFabricOrderer
     - NodeTypeBesuFullnode
+  types.OrdererAddressOverride:
+    properties:
+      from:
+        description: '@Description Original orderer address'
+        type: string
+      tlsCACert:
+        description: '@Description TLS CA certificate in PEM format'
+        type: string
+      to:
+        description: '@Description New orderer address to use'
+        type: string
+    required:
+    - from
+    - tlsCACert
+    - to
+    type: object
   url.URL:
     properties:
       forceQuery:
@@ -4062,6 +4185,44 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get a node
+      tags:
+      - nodes
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing node's configuration based on its type
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update node request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateNodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Update a node
       tags:
       - nodes
   /nodes/{id}/certificates/renew:

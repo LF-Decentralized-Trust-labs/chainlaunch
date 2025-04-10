@@ -22,7 +22,7 @@ import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns/format'
-import { AlertCircle, CheckCircle2, Clock, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle, KeyRound } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle, KeyRound, Pencil } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -356,6 +356,16 @@ export default function NodeDetailPage() {
 						>
 							<KeyRound className="mr-2 h-4 w-4" />
 							Renew Certificates
+						</Button>
+					)}
+					{node.nodeType === 'FABRIC_PEER' && (
+						<Button
+							onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)}
+							variant="outline"
+							size="sm"
+						>
+							<Pencil className="mr-2 h-4 w-4" />
+							Edit
 						</Button>
 					)}
 				</div>

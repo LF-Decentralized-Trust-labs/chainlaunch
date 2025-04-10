@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/service"
+	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 )
 
 // NodeType represents the type of node
@@ -38,19 +39,20 @@ type BaseNodeConfig struct {
 // FabricPeerConfig represents the configuration for a Fabric peer node
 type FabricPeerConfig struct {
 	BaseNodeConfig
-	Name                    string            `json:"name" validate:"required"`
-	OrganizationID          int64             `json:"organizationId" validate:"required"`
-	MSPID                   string            `json:"mspId" validate:"required"`
-	SignKeyID               int64             `json:"signKeyId" validate:"required"`
-	TLSKeyID                int64             `json:"tlsKeyId" validate:"required"`
-	ExternalEndpoint        string            `json:"externalEndpoint" validate:"required"`
-	ListenAddress           string            `json:"listenAddress" validate:"required"`
-	EventsAddress           string            `json:"eventsAddress" validate:"required"`
-	OperationsListenAddress string            `json:"operationsListenAddress" validate:"required"`
-	ChaincodeAddress        string            `json:"chaincodeAddress" validate:"required"`
-	DomainNames             []string          `json:"domainNames"`
-	Env                     map[string]string `json:"env"`
-	Version                 string            `json:"version"` // Fabric version to use
+	Name                    string                  `json:"name" validate:"required"`
+	OrganizationID          int64                   `json:"organizationId" validate:"required"`
+	MSPID                   string                  `json:"mspId" validate:"required"`
+	SignKeyID               int64                   `json:"signKeyId" validate:"required"`
+	TLSKeyID                int64                   `json:"tlsKeyId" validate:"required"`
+	ExternalEndpoint        string                  `json:"externalEndpoint" validate:"required"`
+	ListenAddress           string                  `json:"listenAddress" validate:"required"`
+	EventsAddress           string                  `json:"eventsAddress" validate:"required"`
+	OperationsListenAddress string                  `json:"operationsListenAddress" validate:"required"`
+	ChaincodeAddress        string                  `json:"chaincodeAddress" validate:"required"`
+	DomainNames             []string                `json:"domainNames"`
+	Env                     map[string]string       `json:"env"`
+	Version                 string                  `json:"version"` // Fabric version to use
+	AddressOverrides        []types.AddressOverride `json:"addressOverrides,omitempty"`
 }
 
 // FabricOrdererConfig represents the configuration for a Fabric orderer node
@@ -165,4 +167,54 @@ type ListNodesResponse struct {
 	Page        int            `json:"page"`
 	PageCount   int            `json:"pageCount"`
 	HasNextPage bool           `json:"hasNextPage"`
+}
+
+// AddressOverride represents an address override configuration for Fabric nodes
+type AddressOverride struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	TLSCACert string `json:"tlsCACert"`
+}
+
+// UpdateNodeRequest represents the request body for updating a node
+type UpdateNodeRequest struct {
+	// Common fields
+	Name               *string                   `json:"name,omitempty"`
+	BlockchainPlatform *types.BlockchainPlatform `json:"blockchainPlatform,omitempty"`
+
+	// Platform-specific configurations
+	FabricPeer    *UpdateFabricPeerRequest    `json:"fabricPeer,omitempty"`
+	FabricOrderer *UpdateFabricOrdererRequest `json:"fabricOrderer,omitempty"`
+	BesuNode      *UpdateBesuNodeRequest      `json:"besuNode,omitempty"`
+}
+
+// UpdateFabricPeerRequest represents the configuration for updating a Fabric peer node
+type UpdateFabricPeerRequest struct {
+	ExternalEndpoint        *string                 `json:"externalEndpoint,omitempty"`
+	ListenAddress           *string                 `json:"listenAddress,omitempty"`
+	EventsAddress           *string                 `json:"eventsAddress,omitempty"`
+	OperationsListenAddress *string                 `json:"operationsListenAddress,omitempty"`
+	ChaincodeAddress        *string                 `json:"chaincodeAddress,omitempty"`
+	DomainNames             []string                `json:"domainNames,omitempty"`
+	Env                     map[string]string       `json:"env,omitempty"`
+	AddressOverrides        []types.AddressOverride `json:"addressOverrides,omitempty"`
+}
+
+// UpdateFabricOrdererRequest represents the configuration for updating a Fabric orderer node
+type UpdateFabricOrdererRequest struct {
+	ExternalEndpoint        *string           `json:"externalEndpoint,omitempty"`
+	ListenAddress           *string           `json:"listenAddress,omitempty"`
+	AdminAddress            *string           `json:"adminAddress,omitempty"`
+	OperationsListenAddress *string           `json:"operationsListenAddress,omitempty"`
+	DomainNames             []string          `json:"domainNames,omitempty"`
+	Env                     map[string]string `json:"env,omitempty"`
+}
+
+// UpdateBesuNodeRequest represents the configuration for updating a Besu node
+type UpdateBesuNodeRequest struct {
+	P2PPort       *int              `json:"p2pPort,omitempty"`
+	RpcPort       *int              `json:"rpcPort,omitempty"`
+	WsPort        *int              `json:"wsPort,omitempty"`
+	NetworkConfig map[string]string `json:"networkConfig,omitempty"`
+	Env           map[string]string `json:"env,omitempty"`
 }

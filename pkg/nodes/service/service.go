@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"crypto/x509"
+	"encoding/pem"
+
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
@@ -128,45 +131,39 @@ func (s *NodeService) validateAddress(address string) error {
 
 // validateFabricPeerAddresses validates all addresses used by a Fabric peer
 func (s *NodeService) validateFabricPeerAddresses(config *types.FabricPeerConfig) error {
-	// Validate listen address
-	if err := s.validateAddress(config.ListenAddress); err != nil {
-		return fmt.Errorf("invalid listen address: %w", err)
-	}
-
-	// Validate chaincode address
-	if err := s.validateAddress(config.ChaincodeAddress); err != nil {
-		return fmt.Errorf("invalid chaincode address: %w", err)
-	}
-
-	// Validate events address
-	if err := s.validateAddress(config.EventsAddress); err != nil {
-		return fmt.Errorf("invalid events address: %w", err)
-	}
-
-	// Validate operations listen address
-	if err := s.validateAddress(config.OperationsListenAddress); err != nil {
-		return fmt.Errorf("invalid operations listen address: %w", err)
-	}
-
-	// Check for port conflicts between addresses
-	addresses := map[string]string{
+	// Get current addresses to compare against
+	currentAddresses := map[string]string{
 		"listen":     config.ListenAddress,
 		"chaincode":  config.ChaincodeAddress,
 		"events":     config.EventsAddress,
 		"operations": config.OperationsListenAddress,
 	}
 
+	// Check for port conflicts between addresses
 	usedPorts := make(map[string]string)
-	for addrType, addr := range addresses {
+	for addrType, addr := range currentAddresses {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return fmt.Errorf("invalid %s address format: %w", addrType, err)
 		}
 
 		if existingType, exists := usedPorts[port]; exists {
+			// If the port is already used by the same address type, it's okay
+			if existingType == addrType {
+				continue
+			}
 			return fmt.Errorf("port conflict: %s and %s addresses use the same port %s", existingType, addrType, port)
 		}
 		usedPorts[port] = addrType
+
+		// Only validate port availability if it's not already in use by this peer
+		if err := s.validateAddress(addr); err != nil {
+			// Check if the error is due to the port being in use by this peer
+			if strings.Contains(err.Error(), "address already in use") {
+				continue
+			}
+			return fmt.Errorf("invalid %s address: %w", addrType, err)
+		}
 	}
 
 	return nil
@@ -486,6 +483,7 @@ func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.Organ
 			DomainNames:             config.DomainNames,
 			Env:                     config.Env,
 			Version:                 config.Version,
+			AddressOverrides:        config.AddressOverrides,
 		},
 		config.Mode,
 		org,
@@ -524,11 +522,12 @@ func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.Or
 			ID:                      dbNode.Name,
 			ListenAddress:           config.ListenAddress,
 			OperationsListenAddress: config.OperationsListenAddress,
-			AdminAddress:            config.AdminAddress,
+			AdminListenAddress:      config.AdminAddress,
 			ExternalEndpoint:        config.ExternalEndpoint,
 			DomainNames:             config.DomainNames,
 			Env:                     config.Env,
 			Version:                 config.Version,
+			AddressOverrides:        config.AddressOverrides,
 		},
 		config.Mode,
 		org,
@@ -828,6 +827,7 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeRespon
 			peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
 			peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
 			if ok && peerConfig != nil {
+				nodeResponse.FabricPeer.AddressOverrides = peerDeployConfig.AddressOverrides
 				// Get certificates from key service
 				signKey, err := s.keymanagementService.GetKey(ctx, int(peerDeployConfig.SignKeyID))
 				if err == nil && signKey.Certificate != nil {
@@ -2207,6 +2207,630 @@ func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode db.No
 	if err != nil {
 		return fmt.Errorf("failed to renew orderer certificates: %w", err)
 	}
+
+	return nil
+}
+
+// UpdateNodeEnvironment updates the environment variables for a node
+func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, req *types.UpdateNodeEnvRequest) (*types.UpdateNodeEnvResponse, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get the node's current configuration
+	switch dbNode.NodeType.String {
+	case string(types.NodeTypeFabricPeer):
+		var peerConfig types.FabricPeerConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &peerConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal peer config: %w", err)
+		}
+		peerConfig.Env = req.Env
+		newConfig, err := json.Marshal(peerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+			ID:     nodeID,
+			Config: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+	case string(types.NodeTypeFabricOrderer):
+		var ordererConfig types.FabricOrdererConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &ordererConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal orderer config: %w", err)
+		}
+		ordererConfig.Env = req.Env
+		newConfig, err := json.Marshal(ordererConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+			ID:     nodeID,
+			Config: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+
+	// Return the updated environment variables and indicate that a restart is required
+	return &types.UpdateNodeEnvResponse{
+		Env:             req.Env,
+		RequiresRestart: true,
+	}, nil
+}
+
+// GetNodeEnvironment retrieves the current environment variables for a node
+func (s *NodeService) GetNodeEnvironment(ctx context.Context, nodeID int64) (map[string]string, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get the node's current configuration
+	switch dbNode.NodeType.String {
+	case string(types.NodeTypeFabricPeer):
+		var peerConfig types.FabricPeerConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &peerConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal peer config: %w", err)
+		}
+		return peerConfig.Env, nil
+
+	case string(types.NodeTypeFabricOrderer):
+		var ordererConfig types.FabricOrdererConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &ordererConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal orderer config: %w", err)
+		}
+		return ordererConfig.Env, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+}
+
+// UpdateNodeConfig updates a node's configuration
+func (s *NodeService) UpdateNodeConfig(ctx context.Context, nodeID int64, req *types.UpdateNodeConfigRequest) (*types.UpdateNodeConfigResponse, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.Config.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal node config: %w", err)
+	}
+
+	// Update configuration based on node type
+	switch dbNode.NodeType.String {
+	case string(types.NodeTypeFabricPeer):
+		peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid peer config type")
+		}
+
+		// Update peer-specific fields if provided
+		if req.ListenAddress != "" {
+			if err := s.validateAddress(req.ListenAddress); err != nil {
+				return nil, fmt.Errorf("invalid listen address: %w", err)
+			}
+			peerConfig.ListenAddress = req.ListenAddress
+		}
+		if req.ChaincodeAddress != "" {
+			if err := s.validateAddress(req.ChaincodeAddress); err != nil {
+				return nil, fmt.Errorf("invalid chaincode address: %w", err)
+			}
+			peerConfig.ChaincodeAddress = req.ChaincodeAddress
+		}
+		if req.EventsAddress != "" {
+			if err := s.validateAddress(req.EventsAddress); err != nil {
+				return nil, fmt.Errorf("invalid events address: %w", err)
+			}
+			peerConfig.EventsAddress = req.EventsAddress
+		}
+		if req.OperationsListenAddress != "" {
+			if err := s.validateAddress(req.OperationsListenAddress); err != nil {
+				return nil, fmt.Errorf("invalid operations listen address: %w", err)
+			}
+			peerConfig.OperationsListenAddress = req.OperationsListenAddress
+		}
+		if req.ExternalEndpoint != "" {
+			peerConfig.ExternalEndpoint = req.ExternalEndpoint
+		}
+		if req.DomainNames != nil {
+			peerConfig.DomainNames = req.DomainNames
+		}
+		if req.Mode != "" {
+			peerConfig.Mode = req.Mode
+		}
+		if req.Env != nil {
+			peerConfig.Env = req.Env
+		}
+
+		// Validate all addresses together for port conflicts
+		if err := s.validateFabricPeerAddresses(peerConfig); err != nil {
+			return nil, err
+		}
+
+		// Update the config in the database
+		newConfig, err := json.Marshal(peerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+			ID:     nodeID,
+			Config: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+		return &types.UpdateNodeConfigResponse{
+			Config:          peerConfig,
+			RequiresRestart: true,
+		}, nil
+
+	case string(types.NodeTypeFabricOrderer):
+		ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid orderer config type")
+		}
+
+		// Update orderer-specific fields if provided
+		if req.ListenAddress != "" {
+			if err := s.validateAddress(req.ListenAddress); err != nil {
+				return nil, fmt.Errorf("invalid listen address: %w", err)
+			}
+			ordererConfig.ListenAddress = req.ListenAddress
+		}
+		if req.AdminAddress != "" {
+			if err := s.validateAddress(req.AdminAddress); err != nil {
+				return nil, fmt.Errorf("invalid admin address: %w", err)
+			}
+			ordererConfig.AdminAddress = req.AdminAddress
+		}
+		if req.OperationsListenAddress != "" {
+			if err := s.validateAddress(req.OperationsListenAddress); err != nil {
+				return nil, fmt.Errorf("invalid operations listen address: %w", err)
+			}
+			ordererConfig.OperationsListenAddress = req.OperationsListenAddress
+		}
+		if req.ExternalEndpoint != "" {
+			ordererConfig.ExternalEndpoint = req.ExternalEndpoint
+		}
+		if req.DomainNames != nil {
+			ordererConfig.DomainNames = req.DomainNames
+		}
+		if req.Mode != "" {
+			ordererConfig.Mode = req.Mode
+		}
+		if req.Env != nil {
+			ordererConfig.Env = req.Env
+		}
+
+		// Validate all addresses together for port conflicts
+		if err := s.validateFabricOrdererAddresses(ordererConfig); err != nil {
+			return nil, err
+		}
+
+		// Update the config in the database
+		newConfig, err := json.Marshal(ordererConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+			ID:     nodeID,
+			Config: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+		return &types.UpdateNodeConfigResponse{
+			Config:          ordererConfig,
+			RequiresRestart: true,
+		}, nil
+
+	case string(types.NodeTypeBesuFullnode):
+		besuConfig, ok := nodeConfig.(*types.BesuNodeConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid besu config type")
+		}
+
+		// Update besu-specific fields if provided
+		if req.P2PPort != 0 {
+			if err := s.validatePort(besuConfig.P2PHost, int(req.P2PPort)); err != nil {
+				return nil, fmt.Errorf("invalid P2P port: %w", err)
+			}
+			besuConfig.P2PPort = req.P2PPort
+		}
+		if req.RPCPort != 0 {
+			if err := s.validatePort(besuConfig.RPCHost, int(req.RPCPort)); err != nil {
+				return nil, fmt.Errorf("invalid RPC port: %w", err)
+			}
+			besuConfig.RPCPort = req.RPCPort
+		}
+		if req.P2PHost != "" {
+			besuConfig.P2PHost = req.P2PHost
+		}
+		if req.RPCHost != "" {
+			besuConfig.RPCHost = req.RPCHost
+		}
+		if req.ExternalIP != "" {
+			besuConfig.ExternalIP = req.ExternalIP
+		}
+		if req.InternalIP != "" {
+			besuConfig.InternalIP = req.InternalIP
+		}
+		if req.Mode != "" {
+			besuConfig.Mode = req.Mode
+		}
+		if req.Env != nil {
+			besuConfig.Env = req.Env
+		}
+
+		// Update the config in the database
+		newConfig, err := json.Marshal(besuConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated besu config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+			ID:     nodeID,
+			Config: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+		return &types.UpdateNodeConfigResponse{
+			Config:          besuConfig,
+			RequiresRestart: true,
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+}
+
+// UpdatePeerOrdererOverrides updates the orderer address overrides for a Fabric peer
+func (s *NodeService) UpdatePeerOrdererOverrides(ctx context.Context, nodeID int64, req *types.UpdatePeerOrdererOverridesRequest) (*types.UpdatePeerOrdererOverridesResponse, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	if dbNode.NodeType.String != string(types.NodeTypeFabricPeer) {
+		return nil, fmt.Errorf("node is not a Fabric peer")
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.Config.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal node config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid peer config type")
+	}
+
+	// Validate each override
+	for _, override := range req.Overrides {
+		// Validate 'from' address format
+		if _, _, err := net.SplitHostPort(override.From); err != nil {
+			return nil, fmt.Errorf("invalid 'from' address format in override: %s - %w", override.From, err)
+		}
+
+		// Validate 'to' address format
+		if _, _, err := net.SplitHostPort(override.To); err != nil {
+			return nil, fmt.Errorf("invalid 'to' address format in override: %s - %w", override.To, err)
+		}
+
+		// Validate TLS CA certificate
+		block, _ := pem.Decode([]byte(override.TLSCACert))
+		if block == nil {
+			return nil, fmt.Errorf("failed to decode TLS CA certificate for override %s", override.From)
+		}
+		if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+			return nil, fmt.Errorf("invalid TLS CA certificate for override %s: %w", override.From, err)
+		}
+	}
+
+	// Update the orderer address overrides
+	peerConfig.OrdererAddressOverrides = req.Overrides
+
+	// Update the config in the database
+	newConfig, err := json.Marshal(peerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
+	}
+
+	if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+		ID:     nodeID,
+		Config: sql.NullString{String: string(newConfig), Valid: true},
+	}); err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Return the updated overrides and indicate that a restart is required
+	return &types.UpdatePeerOrdererOverridesResponse{
+		Overrides:       req.Overrides,
+		RequiresRestart: true,
+	}, nil
+}
+
+// UpdateFabricPeer updates a Fabric peer node configuration
+func (s *NodeService) UpdateFabricPeer(ctx context.Context, opts UpdateFabricPeerOpts) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, opts.NodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("peer node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get peer node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricPeer {
+		return nil, fmt.Errorf("node %d is not a Fabric peer", opts.NodeID)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load peer config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid peer config type")
+	}
+
+	deployConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+	deployPeerConfig, ok := deployConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid deployment config type")
+	}
+
+	// Update configuration fields if provided
+	if opts.ExternalEndpoint != "" && opts.ExternalEndpoint != peerConfig.ExternalEndpoint {
+		peerConfig.ExternalEndpoint = opts.ExternalEndpoint
+	}
+	if opts.ListenAddress != "" && opts.ListenAddress != peerConfig.ListenAddress {
+		if err := s.validateAddress(opts.ListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid listen address: %w", err)
+		}
+		peerConfig.ListenAddress = opts.ListenAddress
+	}
+	if opts.EventsAddress != "" && opts.EventsAddress != peerConfig.EventsAddress {
+		if err := s.validateAddress(opts.EventsAddress); err != nil {
+			return nil, fmt.Errorf("invalid events address: %w", err)
+		}
+		peerConfig.EventsAddress = opts.EventsAddress
+	}
+	if opts.OperationsListenAddress != "" && opts.OperationsListenAddress != peerConfig.OperationsListenAddress {
+		if err := s.validateAddress(opts.OperationsListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid operations listen address: %w", err)
+		}
+		peerConfig.OperationsListenAddress = opts.OperationsListenAddress
+	}
+	if opts.ChaincodeAddress != "" && opts.ChaincodeAddress != peerConfig.ChaincodeAddress {
+		if err := s.validateAddress(opts.ChaincodeAddress); err != nil {
+			return nil, fmt.Errorf("invalid chaincode address: %w", err)
+		}
+		peerConfig.ChaincodeAddress = opts.ChaincodeAddress
+	}
+	if opts.DomainNames != nil {
+		peerConfig.DomainNames = opts.DomainNames
+	}
+	if opts.Env != nil {
+		peerConfig.Env = opts.Env
+	}
+	if opts.AddressOverrides != nil {
+		peerConfig.AddressOverrides = opts.AddressOverrides
+		deployPeerConfig.AddressOverrides = opts.AddressOverrides
+	}
+
+	// Validate all addresses together for port conflicts
+	if err := s.validateFabricPeerAddresses(peerConfig); err != nil {
+		return nil, err
+	}
+
+	// Update the config in the database
+	configBytes, err := json.Marshal(peerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
+	}
+
+	node, err = s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+		ID: opts.NodeID,
+		Config: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Update the deployment config in the database
+	deploymentConfigBytes, err := json.Marshal(deployPeerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, db.UpdateDeploymentConfigParams{
+		ID: opts.NodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
+
+	// Synchronize the peer config
+	if err := s.SynchronizePeerConfig(ctx, opts.NodeID); err != nil {
+		return nil, fmt.Errorf("failed to synchronize peer config: %w", err)
+	}
+
+	// Return updated node response
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// UpdateFabricOrderer updates a Fabric orderer node configuration
+func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabricOrdererOpts) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, opts.NodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("orderer node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get orderer node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricOrderer {
+		return nil, fmt.Errorf("node %d is not a Fabric orderer", opts.NodeID)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load orderer config: %w", err)
+	}
+
+	ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid orderer config type")
+	}
+
+	// Update configuration fields if provided
+	if opts.ExternalEndpoint != "" {
+		ordererConfig.ExternalEndpoint = opts.ExternalEndpoint
+	}
+	if opts.ListenAddress != "" {
+		if err := s.validateAddress(opts.ListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid listen address: %w", err)
+		}
+		ordererConfig.ListenAddress = opts.ListenAddress
+	}
+	if opts.AdminAddress != "" {
+		if err := s.validateAddress(opts.AdminAddress); err != nil {
+			return nil, fmt.Errorf("invalid admin address: %w", err)
+		}
+		ordererConfig.AdminAddress = opts.AdminAddress
+	}
+	if opts.OperationsListenAddress != "" {
+		if err := s.validateAddress(opts.OperationsListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid operations listen address: %w", err)
+		}
+		ordererConfig.OperationsListenAddress = opts.OperationsListenAddress
+	}
+	if opts.DomainNames != nil {
+		ordererConfig.DomainNames = opts.DomainNames
+	}
+	if opts.Env != nil {
+		ordererConfig.Env = opts.Env
+	}
+
+	// Validate all addresses together for port conflicts
+	if err := s.validateFabricOrdererAddresses(ordererConfig); err != nil {
+		return nil, err
+	}
+
+	// Update the config in the database
+	configBytes, err := json.Marshal(ordererConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
+	}
+
+	node, err = s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+		ID: opts.NodeID,
+		Config: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Return updated node response
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// SynchronizePeerConfig synchronizes the peer's configuration files and service
+func (s *NodeService) SynchronizePeerConfig(ctx context.Context, nodeID int64) error {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricPeer {
+		return fmt.Errorf("node %d is not a Fabric peer", nodeID)
+	}
+
+	// Load node config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer config type")
+	}
+
+	// Get organization
+	org, err := s.orgService.GetOrganization(ctx, peerConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get local peer instance
+	localPeer := s.getPeerFromConfig(node, org, peerConfig)
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer deployment config type")
+	}
+
+	// Synchronize configuration
+	if err := localPeer.SynchronizeConfig(peerDeployConfig); err != nil {
+		return fmt.Errorf("failed to synchronize peer config: %w", err)
+	}
+
+	// Get home directory
+	// homeDir, err := os.UserHomeDir()
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get home directory: %w", err)
+	// }
+
+	// // Update systemd service if running on Linux
+	// if runtime.GOOS == "linux" {
+	// 	if err := localPeer.UpdateSystemdService(); err != nil {
+	// 		return fmt.Errorf("failed to update systemd service: %w", err)
+	// 	}
+	// }
 
 	return nil
 }

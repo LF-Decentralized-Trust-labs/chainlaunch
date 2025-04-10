@@ -1,36 +1,39 @@
-import { GetNodesDefaultsFabricPeerResponse, GetNodesDefaultsFabricOrdererResponse } from '@/api/client'
+import { GetNodesDefaultsFabricOrdererResponse, GetNodesDefaultsFabricPeerResponse } from '@/api/client'
 import { Button } from '@/components/ui/button'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo } from 'react'
+import { Trash2 } from 'lucide-react'
+import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
 const fabricNodeFormSchema = z.object({
-	name: z.string().min(2, 'Name must be at least 2 characters'),
+	name: z.string().min(1, 'Name is required'),
 	fabricProperties: z.object({
 		nodeType: z.enum(['FABRIC_PEER', 'FABRIC_ORDERER']),
-		mode: z.enum(['docker', 'service'], {
-			required_error: 'Mode is required',
-			invalid_type_error: 'Mode must be either docker or service',
-		}),
-		version: z.enum(['2.5.12', '3.0.0'], {
-			required_error: 'Version is required',
-			invalid_type_error: 'Invalid version selected',
-		}),
-		organizationId: z.number().min(1, 'Organization is required'),
-		listenAddress: z.string().min(1, 'Listen address is required'),
-		operationsListenAddress: z.string().min(1, 'Operations listen address is required'),
-		externalEndpoint: z.string().optional(),
+		mode: z.enum(['docker', 'service']),
+		version: z.string(),
+		organizationId: z.number().optional(),
+		listenAddress: z.string(),
+		operationsListenAddress: z.string(),
+		externalEndpoint: z.string(),
 		domains: z.array(z.string()).optional(),
-		// Peer-specific fields
 		chaincodeAddress: z.string().optional(),
 		eventsAddress: z.string().optional(),
-		// Orderer-specific fields
 		adminAddress: z.string().optional(),
+		addressOverrides: z
+			.array(
+				z.object({
+					from: z.string(),
+					to: z.string(),
+					tlsCACert: z.string(),
+				})
+			)
+			.optional(),
 	}),
 })
 
@@ -63,13 +66,14 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 				operationsListenAddress: defaults?.operationsListenAddress || '',
 				externalEndpoint: defaults?.externalEndpoint || '',
 				domains: [],
+				addressOverrides: [],
 			},
 		},
 	})
 	const values = useWatch({ control: form.control })
 
 	useEffect(() => {
-		onChange?.(values)
+		onChange?.(values as FabricNodeFormValues)
 	}, [values])
 
 	const nodeType = form.watch('fabricProperties.nodeType')
@@ -303,6 +307,89 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 							)}
 						/>
 					</div>
+				</div>
+
+				<div className="space-y-4">
+					<h3 className="text-lg font-medium">Address Overrides</h3>
+					<FormField
+						control={form.control}
+						name="fabricProperties.addressOverrides"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Address Overrides</FormLabel>
+								<FormDescription>Configure address overrides for the node</FormDescription>
+								<div className="space-y-4">
+									{field.value?.map((override, index) => (
+										<div key={index} className="flex gap-4 items-start">
+											<div className="flex-1">
+												<FormControl>
+													<Input
+														placeholder="From address"
+														value={override.from}
+														onChange={(e) => {
+															const newOverrides = [...(field.value || [])]
+															newOverrides[index] = { ...override, from: e.target.value }
+															field.onChange(newOverrides)
+														}}
+													/>
+												</FormControl>
+											</div>
+											<div className="flex-1">
+												<FormControl>
+													<Input
+														placeholder="To address"
+														value={override.to}
+														onChange={(e) => {
+															const newOverrides = [...(field.value || [])]
+															newOverrides[index] = { ...override, to: e.target.value }
+															field.onChange(newOverrides)
+														}}
+													/>
+												</FormControl>
+											</div>
+											<div className="flex-1">
+												<FormControl>
+													<Textarea
+														placeholder="TLS CA Certificate"
+														className="font-mono text-xs"
+														value={override.tlsCACert}
+														onChange={(e) => {
+															const newOverrides = [...(field.value || [])]
+															newOverrides[index] = { ...override, tlsCACert: e.target.value }
+															field.onChange(newOverrides)
+														}}
+													/>
+												</FormControl>
+											</div>
+											<Button
+												type="button"
+												variant="destructive"
+												size="icon"
+												onClick={() => {
+													const newOverrides = [...(field.value || [])]
+													newOverrides.splice(index, 1)
+													field.onChange(newOverrides)
+												}}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</div>
+									))}
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											const newOverrides = [...(field.value || []), { from: '', to: '', tlsCACert: '' }]
+											field.onChange(newOverrides)
+										}}
+									>
+										Add Address Override
+									</Button>
+								</div>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 				</div>
 
 				{nodeType === 'FABRIC_PEER' && (

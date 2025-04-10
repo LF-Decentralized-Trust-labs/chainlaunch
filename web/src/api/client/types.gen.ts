@@ -654,6 +654,18 @@ export type HttpUpdateBatchTimeoutPayload = {
     timeout: string;
 };
 
+export type HttpUpdateBesuNodeRequest = {
+    env?: {
+        [key: string]: string;
+    };
+    networkConfig?: {
+        [key: string]: string;
+    };
+    p2pPort?: number;
+    rpcPort?: number;
+    wsPort?: number;
+};
+
 export type HttpUpdateConsenterPayload = {
     client_tls_cert: string;
     host: string;
@@ -673,6 +685,44 @@ export type HttpUpdateEtcdRaftOptionsPayload = {
 
 export type HttpUpdateFabricNetworkRequest = {
     operations: Array<HttpConfigUpdateOperationRequest>;
+};
+
+export type HttpUpdateFabricOrdererRequest = {
+    adminAddress?: string;
+    domainNames?: Array<string>;
+    env?: {
+        [key: string]: string;
+    };
+    externalEndpoint?: string;
+    listenAddress?: string;
+    operationsListenAddress?: string;
+};
+
+export type HttpUpdateFabricPeerRequest = {
+    addressOverrides?: Array<TypesAddressOverride>;
+    chaincodeAddress?: string;
+    domainNames?: Array<string>;
+    env?: {
+        [key: string]: string;
+    };
+    eventsAddress?: string;
+    externalEndpoint?: string;
+    listenAddress?: string;
+    operationsListenAddress?: string;
+};
+
+export type HttpUpdateNodeRequest = {
+    besuNode?: HttpUpdateBesuNodeRequest;
+    blockchainPlatform?: TypesBlockchainPlatform;
+    fabricOrderer?: HttpUpdateFabricOrdererRequest;
+    /**
+     * Platform-specific configurations
+     */
+    fabricPeer?: HttpUpdateFabricPeerRequest;
+    /**
+     * Common fields
+     */
+    name?: string;
 };
 
 export type HttpUpdateOrgMspPayload = {
@@ -883,6 +933,7 @@ export type ServiceFabricOrdererProperties = {
 };
 
 export type ServiceFabricPeerProperties = {
+    addressOverrides?: Array<TypesAddressOverride>;
     chaincodeAddress?: string;
     domainNames?: Array<string>;
     eventsAddress?: string;
@@ -904,6 +955,7 @@ export type ServiceFabricPeerProperties = {
     tlsCaCert?: string;
     tlsCert?: string;
     tlsKeyId?: number;
+    version?: string;
 };
 
 export type ServiceMode = 'service' | 'docker';
@@ -969,6 +1021,12 @@ export type ServiceTransaction = {
     type?: string;
 };
 
+export type TypesAddressOverride = {
+    from?: string;
+    tlsCACert?: string;
+    to?: string;
+};
+
 export type TypesBesuNodeConfig = {
     bootNodes?: Array<string>;
     env?: {
@@ -995,6 +1053,10 @@ export type TypesBesuNodeConfig = {
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
 
 export type TypesFabricOrdererConfig = {
+    /**
+     * @Description Address overrides for the orderer
+     */
+    addressOverrides?: Array<TypesAddressOverride>;
     adminAddress?: string;
     domainNames?: Array<string>;
     env?: {
@@ -1024,6 +1086,10 @@ export type TypesFabricOrdererConfig = {
  * Configuration for creating a new Fabric peer node
  */
 export type TypesFabricPeerConfig = {
+    /**
+     * @Description Address overrides for the peer
+     */
+    addressOverrides?: Array<TypesAddressOverride>;
     /**
      * @Description Chaincode listen address
      */
@@ -1067,6 +1133,10 @@ export type TypesFabricPeerConfig = {
      */
     operationsListenAddress?: string;
     /**
+     * @Description Orderer address overrides for the peer
+     */
+    ordererAddressOverrides?: Array<TypesOrdererAddressOverride>;
+    /**
      * @Description Organization ID that owns this peer
      */
     organizationId: number;
@@ -1083,6 +1153,21 @@ export type TypesFabricPeerConfig = {
 export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
+
+export type TypesOrdererAddressOverride = {
+    /**
+     * @Description Original orderer address
+     */
+    from: string;
+    /**
+     * @Description TLS CA certificate in PEM format
+     */
+    tlsCACert: string;
+    /**
+     * @Description New orderer address to use
+     */
+    to: string;
+};
 
 export type UrlUrl = {
     /**
@@ -3666,6 +3751,47 @@ export type GetNodesByIdResponses = {
 };
 
 export type GetNodesByIdResponse = GetNodesByIdResponses[keyof GetNodesByIdResponses];
+
+export type PutNodesByIdData = {
+    /**
+     * Update node request
+     */
+    body: HttpUpdateNodeRequest;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}';
+};
+
+export type PutNodesByIdErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PutNodesByIdError = PutNodesByIdErrors[keyof PutNodesByIdErrors];
+
+export type PutNodesByIdResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeResponse;
+};
+
+export type PutNodesByIdResponse = PutNodesByIdResponses[keyof PutNodesByIdResponses];
 
 export type PostNodesByIdCertificatesRenewData = {
     body?: never;

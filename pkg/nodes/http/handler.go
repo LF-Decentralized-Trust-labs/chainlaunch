@@ -61,6 +61,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/events", response.Middleware(h.GetNodeEvents))
 		r.Get("/{id}/channels", response.Middleware(h.GetNodeChannels))
 		r.Post("/{id}/certificates/renew", response.Middleware(h.RenewCertificates))
+		r.Put("/{id}", response.Middleware(h.UpdateNode))
 	})
 }
 
@@ -724,4 +725,137 @@ func (h *NodeHandler) RenewCertificates(w http.ResponseWriter, r *http.Request) 
 	}
 
 	return response.WriteJSON(w, http.StatusOK, toNodeResponse(node))
+}
+
+// UpdateNode godoc
+// @Summary Update a node
+// @Description Updates an existing node's configuration based on its type
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Param request body UpdateNodeRequest true "Update node request"
+// @Success 200 {object} NodeResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id} [put]
+func (h *NodeHandler) UpdateNode(w http.ResponseWriter, r *http.Request) error {
+	nodeID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	var req UpdateNodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	// Get the node to determine its type
+	node, err := h.service.GetNode(r.Context(), nodeID)
+	if err != nil {
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to get node", err, nil)
+	}
+
+	switch node.NodeType {
+	case types.NodeTypeFabricPeer:
+		if req.FabricPeer == nil {
+			return errors.NewValidationError("fabricPeer configuration is required for Fabric peer nodes", nil)
+		}
+		return h.updateFabricPeer(w, r, nodeID, req.FabricPeer)
+	case types.NodeTypeFabricOrderer:
+		if req.FabricOrderer == nil {
+			return errors.NewValidationError("fabricOrderer configuration is required for Fabric orderer nodes", nil)
+		}
+		return h.updateFabricOrderer(w, r, nodeID, req.FabricOrderer)
+	// TODO: Fix later
+	// case types.NodeTypeBesuFullnode:
+	// 	if req.BesuNode == nil {
+	// 		return errors.NewValidationError("besuNode configuration is required for Besu nodes", nil)
+	// 	}
+	// 	return h.updateBesuNode(w, r, nodeID, req.BesuNode)
+	default:
+		return errors.NewValidationError("unsupported node type", map[string]interface{}{
+			"nodeType": node.NodeType,
+		})
+	}
+}
+
+// updateFabricPeer handles updating a Fabric peer node
+func (h *NodeHandler) updateFabricPeer(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateFabricPeerRequest) error {
+	opts := service.UpdateFabricPeerOpts{
+		NodeID: nodeID,
+	}
+
+	if req.ExternalEndpoint != nil {
+		opts.ExternalEndpoint = *req.ExternalEndpoint
+	}
+	if req.ListenAddress != nil {
+		opts.ListenAddress = *req.ListenAddress
+	}
+	if req.EventsAddress != nil {
+		opts.EventsAddress = *req.EventsAddress
+	}
+	if req.OperationsListenAddress != nil {
+		opts.OperationsListenAddress = *req.OperationsListenAddress
+	}
+	if req.ChaincodeAddress != nil {
+		opts.ChaincodeAddress = *req.ChaincodeAddress
+	}
+	if req.DomainNames != nil {
+		opts.DomainNames = req.DomainNames
+	}
+	if req.Env != nil {
+		opts.Env = req.Env
+	}
+	if req.AddressOverrides != nil {
+		opts.AddressOverrides = req.AddressOverrides
+	}
+
+	updatedNode, err := h.service.UpdateFabricPeer(r.Context(), opts)
+	if err != nil {
+		return errors.NewInternalError("failed to update peer", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
+}
+
+// updateFabricOrderer handles updating a Fabric orderer node
+func (h *NodeHandler) updateFabricOrderer(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateFabricOrdererRequest) error {
+	opts := service.UpdateFabricOrdererOpts{
+		NodeID: nodeID,
+	}
+
+	if req.ExternalEndpoint != nil {
+		opts.ExternalEndpoint = *req.ExternalEndpoint
+	}
+	if req.ListenAddress != nil {
+		opts.ListenAddress = *req.ListenAddress
+	}
+	if req.AdminAddress != nil {
+		opts.AdminAddress = *req.AdminAddress
+	}
+	if req.OperationsListenAddress != nil {
+		opts.OperationsListenAddress = *req.OperationsListenAddress
+	}
+	if req.DomainNames != nil {
+		opts.DomainNames = req.DomainNames
+	}
+	if req.Env != nil {
+		opts.Env = req.Env
+	}
+
+	updatedNode, err := h.service.UpdateFabricOrderer(r.Context(), opts)
+	if err != nil {
+		return errors.NewInternalError("failed to update orderer", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
 }

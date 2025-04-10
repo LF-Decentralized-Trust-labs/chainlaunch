@@ -3323,6 +3323,63 @@
                     }
                 }
             },
+            "put": {
+                "description": "Updates an existing node's configuration based on its type",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Update a node",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update node request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.UpdateNodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.NodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "description": "Delete a node by ID",
                 "consumes": [
@@ -5743,6 +5800,32 @@
                 }
             }
         },
+        "http.UpdateBesuNodeRequest": {
+            "type": "object",
+            "properties": {
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "networkConfig": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "p2pPort": {
+                    "type": "integer"
+                },
+                "rpcPort": {
+                    "type": "integer"
+                },
+                "wsPort": {
+                    "type": "integer"
+                }
+            }
+        },
         "http.UpdateConsenterPayload": {
             "type": "object",
             "required": [
@@ -5821,6 +5904,99 @@
                     "items": {
                         "$ref": "#/definitions/http.ConfigUpdateOperationRequest"
                     }
+                }
+            }
+        },
+        "http.UpdateFabricOrdererRequest": {
+            "type": "object",
+            "properties": {
+                "adminAddress": {
+                    "type": "string"
+                },
+                "domainNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "externalEndpoint": {
+                    "type": "string"
+                },
+                "listenAddress": {
+                    "type": "string"
+                },
+                "operationsListenAddress": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.UpdateFabricPeerRequest": {
+            "type": "object",
+            "properties": {
+                "addressOverrides": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AddressOverride"
+                    }
+                },
+                "chaincodeAddress": {
+                    "type": "string"
+                },
+                "domainNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "eventsAddress": {
+                    "type": "string"
+                },
+                "externalEndpoint": {
+                    "type": "string"
+                },
+                "listenAddress": {
+                    "type": "string"
+                },
+                "operationsListenAddress": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.UpdateNodeRequest": {
+            "type": "object",
+            "properties": {
+                "besuNode": {
+                    "$ref": "#/definitions/http.UpdateBesuNodeRequest"
+                },
+                "blockchainPlatform": {
+                    "$ref": "#/definitions/types.BlockchainPlatform"
+                },
+                "fabricOrderer": {
+                    "$ref": "#/definitions/http.UpdateFabricOrdererRequest"
+                },
+                "fabricPeer": {
+                    "description": "Platform-specific configurations",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.UpdateFabricPeerRequest"
+                        }
+                    ]
+                },
+                "name": {
+                    "description": "Common fields",
+                    "type": "string"
                 }
             }
         },
@@ -6453,6 +6629,12 @@
         "service.FabricPeerProperties": {
             "type": "object",
             "properties": {
+                "addressOverrides": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AddressOverride"
+                    }
+                },
                 "chaincodeAddress": {
                     "type": "string"
                 },
@@ -6502,6 +6684,9 @@
                 },
                 "tlsKeyId": {
                     "type": "integer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -6673,6 +6858,20 @@
                 }
             }
         },
+        "types.AddressOverride": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string"
+                },
+                "tlsCACert": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
         "types.BesuNodeConfig": {
             "type": "object",
             "required": [
@@ -6753,6 +6952,13 @@
                 "organizationId"
             ],
             "properties": {
+                "addressOverrides": {
+                    "description": "@Description Address overrides for the orderer",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AddressOverride"
+                    }
+                },
                 "adminAddress": {
                     "type": "string"
                 },
@@ -6811,6 +7017,13 @@
                 "organizationId"
             ],
             "properties": {
+                "addressOverrides": {
+                    "description": "@Description Address overrides for the peer",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AddressOverride"
+                    }
+                },
                 "chaincodeAddress": {
                     "description": "@Description Chaincode listen address",
                     "type": "string",
@@ -6865,6 +7078,13 @@
                     "type": "string",
                     "example": "0.0.0.0:9443"
                 },
+                "ordererAddressOverrides": {
+                    "description": "@Description Orderer address overrides for the peer",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.OrdererAddressOverride"
+                    }
+                },
                 "organizationId": {
                     "description": "@Description Organization ID that owns this peer",
                     "type": "integer",
@@ -6915,6 +7135,28 @@
                 "NodeTypeFabricOrderer",
                 "NodeTypeBesuFullnode"
             ]
+        },
+        "types.OrdererAddressOverride": {
+            "type": "object",
+            "required": [
+                "from",
+                "tlsCACert",
+                "to"
+            ],
+            "properties": {
+                "from": {
+                    "description": "@Description Original orderer address",
+                    "type": "string"
+                },
+                "tlsCACert": {
+                    "description": "@Description TLS CA certificate in PEM format",
+                    "type": "string"
+                },
+                "to": {
+                    "description": "@Description New orderer address to use",
+                    "type": "string"
+                }
+            }
         },
         "url.URL": {
             "type": "object",

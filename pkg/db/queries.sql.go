@@ -3970,6 +3970,46 @@ func (q *Queries) UpdateBackupTarget(ctx context.Context, arg UpdateBackupTarget
 	return i, err
 }
 
+const updateDeploymentConfig = `-- name: UpdateDeploymentConfig :one
+UPDATE nodes
+SET deployment_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+`
+
+type UpdateDeploymentConfigParams struct {
+	DeploymentConfig sql.NullString `json:"deployment_config"`
+	ID               int64          `json:"id"`
+}
+
+func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg UpdateDeploymentConfigParams) (Node, error) {
+	row := q.queryRow(ctx, q.updateDeploymentConfigStmt, updateDeploymentConfig, arg.DeploymentConfig, arg.ID)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Platform,
+		&i.Status,
+		&i.Description,
+		&i.NetworkID,
+		&i.Config,
+		&i.Resources,
+		&i.Endpoint,
+		&i.PublicEndpoint,
+		&i.P2pAddress,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.FabricOrganizationID,
+		&i.NodeType,
+		&i.NodeConfig,
+		&i.DeploymentConfig,
+	)
+	return i, err
+}
+
 const updateFabricOrganization = `-- name: UpdateFabricOrganization :one
 UPDATE fabric_organizations
 SET description = ?
@@ -4266,6 +4306,46 @@ type UpdateNetworkStatusParams struct {
 func (q *Queries) UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStatusParams) error {
 	_, err := q.exec(ctx, q.updateNetworkStatusStmt, updateNetworkStatus, arg.Status, arg.ID)
 	return err
+}
+
+const updateNodeConfig = `-- name: UpdateNodeConfig :one
+UPDATE nodes
+SET config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+`
+
+type UpdateNodeConfigParams struct {
+	Config sql.NullString `json:"config"`
+	ID     int64          `json:"id"`
+}
+
+func (q *Queries) UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error) {
+	row := q.queryRow(ctx, q.updateNodeConfigStmt, updateNodeConfig, arg.Config, arg.ID)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Platform,
+		&i.Status,
+		&i.Description,
+		&i.NetworkID,
+		&i.Config,
+		&i.Resources,
+		&i.Endpoint,
+		&i.PublicEndpoint,
+		&i.P2pAddress,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.FabricOrganizationID,
+		&i.NodeType,
+		&i.NodeConfig,
+		&i.DeploymentConfig,
+	)
+	return i, err
 }
 
 const updateNodeDeploymentConfig = `-- name: UpdateNodeDeploymentConfig :one

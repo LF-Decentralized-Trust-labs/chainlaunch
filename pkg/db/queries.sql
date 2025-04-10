@@ -268,6 +268,21 @@ WHERE id = ?
 RETURNING *;
 
 
+-- name: UpdateNodeConfig :one
+UPDATE nodes
+SET config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdateDeploymentConfig :one
+UPDATE nodes
+SET deployment_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+
 -- name: UpdateNodeStatus :one
 UPDATE nodes
 SET status = ?,

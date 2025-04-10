@@ -47,3 +47,9 @@ type StoredConfig struct {
 	Type   string          `json:"type"`
 	Config json.RawMessage `json:"config"`
 }
+
+type AddressOverride struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	TLSCACert string `json:"tlsCACert"`
+}

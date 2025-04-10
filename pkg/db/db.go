@@ -366,6 +366,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateBackupTargetStmt, err = db.PrepareContext(ctx, updateBackupTarget); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateBackupTarget: %w", err)
 	}
+	if q.updateDeploymentConfigStmt, err = db.PrepareContext(ctx, updateDeploymentConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateDeploymentConfig: %w", err)
+	}
 	if q.updateFabricOrganizationStmt, err = db.PrepareContext(ctx, updateFabricOrganization); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateFabricOrganization: %w", err)
 	}
@@ -389,6 +392,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.updateNetworkStatusStmt, err = db.PrepareContext(ctx, updateNetworkStatus); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateNetworkStatus: %w", err)
+	}
+	if q.updateNodeConfigStmt, err = db.PrepareContext(ctx, updateNodeConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateNodeConfig: %w", err)
 	}
 	if q.updateNodeDeploymentConfigStmt, err = db.PrepareContext(ctx, updateNodeDeploymentConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateNodeDeploymentConfig: %w", err)
@@ -989,6 +995,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateBackupTargetStmt: %w", cerr)
 		}
 	}
+	if q.updateDeploymentConfigStmt != nil {
+		if cerr := q.updateDeploymentConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateDeploymentConfigStmt: %w", cerr)
+		}
+	}
 	if q.updateFabricOrganizationStmt != nil {
 		if cerr := q.updateFabricOrganizationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateFabricOrganizationStmt: %w", cerr)
@@ -1027,6 +1038,11 @@ func (q *Queries) Close() error {
 	if q.updateNetworkStatusStmt != nil {
 		if cerr := q.updateNetworkStatusStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateNetworkStatusStmt: %w", cerr)
+		}
+	}
+	if q.updateNodeConfigStmt != nil {
+		if cerr := q.updateNodeConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateNodeConfigStmt: %w", cerr)
 		}
 	}
 	if q.updateNodeDeploymentConfigStmt != nil {
@@ -1222,6 +1238,7 @@ type Queries struct {
 	updateBackupSizeStmt                      *sql.Stmt
 	updateBackupStatusStmt                    *sql.Stmt
 	updateBackupTargetStmt                    *sql.Stmt
+	updateDeploymentConfigStmt                *sql.Stmt
 	updateFabricOrganizationStmt              *sql.Stmt
 	updateKeyStmt                             *sql.Stmt
 	updateKeyProviderStmt                     *sql.Stmt
@@ -1230,6 +1247,7 @@ type Queries struct {
 	updateNetworkNodeRoleStmt                 *sql.Stmt
 	updateNetworkNodeStatusStmt               *sql.Stmt
 	updateNetworkStatusStmt                   *sql.Stmt
+	updateNodeConfigStmt                      *sql.Stmt
 	updateNodeDeploymentConfigStmt            *sql.Stmt
 	updateNodeEndpointStmt                    *sql.Stmt
 	updateNodePublicEndpointStmt              *sql.Stmt
@@ -1358,6 +1376,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateBackupSizeStmt:                      q.updateBackupSizeStmt,
 		updateBackupStatusStmt:                    q.updateBackupStatusStmt,
 		updateBackupTargetStmt:                    q.updateBackupTargetStmt,
+		updateDeploymentConfigStmt:                q.updateDeploymentConfigStmt,
 		updateFabricOrganizationStmt:              q.updateFabricOrganizationStmt,
 		updateKeyStmt:                             q.updateKeyStmt,
 		updateKeyProviderStmt:                     q.updateKeyProviderStmt,
@@ -1366,6 +1385,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateNetworkNodeRoleStmt:                 q.updateNetworkNodeRoleStmt,
 		updateNetworkNodeStatusStmt:               q.updateNetworkNodeStatusStmt,
 		updateNetworkStatusStmt:                   q.updateNetworkStatusStmt,
+		updateNodeConfigStmt:                      q.updateNodeConfigStmt,
 		updateNodeDeploymentConfigStmt:            q.updateNodeDeploymentConfigStmt,
 		updateNodeEndpointStmt:                    q.updateNodeEndpointStmt,
 		updateNodePublicEndpointStmt:              q.updateNodePublicEndpointStmt,

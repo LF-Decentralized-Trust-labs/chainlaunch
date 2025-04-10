@@ -125,6 +125,7 @@ type Querier interface {
 	UpdateBackupSize(ctx context.Context, arg UpdateBackupSizeParams) (Backup, error)
 	UpdateBackupStatus(ctx context.Context, arg UpdateBackupStatusParams) (Backup, error)
 	UpdateBackupTarget(ctx context.Context, arg UpdateBackupTargetParams) (BackupTarget, error)
+	UpdateDeploymentConfig(ctx context.Context, arg UpdateDeploymentConfigParams) (Node, error)
 	UpdateFabricOrganization(ctx context.Context, arg UpdateFabricOrganizationParams) (FabricOrganization, error)
 	UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, error)
 	UpdateKeyProvider(ctx context.Context, arg UpdateKeyProviderParams) (KeyProvider, error)
@@ -133,6 +134,7 @@ type Querier interface {
 	UpdateNetworkNodeRole(ctx context.Context, arg UpdateNetworkNodeRoleParams) (NetworkNode, error)
 	UpdateNetworkNodeStatus(ctx context.Context, arg UpdateNetworkNodeStatusParams) (NetworkNode, error)
 	UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStatusParams) error
+	UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error)
 	UpdateNodeDeploymentConfig(ctx context.Context, arg UpdateNodeDeploymentConfigParams) (Node, error)
 	UpdateNodeEndpoint(ctx context.Context, arg UpdateNodeEndpointParams) (Node, error)
 	UpdateNodePublicEndpoint(ctx context.Context, arg UpdateNodePublicEndpointParams) (Node, error)

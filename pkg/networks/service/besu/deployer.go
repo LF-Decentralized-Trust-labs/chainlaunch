@@ -139,7 +139,7 @@ func (d *BesuDeployer) CreateGenesisBlock(networkID int64, config interface{}) (
 	}
 
 	// Update network with genesis block
-	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), db.UpdateNetworkGenesisBlockParams{
+	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), &db.UpdateNetworkGenesisBlockParams{
 		ID: networkID,
 		GenesisBlockB64: sql.NullString{
 			String: string(genesisJSON),
@@ -152,7 +152,7 @@ func (d *BesuDeployer) CreateGenesisBlock(networkID int64, config interface{}) (
 
 	// Create network nodes
 	for _, validator := range validators {
-		_, err = d.db.CreateNetworkNode(ctx, db.CreateNetworkNodeParams{
+		_, err = d.db.CreateNetworkNode(ctx, &db.CreateNetworkNodeParams{
 			NetworkID: networkID,
 			NodeID:    validator.ID,
 			Status:    "pending",
@@ -287,7 +287,7 @@ func (d *BesuDeployer) ImportNetwork(ctx context.Context, genesisFile []byte, na
 	networkID := uuid.New().String()
 
 	// Create network in database
-	_, err := d.db.CreateNetworkFull(ctx, db.CreateNetworkFullParams{
+	_, err := d.db.CreateNetworkFull(ctx, &db.CreateNetworkFullParams{
 		Name:        name,
 		Platform:    "besu",
 		Description: sql.NullString{String: description, Valid: description != ""},

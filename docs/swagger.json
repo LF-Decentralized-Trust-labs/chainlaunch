@@ -4607,6 +4607,150 @@
                     }
                 }
             }
+        },
+        "/settings": {
+            "get": {
+                "description": "Get a list of all settings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "List all settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.Setting"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new setting with the provided configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Create a new setting",
+                "parameters": [
+                    {
+                        "description": "Setting configuration",
+                        "name": "setting",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CreateSettingParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.Setting"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings/{id}": {
+            "get": {
+                "description": "Get a setting's details by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get a setting by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Setting ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.Setting"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing setting by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update a setting",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Setting ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated setting configuration",
+                        "name": "setting",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UpdateSettingParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.Setting"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a setting by its ID",
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Delete a setting",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Setting ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -6834,6 +6978,15 @@
                 }
             }
         },
+        "service.CreateSettingParams": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
         "service.FabricOrdererProperties": {
             "type": "object",
             "properties": {
@@ -7095,6 +7248,24 @@
                 }
             }
         },
+        "service.Setting": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "service.Transaction": {
             "type": "object",
             "properties": {
@@ -7118,6 +7289,15 @@
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "service.UpdateSettingParams": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },

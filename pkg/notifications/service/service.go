@@ -48,7 +48,7 @@ func (s *NotificationService) CreateProvider(ctx context.Context, params notific
 		}
 	}
 
-	provider, err := s.queries.CreateNotificationProvider(ctx, db.CreateNotificationProviderParams{
+	provider, err := s.queries.CreateNotificationProvider(ctx, &db.CreateNotificationProviderParams{
 		Type:                    string(params.Type),
 		Name:                    params.Name,
 		Config:                  string(configJSON),
@@ -84,7 +84,7 @@ func (s *NotificationService) UpdateProvider(ctx context.Context, params notific
 		}
 	}
 
-	provider, err := s.queries.UpdateNotificationProvider(ctx, db.UpdateNotificationProviderParams{
+	provider, err := s.queries.UpdateNotificationProvider(ctx, &db.UpdateNotificationProviderParams{
 		ID:                      params.ID,
 		Type:                    string(params.Type),
 		Name:                    params.Name,
@@ -181,7 +181,7 @@ func (s *NotificationService) TestProvider(ctx context.Context, id int64, params
 	}
 
 	// Update provider with test results
-	_, err = s.queries.UpdateProviderTestResults(ctx, db.UpdateProviderTestResultsParams{
+	_, err = s.queries.UpdateProviderTestResults(ctx, &db.UpdateProviderTestResultsParams{
 		ID:              id,
 		LastTestAt:      sql.NullTime{Time: time.Now(), Valid: true},
 		LastTestStatus:  sql.NullString{String: testStatus, Valid: true},
@@ -271,7 +271,7 @@ func (s *NotificationService) sendEmail(config notifications.SMTPConfig, from st
 	}
 }
 
-func (s *NotificationService) providerToDTO(provider db.NotificationProvider, config interface{}) *notifications.NotificationProvider {
+func (s *NotificationService) providerToDTO(provider *db.NotificationProvider, config interface{}) *notifications.NotificationProvider {
 	return &notifications.NotificationProvider{
 		ID:                  provider.ID,
 		Type:                notifications.ProviderType(provider.Type),

@@ -51,7 +51,7 @@ func (s *KeyManagementService) InitializeKeyProviders(ctx context.Context) error
 			return err
 		}
 		// Create default provider
-		_, err = s.queries.CreateKeyProvider(ctx, db.CreateKeyProviderParams{
+		_, err = s.queries.CreateKeyProvider(ctx, &db.CreateKeyProviderParams{
 			Name:      "Default Database Provider",
 			Type:      "DATABASE",
 			IsDefault: 1,
@@ -140,7 +140,7 @@ func (s *KeyManagementService) GetKeys(ctx context.Context, page, pageSize int) 
 	offset := (page - 1) * pageSize
 
 	// Get keys with pagination
-	keys, err := s.queries.ListKeys(ctx, db.ListKeysParams{
+	keys, err := s.queries.ListKeys(ctx, &db.ListKeysParams{
 		Limit:  int64(pageSize),
 		Offset: int64(offset),
 	})
@@ -252,7 +252,7 @@ func (s *KeyManagementService) CreateProvider(ctx context.Context, req models.Cr
 		return nil, err
 	}
 
-	provider, err := s.queries.CreateKeyProvider(ctx, db.CreateKeyProviderParams{
+	provider, err := s.queries.CreateKeyProvider(ctx, &db.CreateKeyProviderParams{
 		Name:      req.Name,
 		Type:      string(req.Type),
 		IsDefault: int64(req.IsDefault),
@@ -319,7 +319,7 @@ func (s *KeyManagementService) DeleteProvider(ctx context.Context, id int) error
 	return nil
 }
 
-func mapProviderToResponse(provider db.KeyProvider) *models.ProviderResponse {
+func mapProviderToResponse(provider *db.KeyProvider) *models.ProviderResponse {
 	return &models.ProviderResponse{
 		ID:        int(provider.ID),
 		Name:      provider.Name,
@@ -550,14 +550,14 @@ func (s *KeyManagementService) GetDecryptedPrivateKey(id int) (string, error) {
 
 // FilterKeys returns keys filtered by algorithm and/or curve
 func (s *KeyManagementService) FilterKeys(ctx context.Context, algorithm, curve string, page, pageSize int) (*models.PaginatedResponse, error) {
-	var keys []db.Key
+	var keys []*db.Key
 	var err error
 
 	if curve != "" {
 		// If curve is specified, use GetKeysByProviderAndCurve
 		// TODO: Get provider ID from context or configuration
 		providerID := int64(1)
-		keys, err = s.queries.GetKeysByProviderAndCurve(ctx, db.GetKeysByProviderAndCurveParams{
+		keys, err = s.queries.GetKeysByProviderAndCurve(ctx, &db.GetKeysByProviderAndCurveParams{
 			ProviderID: providerID,
 			Curve:      sql.NullString{String: curve, Valid: true},
 		})
@@ -641,7 +641,7 @@ func (s *KeyManagementService) SetSigningKeyIDForKey(ctx context.Context, keyID,
 	}
 
 	// Update the key with the signing key ID
-	params := db.UpdateKeyParams{
+	params := &db.UpdateKeyParams{
 		ID:                key.ID,
 		Name:              key.Name,
 		Description:       key.Description,
@@ -669,7 +669,6 @@ func (s *KeyManagementService) SetSigningKeyIDForKey(ctx context.Context, keyID,
 
 	return nil
 }
-
 
 // RenewCertificate renews a certificate using the same keypair and CA that was used to generate it
 func (s *KeyManagementService) RenewCertificate(ctx context.Context, keyID int, certReq models.CertificateRequest) (*models.KeyResponse, error) {

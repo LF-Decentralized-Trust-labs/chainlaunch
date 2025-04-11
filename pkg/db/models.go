@@ -11,45 +11,45 @@ import (
 
 type Backup struct {
 	ID               int64          `json:"id"`
-	ScheduleID       sql.NullInt64  `json:"schedule_id"`
-	TargetID         int64          `json:"target_id"`
+	ScheduleID       sql.NullInt64  `json:"scheduleId"`
+	TargetID         int64          `json:"targetId"`
 	Status           string         `json:"status"`
-	SizeBytes        sql.NullInt64  `json:"size_bytes"`
-	StartedAt        time.Time      `json:"started_at"`
-	CompletedAt      sql.NullTime   `json:"completed_at"`
-	ErrorMessage     sql.NullString `json:"error_message"`
-	CreatedAt        time.Time      `json:"created_at"`
-	NotificationSent int64          `json:"notification_sent"`
+	SizeBytes        sql.NullInt64  `json:"sizeBytes"`
+	StartedAt        time.Time      `json:"startedAt"`
+	CompletedAt      sql.NullTime   `json:"completedAt"`
+	ErrorMessage     sql.NullString `json:"errorMessage"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	NotificationSent int64          `json:"notificationSent"`
 }
 
 type BackupSchedule struct {
 	ID             int64          `json:"id"`
 	Name           string         `json:"name"`
 	Description    sql.NullString `json:"description"`
-	CronExpression string         `json:"cron_expression"`
-	TargetID       int64          `json:"target_id"`
-	RetentionDays  int64          `json:"retention_days"`
+	CronExpression string         `json:"cronExpression"`
+	TargetID       int64          `json:"targetId"`
+	RetentionDays  int64          `json:"retentionDays"`
 	Enabled        bool           `json:"enabled"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      sql.NullTime   `json:"updated_at"`
-	LastRunAt      sql.NullTime   `json:"last_run_at"`
-	NextRunAt      sql.NullTime   `json:"next_run_at"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      sql.NullTime   `json:"updatedAt"`
+	LastRunAt      sql.NullTime   `json:"lastRunAt"`
+	NextRunAt      sql.NullTime   `json:"nextRunAt"`
 }
 
 type BackupTarget struct {
 	ID             int64          `json:"id"`
 	Name           string         `json:"name"`
-	BucketName     sql.NullString `json:"bucket_name"`
+	BucketName     sql.NullString `json:"bucketName"`
 	Region         sql.NullString `json:"region"`
 	Endpoint       sql.NullString `json:"endpoint"`
-	BucketPath     sql.NullString `json:"bucket_path"`
-	AccessKeyID    sql.NullString `json:"access_key_id"`
-	SecretKey      sql.NullString `json:"secret_key"`
-	S3PathStyle    sql.NullBool   `json:"s3_path_style"`
-	ResticPassword sql.NullString `json:"restic_password"`
+	BucketPath     sql.NullString `json:"bucketPath"`
+	AccessKeyID    sql.NullString `json:"accessKeyId"`
+	SecretKey      sql.NullString `json:"secretKey"`
+	S3PathStyle    sql.NullBool   `json:"s3PathStyle"`
+	ResticPassword sql.NullString `json:"resticPassword"`
 	Type           string         `json:"type"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      sql.NullTime   `json:"updated_at"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      sql.NullTime   `json:"updatedAt"`
 }
 
 type BlockchainPlatform struct {
@@ -58,32 +58,32 @@ type BlockchainPlatform struct {
 
 type FabricOrganization struct {
 	ID              int64          `json:"id"`
-	MspID           string         `json:"msp_id"`
+	MspID           string         `json:"mspId"`
 	Description     sql.NullString `json:"description"`
 	Config          sql.NullString `json:"config"`
-	CaConfig        sql.NullString `json:"ca_config"`
-	SignKeyID       sql.NullInt64  `json:"sign_key_id"`
-	TlsRootKeyID    sql.NullInt64  `json:"tls_root_key_id"`
-	AdminTlsKeyID   sql.NullInt64  `json:"admin_tls_key_id"`
-	AdminSignKeyID  sql.NullInt64  `json:"admin_sign_key_id"`
-	ClientSignKeyID sql.NullInt64  `json:"client_sign_key_id"`
-	ProviderID      sql.NullInt64  `json:"provider_id"`
-	CreatedAt       time.Time      `json:"created_at"`
-	CreatedBy       sql.NullInt64  `json:"created_by"`
-	UpdatedAt       sql.NullTime   `json:"updated_at"`
-	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
-	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
+	CaConfig        sql.NullString `json:"caConfig"`
+	SignKeyID       sql.NullInt64  `json:"signKeyId"`
+	TlsRootKeyID    sql.NullInt64  `json:"tlsRootKeyId"`
+	AdminTlsKeyID   sql.NullInt64  `json:"adminTlsKeyId"`
+	AdminSignKeyID  sql.NullInt64  `json:"adminSignKeyId"`
+	ClientSignKeyID sql.NullInt64  `json:"clientSignKeyId"`
+	ProviderID      sql.NullInt64  `json:"providerId"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	CreatedBy       sql.NullInt64  `json:"createdBy"`
+	UpdatedAt       sql.NullTime   `json:"updatedAt"`
+	CrlKeyID        sql.NullInt64  `json:"crlKeyId"`
+	CrlLastUpdate   sql.NullTime   `json:"crlLastUpdate"`
 }
 
 type FabricRevokedCertificate struct {
 	ID                   int64         `json:"id"`
-	FabricOrganizationID int64         `json:"fabric_organization_id"`
-	SerialNumber         string        `json:"serial_number"`
-	RevocationTime       time.Time     `json:"revocation_time"`
+	FabricOrganizationID int64         `json:"fabricOrganizationId"`
+	SerialNumber         string        `json:"serialNumber"`
+	RevocationTime       time.Time     `json:"revocationTime"`
 	Reason               int64         `json:"reason"`
-	IssuerCertificateID  sql.NullInt64 `json:"issuer_certificate_id"`
-	CreatedAt            time.Time     `json:"created_at"`
-	UpdatedAt            time.Time     `json:"updated_at"`
+	IssuerCertificateID  sql.NullInt64 `json:"issuerCertificateId"`
+	CreatedAt            time.Time     `json:"createdAt"`
+	UpdatedAt            time.Time     `json:"updatedAt"`
 }
 
 type Key struct {
@@ -91,34 +91,34 @@ type Key struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
 }
 
 type KeyProvider struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Type      string    `json:"type"`
-	IsDefault int64     `json:"is_default"`
+	IsDefault int64     `json:"isDefault"`
 	Config    string    `json:"config"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type KeyProviderType struct {
@@ -128,30 +128,30 @@ type KeyProviderType struct {
 type Network struct {
 	ID                    int64          `json:"id"`
 	Name                  string         `json:"name"`
-	NetworkID             sql.NullString `json:"network_id"`
+	NetworkID             sql.NullString `json:"networkId"`
 	Platform              string         `json:"platform"`
 	Status                string         `json:"status"`
 	Description           sql.NullString `json:"description"`
 	Config                sql.NullString `json:"config"`
-	DeploymentConfig      sql.NullString `json:"deployment_config"`
-	ExposedPorts          sql.NullString `json:"exposed_ports"`
+	DeploymentConfig      sql.NullString `json:"deploymentConfig"`
+	ExposedPorts          sql.NullString `json:"exposedPorts"`
 	Domain                sql.NullString `json:"domain"`
-	CreatedAt             time.Time      `json:"created_at"`
-	CreatedBy             sql.NullInt64  `json:"created_by"`
-	UpdatedAt             sql.NullTime   `json:"updated_at"`
-	GenesisBlockB64       sql.NullString `json:"genesis_block_b64"`
-	CurrentConfigBlockB64 sql.NullString `json:"current_config_block_b64"`
+	CreatedAt             time.Time      `json:"createdAt"`
+	CreatedBy             sql.NullInt64  `json:"createdBy"`
+	UpdatedAt             sql.NullTime   `json:"updatedAt"`
+	GenesisBlockB64       sql.NullString `json:"genesisBlockB64"`
+	CurrentConfigBlockB64 sql.NullString `json:"currentConfigBlockB64"`
 }
 
 type NetworkNode struct {
 	ID        int64          `json:"id"`
-	NetworkID int64          `json:"network_id"`
-	NodeID    int64          `json:"node_id"`
+	NetworkID int64          `json:"networkId"`
+	NodeID    int64          `json:"nodeId"`
 	Role      string         `json:"role"`
 	Status    string         `json:"status"`
 	Config    sql.NullString `json:"config"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
 type Node struct {
@@ -161,37 +161,37 @@ type Node struct {
 	Platform             string         `json:"platform"`
 	Status               string         `json:"status"`
 	Description          sql.NullString `json:"description"`
-	NetworkID            sql.NullInt64  `json:"network_id"`
+	NetworkID            sql.NullInt64  `json:"networkId"`
 	Config               sql.NullString `json:"config"`
 	Resources            sql.NullString `json:"resources"`
 	Endpoint             sql.NullString `json:"endpoint"`
-	PublicEndpoint       sql.NullString `json:"public_endpoint"`
-	P2pAddress           sql.NullString `json:"p2p_address"`
-	CreatedAt            time.Time      `json:"created_at"`
-	CreatedBy            sql.NullInt64  `json:"created_by"`
-	UpdatedAt            sql.NullTime   `json:"updated_at"`
-	FabricOrganizationID sql.NullInt64  `json:"fabric_organization_id"`
-	NodeType             sql.NullString `json:"node_type"`
-	NodeConfig           sql.NullString `json:"node_config"`
-	DeploymentConfig     sql.NullString `json:"deployment_config"`
+	PublicEndpoint       sql.NullString `json:"publicEndpoint"`
+	P2pAddress           sql.NullString `json:"p2pAddress"`
+	CreatedAt            time.Time      `json:"createdAt"`
+	CreatedBy            sql.NullInt64  `json:"createdBy"`
+	UpdatedAt            sql.NullTime   `json:"updatedAt"`
+	FabricOrganizationID sql.NullInt64  `json:"fabricOrganizationId"`
+	NodeType             sql.NullString `json:"nodeType"`
+	NodeConfig           sql.NullString `json:"nodeConfig"`
+	DeploymentConfig     sql.NullString `json:"deploymentConfig"`
 }
 
 type NodeEvent struct {
 	ID          int64          `json:"id"`
-	NodeID      int64          `json:"node_id"`
-	EventType   string         `json:"event_type"`
+	NodeID      int64          `json:"nodeId"`
+	EventType   string         `json:"eventType"`
 	Description string         `json:"description"`
 	Data        sql.NullString `json:"data"`
 	Status      string         `json:"status"`
-	CreatedAt   time.Time      `json:"created_at"`
+	CreatedAt   time.Time      `json:"createdAt"`
 }
 
 type NodeKey struct {
 	ID        int64     `json:"id"`
-	NodeID    int64     `json:"node_id"`
-	KeyID     int64     `json:"key_id"`
-	KeyType   string    `json:"key_type"`
-	CreatedAt time.Time `json:"created_at"`
+	NodeID    int64     `json:"nodeId"`
+	KeyID     int64     `json:"keyId"`
+	KeyType   string    `json:"keyType"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type NodeKeyType struct {
@@ -211,30 +211,37 @@ type NotificationProvider struct {
 	Name                    string         `json:"name"`
 	Type                    string         `json:"type"`
 	Config                  string         `json:"config"`
-	IsDefault               bool           `json:"is_default"`
-	IsEnabled               bool           `json:"is_enabled"`
-	CreatedAt               time.Time      `json:"created_at"`
-	UpdatedAt               time.Time      `json:"updated_at"`
-	NotifyNodeDowntime      bool           `json:"notify_node_downtime"`
-	NotifyBackupSuccess     bool           `json:"notify_backup_success"`
-	NotifyBackupFailure     bool           `json:"notify_backup_failure"`
-	NotifyS3ConnectionIssue bool           `json:"notify_s3_connection_issue"`
-	LastTestAt              sql.NullTime   `json:"last_test_at"`
-	LastTestStatus          sql.NullString `json:"last_test_status"`
-	LastTestMessage         sql.NullString `json:"last_test_message"`
+	IsDefault               bool           `json:"isDefault"`
+	IsEnabled               bool           `json:"isEnabled"`
+	CreatedAt               time.Time      `json:"createdAt"`
+	UpdatedAt               time.Time      `json:"updatedAt"`
+	NotifyNodeDowntime      bool           `json:"notifyNodeDowntime"`
+	NotifyBackupSuccess     bool           `json:"notifyBackupSuccess"`
+	NotifyBackupFailure     bool           `json:"notifyBackupFailure"`
+	NotifyS3ConnectionIssue bool           `json:"notifyS3ConnectionIssue"`
+	LastTestAt              sql.NullTime   `json:"lastTestAt"`
+	LastTestStatus          sql.NullString `json:"lastTestStatus"`
+	LastTestMessage         sql.NullString `json:"lastTestMessage"`
 }
 
 type Session struct {
 	ID             int64          `json:"id"`
-	SessionID      string         `json:"session_id"`
-	UserID         int64          `json:"user_id"`
+	SessionID      string         `json:"sessionId"`
+	UserID         int64          `json:"userId"`
 	Token          string         `json:"token"`
-	IpAddress      sql.NullString `json:"ip_address"`
-	UserAgent      sql.NullString `json:"user_agent"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	ExpiresAt      time.Time      `json:"expires_at"`
-	LastActivityAt time.Time      `json:"last_activity_at"`
+	IpAddress      sql.NullString `json:"ipAddress"`
+	UserAgent      sql.NullString `json:"userAgent"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+	ExpiresAt      time.Time      `json:"expiresAt"`
+	LastActivityAt time.Time      `json:"lastActivityAt"`
+}
+
+type Setting struct {
+	ID        int64        `json:"id"`
+	Config    string       `json:"config"`
+	CreatedAt sql.NullTime `json:"createdAt"`
+	UpdatedAt sql.NullTime `json:"updatedAt"`
 }
 
 type User struct {
@@ -245,9 +252,9 @@ type User struct {
 	Email       sql.NullString `json:"email"`
 	Role        sql.NullString `json:"role"`
 	Provider    sql.NullString `json:"provider"`
-	ProviderID  sql.NullString `json:"provider_id"`
-	AvatarUrl   sql.NullString `json:"avatar_url"`
-	CreatedAt   time.Time      `json:"created_at"`
-	LastLoginAt sql.NullTime   `json:"last_login_at"`
-	UpdatedAt   sql.NullTime   `json:"updated_at"`
+	ProviderID  sql.NullString `json:"providerId"`
+	AvatarUrl   sql.NullString `json:"avatarUrl"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	LastLoginAt sql.NullTime   `json:"lastLoginAt"`
+	UpdatedAt   sql.NullTime   `json:"updatedAt"`
 }

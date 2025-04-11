@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const addRevokedCertificate = `-- name: AddRevokedCertificate :exec
+const AddRevokedCertificate = `-- name: AddRevokedCertificate :exec
 INSERT INTO fabric_revoked_certificates (
     fabric_organization_id,
     serial_number,
@@ -22,15 +22,15 @@ INSERT INTO fabric_revoked_certificates (
 `
 
 type AddRevokedCertificateParams struct {
-	FabricOrganizationID int64         `json:"fabric_organization_id"`
-	SerialNumber         string        `json:"serial_number"`
-	RevocationTime       time.Time     `json:"revocation_time"`
+	FabricOrganizationID int64         `json:"fabricOrganizationId"`
+	SerialNumber         string        `json:"serialNumber"`
+	RevocationTime       time.Time     `json:"revocationTime"`
 	Reason               int64         `json:"reason"`
-	IssuerCertificateID  sql.NullInt64 `json:"issuer_certificate_id"`
+	IssuerCertificateID  sql.NullInt64 `json:"issuerCertificateId"`
 }
 
-func (q *Queries) AddRevokedCertificate(ctx context.Context, arg AddRevokedCertificateParams) error {
-	_, err := q.exec(ctx, q.addRevokedCertificateStmt, addRevokedCertificate,
+func (q *Queries) AddRevokedCertificate(ctx context.Context, arg *AddRevokedCertificateParams) error {
+	_, err := q.db.ExecContext(ctx, AddRevokedCertificate,
 		arg.FabricOrganizationID,
 		arg.SerialNumber,
 		arg.RevocationTime,
@@ -40,104 +40,104 @@ func (q *Queries) AddRevokedCertificate(ctx context.Context, arg AddRevokedCerti
 	return err
 }
 
-const checkNetworkNodeExists = `-- name: CheckNetworkNodeExists :one
+const CheckNetworkNodeExists = `-- name: CheckNetworkNodeExists :one
 SELECT EXISTS(SELECT 1 FROM network_nodes WHERE network_id = ? AND node_id = ?)
 `
 
 type CheckNetworkNodeExistsParams struct {
-	NetworkID int64 `json:"network_id"`
-	NodeID    int64 `json:"node_id"`
+	NetworkID int64 `json:"networkId"`
+	NodeID    int64 `json:"nodeId"`
 }
 
-func (q *Queries) CheckNetworkNodeExists(ctx context.Context, arg CheckNetworkNodeExistsParams) (int64, error) {
-	row := q.queryRow(ctx, q.checkNetworkNodeExistsStmt, checkNetworkNodeExists, arg.NetworkID, arg.NodeID)
+func (q *Queries) CheckNetworkNodeExists(ctx context.Context, arg *CheckNetworkNodeExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CheckNetworkNodeExists, arg.NetworkID, arg.NodeID)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const countBackupsBySchedule = `-- name: CountBackupsBySchedule :one
+const CountBackupsBySchedule = `-- name: CountBackupsBySchedule :one
 SELECT COUNT(*) FROM backups
 WHERE schedule_id = ?
 `
 
 func (q *Queries) CountBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) (int64, error) {
-	row := q.queryRow(ctx, q.countBackupsByScheduleStmt, countBackupsBySchedule, scheduleID)
+	row := q.db.QueryRowContext(ctx, CountBackupsBySchedule, scheduleID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countBackupsByTarget = `-- name: CountBackupsByTarget :one
+const CountBackupsByTarget = `-- name: CountBackupsByTarget :one
 SELECT COUNT(*) FROM backups
 WHERE target_id = ?
 `
 
 func (q *Queries) CountBackupsByTarget(ctx context.Context, targetID int64) (int64, error) {
-	row := q.queryRow(ctx, q.countBackupsByTargetStmt, countBackupsByTarget, targetID)
+	row := q.db.QueryRowContext(ctx, CountBackupsByTarget, targetID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countNetworks = `-- name: CountNetworks :one
+const CountNetworks = `-- name: CountNetworks :one
 SELECT COUNT(*) FROM networks
 `
 
 func (q *Queries) CountNetworks(ctx context.Context) (int64, error) {
-	row := q.queryRow(ctx, q.countNetworksStmt, countNetworks)
+	row := q.db.QueryRowContext(ctx, CountNetworks)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countNodeEvents = `-- name: CountNodeEvents :one
+const CountNodeEvents = `-- name: CountNodeEvents :one
 SELECT COUNT(*) FROM node_events
 WHERE node_id = ?
 `
 
 func (q *Queries) CountNodeEvents(ctx context.Context, nodeID int64) (int64, error) {
-	row := q.queryRow(ctx, q.countNodeEventsStmt, countNodeEvents, nodeID)
+	row := q.db.QueryRowContext(ctx, CountNodeEvents, nodeID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countNodes = `-- name: CountNodes :one
+const CountNodes = `-- name: CountNodes :one
 SELECT COUNT(*) FROM nodes
 `
 
 func (q *Queries) CountNodes(ctx context.Context) (int64, error) {
-	row := q.queryRow(ctx, q.countNodesStmt, countNodes)
+	row := q.db.QueryRowContext(ctx, CountNodes)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countNodesByPlatform = `-- name: CountNodesByPlatform :one
+const CountNodesByPlatform = `-- name: CountNodesByPlatform :one
 SELECT COUNT(*) FROM nodes
 WHERE platform = ?
 `
 
 func (q *Queries) CountNodesByPlatform(ctx context.Context, platform string) (int64, error) {
-	row := q.queryRow(ctx, q.countNodesByPlatformStmt, countNodesByPlatform, platform)
+	row := q.db.QueryRowContext(ctx, CountNodesByPlatform, platform)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countUsers = `-- name: CountUsers :one
+const CountUsers = `-- name: CountUsers :one
 SELECT COUNT(*) FROM users
 `
 
 func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
-	row := q.queryRow(ctx, q.countUsersStmt, countUsers)
+	row := q.db.QueryRowContext(ctx, CountUsers)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const createBackup = `-- name: CreateBackup :one
+const CreateBackup = `-- name: CreateBackup :one
 INSERT INTO backups (
     schedule_id,
     target_id,
@@ -154,14 +154,14 @@ INSERT INTO backups (
 `
 
 type CreateBackupParams struct {
-	ScheduleID sql.NullInt64 `json:"schedule_id"`
-	TargetID   int64         `json:"target_id"`
+	ScheduleID sql.NullInt64 `json:"scheduleId"`
+	TargetID   int64         `json:"targetId"`
 	Status     string        `json:"status"`
-	StartedAt  time.Time     `json:"started_at"`
+	StartedAt  time.Time     `json:"startedAt"`
 }
 
-func (q *Queries) CreateBackup(ctx context.Context, arg CreateBackupParams) (Backup, error) {
-	row := q.queryRow(ctx, q.createBackupStmt, createBackup,
+func (q *Queries) CreateBackup(ctx context.Context, arg *CreateBackupParams) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, CreateBackup,
 		arg.ScheduleID,
 		arg.TargetID,
 		arg.Status,
@@ -180,10 +180,10 @@ func (q *Queries) CreateBackup(ctx context.Context, arg CreateBackupParams) (Bac
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const createBackupSchedule = `-- name: CreateBackupSchedule :one
+const CreateBackupSchedule = `-- name: CreateBackupSchedule :one
 INSERT INTO backup_schedules (
     name,
     description,
@@ -208,14 +208,14 @@ INSERT INTO backup_schedules (
 type CreateBackupScheduleParams struct {
 	Name           string         `json:"name"`
 	Description    sql.NullString `json:"description"`
-	CronExpression string         `json:"cron_expression"`
-	TargetID       int64          `json:"target_id"`
-	RetentionDays  int64          `json:"retention_days"`
+	CronExpression string         `json:"cronExpression"`
+	TargetID       int64          `json:"targetId"`
+	RetentionDays  int64          `json:"retentionDays"`
 	Enabled        bool           `json:"enabled"`
 }
 
-func (q *Queries) CreateBackupSchedule(ctx context.Context, arg CreateBackupScheduleParams) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.createBackupScheduleStmt, createBackupSchedule,
+func (q *Queries) CreateBackupSchedule(ctx context.Context, arg *CreateBackupScheduleParams) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, CreateBackupSchedule,
 		arg.Name,
 		arg.Description,
 		arg.CronExpression,
@@ -237,10 +237,10 @@ func (q *Queries) CreateBackupSchedule(ctx context.Context, arg CreateBackupSche
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createBackupTarget = `-- name: CreateBackupTarget :one
+const CreateBackupTarget = `-- name: CreateBackupTarget :one
 INSERT INTO backup_targets (
     name,
     type,
@@ -273,18 +273,18 @@ INSERT INTO backup_targets (
 type CreateBackupTargetParams struct {
 	Name           string         `json:"name"`
 	Type           string         `json:"type"`
-	BucketName     sql.NullString `json:"bucket_name"`
+	BucketName     sql.NullString `json:"bucketName"`
 	Region         sql.NullString `json:"region"`
 	Endpoint       sql.NullString `json:"endpoint"`
-	BucketPath     sql.NullString `json:"bucket_path"`
-	AccessKeyID    sql.NullString `json:"access_key_id"`
-	SecretKey      sql.NullString `json:"secret_key"`
-	S3PathStyle    sql.NullBool   `json:"s3_path_style"`
-	ResticPassword sql.NullString `json:"restic_password"`
+	BucketPath     sql.NullString `json:"bucketPath"`
+	AccessKeyID    sql.NullString `json:"accessKeyId"`
+	SecretKey      sql.NullString `json:"secretKey"`
+	S3PathStyle    sql.NullBool   `json:"s3PathStyle"`
+	ResticPassword sql.NullString `json:"resticPassword"`
 }
 
-func (q *Queries) CreateBackupTarget(ctx context.Context, arg CreateBackupTargetParams) (BackupTarget, error) {
-	row := q.queryRow(ctx, q.createBackupTargetStmt, createBackupTarget,
+func (q *Queries) CreateBackupTarget(ctx context.Context, arg *CreateBackupTargetParams) (*BackupTarget, error) {
+	row := q.db.QueryRowContext(ctx, CreateBackupTarget,
 		arg.Name,
 		arg.Type,
 		arg.BucketName,
@@ -312,10 +312,10 @@ func (q *Queries) CreateBackupTarget(ctx context.Context, arg CreateBackupTarget
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createFabricOrganization = `-- name: CreateFabricOrganization :one
+const CreateFabricOrganization = `-- name: CreateFabricOrganization :one
 INSERT INTO fabric_organizations (
     msp_id, description, config, ca_config, sign_key_id,
     tls_root_key_id, provider_id, created_by,
@@ -327,21 +327,21 @@ RETURNING id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_
 `
 
 type CreateFabricOrganizationParams struct {
-	MspID           string         `json:"msp_id"`
+	MspID           string         `json:"mspId"`
 	Description     sql.NullString `json:"description"`
 	Config          sql.NullString `json:"config"`
-	CaConfig        sql.NullString `json:"ca_config"`
-	SignKeyID       sql.NullInt64  `json:"sign_key_id"`
-	TlsRootKeyID    sql.NullInt64  `json:"tls_root_key_id"`
-	ProviderID      sql.NullInt64  `json:"provider_id"`
-	CreatedBy       sql.NullInt64  `json:"created_by"`
-	AdminTlsKeyID   sql.NullInt64  `json:"admin_tls_key_id"`
-	AdminSignKeyID  sql.NullInt64  `json:"admin_sign_key_id"`
-	ClientSignKeyID sql.NullInt64  `json:"client_sign_key_id"`
+	CaConfig        sql.NullString `json:"caConfig"`
+	SignKeyID       sql.NullInt64  `json:"signKeyId"`
+	TlsRootKeyID    sql.NullInt64  `json:"tlsRootKeyId"`
+	ProviderID      sql.NullInt64  `json:"providerId"`
+	CreatedBy       sql.NullInt64  `json:"createdBy"`
+	AdminTlsKeyID   sql.NullInt64  `json:"adminTlsKeyId"`
+	AdminSignKeyID  sql.NullInt64  `json:"adminSignKeyId"`
+	ClientSignKeyID sql.NullInt64  `json:"clientSignKeyId"`
 }
 
-func (q *Queries) CreateFabricOrganization(ctx context.Context, arg CreateFabricOrganizationParams) (FabricOrganization, error) {
-	row := q.queryRow(ctx, q.createFabricOrganizationStmt, createFabricOrganization,
+func (q *Queries) CreateFabricOrganization(ctx context.Context, arg *CreateFabricOrganizationParams) (*FabricOrganization, error) {
+	row := q.db.QueryRowContext(ctx, CreateFabricOrganization,
 		arg.MspID,
 		arg.Description,
 		arg.Config,
@@ -373,10 +373,10 @@ func (q *Queries) CreateFabricOrganization(ctx context.Context, arg CreateFabric
 		&i.CrlKeyID,
 		&i.CrlLastUpdate,
 	)
-	return i, err
+	return &i, err
 }
 
-const createKey = `-- name: CreateKey :one
+const CreateKey = `-- name: CreateKey :one
 INSERT INTO keys (
     name, description, algorithm, key_size, curve, format,
     public_key, private_key, certificate, status, expires_at, sha256_fingerprint,
@@ -390,24 +390,24 @@ type CreateKeyParams struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
 }
 
-func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (Key, error) {
-	row := q.queryRow(ctx, q.createKeyStmt, createKey,
+func (q *Queries) CreateKey(ctx context.Context, arg *CreateKeyParams) (*Key, error) {
+	row := q.db.QueryRowContext(ctx, CreateKey,
 		arg.Name,
 		arg.Description,
 		arg.Algorithm,
@@ -451,10 +451,10 @@ func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (Key, erro
 		&i.IsCa,
 		&i.EthereumAddress,
 	)
-	return i, err
+	return &i, err
 }
 
-const createKeyProvider = `-- name: CreateKeyProvider :one
+const CreateKeyProvider = `-- name: CreateKeyProvider :one
 INSERT INTO key_providers (name, type, is_default, config)
 VALUES (?, ?, ?, ?)
 RETURNING id, name, type, is_default, config, created_at, updated_at
@@ -463,12 +463,12 @@ RETURNING id, name, type, is_default, config, created_at, updated_at
 type CreateKeyProviderParams struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
-	IsDefault int64  `json:"is_default"`
+	IsDefault int64  `json:"isDefault"`
 	Config    string `json:"config"`
 }
 
-func (q *Queries) CreateKeyProvider(ctx context.Context, arg CreateKeyProviderParams) (KeyProvider, error) {
-	row := q.queryRow(ctx, q.createKeyProviderStmt, createKeyProvider,
+func (q *Queries) CreateKeyProvider(ctx context.Context, arg *CreateKeyProviderParams) (*KeyProvider, error) {
+	row := q.db.QueryRowContext(ctx, CreateKeyProvider,
 		arg.Name,
 		arg.Type,
 		arg.IsDefault,
@@ -484,10 +484,10 @@ func (q *Queries) CreateKeyProvider(ctx context.Context, arg CreateKeyProviderPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNetwork = `-- name: CreateNetwork :one
+const CreateNetwork = `-- name: CreateNetwork :one
 INSERT INTO networks (
     name, platform, status, description, config,
     deployment_config, exposed_ports, domain, created_by, network_id
@@ -503,15 +503,15 @@ type CreateNetworkParams struct {
 	Status           string         `json:"status"`
 	Description      sql.NullString `json:"description"`
 	Config           sql.NullString `json:"config"`
-	DeploymentConfig sql.NullString `json:"deployment_config"`
-	ExposedPorts     sql.NullString `json:"exposed_ports"`
+	DeploymentConfig sql.NullString `json:"deploymentConfig"`
+	ExposedPorts     sql.NullString `json:"exposedPorts"`
 	Domain           sql.NullString `json:"domain"`
-	CreatedBy        sql.NullInt64  `json:"created_by"`
-	NetworkID        sql.NullString `json:"network_id"`
+	CreatedBy        sql.NullInt64  `json:"createdBy"`
+	NetworkID        sql.NullString `json:"networkId"`
 }
 
-func (q *Queries) CreateNetwork(ctx context.Context, arg CreateNetworkParams) (Network, error) {
-	row := q.queryRow(ctx, q.createNetworkStmt, createNetwork,
+func (q *Queries) CreateNetwork(ctx context.Context, arg *CreateNetworkParams) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, CreateNetwork,
 		arg.Name,
 		arg.Platform,
 		arg.Status,
@@ -541,10 +541,10 @@ func (q *Queries) CreateNetwork(ctx context.Context, arg CreateNetworkParams) (N
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNetworkFull = `-- name: CreateNetworkFull :one
+const CreateNetworkFull = `-- name: CreateNetworkFull :one
 INSERT INTO networks (
     name, platform, status, description, config,
     deployment_config, exposed_ports, domain, created_by, network_id, genesis_block_b64
@@ -560,16 +560,16 @@ type CreateNetworkFullParams struct {
 	Status           string         `json:"status"`
 	Description      sql.NullString `json:"description"`
 	Config           sql.NullString `json:"config"`
-	DeploymentConfig sql.NullString `json:"deployment_config"`
-	ExposedPorts     sql.NullString `json:"exposed_ports"`
+	DeploymentConfig sql.NullString `json:"deploymentConfig"`
+	ExposedPorts     sql.NullString `json:"exposedPorts"`
 	Domain           sql.NullString `json:"domain"`
-	CreatedBy        sql.NullInt64  `json:"created_by"`
-	NetworkID        sql.NullString `json:"network_id"`
-	GenesisBlockB64  sql.NullString `json:"genesis_block_b64"`
+	CreatedBy        sql.NullInt64  `json:"createdBy"`
+	NetworkID        sql.NullString `json:"networkId"`
+	GenesisBlockB64  sql.NullString `json:"genesisBlockB64"`
 }
 
-func (q *Queries) CreateNetworkFull(ctx context.Context, arg CreateNetworkFullParams) (Network, error) {
-	row := q.queryRow(ctx, q.createNetworkFullStmt, createNetworkFull,
+func (q *Queries) CreateNetworkFull(ctx context.Context, arg *CreateNetworkFullParams) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, CreateNetworkFull,
 		arg.Name,
 		arg.Platform,
 		arg.Status,
@@ -600,10 +600,10 @@ func (q *Queries) CreateNetworkFull(ctx context.Context, arg CreateNetworkFullPa
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNetworkNode = `-- name: CreateNetworkNode :one
+const CreateNetworkNode = `-- name: CreateNetworkNode :one
 INSERT INTO network_nodes (
     network_id,
     node_id,
@@ -615,15 +615,15 @@ INSERT INTO network_nodes (
 `
 
 type CreateNetworkNodeParams struct {
-	NetworkID int64  `json:"network_id"`
-	NodeID    int64  `json:"node_id"`
+	NetworkID int64  `json:"networkId"`
+	NodeID    int64  `json:"nodeId"`
 	Status    string `json:"status"`
 	Role      string `json:"role"`
 }
 
 // Add queries for CRUD operations
-func (q *Queries) CreateNetworkNode(ctx context.Context, arg CreateNetworkNodeParams) (NetworkNode, error) {
-	row := q.queryRow(ctx, q.createNetworkNodeStmt, createNetworkNode,
+func (q *Queries) CreateNetworkNode(ctx context.Context, arg *CreateNetworkNodeParams) (*NetworkNode, error) {
+	row := q.db.QueryRowContext(ctx, CreateNetworkNode,
 		arg.NetworkID,
 		arg.NodeID,
 		arg.Status,
@@ -640,10 +640,10 @@ func (q *Queries) CreateNetworkNode(ctx context.Context, arg CreateNetworkNodePa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNode = `-- name: CreateNode :one
+const CreateNode = `-- name: CreateNode :one
 INSERT INTO nodes (
     name,
     slug,
@@ -689,20 +689,20 @@ type CreateNodeParams struct {
 	Platform             string         `json:"platform"`
 	Status               string         `json:"status"`
 	Description          sql.NullString `json:"description"`
-	NetworkID            sql.NullInt64  `json:"network_id"`
+	NetworkID            sql.NullInt64  `json:"networkId"`
 	Config               sql.NullString `json:"config"`
 	Resources            sql.NullString `json:"resources"`
 	Endpoint             sql.NullString `json:"endpoint"`
-	PublicEndpoint       sql.NullString `json:"public_endpoint"`
-	P2pAddress           sql.NullString `json:"p2p_address"`
-	CreatedBy            sql.NullInt64  `json:"created_by"`
-	FabricOrganizationID sql.NullInt64  `json:"fabric_organization_id"`
-	NodeType             sql.NullString `json:"node_type"`
-	NodeConfig           sql.NullString `json:"node_config"`
+	PublicEndpoint       sql.NullString `json:"publicEndpoint"`
+	P2pAddress           sql.NullString `json:"p2pAddress"`
+	CreatedBy            sql.NullInt64  `json:"createdBy"`
+	FabricOrganizationID sql.NullInt64  `json:"fabricOrganizationId"`
+	NodeType             sql.NullString `json:"nodeType"`
+	NodeConfig           sql.NullString `json:"nodeConfig"`
 }
 
-func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, error) {
-	row := q.queryRow(ctx, q.createNodeStmt, createNode,
+func (q *Queries) CreateNode(ctx context.Context, arg *CreateNodeParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, CreateNode,
 		arg.Name,
 		arg.Slug,
 		arg.Platform,
@@ -741,10 +741,10 @@ func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, e
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNodeEvent = `-- name: CreateNodeEvent :one
+const CreateNodeEvent = `-- name: CreateNodeEvent :one
 INSERT INTO node_events (
     node_id,
     event_type,
@@ -758,15 +758,15 @@ RETURNING id, node_id, event_type, description, data, status, created_at
 `
 
 type CreateNodeEventParams struct {
-	NodeID      int64          `json:"node_id"`
-	EventType   string         `json:"event_type"`
+	NodeID      int64          `json:"nodeId"`
+	EventType   string         `json:"eventType"`
 	Description string         `json:"description"`
 	Data        sql.NullString `json:"data"`
 	Status      string         `json:"status"`
 }
 
-func (q *Queries) CreateNodeEvent(ctx context.Context, arg CreateNodeEventParams) (NodeEvent, error) {
-	row := q.queryRow(ctx, q.createNodeEventStmt, createNodeEvent,
+func (q *Queries) CreateNodeEvent(ctx context.Context, arg *CreateNodeEventParams) (*NodeEvent, error) {
+	row := q.db.QueryRowContext(ctx, CreateNodeEvent,
 		arg.NodeID,
 		arg.EventType,
 		arg.Description,
@@ -783,10 +783,10 @@ func (q *Queries) CreateNodeEvent(ctx context.Context, arg CreateNodeEventParams
 		&i.Status,
 		&i.CreatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createNotificationProvider = `-- name: CreateNotificationProvider :one
+const CreateNotificationProvider = `-- name: CreateNotificationProvider :one
 INSERT INTO notification_providers (
     type,
     name,
@@ -816,15 +816,15 @@ type CreateNotificationProviderParams struct {
 	Type                    string `json:"type"`
 	Name                    string `json:"name"`
 	Config                  string `json:"config"`
-	IsDefault               bool   `json:"is_default"`
-	NotifyNodeDowntime      bool   `json:"notify_node_downtime"`
-	NotifyBackupSuccess     bool   `json:"notify_backup_success"`
-	NotifyBackupFailure     bool   `json:"notify_backup_failure"`
-	NotifyS3ConnectionIssue bool   `json:"notify_s3_connection_issue"`
+	IsDefault               bool   `json:"isDefault"`
+	NotifyNodeDowntime      bool   `json:"notifyNodeDowntime"`
+	NotifyBackupSuccess     bool   `json:"notifyBackupSuccess"`
+	NotifyBackupFailure     bool   `json:"notifyBackupFailure"`
+	NotifyS3ConnectionIssue bool   `json:"notifyS3ConnectionIssue"`
 }
 
-func (q *Queries) CreateNotificationProvider(ctx context.Context, arg CreateNotificationProviderParams) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.createNotificationProviderStmt, createNotificationProvider,
+func (q *Queries) CreateNotificationProvider(ctx context.Context, arg *CreateNotificationProviderParams) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, CreateNotificationProvider,
 		arg.Type,
 		arg.Name,
 		arg.Config,
@@ -852,10 +852,10 @@ func (q *Queries) CreateNotificationProvider(ctx context.Context, arg CreateNoti
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const createSession = `-- name: CreateSession :one
+const CreateSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     session_id,
     user_id,
@@ -870,14 +870,14 @@ INSERT INTO sessions (
 `
 
 type CreateSessionParams struct {
-	SessionID string    `json:"session_id"`
-	UserID    int64     `json:"user_id"`
+	SessionID string    `json:"sessionId"`
+	UserID    int64     `json:"userId"`
 	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
-	row := q.queryRow(ctx, q.createSessionStmt, createSession,
+func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*Session, error) {
+	row := q.db.QueryRowContext(ctx, CreateSession,
 		arg.SessionID,
 		arg.UserID,
 		arg.Token,
@@ -896,10 +896,31 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.ExpiresAt,
 		&i.LastActivityAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const createUser = `-- name: CreateUser :one
+const CreateSetting = `-- name: CreateSetting :one
+INSERT INTO settings (
+    config
+) VALUES (
+    ?
+)
+RETURNING id, config, created_at, updated_at
+`
+
+func (q *Queries) CreateSetting(ctx context.Context, config string) (*Setting, error) {
+	row := q.db.QueryRowContext(ctx, CreateSetting, config)
+	var i Setting
+	err := row.Scan(
+		&i.ID,
+		&i.Config,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const CreateUser = `-- name: CreateUser :one
 INSERT INTO users (
     username, password, created_at, last_login_at, updated_at
 ) VALUES (
@@ -913,8 +934,8 @@ type CreateUserParams struct {
 	Password string `json:"password"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.queryRow(ctx, q.createUserStmt, createUser, arg.Username, arg.Password)
+func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
+	row := q.db.QueryRowContext(ctx, CreateUser, arg.Username, arg.Password)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -930,184 +951,194 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const deleteBackup = `-- name: DeleteBackup :exec
+const DeleteBackup = `-- name: DeleteBackup :exec
 DELETE FROM backups WHERE id = ?
 `
 
 func (q *Queries) DeleteBackup(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteBackupStmt, deleteBackup, id)
+	_, err := q.db.ExecContext(ctx, DeleteBackup, id)
 	return err
 }
 
-const deleteBackupSchedule = `-- name: DeleteBackupSchedule :exec
+const DeleteBackupSchedule = `-- name: DeleteBackupSchedule :exec
 DELETE FROM backup_schedules WHERE id = ?
 `
 
 func (q *Queries) DeleteBackupSchedule(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteBackupScheduleStmt, deleteBackupSchedule, id)
+	_, err := q.db.ExecContext(ctx, DeleteBackupSchedule, id)
 	return err
 }
 
-const deleteBackupTarget = `-- name: DeleteBackupTarget :exec
+const DeleteBackupTarget = `-- name: DeleteBackupTarget :exec
 DELETE FROM backup_targets WHERE id = ?
 `
 
 func (q *Queries) DeleteBackupTarget(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteBackupTargetStmt, deleteBackupTarget, id)
+	_, err := q.db.ExecContext(ctx, DeleteBackupTarget, id)
 	return err
 }
 
-const deleteBackupsBySchedule = `-- name: DeleteBackupsBySchedule :exec
+const DeleteBackupsBySchedule = `-- name: DeleteBackupsBySchedule :exec
 DELETE FROM backups
 WHERE schedule_id = ?
 `
 
 func (q *Queries) DeleteBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) error {
-	_, err := q.exec(ctx, q.deleteBackupsByScheduleStmt, deleteBackupsBySchedule, scheduleID)
+	_, err := q.db.ExecContext(ctx, DeleteBackupsBySchedule, scheduleID)
 	return err
 }
 
-const deleteBackupsByTarget = `-- name: DeleteBackupsByTarget :exec
+const DeleteBackupsByTarget = `-- name: DeleteBackupsByTarget :exec
 DELETE FROM backups
 WHERE target_id = ?
 `
 
 func (q *Queries) DeleteBackupsByTarget(ctx context.Context, targetID int64) error {
-	_, err := q.exec(ctx, q.deleteBackupsByTargetStmt, deleteBackupsByTarget, targetID)
+	_, err := q.db.ExecContext(ctx, DeleteBackupsByTarget, targetID)
 	return err
 }
 
-const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
+const DeleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions
 WHERE expires_at <= CURRENT_TIMESTAMP
 `
 
 func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
-	_, err := q.exec(ctx, q.deleteExpiredSessionsStmt, deleteExpiredSessions)
+	_, err := q.db.ExecContext(ctx, DeleteExpiredSessions)
 	return err
 }
 
-const deleteFabricOrganization = `-- name: DeleteFabricOrganization :exec
+const DeleteFabricOrganization = `-- name: DeleteFabricOrganization :exec
 DELETE FROM fabric_organizations WHERE id = ?
 `
 
 func (q *Queries) DeleteFabricOrganization(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteFabricOrganizationStmt, deleteFabricOrganization, id)
+	_, err := q.db.ExecContext(ctx, DeleteFabricOrganization, id)
 	return err
 }
 
-const deleteKey = `-- name: DeleteKey :exec
+const DeleteKey = `-- name: DeleteKey :exec
 DELETE FROM keys WHERE id = ?
 `
 
 func (q *Queries) DeleteKey(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteKeyStmt, deleteKey, id)
+	_, err := q.db.ExecContext(ctx, DeleteKey, id)
 	return err
 }
 
-const deleteKeyProvider = `-- name: DeleteKeyProvider :exec
+const DeleteKeyProvider = `-- name: DeleteKeyProvider :exec
 DELETE FROM key_providers WHERE id = ?
 `
 
 func (q *Queries) DeleteKeyProvider(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteKeyProviderStmt, deleteKeyProvider, id)
+	_, err := q.db.ExecContext(ctx, DeleteKeyProvider, id)
 	return err
 }
 
-const deleteNetwork = `-- name: DeleteNetwork :exec
+const DeleteNetwork = `-- name: DeleteNetwork :exec
 DELETE FROM networks
 WHERE id = ?
 `
 
 func (q *Queries) DeleteNetwork(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteNetworkStmt, deleteNetwork, id)
+	_, err := q.db.ExecContext(ctx, DeleteNetwork, id)
 	return err
 }
 
-const deleteNetworkNode = `-- name: DeleteNetworkNode :exec
+const DeleteNetworkNode = `-- name: DeleteNetworkNode :exec
 DELETE FROM network_nodes
 WHERE network_id = ? AND node_id = ?
 `
 
 type DeleteNetworkNodeParams struct {
-	NetworkID int64 `json:"network_id"`
-	NodeID    int64 `json:"node_id"`
+	NetworkID int64 `json:"networkId"`
+	NodeID    int64 `json:"nodeId"`
 }
 
-func (q *Queries) DeleteNetworkNode(ctx context.Context, arg DeleteNetworkNodeParams) error {
-	_, err := q.exec(ctx, q.deleteNetworkNodeStmt, deleteNetworkNode, arg.NetworkID, arg.NodeID)
+func (q *Queries) DeleteNetworkNode(ctx context.Context, arg *DeleteNetworkNodeParams) error {
+	_, err := q.db.ExecContext(ctx, DeleteNetworkNode, arg.NetworkID, arg.NodeID)
 	return err
 }
 
-const deleteNode = `-- name: DeleteNode :exec
+const DeleteNode = `-- name: DeleteNode :exec
 DELETE FROM nodes WHERE id = ?
 `
 
 func (q *Queries) DeleteNode(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteNodeStmt, deleteNode, id)
+	_, err := q.db.ExecContext(ctx, DeleteNode, id)
 	return err
 }
 
-const deleteNotificationProvider = `-- name: DeleteNotificationProvider :exec
+const DeleteNotificationProvider = `-- name: DeleteNotificationProvider :exec
 DELETE FROM notification_providers
 WHERE id = ?
 `
 
 func (q *Queries) DeleteNotificationProvider(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteNotificationProviderStmt, deleteNotificationProvider, id)
+	_, err := q.db.ExecContext(ctx, DeleteNotificationProvider, id)
 	return err
 }
 
-const deleteOldBackups = `-- name: DeleteOldBackups :exec
+const DeleteOldBackups = `-- name: DeleteOldBackups :exec
 DELETE FROM backups
 WHERE target_id = ? 
 AND created_at < ?
 `
 
 type DeleteOldBackupsParams struct {
-	TargetID  int64     `json:"target_id"`
-	CreatedAt time.Time `json:"created_at"`
+	TargetID  int64     `json:"targetId"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
-func (q *Queries) DeleteOldBackups(ctx context.Context, arg DeleteOldBackupsParams) error {
-	_, err := q.exec(ctx, q.deleteOldBackupsStmt, deleteOldBackups, arg.TargetID, arg.CreatedAt)
+func (q *Queries) DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsParams) error {
+	_, err := q.db.ExecContext(ctx, DeleteOldBackups, arg.TargetID, arg.CreatedAt)
 	return err
 }
 
-const deleteSession = `-- name: DeleteSession :exec
+const DeleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions
 WHERE session_id = ?
 `
 
 func (q *Queries) DeleteSession(ctx context.Context, sessionID string) error {
-	_, err := q.exec(ctx, q.deleteSessionStmt, deleteSession, sessionID)
+	_, err := q.db.ExecContext(ctx, DeleteSession, sessionID)
 	return err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
+const DeleteSetting = `-- name: DeleteSetting :exec
+DELETE FROM settings
+WHERE id = ?
+`
+
+func (q *Queries) DeleteSetting(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, DeleteSetting, id)
+	return err
+}
+
+const DeleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
 WHERE id = ?
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.deleteUserStmt, deleteUser, id)
+	_, err := q.db.ExecContext(ctx, DeleteUser, id)
 	return err
 }
 
-const deleteUserSessions = `-- name: DeleteUserSessions :exec
+const DeleteUserSessions = `-- name: DeleteUserSessions :exec
 DELETE FROM sessions
 WHERE user_id = ?
 `
 
 func (q *Queries) DeleteUserSessions(ctx context.Context, userID int64) error {
-	_, err := q.exec(ctx, q.deleteUserSessionsStmt, deleteUserSessions, userID)
+	_, err := q.db.ExecContext(ctx, DeleteUserSessions, userID)
 	return err
 }
 
-const disableBackupSchedule = `-- name: DisableBackupSchedule :one
+const DisableBackupSchedule = `-- name: DisableBackupSchedule :one
 UPDATE backup_schedules
 SET enabled = false,
     updated_at = CURRENT_TIMESTAMP
@@ -1115,8 +1146,8 @@ WHERE id = ?
 RETURNING id, name, description, cron_expression, target_id, retention_days, enabled, created_at, updated_at, last_run_at, next_run_at
 `
 
-func (q *Queries) DisableBackupSchedule(ctx context.Context, id int64) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.disableBackupScheduleStmt, disableBackupSchedule, id)
+func (q *Queries) DisableBackupSchedule(ctx context.Context, id int64) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, DisableBackupSchedule, id)
 	var i BackupSchedule
 	err := row.Scan(
 		&i.ID,
@@ -1131,10 +1162,10 @@ func (q *Queries) DisableBackupSchedule(ctx context.Context, id int64) (BackupSc
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const enableBackupSchedule = `-- name: EnableBackupSchedule :one
+const EnableBackupSchedule = `-- name: EnableBackupSchedule :one
 UPDATE backup_schedules
 SET enabled = true,
     updated_at = CURRENT_TIMESTAMP
@@ -1142,8 +1173,8 @@ WHERE id = ?
 RETURNING id, name, description, cron_expression, target_id, retention_days, enabled, created_at, updated_at, last_run_at, next_run_at
 `
 
-func (q *Queries) EnableBackupSchedule(ctx context.Context, id int64) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.enableBackupScheduleStmt, enableBackupSchedule, id)
+func (q *Queries) EnableBackupSchedule(ctx context.Context, id int64) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, EnableBackupSchedule, id)
 	var i BackupSchedule
 	err := row.Scan(
 		&i.ID,
@@ -1158,10 +1189,10 @@ func (q *Queries) EnableBackupSchedule(ctx context.Context, id int64) (BackupSch
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getAllKeys = `-- name: GetAllKeys :many
+const GetAllKeys = `-- name: GetAllKeys :many
 SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
 FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
@@ -1169,8 +1200,8 @@ WHERE (? IS NULL OR k.provider_id = ?)
 `
 
 type GetAllKeysParams struct {
-	Column1    interface{} `json:"column_1"`
-	ProviderID int64       `json:"provider_id"`
+	Column1    interface{} `json:"column1"`
+	ProviderID int64       `json:"providerId"`
 }
 
 type GetAllKeysRow struct {
@@ -1178,35 +1209,35 @@ type GetAllKeysRow struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderType      string         `json:"provider_type"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
 }
 
-func (q *Queries) GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]GetAllKeysRow, error) {
-	rows, err := q.query(ctx, q.getAllKeysStmt, getAllKeys, arg.Column1, arg.ProviderID)
+func (q *Queries) GetAllKeys(ctx context.Context, arg *GetAllKeysParams) ([]*GetAllKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetAllKeys, arg.Column1, arg.ProviderID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetAllKeysRow{}
+	items := []*GetAllKeysRow{}
 	for rows.Next() {
 		var i GetAllKeysRow
 		if err := rows.Scan(
@@ -1237,7 +1268,7 @@ func (q *Queries) GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]GetAl
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1248,17 +1279,17 @@ func (q *Queries) GetAllKeys(ctx context.Context, arg GetAllKeysParams) ([]GetAl
 	return items, nil
 }
 
-const getAllNodes = `-- name: GetAllNodes :many
+const GetAllNodes = `-- name: GetAllNodes :many
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
 `
 
-func (q *Queries) GetAllNodes(ctx context.Context) ([]Node, error) {
-	rows, err := q.query(ctx, q.getAllNodesStmt, getAllNodes)
+func (q *Queries) GetAllNodes(ctx context.Context) ([]*Node, error) {
+	rows, err := q.db.QueryContext(ctx, GetAllNodes)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Node{}
+	items := []*Node{}
 	for rows.Next() {
 		var i Node
 		if err := rows.Scan(
@@ -1284,7 +1315,7 @@ func (q *Queries) GetAllNodes(ctx context.Context) ([]Node, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1295,13 +1326,13 @@ func (q *Queries) GetAllNodes(ctx context.Context) ([]Node, error) {
 	return items, nil
 }
 
-const getBackup = `-- name: GetBackup :one
+const GetBackup = `-- name: GetBackup :one
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetBackup(ctx context.Context, id int64) (Backup, error) {
-	row := q.queryRow(ctx, q.getBackupStmt, getBackup, id)
+func (q *Queries) GetBackup(ctx context.Context, id int64) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, GetBackup, id)
 	var i Backup
 	err := row.Scan(
 		&i.ID,
@@ -1315,16 +1346,16 @@ func (q *Queries) GetBackup(ctx context.Context, id int64) (Backup, error) {
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const getBackupSchedule = `-- name: GetBackupSchedule :one
+const GetBackupSchedule = `-- name: GetBackupSchedule :one
 SELECT id, name, description, cron_expression, target_id, retention_days, enabled, created_at, updated_at, last_run_at, next_run_at FROM backup_schedules
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetBackupSchedule(ctx context.Context, id int64) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.getBackupScheduleStmt, getBackupSchedule, id)
+func (q *Queries) GetBackupSchedule(ctx context.Context, id int64) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, GetBackupSchedule, id)
 	var i BackupSchedule
 	err := row.Scan(
 		&i.ID,
@@ -1339,16 +1370,16 @@ func (q *Queries) GetBackupSchedule(ctx context.Context, id int64) (BackupSchedu
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getBackupTarget = `-- name: GetBackupTarget :one
+const GetBackupTarget = `-- name: GetBackupTarget :one
 SELECT id, name, bucket_name, region, endpoint, bucket_path, access_key_id, secret_key, s3_path_style, restic_password, type, created_at, updated_at FROM backup_targets
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetBackupTarget(ctx context.Context, id int64) (BackupTarget, error) {
-	row := q.queryRow(ctx, q.getBackupTargetStmt, getBackupTarget, id)
+func (q *Queries) GetBackupTarget(ctx context.Context, id int64) (*BackupTarget, error) {
+	row := q.db.QueryRowContext(ctx, GetBackupTarget, id)
 	var i BackupTarget
 	err := row.Scan(
 		&i.ID,
@@ -1365,27 +1396,27 @@ func (q *Queries) GetBackupTarget(ctx context.Context, id int64) (BackupTarget, 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getBackupsByDateRange = `-- name: GetBackupsByDateRange :many
+const GetBackupsByDateRange = `-- name: GetBackupsByDateRange :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE created_at BETWEEN ? AND ?
 ORDER BY created_at DESC
 `
 
 type GetBackupsByDateRangeParams struct {
-	FromCreatedAt time.Time `json:"from_created_at"`
-	ToCreatedAt   time.Time `json:"to_created_at"`
+	FromCreatedAt time.Time `json:"fromCreatedAt"`
+	ToCreatedAt   time.Time `json:"toCreatedAt"`
 }
 
-func (q *Queries) GetBackupsByDateRange(ctx context.Context, arg GetBackupsByDateRangeParams) ([]Backup, error) {
-	rows, err := q.query(ctx, q.getBackupsByDateRangeStmt, getBackupsByDateRange, arg.FromCreatedAt, arg.ToCreatedAt)
+func (q *Queries) GetBackupsByDateRange(ctx context.Context, arg *GetBackupsByDateRangeParams) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, GetBackupsByDateRange, arg.FromCreatedAt, arg.ToCreatedAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -1402,7 +1433,7 @@ func (q *Queries) GetBackupsByDateRange(ctx context.Context, arg GetBackupsByDat
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1413,24 +1444,24 @@ func (q *Queries) GetBackupsByDateRange(ctx context.Context, arg GetBackupsByDat
 	return items, nil
 }
 
-const getBackupsByScheduleAndStatus = `-- name: GetBackupsByScheduleAndStatus :many
+const GetBackupsByScheduleAndStatus = `-- name: GetBackupsByScheduleAndStatus :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE schedule_id = ? AND status = ?
 ORDER BY created_at DESC
 `
 
 type GetBackupsByScheduleAndStatusParams struct {
-	ScheduleID sql.NullInt64 `json:"schedule_id"`
+	ScheduleID sql.NullInt64 `json:"scheduleId"`
 	Status     string        `json:"status"`
 }
 
-func (q *Queries) GetBackupsByScheduleAndStatus(ctx context.Context, arg GetBackupsByScheduleAndStatusParams) ([]Backup, error) {
-	rows, err := q.query(ctx, q.getBackupsByScheduleAndStatusStmt, getBackupsByScheduleAndStatus, arg.ScheduleID, arg.Status)
+func (q *Queries) GetBackupsByScheduleAndStatus(ctx context.Context, arg *GetBackupsByScheduleAndStatusParams) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, GetBackupsByScheduleAndStatus, arg.ScheduleID, arg.Status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -1447,7 +1478,7 @@ func (q *Queries) GetBackupsByScheduleAndStatus(ctx context.Context, arg GetBack
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1458,19 +1489,19 @@ func (q *Queries) GetBackupsByScheduleAndStatus(ctx context.Context, arg GetBack
 	return items, nil
 }
 
-const getBackupsByStatus = `-- name: GetBackupsByStatus :many
+const GetBackupsByStatus = `-- name: GetBackupsByStatus :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE status = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) GetBackupsByStatus(ctx context.Context, status string) ([]Backup, error) {
-	rows, err := q.query(ctx, q.getBackupsByStatusStmt, getBackupsByStatus, status)
+func (q *Queries) GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, GetBackupsByStatus, status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -1487,7 +1518,7 @@ func (q *Queries) GetBackupsByStatus(ctx context.Context, status string) ([]Back
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1498,14 +1529,14 @@ func (q *Queries) GetBackupsByStatus(ctx context.Context, status string) ([]Back
 	return items, nil
 }
 
-const getDefaultNotificationProvider = `-- name: GetDefaultNotificationProvider :one
+const GetDefaultNotificationProvider = `-- name: GetDefaultNotificationProvider :one
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE is_default = 1 AND type = ?
 LIMIT 1
 `
 
-func (q *Queries) GetDefaultNotificationProvider(ctx context.Context, type_ string) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.getDefaultNotificationProviderStmt, getDefaultNotificationProvider, type_)
+func (q *Queries) GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetDefaultNotificationProvider, type_)
 	var i NotificationProvider
 	err := row.Scan(
 		&i.ID,
@@ -1524,10 +1555,10 @@ func (q *Queries) GetDefaultNotificationProvider(ctx context.Context, type_ stri
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const getDefaultNotificationProviderForType = `-- name: GetDefaultNotificationProviderForType :one
+const GetDefaultNotificationProviderForType = `-- name: GetDefaultNotificationProviderForType :one
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE is_default = true
   AND (
@@ -1539,8 +1570,8 @@ WHERE is_default = true
 LIMIT 1
 `
 
-func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.getDefaultNotificationProviderForTypeStmt, getDefaultNotificationProviderForType, notificationType)
+func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetDefaultNotificationProviderForType, notificationType)
 	var i NotificationProvider
 	err := row.Scan(
 		&i.ID,
@@ -1559,16 +1590,16 @@ func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, not
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const getFabricOrganization = `-- name: GetFabricOrganization :one
+const GetFabricOrganization = `-- name: GetFabricOrganization :one
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetFabricOrganization(ctx context.Context, id int64) (FabricOrganization, error) {
-	row := q.queryRow(ctx, q.getFabricOrganizationStmt, getFabricOrganization, id)
+func (q *Queries) GetFabricOrganization(ctx context.Context, id int64) (*FabricOrganization, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricOrganization, id)
 	var i FabricOrganization
 	err := row.Scan(
 		&i.ID,
@@ -1588,15 +1619,15 @@ func (q *Queries) GetFabricOrganization(ctx context.Context, id int64) (FabricOr
 		&i.CrlKeyID,
 		&i.CrlLastUpdate,
 	)
-	return i, err
+	return &i, err
 }
 
-const getFabricOrganizationByID = `-- name: GetFabricOrganizationByID :one
+const GetFabricOrganizationByID = `-- name: GetFabricOrganizationByID :one
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetFabricOrganizationByID(ctx context.Context, id int64) (FabricOrganization, error) {
-	row := q.queryRow(ctx, q.getFabricOrganizationByIDStmt, getFabricOrganizationByID, id)
+func (q *Queries) GetFabricOrganizationByID(ctx context.Context, id int64) (*FabricOrganization, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricOrganizationByID, id)
 	var i FabricOrganization
 	err := row.Scan(
 		&i.ID,
@@ -1616,16 +1647,16 @@ func (q *Queries) GetFabricOrganizationByID(ctx context.Context, id int64) (Fabr
 		&i.CrlKeyID,
 		&i.CrlLastUpdate,
 	)
-	return i, err
+	return &i, err
 }
 
-const getFabricOrganizationByMSPID = `-- name: GetFabricOrganizationByMSPID :one
+const GetFabricOrganizationByMSPID = `-- name: GetFabricOrganizationByMSPID :one
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 WHERE msp_id = ? LIMIT 1
 `
 
-func (q *Queries) GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (FabricOrganization, error) {
-	row := q.queryRow(ctx, q.getFabricOrganizationByMSPIDStmt, getFabricOrganizationByMSPID, mspID)
+func (q *Queries) GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (*FabricOrganization, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricOrganizationByMSPID, mspID)
 	var i FabricOrganization
 	err := row.Scan(
 		&i.ID,
@@ -1645,10 +1676,10 @@ func (q *Queries) GetFabricOrganizationByMSPID(ctx context.Context, mspID string
 		&i.CrlKeyID,
 		&i.CrlLastUpdate,
 	)
-	return i, err
+	return &i, err
 }
 
-const getFabricOrganizationByMspID = `-- name: GetFabricOrganizationByMspID :one
+const GetFabricOrganizationByMspID = `-- name: GetFabricOrganizationByMspID :one
 SELECT 
     fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
@@ -1665,30 +1696,30 @@ WHERE fo.msp_id = ?
 
 type GetFabricOrganizationByMspIDRow struct {
 	ID              int64          `json:"id"`
-	MspID           string         `json:"msp_id"`
+	MspID           string         `json:"mspId"`
 	Description     sql.NullString `json:"description"`
 	Config          sql.NullString `json:"config"`
-	CaConfig        sql.NullString `json:"ca_config"`
-	SignKeyID       sql.NullInt64  `json:"sign_key_id"`
-	TlsRootKeyID    sql.NullInt64  `json:"tls_root_key_id"`
-	AdminTlsKeyID   sql.NullInt64  `json:"admin_tls_key_id"`
-	AdminSignKeyID  sql.NullInt64  `json:"admin_sign_key_id"`
-	ClientSignKeyID sql.NullInt64  `json:"client_sign_key_id"`
-	ProviderID      sql.NullInt64  `json:"provider_id"`
-	CreatedAt       time.Time      `json:"created_at"`
-	CreatedBy       sql.NullInt64  `json:"created_by"`
-	UpdatedAt       sql.NullTime   `json:"updated_at"`
-	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
-	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
-	SignPublicKey   sql.NullString `json:"sign_public_key"`
-	SignCertificate sql.NullString `json:"sign_certificate"`
-	TlsPublicKey    sql.NullString `json:"tls_public_key"`
-	TlsCertificate  sql.NullString `json:"tls_certificate"`
-	ProviderName    sql.NullString `json:"provider_name"`
+	CaConfig        sql.NullString `json:"caConfig"`
+	SignKeyID       sql.NullInt64  `json:"signKeyId"`
+	TlsRootKeyID    sql.NullInt64  `json:"tlsRootKeyId"`
+	AdminTlsKeyID   sql.NullInt64  `json:"adminTlsKeyId"`
+	AdminSignKeyID  sql.NullInt64  `json:"adminSignKeyId"`
+	ClientSignKeyID sql.NullInt64  `json:"clientSignKeyId"`
+	ProviderID      sql.NullInt64  `json:"providerId"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	CreatedBy       sql.NullInt64  `json:"createdBy"`
+	UpdatedAt       sql.NullTime   `json:"updatedAt"`
+	CrlKeyID        sql.NullInt64  `json:"crlKeyId"`
+	CrlLastUpdate   sql.NullTime   `json:"crlLastUpdate"`
+	SignPublicKey   sql.NullString `json:"signPublicKey"`
+	SignCertificate sql.NullString `json:"signCertificate"`
+	TlsPublicKey    sql.NullString `json:"tlsPublicKey"`
+	TlsCertificate  sql.NullString `json:"tlsCertificate"`
+	ProviderName    sql.NullString `json:"providerName"`
 }
 
-func (q *Queries) GetFabricOrganizationByMspID(ctx context.Context, mspID string) (GetFabricOrganizationByMspIDRow, error) {
-	row := q.queryRow(ctx, q.getFabricOrganizationByMspIDStmt, getFabricOrganizationByMspID, mspID)
+func (q *Queries) GetFabricOrganizationByMspID(ctx context.Context, mspID string) (*GetFabricOrganizationByMspIDRow, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricOrganizationByMspID, mspID)
 	var i GetFabricOrganizationByMspIDRow
 	err := row.Scan(
 		&i.ID,
@@ -1713,10 +1744,10 @@ func (q *Queries) GetFabricOrganizationByMspID(ctx context.Context, mspID string
 		&i.TlsCertificate,
 		&i.ProviderName,
 	)
-	return i, err
+	return &i, err
 }
 
-const getFabricOrganizationWithKeys = `-- name: GetFabricOrganizationWithKeys :one
+const GetFabricOrganizationWithKeys = `-- name: GetFabricOrganizationWithKeys :one
 SELECT 
     fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
@@ -1733,30 +1764,30 @@ WHERE fo.id = ?
 
 type GetFabricOrganizationWithKeysRow struct {
 	ID              int64          `json:"id"`
-	MspID           string         `json:"msp_id"`
+	MspID           string         `json:"mspId"`
 	Description     sql.NullString `json:"description"`
 	Config          sql.NullString `json:"config"`
-	CaConfig        sql.NullString `json:"ca_config"`
-	SignKeyID       sql.NullInt64  `json:"sign_key_id"`
-	TlsRootKeyID    sql.NullInt64  `json:"tls_root_key_id"`
-	AdminTlsKeyID   sql.NullInt64  `json:"admin_tls_key_id"`
-	AdminSignKeyID  sql.NullInt64  `json:"admin_sign_key_id"`
-	ClientSignKeyID sql.NullInt64  `json:"client_sign_key_id"`
-	ProviderID      sql.NullInt64  `json:"provider_id"`
-	CreatedAt       time.Time      `json:"created_at"`
-	CreatedBy       sql.NullInt64  `json:"created_by"`
-	UpdatedAt       sql.NullTime   `json:"updated_at"`
-	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
-	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
-	SignPublicKey   sql.NullString `json:"sign_public_key"`
-	SignCertificate sql.NullString `json:"sign_certificate"`
-	TlsPublicKey    sql.NullString `json:"tls_public_key"`
-	TlsCertificate  sql.NullString `json:"tls_certificate"`
-	ProviderName    sql.NullString `json:"provider_name"`
+	CaConfig        sql.NullString `json:"caConfig"`
+	SignKeyID       sql.NullInt64  `json:"signKeyId"`
+	TlsRootKeyID    sql.NullInt64  `json:"tlsRootKeyId"`
+	AdminTlsKeyID   sql.NullInt64  `json:"adminTlsKeyId"`
+	AdminSignKeyID  sql.NullInt64  `json:"adminSignKeyId"`
+	ClientSignKeyID sql.NullInt64  `json:"clientSignKeyId"`
+	ProviderID      sql.NullInt64  `json:"providerId"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	CreatedBy       sql.NullInt64  `json:"createdBy"`
+	UpdatedAt       sql.NullTime   `json:"updatedAt"`
+	CrlKeyID        sql.NullInt64  `json:"crlKeyId"`
+	CrlLastUpdate   sql.NullTime   `json:"crlLastUpdate"`
+	SignPublicKey   sql.NullString `json:"signPublicKey"`
+	SignCertificate sql.NullString `json:"signCertificate"`
+	TlsPublicKey    sql.NullString `json:"tlsPublicKey"`
+	TlsCertificate  sql.NullString `json:"tlsCertificate"`
+	ProviderName    sql.NullString `json:"providerName"`
 }
 
-func (q *Queries) GetFabricOrganizationWithKeys(ctx context.Context, id int64) (GetFabricOrganizationWithKeysRow, error) {
-	row := q.queryRow(ctx, q.getFabricOrganizationWithKeysStmt, getFabricOrganizationWithKeys, id)
+func (q *Queries) GetFabricOrganizationWithKeys(ctx context.Context, id int64) (*GetFabricOrganizationWithKeysRow, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricOrganizationWithKeys, id)
 	var i GetFabricOrganizationWithKeysRow
 	err := row.Scan(
 		&i.ID,
@@ -1781,10 +1812,10 @@ func (q *Queries) GetFabricOrganizationWithKeys(ctx context.Context, id int64) (
 		&i.TlsCertificate,
 		&i.ProviderName,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKey = `-- name: GetKey :one
+const GetKey = `-- name: GetKey :one
 SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
 FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
@@ -1796,30 +1827,30 @@ type GetKeyRow struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderType      string         `json:"provider_type"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
 }
 
-func (q *Queries) GetKey(ctx context.Context, id int64) (GetKeyRow, error) {
-	row := q.queryRow(ctx, q.getKeyStmt, getKey, id)
+func (q *Queries) GetKey(ctx context.Context, id int64) (*GetKeyRow, error) {
+	row := q.db.QueryRowContext(ctx, GetKey, id)
 	var i GetKeyRow
 	err := row.Scan(
 		&i.ID,
@@ -1847,10 +1878,10 @@ func (q *Queries) GetKey(ctx context.Context, id int64) (GetKeyRow, error) {
 		&i.ProviderName,
 		&i.ProviderType,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeyByEthereumAddress = `-- name: GetKeyByEthereumAddress :one
+const GetKeyByEthereumAddress = `-- name: GetKeyByEthereumAddress :one
 SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
 FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
@@ -1862,30 +1893,30 @@ type GetKeyByEthereumAddressRow struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderType      string         `json:"provider_type"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
 }
 
-func (q *Queries) GetKeyByEthereumAddress(ctx context.Context, ethereumAddress sql.NullString) (GetKeyByEthereumAddressRow, error) {
-	row := q.queryRow(ctx, q.getKeyByEthereumAddressStmt, getKeyByEthereumAddress, ethereumAddress)
+func (q *Queries) GetKeyByEthereumAddress(ctx context.Context, ethereumAddress sql.NullString) (*GetKeyByEthereumAddressRow, error) {
+	row := q.db.QueryRowContext(ctx, GetKeyByEthereumAddress, ethereumAddress)
 	var i GetKeyByEthereumAddressRow
 	err := row.Scan(
 		&i.ID,
@@ -1913,10 +1944,10 @@ func (q *Queries) GetKeyByEthereumAddress(ctx context.Context, ethereumAddress s
 		&i.ProviderName,
 		&i.ProviderType,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeyByID = `-- name: GetKeyByID :one
+const GetKeyByID = `-- name: GetKeyByID :one
 SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
 FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
@@ -1928,30 +1959,30 @@ type GetKeyByIDRow struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderType      string         `json:"provider_type"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
 }
 
-func (q *Queries) GetKeyByID(ctx context.Context, id int64) (GetKeyByIDRow, error) {
-	row := q.queryRow(ctx, q.getKeyByIDStmt, getKeyByID, id)
+func (q *Queries) GetKeyByID(ctx context.Context, id int64) (*GetKeyByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, GetKeyByID, id)
 	var i GetKeyByIDRow
 	err := row.Scan(
 		&i.ID,
@@ -1979,26 +2010,26 @@ func (q *Queries) GetKeyByID(ctx context.Context, id int64) (GetKeyByIDRow, erro
 		&i.ProviderName,
 		&i.ProviderType,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeyCountByProvider = `-- name: GetKeyCountByProvider :one
+const GetKeyCountByProvider = `-- name: GetKeyCountByProvider :one
 SELECT COUNT(*) FROM keys WHERE provider_id = ?
 `
 
 func (q *Queries) GetKeyCountByProvider(ctx context.Context, providerID int64) (int64, error) {
-	row := q.queryRow(ctx, q.getKeyCountByProviderStmt, getKeyCountByProvider, providerID)
+	row := q.db.QueryRowContext(ctx, GetKeyCountByProvider, providerID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const getKeyProvider = `-- name: GetKeyProvider :one
+const GetKeyProvider = `-- name: GetKeyProvider :one
 SELECT id, name, type, is_default, config, created_at, updated_at FROM key_providers WHERE id = ?
 `
 
-func (q *Queries) GetKeyProvider(ctx context.Context, id int64) (KeyProvider, error) {
-	row := q.queryRow(ctx, q.getKeyProviderStmt, getKeyProvider, id)
+func (q *Queries) GetKeyProvider(ctx context.Context, id int64) (*KeyProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetKeyProvider, id)
 	var i KeyProvider
 	err := row.Scan(
 		&i.ID,
@@ -2009,15 +2040,15 @@ func (q *Queries) GetKeyProvider(ctx context.Context, id int64) (KeyProvider, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeyProviderByDefault = `-- name: GetKeyProviderByDefault :one
+const GetKeyProviderByDefault = `-- name: GetKeyProviderByDefault :one
 SELECT id, name, type, is_default, config, created_at, updated_at FROM key_providers WHERE is_default = 1 LIMIT 1
 `
 
-func (q *Queries) GetKeyProviderByDefault(ctx context.Context) (KeyProvider, error) {
-	row := q.queryRow(ctx, q.getKeyProviderByDefaultStmt, getKeyProviderByDefault)
+func (q *Queries) GetKeyProviderByDefault(ctx context.Context) (*KeyProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetKeyProviderByDefault)
 	var i KeyProvider
 	err := row.Scan(
 		&i.ID,
@@ -2028,15 +2059,15 @@ func (q *Queries) GetKeyProviderByDefault(ctx context.Context) (KeyProvider, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeyProviderByID = `-- name: GetKeyProviderByID :one
+const GetKeyProviderByID = `-- name: GetKeyProviderByID :one
 SELECT id, name, type, is_default, config, created_at, updated_at FROM key_providers WHERE id = ?
 `
 
-func (q *Queries) GetKeyProviderByID(ctx context.Context, id int64) (KeyProvider, error) {
-	row := q.queryRow(ctx, q.getKeyProviderByIDStmt, getKeyProviderByID, id)
+func (q *Queries) GetKeyProviderByID(ctx context.Context, id int64) (*KeyProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetKeyProviderByID, id)
 	var i KeyProvider
 	err := row.Scan(
 		&i.ID,
@@ -2047,20 +2078,20 @@ func (q *Queries) GetKeyProviderByID(ctx context.Context, id int64) (KeyProvider
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getKeysByAlgorithm = `-- name: GetKeysByAlgorithm :many
+const GetKeysByAlgorithm = `-- name: GetKeysByAlgorithm :many
 SELECT id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address FROM keys WHERE algorithm = ?
 `
 
-func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]Key, error) {
-	rows, err := q.query(ctx, q.getKeysByAlgorithmStmt, getKeysByAlgorithm, algorithm)
+func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]*Key, error) {
+	rows, err := q.db.QueryContext(ctx, GetKeysByAlgorithm, algorithm)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Key{}
+	items := []*Key{}
 	for rows.Next() {
 		var i Key
 		if err := rows.Scan(
@@ -2089,7 +2120,7 @@ func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]K
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2100,22 +2131,22 @@ func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]K
 	return items, nil
 }
 
-const getKeysByProviderAndCurve = `-- name: GetKeysByProviderAndCurve :many
+const GetKeysByProviderAndCurve = `-- name: GetKeysByProviderAndCurve :many
 SELECT id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address FROM keys WHERE provider_id = ? AND curve = ?
 `
 
 type GetKeysByProviderAndCurveParams struct {
-	ProviderID int64          `json:"provider_id"`
+	ProviderID int64          `json:"providerId"`
 	Curve      sql.NullString `json:"curve"`
 }
 
-func (q *Queries) GetKeysByProviderAndCurve(ctx context.Context, arg GetKeysByProviderAndCurveParams) ([]Key, error) {
-	rows, err := q.query(ctx, q.getKeysByProviderAndCurveStmt, getKeysByProviderAndCurve, arg.ProviderID, arg.Curve)
+func (q *Queries) GetKeysByProviderAndCurve(ctx context.Context, arg *GetKeysByProviderAndCurveParams) ([]*Key, error) {
+	rows, err := q.db.QueryContext(ctx, GetKeysByProviderAndCurve, arg.ProviderID, arg.Curve)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Key{}
+	items := []*Key{}
 	for rows.Next() {
 		var i Key
 		if err := rows.Scan(
@@ -2144,7 +2175,7 @@ func (q *Queries) GetKeysByProviderAndCurve(ctx context.Context, arg GetKeysByPr
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2155,26 +2186,26 @@ func (q *Queries) GetKeysByProviderAndCurve(ctx context.Context, arg GetKeysByPr
 	return items, nil
 }
 
-const getKeysCount = `-- name: GetKeysCount :one
+const GetKeysCount = `-- name: GetKeysCount :one
 SELECT COUNT(*) FROM keys
 `
 
 func (q *Queries) GetKeysCount(ctx context.Context) (int64, error) {
-	row := q.queryRow(ctx, q.getKeysCountStmt, getKeysCount)
+	row := q.db.QueryRowContext(ctx, GetKeysCount)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const getLatestNodeEvent = `-- name: GetLatestNodeEvent :one
+const GetLatestNodeEvent = `-- name: GetLatestNodeEvent :one
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE node_id = ?
 ORDER BY created_at DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestNodeEvent(ctx context.Context, nodeID int64) (NodeEvent, error) {
-	row := q.queryRow(ctx, q.getLatestNodeEventStmt, getLatestNodeEvent, nodeID)
+func (q *Queries) GetLatestNodeEvent(ctx context.Context, nodeID int64) (*NodeEvent, error) {
+	row := q.db.QueryRowContext(ctx, GetLatestNodeEvent, nodeID)
 	var i NodeEvent
 	err := row.Scan(
 		&i.ID,
@@ -2185,16 +2216,16 @@ func (q *Queries) GetLatestNodeEvent(ctx context.Context, nodeID int64) (NodeEve
 		&i.Status,
 		&i.CreatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNetwork = `-- name: GetNetwork :one
+const GetNetwork = `-- name: GetNetwork :one
 SELECT id, name, network_id, platform, status, description, config, deployment_config, exposed_ports, domain, created_at, created_by, updated_at, genesis_block_b64, current_config_block_b64 FROM networks
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetNetwork(ctx context.Context, id int64) (Network, error) {
-	row := q.queryRow(ctx, q.getNetworkStmt, getNetwork, id)
+func (q *Queries) GetNetwork(ctx context.Context, id int64) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, GetNetwork, id)
 	var i Network
 	err := row.Scan(
 		&i.ID,
@@ -2213,16 +2244,16 @@ func (q *Queries) GetNetwork(ctx context.Context, id int64) (Network, error) {
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNetworkByName = `-- name: GetNetworkByName :one
+const GetNetworkByName = `-- name: GetNetworkByName :one
 SELECT id, name, network_id, platform, status, description, config, deployment_config, exposed_ports, domain, created_at, created_by, updated_at, genesis_block_b64, current_config_block_b64 FROM networks
 WHERE name = ? LIMIT 1
 `
 
-func (q *Queries) GetNetworkByName(ctx context.Context, name string) (Network, error) {
-	row := q.queryRow(ctx, q.getNetworkByNameStmt, getNetworkByName, name)
+func (q *Queries) GetNetworkByName(ctx context.Context, name string) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, GetNetworkByName, name)
 	var i Network
 	err := row.Scan(
 		&i.ID,
@@ -2241,16 +2272,16 @@ func (q *Queries) GetNetworkByName(ctx context.Context, name string) (Network, e
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNetworkByNetworkId = `-- name: GetNetworkByNetworkId :one
+const GetNetworkByNetworkId = `-- name: GetNetworkByNetworkId :one
 SELECT id, name, network_id, platform, status, description, config, deployment_config, exposed_ports, domain, created_at, created_by, updated_at, genesis_block_b64, current_config_block_b64 FROM networks
 WHERE network_id = ? LIMIT 1
 `
 
-func (q *Queries) GetNetworkByNetworkId(ctx context.Context, networkID sql.NullString) (Network, error) {
-	row := q.queryRow(ctx, q.getNetworkByNetworkIdStmt, getNetworkByNetworkId, networkID)
+func (q *Queries) GetNetworkByNetworkId(ctx context.Context, networkID sql.NullString) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, GetNetworkByNetworkId, networkID)
 	var i Network
 	err := row.Scan(
 		&i.ID,
@@ -2269,33 +2300,33 @@ func (q *Queries) GetNetworkByNetworkId(ctx context.Context, networkID sql.NullS
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNetworkCurrentConfigBlock = `-- name: GetNetworkCurrentConfigBlock :one
+const GetNetworkCurrentConfigBlock = `-- name: GetNetworkCurrentConfigBlock :one
 SELECT current_config_block_b64 FROM networks
 WHERE id = ?
 `
 
 func (q *Queries) GetNetworkCurrentConfigBlock(ctx context.Context, id int64) (sql.NullString, error) {
-	row := q.queryRow(ctx, q.getNetworkCurrentConfigBlockStmt, getNetworkCurrentConfigBlock, id)
+	row := q.db.QueryRowContext(ctx, GetNetworkCurrentConfigBlock, id)
 	var current_config_block_b64 sql.NullString
 	err := row.Scan(&current_config_block_b64)
 	return current_config_block_b64, err
 }
 
-const getNetworkNode = `-- name: GetNetworkNode :one
+const GetNetworkNode = `-- name: GetNetworkNode :one
 SELECT id, network_id, node_id, role, status, config, created_at, updated_at FROM network_nodes
 WHERE network_id = ? AND node_id = ?
 `
 
 type GetNetworkNodeParams struct {
-	NetworkID int64 `json:"network_id"`
-	NodeID    int64 `json:"node_id"`
+	NetworkID int64 `json:"networkId"`
+	NodeID    int64 `json:"nodeId"`
 }
 
-func (q *Queries) GetNetworkNode(ctx context.Context, arg GetNetworkNodeParams) (NetworkNode, error) {
-	row := q.queryRow(ctx, q.getNetworkNodeStmt, getNetworkNode, arg.NetworkID, arg.NodeID)
+func (q *Queries) GetNetworkNode(ctx context.Context, arg *GetNetworkNodeParams) (*NetworkNode, error) {
+	row := q.db.QueryRowContext(ctx, GetNetworkNode, arg.NetworkID, arg.NodeID)
 	var i NetworkNode
 	err := row.Scan(
 		&i.ID,
@@ -2307,10 +2338,10 @@ func (q *Queries) GetNetworkNode(ctx context.Context, arg GetNetworkNodeParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNetworkNodes = `-- name: GetNetworkNodes :many
+const GetNetworkNodes = `-- name: GetNetworkNodes :many
 SELECT nn.id, nn.network_id, nn.node_id, nn.role, nn.status, nn.config, nn.created_at, nn.updated_at, n.id, n.name, n.slug, n.platform, n.status, n.description, n.network_id, n.config, n.resources, n.endpoint, n.public_endpoint, n.p2p_address, n.created_at, n.created_by, n.updated_at, n.fabric_organization_id, n.node_type, n.node_config, n.deployment_config 
 FROM network_nodes nn
 JOIN nodes n ON nn.node_id = n.id
@@ -2320,41 +2351,41 @@ ORDER BY nn.created_at DESC
 
 type GetNetworkNodesRow struct {
 	ID                   int64          `json:"id"`
-	NetworkID            int64          `json:"network_id"`
-	NodeID               int64          `json:"node_id"`
+	NetworkID            int64          `json:"networkId"`
+	NodeID               int64          `json:"nodeId"`
 	Role                 string         `json:"role"`
 	Status               string         `json:"status"`
 	Config               sql.NullString `json:"config"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	ID_2                 int64          `json:"id_2"`
+	CreatedAt            time.Time      `json:"createdAt"`
+	UpdatedAt            time.Time      `json:"updatedAt"`
+	ID_2                 int64          `json:"id2"`
 	Name                 string         `json:"name"`
 	Slug                 string         `json:"slug"`
 	Platform             string         `json:"platform"`
-	Status_2             string         `json:"status_2"`
+	Status_2             string         `json:"status2"`
 	Description          sql.NullString `json:"description"`
-	NetworkID_2          sql.NullInt64  `json:"network_id_2"`
-	Config_2             sql.NullString `json:"config_2"`
+	NetworkID_2          sql.NullInt64  `json:"networkId2"`
+	Config_2             sql.NullString `json:"config2"`
 	Resources            sql.NullString `json:"resources"`
 	Endpoint             sql.NullString `json:"endpoint"`
-	PublicEndpoint       sql.NullString `json:"public_endpoint"`
-	P2pAddress           sql.NullString `json:"p2p_address"`
-	CreatedAt_2          time.Time      `json:"created_at_2"`
-	CreatedBy            sql.NullInt64  `json:"created_by"`
-	UpdatedAt_2          sql.NullTime   `json:"updated_at_2"`
-	FabricOrganizationID sql.NullInt64  `json:"fabric_organization_id"`
-	NodeType             sql.NullString `json:"node_type"`
-	NodeConfig           sql.NullString `json:"node_config"`
-	DeploymentConfig     sql.NullString `json:"deployment_config"`
+	PublicEndpoint       sql.NullString `json:"publicEndpoint"`
+	P2pAddress           sql.NullString `json:"p2pAddress"`
+	CreatedAt_2          time.Time      `json:"createdAt2"`
+	CreatedBy            sql.NullInt64  `json:"createdBy"`
+	UpdatedAt_2          sql.NullTime   `json:"updatedAt2"`
+	FabricOrganizationID sql.NullInt64  `json:"fabricOrganizationId"`
+	NodeType             sql.NullString `json:"nodeType"`
+	NodeConfig           sql.NullString `json:"nodeConfig"`
+	DeploymentConfig     sql.NullString `json:"deploymentConfig"`
 }
 
-func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]GetNetworkNodesRow, error) {
-	rows, err := q.query(ctx, q.getNetworkNodesStmt, getNetworkNodes, networkID)
+func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]*GetNetworkNodesRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetNetworkNodes, networkID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetNetworkNodesRow{}
+	items := []*GetNetworkNodesRow{}
 	for rows.Next() {
 		var i GetNetworkNodesRow
 		if err := rows.Scan(
@@ -2388,7 +2419,7 @@ func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]GetNe
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2399,13 +2430,13 @@ func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]GetNe
 	return items, nil
 }
 
-const getNode = `-- name: GetNode :one
+const GetNode = `-- name: GetNode :one
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
-	row := q.queryRow(ctx, q.getNodeStmt, getNode, id)
+func (q *Queries) GetNode(ctx context.Context, id int64) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, GetNode, id)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -2428,15 +2459,15 @@ func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNodeBySlug = `-- name: GetNodeBySlug :one
+const GetNodeBySlug = `-- name: GetNodeBySlug :one
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes WHERE slug = ?
 `
 
-func (q *Queries) GetNodeBySlug(ctx context.Context, slug string) (Node, error) {
-	row := q.queryRow(ctx, q.getNodeBySlugStmt, getNodeBySlug, slug)
+func (q *Queries) GetNodeBySlug(ctx context.Context, slug string) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, GetNodeBySlug, slug)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -2459,16 +2490,16 @@ func (q *Queries) GetNodeBySlug(ctx context.Context, slug string) (Node, error) 
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNodeEvent = `-- name: GetNodeEvent :one
+const GetNodeEvent = `-- name: GetNodeEvent :one
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetNodeEvent(ctx context.Context, id int64) (NodeEvent, error) {
-	row := q.queryRow(ctx, q.getNodeEventStmt, getNodeEvent, id)
+func (q *Queries) GetNodeEvent(ctx context.Context, id int64) (*NodeEvent, error) {
+	row := q.db.QueryRowContext(ctx, GetNodeEvent, id)
 	var i NodeEvent
 	err := row.Scan(
 		&i.ID,
@@ -2479,16 +2510,16 @@ func (q *Queries) GetNodeEvent(ctx context.Context, id int64) (NodeEvent, error)
 		&i.Status,
 		&i.CreatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getNotificationProvider = `-- name: GetNotificationProvider :one
+const GetNotificationProvider = `-- name: GetNotificationProvider :one
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetNotificationProvider(ctx context.Context, id int64) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.getNotificationProviderStmt, getNotificationProvider, id)
+func (q *Queries) GetNotificationProvider(ctx context.Context, id int64) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, GetNotificationProvider, id)
 	var i NotificationProvider
 	err := row.Scan(
 		&i.ID,
@@ -2507,18 +2538,18 @@ func (q *Queries) GetNotificationProvider(ctx context.Context, id int64) (Notifi
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const getOldestBackupByTarget = `-- name: GetOldestBackupByTarget :one
+const GetOldestBackupByTarget = `-- name: GetOldestBackupByTarget :one
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE target_id = ?
 ORDER BY created_at ASC
 LIMIT 1
 `
 
-func (q *Queries) GetOldestBackupByTarget(ctx context.Context, targetID int64) (Backup, error) {
-	row := q.queryRow(ctx, q.getOldestBackupByTargetStmt, getOldestBackupByTarget, targetID)
+func (q *Queries) GetOldestBackupByTarget(ctx context.Context, targetID int64) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, GetOldestBackupByTarget, targetID)
 	var i Backup
 	err := row.Scan(
 		&i.ID,
@@ -2532,10 +2563,10 @@ func (q *Queries) GetOldestBackupByTarget(ctx context.Context, targetID int64) (
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const getOrdererPorts = `-- name: GetOrdererPorts :many
+const GetOrdererPorts = `-- name: GetOrdererPorts :many
 SELECT endpoint, public_endpoint
 FROM nodes
 WHERE node_type = 'fabric-orderer'
@@ -2544,22 +2575,22 @@ AND (endpoint IS NOT NULL OR public_endpoint IS NOT NULL)
 
 type GetOrdererPortsRow struct {
 	Endpoint       sql.NullString `json:"endpoint"`
-	PublicEndpoint sql.NullString `json:"public_endpoint"`
+	PublicEndpoint sql.NullString `json:"publicEndpoint"`
 }
 
-func (q *Queries) GetOrdererPorts(ctx context.Context) ([]GetOrdererPortsRow, error) {
-	rows, err := q.query(ctx, q.getOrdererPortsStmt, getOrdererPorts)
+func (q *Queries) GetOrdererPorts(ctx context.Context) ([]*GetOrdererPortsRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetOrdererPorts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetOrdererPortsRow{}
+	items := []*GetOrdererPortsRow{}
 	for rows.Next() {
 		var i GetOrdererPortsRow
 		if err := rows.Scan(&i.Endpoint, &i.PublicEndpoint); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2570,25 +2601,25 @@ func (q *Queries) GetOrdererPorts(ctx context.Context) ([]GetOrdererPortsRow, er
 	return items, nil
 }
 
-const getOrganizationCRLInfo = `-- name: GetOrganizationCRLInfo :one
+const GetOrganizationCRLInfo = `-- name: GetOrganizationCRLInfo :one
 SELECT crl_key_id, crl_last_update
 FROM fabric_organizations
 WHERE id = ?
 `
 
 type GetOrganizationCRLInfoRow struct {
-	CrlKeyID      sql.NullInt64 `json:"crl_key_id"`
-	CrlLastUpdate sql.NullTime  `json:"crl_last_update"`
+	CrlKeyID      sql.NullInt64 `json:"crlKeyId"`
+	CrlLastUpdate sql.NullTime  `json:"crlLastUpdate"`
 }
 
-func (q *Queries) GetOrganizationCRLInfo(ctx context.Context, id int64) (GetOrganizationCRLInfoRow, error) {
-	row := q.queryRow(ctx, q.getOrganizationCRLInfoStmt, getOrganizationCRLInfo, id)
+func (q *Queries) GetOrganizationCRLInfo(ctx context.Context, id int64) (*GetOrganizationCRLInfoRow, error) {
+	row := q.db.QueryRowContext(ctx, GetOrganizationCRLInfo, id)
 	var i GetOrganizationCRLInfoRow
 	err := row.Scan(&i.CrlKeyID, &i.CrlLastUpdate)
-	return i, err
+	return &i, err
 }
 
-const getPeerPorts = `-- name: GetPeerPorts :many
+const GetPeerPorts = `-- name: GetPeerPorts :many
 SELECT endpoint, public_endpoint
 FROM nodes
 WHERE node_type = 'fabric-peer'
@@ -2597,22 +2628,22 @@ AND (endpoint IS NOT NULL OR public_endpoint IS NOT NULL)
 
 type GetPeerPortsRow struct {
 	Endpoint       sql.NullString `json:"endpoint"`
-	PublicEndpoint sql.NullString `json:"public_endpoint"`
+	PublicEndpoint sql.NullString `json:"publicEndpoint"`
 }
 
-func (q *Queries) GetPeerPorts(ctx context.Context) ([]GetPeerPortsRow, error) {
-	rows, err := q.query(ctx, q.getPeerPortsStmt, getPeerPorts)
+func (q *Queries) GetPeerPorts(ctx context.Context) ([]*GetPeerPortsRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetPeerPorts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetPeerPortsRow{}
+	items := []*GetPeerPortsRow{}
 	for rows.Next() {
 		var i GetPeerPortsRow
 		if err := rows.Scan(&i.Endpoint, &i.PublicEndpoint); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2623,7 +2654,7 @@ func (q *Queries) GetPeerPorts(ctx context.Context) ([]GetPeerPortsRow, error) {
 	return items, nil
 }
 
-const getProvidersByNotificationType = `-- name: GetProvidersByNotificationType :many
+const GetProvidersByNotificationType = `-- name: GetProvidersByNotificationType :many
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE (
     (? = 'NODE_DOWNTIME' AND notify_node_downtime = 1) OR
@@ -2635,14 +2666,14 @@ ORDER BY created_at DESC
 `
 
 type GetProvidersByNotificationTypeParams struct {
-	Column1 interface{} `json:"column_1"`
-	Column2 interface{} `json:"column_2"`
-	Column3 interface{} `json:"column_3"`
-	Column4 interface{} `json:"column_4"`
+	Column1 interface{} `json:"column1"`
+	Column2 interface{} `json:"column2"`
+	Column3 interface{} `json:"column3"`
+	Column4 interface{} `json:"column4"`
 }
 
-func (q *Queries) GetProvidersByNotificationType(ctx context.Context, arg GetProvidersByNotificationTypeParams) ([]NotificationProvider, error) {
-	rows, err := q.query(ctx, q.getProvidersByNotificationTypeStmt, getProvidersByNotificationType,
+func (q *Queries) GetProvidersByNotificationType(ctx context.Context, arg *GetProvidersByNotificationTypeParams) ([]*NotificationProvider, error) {
+	rows, err := q.db.QueryContext(ctx, GetProvidersByNotificationType,
 		arg.Column1,
 		arg.Column2,
 		arg.Column3,
@@ -2652,7 +2683,7 @@ func (q *Queries) GetProvidersByNotificationType(ctx context.Context, arg GetPro
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NotificationProvider{}
+	items := []*NotificationProvider{}
 	for rows.Next() {
 		var i NotificationProvider
 		if err := rows.Scan(
@@ -2674,7 +2705,7 @@ func (q *Queries) GetProvidersByNotificationType(ctx context.Context, arg GetPro
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2685,7 +2716,7 @@ func (q *Queries) GetProvidersByNotificationType(ctx context.Context, arg GetPro
 	return items, nil
 }
 
-const getRecentCompletedBackups = `-- name: GetRecentCompletedBackups :many
+const GetRecentCompletedBackups = `-- name: GetRecentCompletedBackups :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE (status = 'COMPLETED' OR status = 'FAILED')
   AND notification_sent = false
@@ -2693,13 +2724,13 @@ ORDER BY completed_at DESC
 LIMIT 50
 `
 
-func (q *Queries) GetRecentCompletedBackups(ctx context.Context) ([]Backup, error) {
-	rows, err := q.query(ctx, q.getRecentCompletedBackupsStmt, getRecentCompletedBackups)
+func (q *Queries) GetRecentCompletedBackups(ctx context.Context) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, GetRecentCompletedBackups)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -2716,7 +2747,7 @@ func (q *Queries) GetRecentCompletedBackups(ctx context.Context) ([]Backup, erro
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2727,18 +2758,18 @@ func (q *Queries) GetRecentCompletedBackups(ctx context.Context) ([]Backup, erro
 	return items, nil
 }
 
-const getRevokedCertificate = `-- name: GetRevokedCertificate :one
+const GetRevokedCertificate = `-- name: GetRevokedCertificate :one
 SELECT id, fabric_organization_id, serial_number, revocation_time, reason, issuer_certificate_id, created_at, updated_at FROM fabric_revoked_certificates
 WHERE fabric_organization_id = ? AND serial_number = ?
 `
 
 type GetRevokedCertificateParams struct {
-	FabricOrganizationID int64  `json:"fabric_organization_id"`
-	SerialNumber         string `json:"serial_number"`
+	FabricOrganizationID int64  `json:"fabricOrganizationId"`
+	SerialNumber         string `json:"serialNumber"`
 }
 
-func (q *Queries) GetRevokedCertificate(ctx context.Context, arg GetRevokedCertificateParams) (FabricRevokedCertificate, error) {
-	row := q.queryRow(ctx, q.getRevokedCertificateStmt, getRevokedCertificate, arg.FabricOrganizationID, arg.SerialNumber)
+func (q *Queries) GetRevokedCertificate(ctx context.Context, arg *GetRevokedCertificateParams) (*FabricRevokedCertificate, error) {
+	row := q.db.QueryRowContext(ctx, GetRevokedCertificate, arg.FabricOrganizationID, arg.SerialNumber)
 	var i FabricRevokedCertificate
 	err := row.Scan(
 		&i.ID,
@@ -2750,22 +2781,22 @@ func (q *Queries) GetRevokedCertificate(ctx context.Context, arg GetRevokedCerti
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getRevokedCertificates = `-- name: GetRevokedCertificates :many
+const GetRevokedCertificates = `-- name: GetRevokedCertificates :many
 SELECT id, fabric_organization_id, serial_number, revocation_time, reason, issuer_certificate_id, created_at, updated_at FROM fabric_revoked_certificates
 WHERE fabric_organization_id = ?
 ORDER BY revocation_time DESC
 `
 
-func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]FabricRevokedCertificate, error) {
-	rows, err := q.query(ctx, q.getRevokedCertificatesStmt, getRevokedCertificates, fabricOrganizationID)
+func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]*FabricRevokedCertificate, error) {
+	rows, err := q.db.QueryContext(ctx, GetRevokedCertificates, fabricOrganizationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []FabricRevokedCertificate{}
+	items := []*FabricRevokedCertificate{}
 	for rows.Next() {
 		var i FabricRevokedCertificate
 		if err := rows.Scan(
@@ -2780,7 +2811,7 @@ func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganization
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2791,7 +2822,7 @@ func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganization
 	return items, nil
 }
 
-const getSession = `-- name: GetSession :one
+const GetSession = `-- name: GetSession :one
 SELECT s.id, s.session_id, s.token, s.expires_at, s.created_at, u.username
 FROM sessions s
 JOIN users u ON s.user_id = u.id
@@ -2800,15 +2831,15 @@ WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP
 
 type GetSessionRow struct {
 	ID        int64     `json:"id"`
-	SessionID string    `json:"session_id"`
+	SessionID string    `json:"sessionId"`
 	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"createdAt"`
 	Username  string    `json:"username"`
 }
 
-func (q *Queries) GetSession(ctx context.Context, sessionID string) (GetSessionRow, error) {
-	row := q.queryRow(ctx, q.getSessionStmt, getSession, sessionID)
+func (q *Queries) GetSession(ctx context.Context, sessionID string) (*GetSessionRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSession, sessionID)
 	var i GetSessionRow
 	err := row.Scan(
 		&i.ID,
@@ -2818,16 +2849,33 @@ func (q *Queries) GetSession(ctx context.Context, sessionID string) (GetSessionR
 		&i.CreatedAt,
 		&i.Username,
 	)
-	return i, err
+	return &i, err
 }
 
-const getUser = `-- name: GetUser :one
+const GetSetting = `-- name: GetSetting :one
+SELECT id, config, created_at, updated_at FROM settings
+WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetSetting(ctx context.Context, id int64) (*Setting, error) {
+	row := q.db.QueryRowContext(ctx, GetSetting, id)
+	var i Setting
+	err := row.Scan(
+		&i.ID,
+		&i.Config,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const GetUser = `-- name: GetUser :one
 SELECT id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at FROM users
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
-	row := q.queryRow(ctx, q.getUserStmt, getUser, id)
+func (q *Queries) GetUser(ctx context.Context, id int64) (*User, error) {
+	row := q.db.QueryRowContext(ctx, GetUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -2843,16 +2891,16 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.LastLoginAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const getUserByUsername = `-- name: GetUserByUsername :one
+const GetUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at FROM users
 WHERE username = ? LIMIT 1
 `
 
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.queryRow(ctx, q.getUserByUsernameStmt, getUserByUsername, username)
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+	row := q.db.QueryRowContext(ctx, GetUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -2868,21 +2916,21 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.LastLoginAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const listBackupSchedules = `-- name: ListBackupSchedules :many
+const ListBackupSchedules = `-- name: ListBackupSchedules :many
 SELECT id, name, description, cron_expression, target_id, retention_days, enabled, created_at, updated_at, last_run_at, next_run_at FROM backup_schedules
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListBackupSchedules(ctx context.Context) ([]BackupSchedule, error) {
-	rows, err := q.query(ctx, q.listBackupSchedulesStmt, listBackupSchedules)
+func (q *Queries) ListBackupSchedules(ctx context.Context) ([]*BackupSchedule, error) {
+	rows, err := q.db.QueryContext(ctx, ListBackupSchedules)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []BackupSchedule{}
+	items := []*BackupSchedule{}
 	for rows.Next() {
 		var i BackupSchedule
 		if err := rows.Scan(
@@ -2900,7 +2948,7 @@ func (q *Queries) ListBackupSchedules(ctx context.Context) ([]BackupSchedule, er
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2911,18 +2959,18 @@ func (q *Queries) ListBackupSchedules(ctx context.Context) ([]BackupSchedule, er
 	return items, nil
 }
 
-const listBackupTargets = `-- name: ListBackupTargets :many
+const ListBackupTargets = `-- name: ListBackupTargets :many
 SELECT id, name, bucket_name, region, endpoint, bucket_path, access_key_id, secret_key, s3_path_style, restic_password, type, created_at, updated_at FROM backup_targets
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListBackupTargets(ctx context.Context) ([]BackupTarget, error) {
-	rows, err := q.query(ctx, q.listBackupTargetsStmt, listBackupTargets)
+func (q *Queries) ListBackupTargets(ctx context.Context) ([]*BackupTarget, error) {
+	rows, err := q.db.QueryContext(ctx, ListBackupTargets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []BackupTarget{}
+	items := []*BackupTarget{}
 	for rows.Next() {
 		var i BackupTarget
 		if err := rows.Scan(
@@ -2942,7 +2990,7 @@ func (q *Queries) ListBackupTargets(ctx context.Context) ([]BackupTarget, error)
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2953,7 +3001,7 @@ func (q *Queries) ListBackupTargets(ctx context.Context) ([]BackupTarget, error)
 	return items, nil
 }
 
-const listBackups = `-- name: ListBackups :many
+const ListBackups = `-- name: ListBackups :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -2964,13 +3012,13 @@ type ListBackupsParams struct {
 	Offset int64 `json:"offset"`
 }
 
-func (q *Queries) ListBackups(ctx context.Context, arg ListBackupsParams) ([]Backup, error) {
-	rows, err := q.query(ctx, q.listBackupsStmt, listBackups, arg.Limit, arg.Offset)
+func (q *Queries) ListBackups(ctx context.Context, arg *ListBackupsParams) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, ListBackups, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -2987,7 +3035,7 @@ func (q *Queries) ListBackups(ctx context.Context, arg ListBackupsParams) ([]Bac
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -2998,19 +3046,19 @@ func (q *Queries) ListBackups(ctx context.Context, arg ListBackupsParams) ([]Bac
 	return items, nil
 }
 
-const listBackupsBySchedule = `-- name: ListBackupsBySchedule :many
+const ListBackupsBySchedule = `-- name: ListBackupsBySchedule :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE schedule_id = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) ([]Backup, error) {
-	rows, err := q.query(ctx, q.listBackupsByScheduleStmt, listBackupsBySchedule, scheduleID)
+func (q *Queries) ListBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, ListBackupsBySchedule, scheduleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -3027,7 +3075,7 @@ func (q *Queries) ListBackupsBySchedule(ctx context.Context, scheduleID sql.Null
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3038,19 +3086,19 @@ func (q *Queries) ListBackupsBySchedule(ctx context.Context, scheduleID sql.Null
 	return items, nil
 }
 
-const listBackupsByTarget = `-- name: ListBackupsByTarget :many
+const ListBackupsByTarget = `-- name: ListBackupsByTarget :many
 SELECT id, schedule_id, target_id, status, size_bytes, started_at, completed_at, error_message, created_at, notification_sent FROM backups
 WHERE target_id = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]Backup, error) {
-	rows, err := q.query(ctx, q.listBackupsByTargetStmt, listBackupsByTarget, targetID)
+func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]*Backup, error) {
+	rows, err := q.db.QueryContext(ctx, ListBackupsByTarget, targetID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Backup{}
+	items := []*Backup{}
 	for rows.Next() {
 		var i Backup
 		if err := rows.Scan(
@@ -3067,7 +3115,7 @@ func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]Ba
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3078,18 +3126,18 @@ func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]Ba
 	return items, nil
 }
 
-const listFabricOrganizations = `-- name: ListFabricOrganizations :many
+const ListFabricOrganizations = `-- name: ListFabricOrganizations :many
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]FabricOrganization, error) {
-	rows, err := q.query(ctx, q.listFabricOrganizationsStmt, listFabricOrganizations)
+func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]*FabricOrganization, error) {
+	rows, err := q.db.QueryContext(ctx, ListFabricOrganizations)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []FabricOrganization{}
+	items := []*FabricOrganization{}
 	for rows.Next() {
 		var i FabricOrganization
 		if err := rows.Scan(
@@ -3112,7 +3160,7 @@ func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]FabricOrganiza
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3123,7 +3171,7 @@ func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]FabricOrganiza
 	return items, nil
 }
 
-const listFabricOrganizationsWithKeys = `-- name: ListFabricOrganizationsWithKeys :many
+const ListFabricOrganizationsWithKeys = `-- name: ListFabricOrganizationsWithKeys :many
 SELECT 
     fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
@@ -3140,35 +3188,35 @@ ORDER BY fo.created_at DESC
 
 type ListFabricOrganizationsWithKeysRow struct {
 	ID              int64          `json:"id"`
-	MspID           string         `json:"msp_id"`
+	MspID           string         `json:"mspId"`
 	Description     sql.NullString `json:"description"`
 	Config          sql.NullString `json:"config"`
-	CaConfig        sql.NullString `json:"ca_config"`
-	SignKeyID       sql.NullInt64  `json:"sign_key_id"`
-	TlsRootKeyID    sql.NullInt64  `json:"tls_root_key_id"`
-	AdminTlsKeyID   sql.NullInt64  `json:"admin_tls_key_id"`
-	AdminSignKeyID  sql.NullInt64  `json:"admin_sign_key_id"`
-	ClientSignKeyID sql.NullInt64  `json:"client_sign_key_id"`
-	ProviderID      sql.NullInt64  `json:"provider_id"`
-	CreatedAt       time.Time      `json:"created_at"`
-	CreatedBy       sql.NullInt64  `json:"created_by"`
-	UpdatedAt       sql.NullTime   `json:"updated_at"`
-	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
-	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
-	SignPublicKey   sql.NullString `json:"sign_public_key"`
-	SignCertificate sql.NullString `json:"sign_certificate"`
-	TlsPublicKey    sql.NullString `json:"tls_public_key"`
-	TlsCertificate  sql.NullString `json:"tls_certificate"`
-	ProviderName    sql.NullString `json:"provider_name"`
+	CaConfig        sql.NullString `json:"caConfig"`
+	SignKeyID       sql.NullInt64  `json:"signKeyId"`
+	TlsRootKeyID    sql.NullInt64  `json:"tlsRootKeyId"`
+	AdminTlsKeyID   sql.NullInt64  `json:"adminTlsKeyId"`
+	AdminSignKeyID  sql.NullInt64  `json:"adminSignKeyId"`
+	ClientSignKeyID sql.NullInt64  `json:"clientSignKeyId"`
+	ProviderID      sql.NullInt64  `json:"providerId"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	CreatedBy       sql.NullInt64  `json:"createdBy"`
+	UpdatedAt       sql.NullTime   `json:"updatedAt"`
+	CrlKeyID        sql.NullInt64  `json:"crlKeyId"`
+	CrlLastUpdate   sql.NullTime   `json:"crlLastUpdate"`
+	SignPublicKey   sql.NullString `json:"signPublicKey"`
+	SignCertificate sql.NullString `json:"signCertificate"`
+	TlsPublicKey    sql.NullString `json:"tlsPublicKey"`
+	TlsCertificate  sql.NullString `json:"tlsCertificate"`
+	ProviderName    sql.NullString `json:"providerName"`
 }
 
-func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]ListFabricOrganizationsWithKeysRow, error) {
-	rows, err := q.query(ctx, q.listFabricOrganizationsWithKeysStmt, listFabricOrganizationsWithKeys)
+func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]*ListFabricOrganizationsWithKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListFabricOrganizationsWithKeys)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListFabricOrganizationsWithKeysRow{}
+	items := []*ListFabricOrganizationsWithKeysRow{}
 	for rows.Next() {
 		var i ListFabricOrganizationsWithKeysRow
 		if err := rows.Scan(
@@ -3196,7 +3244,7 @@ func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]ListFa
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3207,17 +3255,17 @@ func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]ListFa
 	return items, nil
 }
 
-const listKeyProviders = `-- name: ListKeyProviders :many
+const ListKeyProviders = `-- name: ListKeyProviders :many
 SELECT id, name, type, is_default, config, created_at, updated_at FROM key_providers
 `
 
-func (q *Queries) ListKeyProviders(ctx context.Context) ([]KeyProvider, error) {
-	rows, err := q.query(ctx, q.listKeyProvidersStmt, listKeyProviders)
+func (q *Queries) ListKeyProviders(ctx context.Context) ([]*KeyProvider, error) {
+	rows, err := q.db.QueryContext(ctx, ListKeyProviders)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []KeyProvider{}
+	items := []*KeyProvider{}
 	for rows.Next() {
 		var i KeyProvider
 		if err := rows.Scan(
@@ -3231,7 +3279,7 @@ func (q *Queries) ListKeyProviders(ctx context.Context) ([]KeyProvider, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3242,7 +3290,7 @@ func (q *Queries) ListKeyProviders(ctx context.Context) ([]KeyProvider, error) {
 	return items, nil
 }
 
-const listKeys = `-- name: ListKeys :many
+const ListKeys = `-- name: ListKeys :many
 SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
 FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
@@ -3260,35 +3308,35 @@ type ListKeysRow struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	LastRotatedAt     sql.NullTime   `json:"last_rotated_at"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	IsCa              int64          `json:"is_ca"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderType      string         `json:"provider_type"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
 }
 
-func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysRow, error) {
-	rows, err := q.query(ctx, q.listKeysStmt, listKeys, arg.Limit, arg.Offset)
+func (q *Queries) ListKeys(ctx context.Context, arg *ListKeysParams) ([]*ListKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListKeys, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListKeysRow{}
+	items := []*ListKeysRow{}
 	for rows.Next() {
 		var i ListKeysRow
 		if err := rows.Scan(
@@ -3319,7 +3367,7 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysR
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3330,19 +3378,19 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysR
 	return items, nil
 }
 
-const listNetworkNodesByNetwork = `-- name: ListNetworkNodesByNetwork :many
+const ListNetworkNodesByNetwork = `-- name: ListNetworkNodesByNetwork :many
 SELECT id, network_id, node_id, role, status, config, created_at, updated_at FROM network_nodes
 WHERE network_id = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListNetworkNodesByNetwork(ctx context.Context, networkID int64) ([]NetworkNode, error) {
-	rows, err := q.query(ctx, q.listNetworkNodesByNetworkStmt, listNetworkNodesByNetwork, networkID)
+func (q *Queries) ListNetworkNodesByNetwork(ctx context.Context, networkID int64) ([]*NetworkNode, error) {
+	rows, err := q.db.QueryContext(ctx, ListNetworkNodesByNetwork, networkID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NetworkNode{}
+	items := []*NetworkNode{}
 	for rows.Next() {
 		var i NetworkNode
 		if err := rows.Scan(
@@ -3357,7 +3405,7 @@ func (q *Queries) ListNetworkNodesByNetwork(ctx context.Context, networkID int64
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3368,19 +3416,19 @@ func (q *Queries) ListNetworkNodesByNetwork(ctx context.Context, networkID int64
 	return items, nil
 }
 
-const listNetworkNodesByNode = `-- name: ListNetworkNodesByNode :many
+const ListNetworkNodesByNode = `-- name: ListNetworkNodesByNode :many
 SELECT id, network_id, node_id, role, status, config, created_at, updated_at FROM network_nodes
 WHERE node_id = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListNetworkNodesByNode(ctx context.Context, nodeID int64) ([]NetworkNode, error) {
-	rows, err := q.query(ctx, q.listNetworkNodesByNodeStmt, listNetworkNodesByNode, nodeID)
+func (q *Queries) ListNetworkNodesByNode(ctx context.Context, nodeID int64) ([]*NetworkNode, error) {
+	rows, err := q.db.QueryContext(ctx, ListNetworkNodesByNode, nodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NetworkNode{}
+	items := []*NetworkNode{}
 	for rows.Next() {
 		var i NetworkNode
 		if err := rows.Scan(
@@ -3395,7 +3443,7 @@ func (q *Queries) ListNetworkNodesByNode(ctx context.Context, nodeID int64) ([]N
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3406,18 +3454,18 @@ func (q *Queries) ListNetworkNodesByNode(ctx context.Context, nodeID int64) ([]N
 	return items, nil
 }
 
-const listNetworks = `-- name: ListNetworks :many
+const ListNetworks = `-- name: ListNetworks :many
 SELECT id, name, network_id, platform, status, description, config, deployment_config, exposed_ports, domain, created_at, created_by, updated_at, genesis_block_b64, current_config_block_b64 FROM networks
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListNetworks(ctx context.Context) ([]Network, error) {
-	rows, err := q.query(ctx, q.listNetworksStmt, listNetworks)
+func (q *Queries) ListNetworks(ctx context.Context) ([]*Network, error) {
+	rows, err := q.db.QueryContext(ctx, ListNetworks)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Network{}
+	items := []*Network{}
 	for rows.Next() {
 		var i Network
 		if err := rows.Scan(
@@ -3439,7 +3487,7 @@ func (q *Queries) ListNetworks(ctx context.Context) ([]Network, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3450,7 +3498,7 @@ func (q *Queries) ListNetworks(ctx context.Context) ([]Network, error) {
 	return items, nil
 }
 
-const listNodeEvents = `-- name: ListNodeEvents :many
+const ListNodeEvents = `-- name: ListNodeEvents :many
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE node_id = ?
 ORDER BY created_at DESC
@@ -3458,18 +3506,18 @@ LIMIT ? OFFSET ?
 `
 
 type ListNodeEventsParams struct {
-	NodeID int64 `json:"node_id"`
+	NodeID int64 `json:"nodeId"`
 	Limit  int64 `json:"limit"`
 	Offset int64 `json:"offset"`
 }
 
-func (q *Queries) ListNodeEvents(ctx context.Context, arg ListNodeEventsParams) ([]NodeEvent, error) {
-	rows, err := q.query(ctx, q.listNodeEventsStmt, listNodeEvents, arg.NodeID, arg.Limit, arg.Offset)
+func (q *Queries) ListNodeEvents(ctx context.Context, arg *ListNodeEventsParams) ([]*NodeEvent, error) {
+	rows, err := q.db.QueryContext(ctx, ListNodeEvents, arg.NodeID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NodeEvent{}
+	items := []*NodeEvent{}
 	for rows.Next() {
 		var i NodeEvent
 		if err := rows.Scan(
@@ -3483,7 +3531,7 @@ func (q *Queries) ListNodeEvents(ctx context.Context, arg ListNodeEventsParams) 
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3494,7 +3542,7 @@ func (q *Queries) ListNodeEvents(ctx context.Context, arg ListNodeEventsParams) 
 	return items, nil
 }
 
-const listNodeEventsByType = `-- name: ListNodeEventsByType :many
+const ListNodeEventsByType = `-- name: ListNodeEventsByType :many
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE node_id = ? AND event_type = ?
 ORDER BY created_at DESC
@@ -3502,14 +3550,14 @@ LIMIT ? OFFSET ?
 `
 
 type ListNodeEventsByTypeParams struct {
-	NodeID    int64  `json:"node_id"`
-	EventType string `json:"event_type"`
+	NodeID    int64  `json:"nodeId"`
+	EventType string `json:"eventType"`
 	Limit     int64  `json:"limit"`
 	Offset    int64  `json:"offset"`
 }
 
-func (q *Queries) ListNodeEventsByType(ctx context.Context, arg ListNodeEventsByTypeParams) ([]NodeEvent, error) {
-	rows, err := q.query(ctx, q.listNodeEventsByTypeStmt, listNodeEventsByType,
+func (q *Queries) ListNodeEventsByType(ctx context.Context, arg *ListNodeEventsByTypeParams) ([]*NodeEvent, error) {
+	rows, err := q.db.QueryContext(ctx, ListNodeEventsByType,
 		arg.NodeID,
 		arg.EventType,
 		arg.Limit,
@@ -3519,7 +3567,7 @@ func (q *Queries) ListNodeEventsByType(ctx context.Context, arg ListNodeEventsBy
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NodeEvent{}
+	items := []*NodeEvent{}
 	for rows.Next() {
 		var i NodeEvent
 		if err := rows.Scan(
@@ -3533,7 +3581,7 @@ func (q *Queries) ListNodeEventsByType(ctx context.Context, arg ListNodeEventsBy
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3544,7 +3592,7 @@ func (q *Queries) ListNodeEventsByType(ctx context.Context, arg ListNodeEventsBy
 	return items, nil
 }
 
-const listNodes = `-- name: ListNodes :many
+const ListNodes = `-- name: ListNodes :many
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -3555,13 +3603,13 @@ type ListNodesParams struct {
 	Offset int64 `json:"offset"`
 }
 
-func (q *Queries) ListNodes(ctx context.Context, arg ListNodesParams) ([]Node, error) {
-	rows, err := q.query(ctx, q.listNodesStmt, listNodes, arg.Limit, arg.Offset)
+func (q *Queries) ListNodes(ctx context.Context, arg *ListNodesParams) ([]*Node, error) {
+	rows, err := q.db.QueryContext(ctx, ListNodes, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Node{}
+	items := []*Node{}
 	for rows.Next() {
 		var i Node
 		if err := rows.Scan(
@@ -3587,7 +3635,7 @@ func (q *Queries) ListNodes(ctx context.Context, arg ListNodesParams) ([]Node, e
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3598,7 +3646,7 @@ func (q *Queries) ListNodes(ctx context.Context, arg ListNodesParams) ([]Node, e
 	return items, nil
 }
 
-const listNodesByNetwork = `-- name: ListNodesByNetwork :many
+const ListNodesByNetwork = `-- name: ListNodesByNetwork :many
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
 WHERE network_id = ?
 ORDER BY created_at DESC
@@ -3606,18 +3654,18 @@ LIMIT ? OFFSET ?
 `
 
 type ListNodesByNetworkParams struct {
-	NetworkID sql.NullInt64 `json:"network_id"`
+	NetworkID sql.NullInt64 `json:"networkId"`
 	Limit     int64         `json:"limit"`
 	Offset    int64         `json:"offset"`
 }
 
-func (q *Queries) ListNodesByNetwork(ctx context.Context, arg ListNodesByNetworkParams) ([]Node, error) {
-	rows, err := q.query(ctx, q.listNodesByNetworkStmt, listNodesByNetwork, arg.NetworkID, arg.Limit, arg.Offset)
+func (q *Queries) ListNodesByNetwork(ctx context.Context, arg *ListNodesByNetworkParams) ([]*Node, error) {
+	rows, err := q.db.QueryContext(ctx, ListNodesByNetwork, arg.NetworkID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Node{}
+	items := []*Node{}
 	for rows.Next() {
 		var i Node
 		if err := rows.Scan(
@@ -3643,7 +3691,7 @@ func (q *Queries) ListNodesByNetwork(ctx context.Context, arg ListNodesByNetwork
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3654,7 +3702,7 @@ func (q *Queries) ListNodesByNetwork(ctx context.Context, arg ListNodesByNetwork
 	return items, nil
 }
 
-const listNodesByPlatform = `-- name: ListNodesByPlatform :many
+const ListNodesByPlatform = `-- name: ListNodesByPlatform :many
 SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
 WHERE platform = ?
 ORDER BY created_at DESC
@@ -3667,13 +3715,13 @@ type ListNodesByPlatformParams struct {
 	Offset   int64  `json:"offset"`
 }
 
-func (q *Queries) ListNodesByPlatform(ctx context.Context, arg ListNodesByPlatformParams) ([]Node, error) {
-	rows, err := q.query(ctx, q.listNodesByPlatformStmt, listNodesByPlatform, arg.Platform, arg.Limit, arg.Offset)
+func (q *Queries) ListNodesByPlatform(ctx context.Context, arg *ListNodesByPlatformParams) ([]*Node, error) {
+	rows, err := q.db.QueryContext(ctx, ListNodesByPlatform, arg.Platform, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Node{}
+	items := []*Node{}
 	for rows.Next() {
 		var i Node
 		if err := rows.Scan(
@@ -3699,7 +3747,7 @@ func (q *Queries) ListNodesByPlatform(ctx context.Context, arg ListNodesByPlatfo
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3710,18 +3758,18 @@ func (q *Queries) ListNodesByPlatform(ctx context.Context, arg ListNodesByPlatfo
 	return items, nil
 }
 
-const listNotificationProviders = `-- name: ListNotificationProviders :many
+const ListNotificationProviders = `-- name: ListNotificationProviders :many
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListNotificationProviders(ctx context.Context) ([]NotificationProvider, error) {
-	rows, err := q.query(ctx, q.listNotificationProvidersStmt, listNotificationProviders)
+func (q *Queries) ListNotificationProviders(ctx context.Context) ([]*NotificationProvider, error) {
+	rows, err := q.db.QueryContext(ctx, ListNotificationProviders)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []NotificationProvider{}
+	items := []*NotificationProvider{}
 	for rows.Next() {
 		var i NotificationProvider
 		if err := rows.Scan(
@@ -3743,7 +3791,7 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]Notification
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3754,18 +3802,51 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]Notification
 	return items, nil
 }
 
-const listUsers = `-- name: ListUsers :many
-SELECT id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at FROM users
+const ListSettings = `-- name: ListSettings :many
+SELECT id, config, created_at, updated_at FROM settings
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.query(ctx, q.listUsersStmt, listUsers)
+func (q *Queries) ListSettings(ctx context.Context) ([]*Setting, error) {
+	rows, err := q.db.QueryContext(ctx, ListSettings)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []*Setting{}
+	for rows.Next() {
+		var i Setting
+		if err := rows.Scan(
+			&i.ID,
+			&i.Config,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListUsers = `-- name: ListUsers :many
+SELECT id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at FROM users
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListUsers(ctx context.Context) ([]*User, error) {
+	rows, err := q.db.QueryContext(ctx, ListUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*User{}
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(
@@ -3784,7 +3865,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -3795,18 +3876,18 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const markBackupNotified = `-- name: MarkBackupNotified :exec
+const MarkBackupNotified = `-- name: MarkBackupNotified :exec
 UPDATE backups
 SET notification_sent = true
 WHERE id = ?
 `
 
 func (q *Queries) MarkBackupNotified(ctx context.Context, id int64) error {
-	_, err := q.exec(ctx, q.markBackupNotifiedStmt, markBackupNotified, id)
+	_, err := q.db.ExecContext(ctx, MarkBackupNotified, id)
 	return err
 }
 
-const unsetDefaultNotificationProvider = `-- name: UnsetDefaultNotificationProvider :exec
+const UnsetDefaultNotificationProvider = `-- name: UnsetDefaultNotificationProvider :exec
 UPDATE notification_providers
 SET is_default = 0,
     updated_at = CURRENT_TIMESTAMP
@@ -3814,20 +3895,20 @@ WHERE type = ? AND is_default = 1
 `
 
 func (q *Queries) UnsetDefaultNotificationProvider(ctx context.Context, type_ string) error {
-	_, err := q.exec(ctx, q.unsetDefaultNotificationProviderStmt, unsetDefaultNotificationProvider, type_)
+	_, err := q.db.ExecContext(ctx, UnsetDefaultNotificationProvider, type_)
 	return err
 }
 
-const unsetDefaultProvider = `-- name: UnsetDefaultProvider :exec
+const UnsetDefaultProvider = `-- name: UnsetDefaultProvider :exec
 UPDATE key_providers SET is_default = 0 WHERE is_default = 1
 `
 
 func (q *Queries) UnsetDefaultProvider(ctx context.Context) error {
-	_, err := q.exec(ctx, q.unsetDefaultProviderStmt, unsetDefaultProvider)
+	_, err := q.db.ExecContext(ctx, UnsetDefaultProvider)
 	return err
 }
 
-const updateBackupCompleted = `-- name: UpdateBackupCompleted :one
+const UpdateBackupCompleted = `-- name: UpdateBackupCompleted :one
 UPDATE backups
 SET status = ?,
     completed_at = ?
@@ -3837,12 +3918,12 @@ RETURNING id, schedule_id, target_id, status, size_bytes, started_at, completed_
 
 type UpdateBackupCompletedParams struct {
 	Status      string       `json:"status"`
-	CompletedAt sql.NullTime `json:"completed_at"`
+	CompletedAt sql.NullTime `json:"completedAt"`
 	ID          int64        `json:"id"`
 }
 
-func (q *Queries) UpdateBackupCompleted(ctx context.Context, arg UpdateBackupCompletedParams) (Backup, error) {
-	row := q.queryRow(ctx, q.updateBackupCompletedStmt, updateBackupCompleted, arg.Status, arg.CompletedAt, arg.ID)
+func (q *Queries) UpdateBackupCompleted(ctx context.Context, arg *UpdateBackupCompletedParams) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupCompleted, arg.Status, arg.CompletedAt, arg.ID)
 	var i Backup
 	err := row.Scan(
 		&i.ID,
@@ -3856,10 +3937,10 @@ func (q *Queries) UpdateBackupCompleted(ctx context.Context, arg UpdateBackupCom
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupFailed = `-- name: UpdateBackupFailed :one
+const UpdateBackupFailed = `-- name: UpdateBackupFailed :one
 UPDATE backups
 SET status = ?,
     error_message = ?,
@@ -3870,13 +3951,13 @@ RETURNING id, schedule_id, target_id, status, size_bytes, started_at, completed_
 
 type UpdateBackupFailedParams struct {
 	Status       string         `json:"status"`
-	ErrorMessage sql.NullString `json:"error_message"`
-	CompletedAt  sql.NullTime   `json:"completed_at"`
+	ErrorMessage sql.NullString `json:"errorMessage"`
+	CompletedAt  sql.NullTime   `json:"completedAt"`
 	ID           int64          `json:"id"`
 }
 
-func (q *Queries) UpdateBackupFailed(ctx context.Context, arg UpdateBackupFailedParams) (Backup, error) {
-	row := q.queryRow(ctx, q.updateBackupFailedStmt, updateBackupFailed,
+func (q *Queries) UpdateBackupFailed(ctx context.Context, arg *UpdateBackupFailedParams) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupFailed,
 		arg.Status,
 		arg.ErrorMessage,
 		arg.CompletedAt,
@@ -3895,10 +3976,10 @@ func (q *Queries) UpdateBackupFailed(ctx context.Context, arg UpdateBackupFailed
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupSchedule = `-- name: UpdateBackupSchedule :one
+const UpdateBackupSchedule = `-- name: UpdateBackupSchedule :one
 UPDATE backup_schedules
 SET name = ?,
     description = ?,
@@ -3914,15 +3995,15 @@ RETURNING id, name, description, cron_expression, target_id, retention_days, ena
 type UpdateBackupScheduleParams struct {
 	Name           string         `json:"name"`
 	Description    sql.NullString `json:"description"`
-	CronExpression string         `json:"cron_expression"`
-	TargetID       int64          `json:"target_id"`
-	RetentionDays  int64          `json:"retention_days"`
+	CronExpression string         `json:"cronExpression"`
+	TargetID       int64          `json:"targetId"`
+	RetentionDays  int64          `json:"retentionDays"`
 	Enabled        bool           `json:"enabled"`
 	ID             int64          `json:"id"`
 }
 
-func (q *Queries) UpdateBackupSchedule(ctx context.Context, arg UpdateBackupScheduleParams) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.updateBackupScheduleStmt, updateBackupSchedule,
+func (q *Queries) UpdateBackupSchedule(ctx context.Context, arg *UpdateBackupScheduleParams) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupSchedule,
 		arg.Name,
 		arg.Description,
 		arg.CronExpression,
@@ -3945,10 +4026,10 @@ func (q *Queries) UpdateBackupSchedule(ctx context.Context, arg UpdateBackupSche
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupScheduleLastRun = `-- name: UpdateBackupScheduleLastRun :one
+const UpdateBackupScheduleLastRun = `-- name: UpdateBackupScheduleLastRun :one
 UPDATE backup_schedules
 SET last_run_at = ?,
     next_run_at = ?,
@@ -3958,13 +4039,13 @@ RETURNING id, name, description, cron_expression, target_id, retention_days, ena
 `
 
 type UpdateBackupScheduleLastRunParams struct {
-	LastRunAt sql.NullTime `json:"last_run_at"`
-	NextRunAt sql.NullTime `json:"next_run_at"`
+	LastRunAt sql.NullTime `json:"lastRunAt"`
+	NextRunAt sql.NullTime `json:"nextRunAt"`
 	ID        int64        `json:"id"`
 }
 
-func (q *Queries) UpdateBackupScheduleLastRun(ctx context.Context, arg UpdateBackupScheduleLastRunParams) (BackupSchedule, error) {
-	row := q.queryRow(ctx, q.updateBackupScheduleLastRunStmt, updateBackupScheduleLastRun, arg.LastRunAt, arg.NextRunAt, arg.ID)
+func (q *Queries) UpdateBackupScheduleLastRun(ctx context.Context, arg *UpdateBackupScheduleLastRunParams) (*BackupSchedule, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupScheduleLastRun, arg.LastRunAt, arg.NextRunAt, arg.ID)
 	var i BackupSchedule
 	err := row.Scan(
 		&i.ID,
@@ -3979,10 +4060,10 @@ func (q *Queries) UpdateBackupScheduleLastRun(ctx context.Context, arg UpdateBac
 		&i.LastRunAt,
 		&i.NextRunAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupSize = `-- name: UpdateBackupSize :one
+const UpdateBackupSize = `-- name: UpdateBackupSize :one
 UPDATE backups
 SET size_bytes = ?
 WHERE id = ?
@@ -3990,12 +4071,12 @@ RETURNING id, schedule_id, target_id, status, size_bytes, started_at, completed_
 `
 
 type UpdateBackupSizeParams struct {
-	SizeBytes sql.NullInt64 `json:"size_bytes"`
+	SizeBytes sql.NullInt64 `json:"sizeBytes"`
 	ID        int64         `json:"id"`
 }
 
-func (q *Queries) UpdateBackupSize(ctx context.Context, arg UpdateBackupSizeParams) (Backup, error) {
-	row := q.queryRow(ctx, q.updateBackupSizeStmt, updateBackupSize, arg.SizeBytes, arg.ID)
+func (q *Queries) UpdateBackupSize(ctx context.Context, arg *UpdateBackupSizeParams) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupSize, arg.SizeBytes, arg.ID)
 	var i Backup
 	err := row.Scan(
 		&i.ID,
@@ -4009,10 +4090,10 @@ func (q *Queries) UpdateBackupSize(ctx context.Context, arg UpdateBackupSizePara
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupStatus = `-- name: UpdateBackupStatus :one
+const UpdateBackupStatus = `-- name: UpdateBackupStatus :one
 UPDATE backups
 SET status = ?
 WHERE id = ?
@@ -4024,8 +4105,8 @@ type UpdateBackupStatusParams struct {
 	ID     int64  `json:"id"`
 }
 
-func (q *Queries) UpdateBackupStatus(ctx context.Context, arg UpdateBackupStatusParams) (Backup, error) {
-	row := q.queryRow(ctx, q.updateBackupStatusStmt, updateBackupStatus, arg.Status, arg.ID)
+func (q *Queries) UpdateBackupStatus(ctx context.Context, arg *UpdateBackupStatusParams) (*Backup, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupStatus, arg.Status, arg.ID)
 	var i Backup
 	err := row.Scan(
 		&i.ID,
@@ -4039,10 +4120,10 @@ func (q *Queries) UpdateBackupStatus(ctx context.Context, arg UpdateBackupStatus
 		&i.CreatedAt,
 		&i.NotificationSent,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateBackupTarget = `-- name: UpdateBackupTarget :one
+const UpdateBackupTarget = `-- name: UpdateBackupTarget :one
 UPDATE backup_targets
 SET name = ?,
     type = ?,
@@ -4061,18 +4142,18 @@ RETURNING id, name, bucket_name, region, endpoint, bucket_path, access_key_id, s
 type UpdateBackupTargetParams struct {
 	Name        string         `json:"name"`
 	Type        string         `json:"type"`
-	BucketName  sql.NullString `json:"bucket_name"`
+	BucketName  sql.NullString `json:"bucketName"`
 	Region      sql.NullString `json:"region"`
 	Endpoint    sql.NullString `json:"endpoint"`
-	BucketPath  sql.NullString `json:"bucket_path"`
-	AccessKeyID sql.NullString `json:"access_key_id"`
-	SecretKey   sql.NullString `json:"secret_key"`
-	S3PathStyle sql.NullBool   `json:"s3_path_style"`
+	BucketPath  sql.NullString `json:"bucketPath"`
+	AccessKeyID sql.NullString `json:"accessKeyId"`
+	SecretKey   sql.NullString `json:"secretKey"`
+	S3PathStyle sql.NullBool   `json:"s3PathStyle"`
 	ID          int64          `json:"id"`
 }
 
-func (q *Queries) UpdateBackupTarget(ctx context.Context, arg UpdateBackupTargetParams) (BackupTarget, error) {
-	row := q.queryRow(ctx, q.updateBackupTargetStmt, updateBackupTarget,
+func (q *Queries) UpdateBackupTarget(ctx context.Context, arg *UpdateBackupTargetParams) (*BackupTarget, error) {
+	row := q.db.QueryRowContext(ctx, UpdateBackupTarget,
 		arg.Name,
 		arg.Type,
 		arg.BucketName,
@@ -4100,10 +4181,10 @@ func (q *Queries) UpdateBackupTarget(ctx context.Context, arg UpdateBackupTarget
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateDeploymentConfig = `-- name: UpdateDeploymentConfig :one
+const UpdateDeploymentConfig = `-- name: UpdateDeploymentConfig :one
 UPDATE nodes
 SET deployment_config = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4112,12 +4193,12 @@ RETURNING id, name, slug, platform, status, description, network_id, config, res
 `
 
 type UpdateDeploymentConfigParams struct {
-	DeploymentConfig sql.NullString `json:"deployment_config"`
+	DeploymentConfig sql.NullString `json:"deploymentConfig"`
 	ID               int64          `json:"id"`
 }
 
-func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg UpdateDeploymentConfigParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateDeploymentConfigStmt, updateDeploymentConfig, arg.DeploymentConfig, arg.ID)
+func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploymentConfigParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateDeploymentConfig, arg.DeploymentConfig, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4140,10 +4221,10 @@ func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg UpdateDeployme
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateFabricOrganization = `-- name: UpdateFabricOrganization :one
+const UpdateFabricOrganization = `-- name: UpdateFabricOrganization :one
 UPDATE fabric_organizations
 SET description = ?
 WHERE id = ?
@@ -4155,8 +4236,8 @@ type UpdateFabricOrganizationParams struct {
 	ID          int64          `json:"id"`
 }
 
-func (q *Queries) UpdateFabricOrganization(ctx context.Context, arg UpdateFabricOrganizationParams) (FabricOrganization, error) {
-	row := q.queryRow(ctx, q.updateFabricOrganizationStmt, updateFabricOrganization, arg.Description, arg.ID)
+func (q *Queries) UpdateFabricOrganization(ctx context.Context, arg *UpdateFabricOrganizationParams) (*FabricOrganization, error) {
+	row := q.db.QueryRowContext(ctx, UpdateFabricOrganization, arg.Description, arg.ID)
 	var i FabricOrganization
 	err := row.Scan(
 		&i.ID,
@@ -4176,10 +4257,10 @@ func (q *Queries) UpdateFabricOrganization(ctx context.Context, arg UpdateFabric
 		&i.CrlKeyID,
 		&i.CrlLastUpdate,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateKey = `-- name: UpdateKey :one
+const UpdateKey = `-- name: UpdateKey :one
 UPDATE keys
 SET name = ?,
     description = ?,
@@ -4207,25 +4288,25 @@ type UpdateKeyParams struct {
 	Name              string         `json:"name"`
 	Description       sql.NullString `json:"description"`
 	Algorithm         string         `json:"algorithm"`
-	KeySize           sql.NullInt64  `json:"key_size"`
+	KeySize           sql.NullInt64  `json:"keySize"`
 	Curve             sql.NullString `json:"curve"`
 	Format            string         `json:"format"`
-	PublicKey         string         `json:"public_key"`
-	PrivateKey        string         `json:"private_key"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
 	Certificate       sql.NullString `json:"certificate"`
 	Status            string         `json:"status"`
-	ExpiresAt         sql.NullTime   `json:"expires_at"`
-	Sha256Fingerprint string         `json:"sha256_fingerprint"`
-	Sha1Fingerprint   string         `json:"sha1_fingerprint"`
-	ProviderID        int64          `json:"provider_id"`
-	UserID            int64          `json:"user_id"`
-	EthereumAddress   sql.NullString `json:"ethereum_address"`
-	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
 	ID                int64          `json:"id"`
 }
 
-func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, error) {
-	row := q.queryRow(ctx, q.updateKeyStmt, updateKey,
+func (q *Queries) UpdateKey(ctx context.Context, arg *UpdateKeyParams) (*Key, error) {
+	row := q.db.QueryRowContext(ctx, UpdateKey,
 		arg.Name,
 		arg.Description,
 		arg.Algorithm,
@@ -4270,10 +4351,10 @@ func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, erro
 		&i.IsCa,
 		&i.EthereumAddress,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateKeyProvider = `-- name: UpdateKeyProvider :one
+const UpdateKeyProvider = `-- name: UpdateKeyProvider :one
 UPDATE key_providers
 SET name = ?,
     type = ?,
@@ -4287,13 +4368,13 @@ RETURNING id, name, type, is_default, config, created_at, updated_at
 type UpdateKeyProviderParams struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
-	IsDefault int64  `json:"is_default"`
+	IsDefault int64  `json:"isDefault"`
 	Config    string `json:"config"`
 	ID        int64  `json:"id"`
 }
 
-func (q *Queries) UpdateKeyProvider(ctx context.Context, arg UpdateKeyProviderParams) (KeyProvider, error) {
-	row := q.queryRow(ctx, q.updateKeyProviderStmt, updateKeyProvider,
+func (q *Queries) UpdateKeyProvider(ctx context.Context, arg *UpdateKeyProviderParams) (*KeyProvider, error) {
+	row := q.db.QueryRowContext(ctx, UpdateKeyProvider,
 		arg.Name,
 		arg.Type,
 		arg.IsDefault,
@@ -4310,10 +4391,10 @@ func (q *Queries) UpdateKeyProvider(ctx context.Context, arg UpdateKeyProviderPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNetworkCurrentConfigBlock = `-- name: UpdateNetworkCurrentConfigBlock :exec
+const UpdateNetworkCurrentConfigBlock = `-- name: UpdateNetworkCurrentConfigBlock :exec
 UPDATE networks
 SET current_config_block_b64 = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4321,16 +4402,16 @@ WHERE id = ?
 `
 
 type UpdateNetworkCurrentConfigBlockParams struct {
-	CurrentConfigBlockB64 sql.NullString `json:"current_config_block_b64"`
+	CurrentConfigBlockB64 sql.NullString `json:"currentConfigBlockB64"`
 	ID                    int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNetworkCurrentConfigBlock(ctx context.Context, arg UpdateNetworkCurrentConfigBlockParams) error {
-	_, err := q.exec(ctx, q.updateNetworkCurrentConfigBlockStmt, updateNetworkCurrentConfigBlock, arg.CurrentConfigBlockB64, arg.ID)
+func (q *Queries) UpdateNetworkCurrentConfigBlock(ctx context.Context, arg *UpdateNetworkCurrentConfigBlockParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateNetworkCurrentConfigBlock, arg.CurrentConfigBlockB64, arg.ID)
 	return err
 }
 
-const updateNetworkGenesisBlock = `-- name: UpdateNetworkGenesisBlock :one
+const UpdateNetworkGenesisBlock = `-- name: UpdateNetworkGenesisBlock :one
 UPDATE networks
 SET genesis_block_b64 = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4339,12 +4420,12 @@ RETURNING id, name, network_id, platform, status, description, config, deploymen
 `
 
 type UpdateNetworkGenesisBlockParams struct {
-	GenesisBlockB64 sql.NullString `json:"genesis_block_b64"`
+	GenesisBlockB64 sql.NullString `json:"genesisBlockB64"`
 	ID              int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNetworkGenesisBlock(ctx context.Context, arg UpdateNetworkGenesisBlockParams) (Network, error) {
-	row := q.queryRow(ctx, q.updateNetworkGenesisBlockStmt, updateNetworkGenesisBlock, arg.GenesisBlockB64, arg.ID)
+func (q *Queries) UpdateNetworkGenesisBlock(ctx context.Context, arg *UpdateNetworkGenesisBlockParams) (*Network, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNetworkGenesisBlock, arg.GenesisBlockB64, arg.ID)
 	var i Network
 	err := row.Scan(
 		&i.ID,
@@ -4363,10 +4444,10 @@ func (q *Queries) UpdateNetworkGenesisBlock(ctx context.Context, arg UpdateNetwo
 		&i.GenesisBlockB64,
 		&i.CurrentConfigBlockB64,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNetworkNodeRole = `-- name: UpdateNetworkNodeRole :one
+const UpdateNetworkNodeRole = `-- name: UpdateNetworkNodeRole :one
 UPDATE network_nodes
 SET role = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4376,12 +4457,12 @@ RETURNING id, network_id, node_id, role, status, config, created_at, updated_at
 
 type UpdateNetworkNodeRoleParams struct {
 	Role      string `json:"role"`
-	NetworkID int64  `json:"network_id"`
-	NodeID    int64  `json:"node_id"`
+	NetworkID int64  `json:"networkId"`
+	NodeID    int64  `json:"nodeId"`
 }
 
-func (q *Queries) UpdateNetworkNodeRole(ctx context.Context, arg UpdateNetworkNodeRoleParams) (NetworkNode, error) {
-	row := q.queryRow(ctx, q.updateNetworkNodeRoleStmt, updateNetworkNodeRole, arg.Role, arg.NetworkID, arg.NodeID)
+func (q *Queries) UpdateNetworkNodeRole(ctx context.Context, arg *UpdateNetworkNodeRoleParams) (*NetworkNode, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNetworkNodeRole, arg.Role, arg.NetworkID, arg.NodeID)
 	var i NetworkNode
 	err := row.Scan(
 		&i.ID,
@@ -4393,10 +4474,10 @@ func (q *Queries) UpdateNetworkNodeRole(ctx context.Context, arg UpdateNetworkNo
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNetworkNodeStatus = `-- name: UpdateNetworkNodeStatus :one
+const UpdateNetworkNodeStatus = `-- name: UpdateNetworkNodeStatus :one
 UPDATE network_nodes
 SET status = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4406,12 +4487,12 @@ RETURNING id, network_id, node_id, role, status, config, created_at, updated_at
 
 type UpdateNetworkNodeStatusParams struct {
 	Status    string `json:"status"`
-	NetworkID int64  `json:"network_id"`
-	NodeID    int64  `json:"node_id"`
+	NetworkID int64  `json:"networkId"`
+	NodeID    int64  `json:"nodeId"`
 }
 
-func (q *Queries) UpdateNetworkNodeStatus(ctx context.Context, arg UpdateNetworkNodeStatusParams) (NetworkNode, error) {
-	row := q.queryRow(ctx, q.updateNetworkNodeStatusStmt, updateNetworkNodeStatus, arg.Status, arg.NetworkID, arg.NodeID)
+func (q *Queries) UpdateNetworkNodeStatus(ctx context.Context, arg *UpdateNetworkNodeStatusParams) (*NetworkNode, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNetworkNodeStatus, arg.Status, arg.NetworkID, arg.NodeID)
 	var i NetworkNode
 	err := row.Scan(
 		&i.ID,
@@ -4423,10 +4504,10 @@ func (q *Queries) UpdateNetworkNodeStatus(ctx context.Context, arg UpdateNetwork
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNetworkStatus = `-- name: UpdateNetworkStatus :exec
+const UpdateNetworkStatus = `-- name: UpdateNetworkStatus :exec
 UPDATE networks
 SET status = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4438,12 +4519,12 @@ type UpdateNetworkStatusParams struct {
 	ID     int64  `json:"id"`
 }
 
-func (q *Queries) UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStatusParams) error {
-	_, err := q.exec(ctx, q.updateNetworkStatusStmt, updateNetworkStatus, arg.Status, arg.ID)
+func (q *Queries) UpdateNetworkStatus(ctx context.Context, arg *UpdateNetworkStatusParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateNetworkStatus, arg.Status, arg.ID)
 	return err
 }
 
-const updateNodeConfig = `-- name: UpdateNodeConfig :one
+const UpdateNodeConfig = `-- name: UpdateNodeConfig :one
 UPDATE nodes
 SET node_config = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4452,12 +4533,12 @@ RETURNING id, name, slug, platform, status, description, network_id, config, res
 `
 
 type UpdateNodeConfigParams struct {
-	NodeConfig sql.NullString `json:"node_config"`
+	NodeConfig sql.NullString `json:"nodeConfig"`
 	ID         int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodeConfigStmt, updateNodeConfig, arg.NodeConfig, arg.ID)
+func (q *Queries) UpdateNodeConfig(ctx context.Context, arg *UpdateNodeConfigParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodeConfig, arg.NodeConfig, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4480,10 +4561,10 @@ func (q *Queries) UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigPara
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNodeDeploymentConfig = `-- name: UpdateNodeDeploymentConfig :one
+const UpdateNodeDeploymentConfig = `-- name: UpdateNodeDeploymentConfig :one
 UPDATE nodes
 SET deployment_config = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4492,12 +4573,12 @@ RETURNING id, name, slug, platform, status, description, network_id, config, res
 `
 
 type UpdateNodeDeploymentConfigParams struct {
-	DeploymentConfig sql.NullString `json:"deployment_config"`
+	DeploymentConfig sql.NullString `json:"deploymentConfig"`
 	ID               int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNodeDeploymentConfig(ctx context.Context, arg UpdateNodeDeploymentConfigParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodeDeploymentConfigStmt, updateNodeDeploymentConfig, arg.DeploymentConfig, arg.ID)
+func (q *Queries) UpdateNodeDeploymentConfig(ctx context.Context, arg *UpdateNodeDeploymentConfigParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodeDeploymentConfig, arg.DeploymentConfig, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4520,10 +4601,10 @@ func (q *Queries) UpdateNodeDeploymentConfig(ctx context.Context, arg UpdateNode
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNodeEndpoint = `-- name: UpdateNodeEndpoint :one
+const UpdateNodeEndpoint = `-- name: UpdateNodeEndpoint :one
 UPDATE nodes
 SET endpoint = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4536,8 +4617,8 @@ type UpdateNodeEndpointParams struct {
 	ID       int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNodeEndpoint(ctx context.Context, arg UpdateNodeEndpointParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodeEndpointStmt, updateNodeEndpoint, arg.Endpoint, arg.ID)
+func (q *Queries) UpdateNodeEndpoint(ctx context.Context, arg *UpdateNodeEndpointParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodeEndpoint, arg.Endpoint, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4560,10 +4641,10 @@ func (q *Queries) UpdateNodeEndpoint(ctx context.Context, arg UpdateNodeEndpoint
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNodePublicEndpoint = `-- name: UpdateNodePublicEndpoint :one
+const UpdateNodePublicEndpoint = `-- name: UpdateNodePublicEndpoint :one
 UPDATE nodes
 SET public_endpoint = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4572,12 +4653,12 @@ RETURNING id, name, slug, platform, status, description, network_id, config, res
 `
 
 type UpdateNodePublicEndpointParams struct {
-	PublicEndpoint sql.NullString `json:"public_endpoint"`
+	PublicEndpoint sql.NullString `json:"publicEndpoint"`
 	ID             int64          `json:"id"`
 }
 
-func (q *Queries) UpdateNodePublicEndpoint(ctx context.Context, arg UpdateNodePublicEndpointParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodePublicEndpointStmt, updateNodePublicEndpoint, arg.PublicEndpoint, arg.ID)
+func (q *Queries) UpdateNodePublicEndpoint(ctx context.Context, arg *UpdateNodePublicEndpointParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodePublicEndpoint, arg.PublicEndpoint, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4600,10 +4681,10 @@ func (q *Queries) UpdateNodePublicEndpoint(ctx context.Context, arg UpdateNodePu
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNodeStatus = `-- name: UpdateNodeStatus :one
+const UpdateNodeStatus = `-- name: UpdateNodeStatus :one
 UPDATE nodes
 SET status = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -4616,8 +4697,8 @@ type UpdateNodeStatusParams struct {
 	ID     int64  `json:"id"`
 }
 
-func (q *Queries) UpdateNodeStatus(ctx context.Context, arg UpdateNodeStatusParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodeStatusStmt, updateNodeStatus, arg.Status, arg.ID)
+func (q *Queries) UpdateNodeStatus(ctx context.Context, arg *UpdateNodeStatusParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodeStatus, arg.Status, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -4640,10 +4721,10 @@ func (q *Queries) UpdateNodeStatus(ctx context.Context, arg UpdateNodeStatusPara
 		&i.NodeConfig,
 		&i.DeploymentConfig,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateNotificationProvider = `-- name: UpdateNotificationProvider :one
+const UpdateNotificationProvider = `-- name: UpdateNotificationProvider :one
 UPDATE notification_providers
 SET type = ?,
     name = ?,
@@ -4662,16 +4743,16 @@ type UpdateNotificationProviderParams struct {
 	Type                    string `json:"type"`
 	Name                    string `json:"name"`
 	Config                  string `json:"config"`
-	IsDefault               bool   `json:"is_default"`
-	NotifyNodeDowntime      bool   `json:"notify_node_downtime"`
-	NotifyBackupSuccess     bool   `json:"notify_backup_success"`
-	NotifyBackupFailure     bool   `json:"notify_backup_failure"`
-	NotifyS3ConnectionIssue bool   `json:"notify_s3_connection_issue"`
+	IsDefault               bool   `json:"isDefault"`
+	NotifyNodeDowntime      bool   `json:"notifyNodeDowntime"`
+	NotifyBackupSuccess     bool   `json:"notifyBackupSuccess"`
+	NotifyBackupFailure     bool   `json:"notifyBackupFailure"`
+	NotifyS3ConnectionIssue bool   `json:"notifyS3ConnectionIssue"`
 	ID                      int64  `json:"id"`
 }
 
-func (q *Queries) UpdateNotificationProvider(ctx context.Context, arg UpdateNotificationProviderParams) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.updateNotificationProviderStmt, updateNotificationProvider,
+func (q *Queries) UpdateNotificationProvider(ctx context.Context, arg *UpdateNotificationProviderParams) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNotificationProvider,
 		arg.Type,
 		arg.Name,
 		arg.Config,
@@ -4700,10 +4781,10 @@ func (q *Queries) UpdateNotificationProvider(ctx context.Context, arg UpdateNoti
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateOrganizationCRL = `-- name: UpdateOrganizationCRL :exec
+const UpdateOrganizationCRL = `-- name: UpdateOrganizationCRL :exec
 UPDATE fabric_organizations
 SET crl_last_update = ?,
     crl_key_id = ?
@@ -4711,17 +4792,17 @@ WHERE id = ?
 `
 
 type UpdateOrganizationCRLParams struct {
-	CrlLastUpdate sql.NullTime  `json:"crl_last_update"`
-	CrlKeyID      sql.NullInt64 `json:"crl_key_id"`
+	CrlLastUpdate sql.NullTime  `json:"crlLastUpdate"`
+	CrlKeyID      sql.NullInt64 `json:"crlKeyId"`
 	ID            int64         `json:"id"`
 }
 
-func (q *Queries) UpdateOrganizationCRL(ctx context.Context, arg UpdateOrganizationCRLParams) error {
-	_, err := q.exec(ctx, q.updateOrganizationCRLStmt, updateOrganizationCRL, arg.CrlLastUpdate, arg.CrlKeyID, arg.ID)
+func (q *Queries) UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganizationCRLParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateOrganizationCRL, arg.CrlLastUpdate, arg.CrlKeyID, arg.ID)
 	return err
 }
 
-const updateProviderTestResults = `-- name: UpdateProviderTestResults :one
+const UpdateProviderTestResults = `-- name: UpdateProviderTestResults :one
 UPDATE notification_providers
 SET last_test_at = ?,
     last_test_status = ?,
@@ -4732,14 +4813,14 @@ RETURNING id, name, type, config, is_default, is_enabled, created_at, updated_at
 `
 
 type UpdateProviderTestResultsParams struct {
-	LastTestAt      sql.NullTime   `json:"last_test_at"`
-	LastTestStatus  sql.NullString `json:"last_test_status"`
-	LastTestMessage sql.NullString `json:"last_test_message"`
+	LastTestAt      sql.NullTime   `json:"lastTestAt"`
+	LastTestStatus  sql.NullString `json:"lastTestStatus"`
+	LastTestMessage sql.NullString `json:"lastTestMessage"`
 	ID              int64          `json:"id"`
 }
 
-func (q *Queries) UpdateProviderTestResults(ctx context.Context, arg UpdateProviderTestResultsParams) (NotificationProvider, error) {
-	row := q.queryRow(ctx, q.updateProviderTestResultsStmt, updateProviderTestResults,
+func (q *Queries) UpdateProviderTestResults(ctx context.Context, arg *UpdateProviderTestResultsParams) (*NotificationProvider, error) {
+	row := q.db.QueryRowContext(ctx, UpdateProviderTestResults,
 		arg.LastTestAt,
 		arg.LastTestStatus,
 		arg.LastTestMessage,
@@ -4763,10 +4844,35 @@ func (q *Queries) UpdateProviderTestResults(ctx context.Context, arg UpdateProvi
 		&i.LastTestStatus,
 		&i.LastTestMessage,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateUser = `-- name: UpdateUser :one
+const UpdateSetting = `-- name: UpdateSetting :one
+UPDATE settings
+SET config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, config, created_at, updated_at
+`
+
+type UpdateSettingParams struct {
+	Config string `json:"config"`
+	ID     int64  `json:"id"`
+}
+
+func (q *Queries) UpdateSetting(ctx context.Context, arg *UpdateSettingParams) (*Setting, error) {
+	row := q.db.QueryRowContext(ctx, UpdateSetting, arg.Config, arg.ID)
+	var i Setting
+	err := row.Scan(
+		&i.ID,
+		&i.Config,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const UpdateUser = `-- name: UpdateUser :one
 UPDATE users
 SET username = ?,
     password = CASE WHEN ? IS NOT NULL THEN ? ELSE password END,
@@ -4777,13 +4883,13 @@ RETURNING id, username, password, name, email, role, provider, provider_id, avat
 
 type UpdateUserParams struct {
 	Username string      `json:"username"`
-	Column2  interface{} `json:"column_2"`
+	Column2  interface{} `json:"column2"`
 	Password string      `json:"password"`
 	ID       int64       `json:"id"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
-	row := q.queryRow(ctx, q.updateUserStmt, updateUser,
+func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (*User, error) {
+	row := q.db.QueryRowContext(ctx, UpdateUser,
 		arg.Username,
 		arg.Column2,
 		arg.Password,
@@ -4804,10 +4910,10 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.LastLoginAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
-const updateUserLastLogin = `-- name: UpdateUserLastLogin :one
+const UpdateUserLastLogin = `-- name: UpdateUserLastLogin :one
 UPDATE users
 SET last_login_at = CURRENT_TIMESTAMP,
     updated_at = CURRENT_TIMESTAMP
@@ -4815,8 +4921,8 @@ WHERE id = ?
 RETURNING id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at
 `
 
-func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int64) (User, error) {
-	row := q.queryRow(ctx, q.updateUserLastLoginStmt, updateUserLastLogin, id)
+func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int64) (*User, error) {
+	row := q.db.QueryRowContext(ctx, UpdateUserLastLogin, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -4832,5 +4938,5 @@ func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int64) (User, erro
 		&i.LastLoginAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }

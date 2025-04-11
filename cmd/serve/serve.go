@@ -626,13 +626,7 @@ func (c *serveCmd) run() error {
 }
 
 func (c *serveCmd) postRun() error {
-	// Clean up database connection
-	if c.queries != nil {
-		if err := c.queries.Close(); err != nil {
-			return fmt.Errorf("error closing database connection: %v", err)
-		}
-	}
-
+	// do nothing
 	return nil
 }
 

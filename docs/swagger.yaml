@@ -1597,6 +1597,12 @@ definitions:
       tx_count:
         type: integer
     type: object
+  service.CreateSettingParams:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+    type: object
   service.FabricOrdererProperties:
     properties:
       adminAddress:
@@ -1772,6 +1778,18 @@ definitions:
           $ref: '#/definitions/service.NodeDefaults'
         type: array
     type: object
+  service.Setting:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      created_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   service.Transaction:
     properties:
       block_number:
@@ -1788,6 +1806,12 @@ definitions:
         type: string
       type:
         type: string
+    type: object
+  service.UpdateSettingParams:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
     type: object
   types.AddressOverride:
     properties:
@@ -5168,6 +5192,101 @@ paths:
       summary: Get a Fabric organization by MSP ID
       tags:
       - organizations
+  /settings:
+    get:
+      description: Get a list of all settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.Setting'
+            type: array
+      summary: List all settings
+      tags:
+      - settings
+    post:
+      consumes:
+      - application/json
+      description: Create a new setting with the provided configuration
+      parameters:
+      - description: Setting configuration
+        in: body
+        name: setting
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateSettingParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Setting'
+      summary: Create a new setting
+      tags:
+      - settings
+  /settings/{id}:
+    delete:
+      description: Delete a setting by its ID
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a setting
+      tags:
+      - settings
+    get:
+      description: Get a setting's details by its ID
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Setting'
+      summary: Get a setting by ID
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: Update an existing setting by its ID
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated setting configuration
+        in: body
+        name: setting
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateSettingParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Setting'
+      summary: Update a setting
+      tags:
+      - settings
 schemes:
 - http
 - https

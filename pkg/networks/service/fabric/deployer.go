@@ -916,7 +916,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nodes by organization ID: %w", err)
 	}
-	listCreateNetworkNodes := []db.CreateNetworkNodeParams{}
+	listCreateNetworkNodes := []*db.CreateNetworkNodeParams{}
 
 	// Handle internal peer organizations
 	for _, org := range fabricConfig.PeerOrganizations {
@@ -954,7 +954,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		for _, node := range orgNodes {
 
 			peerNodes = append(peerNodes, node)
-			listCreateNetworkNodes = append(listCreateNetworkNodes, db.CreateNetworkNodeParams{
+			listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 				NetworkID: networkID,
 				NodeID:    node.ID,
 				Status:    "pending",
@@ -1027,7 +1027,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 			}
 			if node.NodeType == nodetypes.NodeTypeFabricOrderer {
 				ordererNodes = append(ordererNodes, node)
-				listCreateNetworkNodes = append(listCreateNetworkNodes, db.CreateNetworkNodeParams{
+				listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 					NetworkID: networkID,
 					NodeID:    node.ID,
 					Status:    "pending",
@@ -1108,7 +1108,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 	}
 
 	// Update network with genesis block
-	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), db.UpdateNetworkGenesisBlockParams{
+	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), &db.UpdateNetworkGenesisBlockParams{
 		ID: networkID,
 		GenesisBlockB64: sql.NullString{
 			String: channel.ConfigData, // Store base64 encoded genesis block
@@ -1176,7 +1176,7 @@ func (d *FabricDeployer) JoinNode(networkId int64, genesisBlock []byte, nodeID i
 	}
 
 	// Update network node status to "joined"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "joined",
@@ -1341,7 +1341,7 @@ func (d *FabricDeployer) RemoveNode(networkID int64, nodeID int64) error {
 	}
 
 	// Update network node status to "removed"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "removed",
@@ -1398,7 +1398,7 @@ func (d *FabricDeployer) UnjoinNode(networkID int64, nodeID int64) error {
 	}
 
 	// Update network node status to "unjoined"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "unjoined",
@@ -1456,7 +1456,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 	var orderer *db.GetNetworkNodesRow
 	for _, node := range networkNodes {
 		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) {
-			orderer = &node
+			orderer = node
 			break
 		}
 	}
@@ -1854,7 +1854,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 
 		// Update the current config block in the database
 		configBase64 := base64.StdEncoding.EncodeToString(configBytes)
-		err = d.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
+		err = d.db.UpdateNetworkCurrentConfigBlock(ctx, &db.UpdateNetworkCurrentConfigBlockParams{
 			ID: networkID,
 			CurrentConfigBlockB64: sql.NullString{
 				String: configBase64,
@@ -2167,7 +2167,7 @@ func (d *FabricDeployer) ImportNetworkWithOrg(ctx context.Context, channelID str
 	}
 
 	// Create network in database
-	_, err = d.db.CreateNetworkFull(ctx, db.CreateNetworkFullParams{
+	_, err = d.db.CreateNetworkFull(ctx, &db.CreateNetworkFullParams{
 		Name:        channelID,
 		Platform:    "fabric",
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -2229,7 +2229,7 @@ func (d *FabricDeployer) ImportNetwork(ctx context.Context, genesisFile []byte, 
 	networkID := uuid.New().String()
 
 	// Create network in database
-	_, err := d.db.CreateNetworkFull(ctx, db.CreateNetworkFullParams{
+	_, err := d.db.CreateNetworkFull(ctx, &db.CreateNetworkFullParams{
 		Name:        channelName,
 		Platform:    "fabric",
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -2306,7 +2306,7 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 	var peerNode *db.GetNetworkNodesRow
 	for _, node := range networkNodes {
 		if node.Role == "peer" && node.Status == "joined" {
-			peerNode = &node
+			peerNode = node
 			break
 		}
 	}
@@ -2418,7 +2418,7 @@ func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int
 	var peerNode *db.GetNetworkNodesRow
 	for _, node := range networkNodes {
 		if node.Role == "peer" && node.Status == "joined" {
-			peerNode = &node
+			peerNode = node
 			break
 		}
 	}
@@ -2487,7 +2487,7 @@ func (d *FabricDeployer) GetTransaction(ctx context.Context, networkID int64, tx
 	var peerNode *db.GetNetworkNodesRow
 	for _, node := range networkNodes {
 		if node.Role == "peer" && node.Status == "joined" {
-			peerNode = &node
+			peerNode = node
 			break
 		}
 	}

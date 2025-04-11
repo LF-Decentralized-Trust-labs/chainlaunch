@@ -71,7 +71,7 @@ func NewOrganizationService(queries *db.Queries, keyManagement *keymanagement.Ke
 	}
 }
 
-func mapDBOrganizationToServiceOrganization(org db.GetFabricOrganizationByMspIDRow) *OrganizationDTO {
+func mapDBOrganizationToServiceOrganization(org *db.GetFabricOrganizationByMspIDRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -98,7 +98,7 @@ func mapDBOrganizationToServiceOrganization(org db.GetFabricOrganizationByMspIDR
 }
 
 // Convert database model to DTO for single organization
-func toOrganizationDTO(org db.GetFabricOrganizationWithKeysRow) *OrganizationDTO {
+func toOrganizationDTO(org *db.GetFabricOrganizationWithKeysRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -125,7 +125,7 @@ func toOrganizationDTO(org db.GetFabricOrganizationWithKeysRow) *OrganizationDTO
 }
 
 // Convert database model to DTO for list of organizations
-func toOrganizationListDTO(org db.ListFabricOrganizationsWithKeysRow) *OrganizationDTO {
+func toOrganizationListDTO(org *db.ListFabricOrganizationsWithKeysRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -307,7 +307,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	}
 
 	// Create organization
-	org, err := s.queries.CreateFabricOrganization(ctx, db.CreateFabricOrganizationParams{
+	org, err := s.queries.CreateFabricOrganization(ctx, &db.CreateFabricOrganizationParams{
 		MspID:           params.MspID,
 		Description:     sql.NullString{String: params.Description, Valid: params.Description != ""},
 		ProviderID:      sql.NullInt64{Int64: params.ProviderID, Valid: true},
@@ -375,7 +375,7 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, id int64, 
 	}
 
 	// Update organization
-	_, err = s.queries.UpdateFabricOrganization(ctx, db.UpdateFabricOrganizationParams{
+	_, err = s.queries.UpdateFabricOrganization(ctx, &db.UpdateFabricOrganizationParams{
 		ID:          id,
 		Description: org.Description,
 	})
@@ -457,7 +457,7 @@ func (s *OrganizationService) InitializeCRL(ctx context.Context, orgID int64) er
 	// Update the CRL timestamps in the organization
 	now := time.Now()
 
-	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
 		ID:            orgID,
 		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
 		CrlKeyID:      org.SignKeyID,
@@ -485,7 +485,7 @@ func (s *OrganizationService) RevokeCertificate(ctx context.Context, orgID int64
 	}
 
 	// Add the certificate to the database
-	err = s.queries.AddRevokedCertificate(ctx, db.AddRevokedCertificateParams{
+	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
 		FabricOrganizationID: orgID,
 		SerialNumber:         serialNumber.Text(16), // Store as hex string
 		RevocationTime:       time.Now(),
@@ -502,7 +502,7 @@ func (s *OrganizationService) RevokeCertificate(ctx context.Context, orgID int64
 	// Update the CRL timestamps
 	now := time.Now()
 
-	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
 		ID:            orgID,
 		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
 		CrlKeyID:      org.AdminSignKeyID,

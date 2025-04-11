@@ -177,7 +177,7 @@ func (s *NetworkService) CreateNetwork(ctx context.Context, name, description st
 	// Generate a random network ID
 	networkID := fmt.Sprintf("net_%s_%s", name, uuid.New().String())
 	// Create network in database
-	network, err := s.db.CreateNetwork(ctx, db.CreateNetworkParams{
+	network, err := s.db.CreateNetwork(ctx, &db.CreateNetworkParams{
 		Name:        name,
 		Platform:    string(baseConfig.Type),
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -412,7 +412,7 @@ func (s *NetworkService) DeleteNetwork(ctx context.Context, networkID int64) err
 }
 
 // Helper function to map db.Network to service.Network
-func (s *NetworkService) mapDBNetworkToServiceNetwork(n db.Network) *Network {
+func (s *NetworkService) mapDBNetworkToServiceNetwork(n *db.Network) *Network {
 	var config, deploymentConfig, exposedPorts json.RawMessage
 	if n.Config.Valid {
 		config = json.RawMessage(n.Config.String)
@@ -461,7 +461,7 @@ func (s *NetworkService) mapDBNetworkToServiceNetwork(n db.Network) *Network {
 
 // UpdateNetworkStatus updates the status of a network
 func (s *NetworkService) UpdateNetworkStatus(ctx context.Context, networkID int64, status NetworkStatus) error {
-	err := s.db.UpdateNetworkStatus(ctx, db.UpdateNetworkStatusParams{
+	err := s.db.UpdateNetworkStatus(ctx, &db.UpdateNetworkStatusParams{
 		ID:     networkID,
 		Status: string(status),
 	})
@@ -567,7 +567,7 @@ func (s *NetworkService) AddNodeToNetwork(ctx context.Context, networkID, nodeID
 	}
 
 	// Check if node is already in network
-	exists, err := s.db.CheckNetworkNodeExists(ctx, db.CheckNetworkNodeExistsParams{
+	exists, err := s.db.CheckNetworkNodeExists(ctx, &db.CheckNetworkNodeExistsParams{
 		NetworkID: networkID,
 		NodeID:    nodeID,
 	})
@@ -579,7 +579,7 @@ func (s *NetworkService) AddNodeToNetwork(ctx context.Context, networkID, nodeID
 	}
 
 	// Create network node entry
-	_, err = s.db.CreateNetworkNode(ctx, db.CreateNetworkNodeParams{
+	_, err = s.db.CreateNetworkNode(ctx, &db.CreateNetworkNodeParams{
 		NetworkID: networkID,
 		NodeID:    nodeID,
 		Status:    "pending",
@@ -768,7 +768,7 @@ func (s *NetworkService) ReloadNetworkBlock(ctx context.Context, networkID int64
 	}
 	configBlockB64 := base64.StdEncoding.EncodeToString(configBlock)
 
-	err = s.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
+	err = s.db.UpdateNetworkCurrentConfigBlock(ctx, &db.UpdateNetworkCurrentConfigBlockParams{
 		ID:                    networkID,
 		CurrentConfigBlockB64: sql.NullString{String: configBlockB64, Valid: true},
 	})

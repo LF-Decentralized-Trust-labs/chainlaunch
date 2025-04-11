@@ -423,7 +423,7 @@ func (s *FabricOrg) RevokeCertificate(ctx context.Context, serialNumber *big.Int
 	}
 
 	// Add the certificate to the database
-	err = s.queries.AddRevokedCertificate(ctx, db.AddRevokedCertificateParams{
+	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
 		FabricOrganizationID: org.ID,
 		SerialNumber:         serialNumber.Text(16), // Store as hex string
 		RevocationTime:       time.Now(),
@@ -440,7 +440,7 @@ func (s *FabricOrg) RevokeCertificate(ctx context.Context, serialNumber *big.Int
 	// Update the CRL timestamps in the organization
 	now := time.Now()
 
-	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
 		ID:            org.ID,
 		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
 		CrlKeyID:      org.AdminSignKeyID,
@@ -557,7 +557,7 @@ func (s *FabricOrg) InitializeCRL(ctx context.Context) error {
 
 	// Update the CRL timestamps in the organization
 	now := time.Now()
-	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
 		ID:            org.ID,
 		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
 		CrlKeyID:      org.SignKeyID,

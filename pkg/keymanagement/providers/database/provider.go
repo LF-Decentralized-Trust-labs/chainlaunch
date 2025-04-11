@@ -172,7 +172,7 @@ func (p *DatabaseProvider) GenerateKey(ctx context.Context, req types.GenerateKe
 	}
 
 	// Create key in database
-	params := db.CreateKeyParams{
+	params := &db.CreateKeyParams{
 		Name:              req.Name,
 		Algorithm:         string(req.Algorithm),
 		PublicKey:         keyPair.PublicKey,
@@ -258,7 +258,7 @@ func (p *DatabaseProvider) StoreKey(ctx context.Context, req types.StoreKeyReque
 	}
 
 	// Store in database
-	key, err := p.queries.CreateKey(ctx, db.CreateKeyParams{
+	key, err := p.queries.CreateKey(ctx, &db.CreateKeyParams{
 		Name:              req.Name,
 		Description:       sql.NullString{String: *req.Description, Valid: req.Description != nil},
 		Algorithm:         string(req.Algorithm),
@@ -327,7 +327,7 @@ func (p *DatabaseProvider) DeleteKey(ctx context.Context, id int) error {
 }
 
 // Helper function to map database key to response
-func mapDBKeyToResponse(key db.Key) *models.KeyResponse {
+func mapDBKeyToResponse(key *db.Key) *models.KeyResponse {
 	response := &models.KeyResponse{
 		ID:                int(key.ID),
 		Name:              key.Name,
@@ -772,7 +772,7 @@ func (p *DatabaseProvider) SignCertificate(ctx context.Context, req types.SignCe
 	})
 
 	// Update key with new certificate and other fields
-	params := db.UpdateKeyParams{
+	params := &db.UpdateKeyParams{
 		ID:                int64(req.KeyID),
 		Name:              key.Name,
 		Description:       key.Description,

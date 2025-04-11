@@ -914,4 +914,31 @@ WHERE id = ?;
 -- name: GetOrganizationCRLInfo :one
 SELECT crl_key_id, crl_last_update
 FROM fabric_organizations
+WHERE id = ?;
+
+-- name: CreateSetting :one
+INSERT INTO settings (
+    config
+) VALUES (
+    ?
+)
+RETURNING *;
+
+-- name: GetSetting :one
+SELECT * FROM settings
+WHERE id = ? LIMIT 1;
+
+-- name: ListSettings :many
+SELECT * FROM settings
+ORDER BY created_at DESC;
+
+-- name: UpdateSetting :one
+UPDATE settings
+SET config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteSetting :exec
+DELETE FROM settings
 WHERE id = ?; 

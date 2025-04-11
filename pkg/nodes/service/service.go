@@ -236,7 +236,7 @@ func (s *NodeService) generateSlug(name string) string {
 // GetAllNodes retrieves all nodes without pagination
 func (s *NodeService) GetAllNodes(ctx context.Context) (*PaginatedNodes, error) {
 	// Get all nodes from the database
-	dbNodes, err := s.db.ListNodes(ctx, db.ListNodesParams{
+	dbNodes, err := s.db.ListNodes(ctx, &db.ListNodesParams{
 		Limit:  1000, // Use a high limit to get all nodes
 		Offset: 0,
 	})
@@ -328,7 +328,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	}
 
 	// Create node in database
-	node, err := s.db.CreateNode(ctx, db.CreateNodeParams{
+	node, err := s.db.CreateNode(ctx, &db.CreateNodeParams{
 		Name:       req.Name,
 		Slug:       slug,
 		Platform:   string(req.BlockchainPlatform),
@@ -356,7 +356,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	}
 
 	// Update node with deployment config
-	node, err = s.db.UpdateNodeDeploymentConfig(ctx, db.UpdateNodeDeploymentConfigParams{
+	node, err = s.db.UpdateNodeDeploymentConfig(ctx, &db.UpdateNodeDeploymentConfigParams{
 		ID:               node.ID,
 		DeploymentConfig: sql.NullString{String: string(deploymentConfigJSON), Valid: true},
 	})
@@ -441,7 +441,7 @@ func (s *NodeService) createNodeConfig(req CreateNodeRequest) (types.NodeConfig,
 }
 
 // initializeNode initializes a node and returns its deployment config
-func (s *NodeService) initializeNode(ctx context.Context, dbNode db.Node, req CreateNodeRequest) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeNode(ctx context.Context, dbNode *db.Node, req CreateNodeRequest) (types.NodeDeploymentConfig, error) {
 	switch types.BlockchainPlatform(dbNode.Platform) {
 	case types.PlatformFabric:
 		if req.FabricPeer != nil {
@@ -470,7 +470,7 @@ func (s *NodeService) initializeNode(ctx context.Context, dbNode db.Node, req Cr
 }
 
 // getPeerFromConfig creates a peer instance from the given configuration and database node
-func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.OrganizationDTO, config *types.FabricPeerConfig) *peer.LocalPeer {
+func (s *NodeService) getPeerFromConfig(dbNode *db.Node, org *fabricservice.OrganizationDTO, config *types.FabricPeerConfig) *peer.LocalPeer {
 	return peer.NewLocalPeer(
 		org.MspID,
 		s.db,
@@ -498,7 +498,7 @@ func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.Organ
 }
 
 // initializeFabricPeer initializes a Fabric peer node
-func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode db.Node, req *types.FabricPeerConfig) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode *db.Node, req *types.FabricPeerConfig) (types.NodeDeploymentConfig, error) {
 	org, err := s.orgService.GetOrganization(ctx, req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
@@ -516,7 +516,7 @@ func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode db.Node, 
 }
 
 // getOrdererFromConfig creates a LocalOrderer instance from configuration
-func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.OrganizationDTO, config *types.FabricOrdererConfig) *orderer.LocalOrderer {
+func (s *NodeService) getOrdererFromConfig(dbNode *db.Node, org *fabricservice.OrganizationDTO, config *types.FabricOrdererConfig) *orderer.LocalOrderer {
 	return orderer.NewLocalOrderer(
 		org.MspID,
 		s.db,
@@ -543,7 +543,7 @@ func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.Or
 }
 
 // initializeFabricOrderer initializes a Fabric orderer node
-func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode db.Node, req *types.FabricOrdererConfig) (*types.FabricOrdererDeploymentConfig, error) {
+func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode *db.Node, req *types.FabricOrdererConfig) (*types.FabricOrdererDeploymentConfig, error) {
 	org, err := s.orgService.GetOrganization(ctx, req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
@@ -567,7 +567,7 @@ func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode db.Nod
 }
 
 // initializeBesuNode initializes a Besu node
-func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, config *types.BesuNodeConfig) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode *db.Node, config *types.BesuNodeConfig) (types.NodeDeploymentConfig, error) {
 	// Validate key exists
 	key, err := s.keymanagementService.GetKey(ctx, int(config.KeyID))
 	if err != nil {
@@ -605,7 +605,7 @@ func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, co
 
 	// Update node endpoint
 	endpoint := fmt.Sprintf("%s:%d", config.P2PHost, config.P2PPort)
-	_, err = s.db.UpdateNodeEndpoint(ctx, db.UpdateNodeEndpointParams{
+	_, err = s.db.UpdateNodeEndpoint(ctx, &db.UpdateNodeEndpointParams{
 		ID: dbNode.ID,
 		Endpoint: sql.NullString{
 			String: endpoint,
@@ -619,7 +619,7 @@ func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, co
 	// Update node public endpoint if external IP is set
 	if config.ExternalIP != "" {
 		publicEndpoint := fmt.Sprintf("%s:%d", config.ExternalIP, config.P2PPort)
-		_, err = s.db.UpdateNodePublicEndpoint(ctx, db.UpdateNodePublicEndpointParams{
+		_, err = s.db.UpdateNodePublicEndpoint(ctx, &db.UpdateNodePublicEndpointParams{
 			ID: dbNode.ID,
 			PublicEndpoint: sql.NullString{
 				String: publicEndpoint,
@@ -652,7 +652,7 @@ func (s *NodeService) validatePort(host string, port int) error {
 
 // updateNodeStatus updates the status of a node in the database
 func (s *NodeService) updateNodeStatus(ctx context.Context, nodeID int64, status types.NodeStatus) error {
-	_, err := s.db.UpdateNodeStatus(ctx, db.UpdateNodeStatusParams{
+	_, err := s.db.UpdateNodeStatus(ctx, &db.UpdateNodeStatusParams{
 		ID:     nodeID,
 		Status: string(status),
 	})
@@ -664,7 +664,7 @@ func (s *NodeService) updateNodeStatus(ctx context.Context, nodeID int64, status
 		return fmt.Errorf("failed to marshal node status: %w", err)
 	}
 	// Add node status change to event history
-	_, err = s.db.CreateNodeEvent(ctx, db.CreateNodeEventParams{
+	_, err = s.db.CreateNodeEvent(ctx, &db.CreateNodeEventParams{
 		NodeID:      nodeID,
 		EventType:   string(status),
 		Data:        sql.NullString{String: string(dataBytes), Valid: true},
@@ -701,7 +701,7 @@ func (s *NodeService) GetNode(ctx context.Context, id int64) (*NodeResponse, err
 
 // ListNodes retrieves a paginated list of nodes
 func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainPlatform, page, limit int) (*PaginatedNodes, error) {
-	var dbNodes []db.Node
+	var dbNodes []*db.Node
 	var err error
 	var total int64
 
@@ -709,7 +709,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 
 	if platform != nil {
 		// Get nodes filtered by platform
-		dbNodes, err = s.db.ListNodesByPlatform(ctx, db.ListNodesByPlatformParams{
+		dbNodes, err = s.db.ListNodesByPlatform(ctx, &db.ListNodesByPlatformParams{
 			Platform: string(*platform),
 			Limit:    int64(limit),
 			Offset:   int64(offset),
@@ -720,7 +720,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 		total, err = s.db.CountNodesByPlatform(ctx, string(*platform))
 	} else {
 		// Get all nodes
-		dbNodes, err = s.db.ListNodes(ctx, db.ListNodesParams{
+		dbNodes, err = s.db.ListNodes(ctx, &db.ListNodesParams{
 			Limit:  int64(limit),
 			Offset: int64(offset),
 		})
@@ -750,7 +750,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 }
 
 // Update mapDBNodeToServiceNode to include deployment config and MSPID
-func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeResponse) {
+func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeResponse) {
 	ctx := context.Background()
 	var nodeConfig types.NodeConfig
 	var deploymentConfig types.NodeDeploymentConfig
@@ -1000,7 +1000,7 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 }
 
 // startNode starts a node based on its type and configuration
-func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startNode(ctx context.Context, dbNode *db.Node) error {
 	// Update status to starting
 	if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusStarting); err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
@@ -1036,7 +1036,7 @@ func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
 }
 
 // startFabricPeer starts a Fabric peer node
-func (s *NodeService) startFabricPeer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startFabricPeer(ctx context.Context, dbNode *db.Node) error {
 
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1071,7 +1071,7 @@ func (s *NodeService) startFabricPeer(ctx context.Context, dbNode db.Node) error
 }
 
 // stopFabricPeer stops a Fabric peer node
-func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode *db.Node) error {
 	deploymentConfig, err := utils.DeserializeDeploymentConfig(dbNode.NodeConfig.String)
 	if err != nil {
 		return fmt.Errorf("failed to deserialize deployment config: %w", err)
@@ -1103,7 +1103,7 @@ func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode db.Node) error 
 }
 
 // startFabricOrderer starts a Fabric orderer node
-func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode *db.Node) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to deserialize node config: %w", err)
@@ -1129,7 +1129,7 @@ func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode db.Node) er
 }
 
 // stopFabricOrderer stops a Fabric orderer node
-func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode *db.Node) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to deserialize node config: %w", err)
@@ -1154,7 +1154,7 @@ func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode db.Node) err
 	return nil
 }
 
-func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode db.Node, config *types.BesuNodeConfig, deployConfig *types.BesuNodeDeploymentConfig) (*besu.LocalBesu, error) {
+func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, config *types.BesuNodeConfig, deployConfig *types.BesuNodeDeploymentConfig) (*besu.LocalBesu, error) {
 	network, err := s.db.GetNetwork(ctx, deployConfig.NetworkID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network: %w", err)
@@ -1192,7 +1192,7 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode db.Node, con
 }
 
 // stopBesuNode stops a Besu node
-func (s *NodeService) stopBesuNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopBesuNode(ctx context.Context, dbNode *db.Node) error {
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1229,7 +1229,7 @@ func (s *NodeService) stopBesuNode(ctx context.Context, dbNode db.Node) error {
 }
 
 // startBesuNode starts a Besu node
-func (s *NodeService) startBesuNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error {
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1350,7 +1350,7 @@ func (s *NodeService) DeleteNode(ctx context.Context, id int64) error {
 }
 
 // cleanupPeerResources cleans up resources specific to a Fabric peer node
-func (s *NodeService) cleanupPeerResources(ctx context.Context, node db.Node) error {
+func (s *NodeService) cleanupPeerResources(ctx context.Context, node *db.Node) error {
 	// Clean up peer-specific directories
 	dirsToClean := []string{
 		filepath.Join(s.configService.GetDataPath(), "nodes", node.Slug),
@@ -1375,7 +1375,7 @@ func (s *NodeService) cleanupPeerResources(ctx context.Context, node db.Node) er
 }
 
 // cleanupOrdererResources cleans up resources specific to a Fabric orderer node
-func (s *NodeService) cleanupOrdererResources(ctx context.Context, node db.Node) error {
+func (s *NodeService) cleanupOrdererResources(ctx context.Context, node *db.Node) error {
 
 	// Clean up orderer-specific directories
 	dirsToClean := []string{
@@ -1401,7 +1401,7 @@ func (s *NodeService) cleanupOrdererResources(ctx context.Context, node db.Node)
 }
 
 // cleanupBesuResources cleans up resources specific to a Besu node
-func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) error {
+func (s *NodeService) cleanupBesuResources(ctx context.Context, node *db.Node) error {
 
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
@@ -1510,7 +1510,7 @@ func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) er
 }
 
 // Update cleanupNodeResources to use the new function
-func (s *NodeService) cleanupNodeResources(ctx context.Context, node db.Node) error {
+func (s *NodeService) cleanupNodeResources(ctx context.Context, node *db.Node) error {
 	// Get the home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -2145,7 +2145,7 @@ func (s *NodeService) RenewCertificates(ctx context.Context, id int64) (*NodeRes
 }
 
 // renewPeerCertificates handles certificate renewal for a Fabric peer
-func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to load node config: %w", err)
@@ -2176,7 +2176,7 @@ func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode db.Node,
 }
 
 // renewOrdererCertificates handles certificate renewal for a Fabric orderer
-func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to load node config: %w", err)
@@ -2226,7 +2226,7 @@ func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, r
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
 		}
-		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+		if _, err := s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
 			ID:         nodeID,
 			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
 		}); err != nil {
@@ -2243,7 +2243,7 @@ func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, r
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
 		}
-		if _, err := s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+		if _, err := s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
 			ID:         nodeID,
 			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
 		}); err != nil {
@@ -2378,7 +2378,7 @@ func (s *NodeService) UpdateFabricPeer(ctx context.Context, opts UpdateFabricPee
 	if err != nil {
 		return nil, fmt.Errorf("failed to store node config: %w", err)
 	}
-	node, err = s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
 		ID: opts.NodeID,
 		NodeConfig: sql.NullString{
 			String: string(configBytes),
@@ -2395,7 +2395,7 @@ func (s *NodeService) UpdateFabricPeer(ctx context.Context, opts UpdateFabricPee
 		return nil, fmt.Errorf("failed to marshal updated deployment config: %w", err)
 	}
 
-	node, err = s.db.UpdateDeploymentConfig(ctx, db.UpdateDeploymentConfigParams{
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
 		ID: opts.NodeID,
 		DeploymentConfig: sql.NullString{
 			String: string(deploymentConfigBytes),
@@ -2482,7 +2482,7 @@ func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabric
 		return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
 	}
 
-	node, err = s.db.UpdateNodeConfig(ctx, db.UpdateNodeConfigParams{
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
 		ID: opts.NodeID,
 		NodeConfig: sql.NullString{
 			String: string(configBytes),

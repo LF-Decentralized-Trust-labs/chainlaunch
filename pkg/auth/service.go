@@ -62,7 +62,7 @@ func (s *AuthService) InitializeDefaultUser() (string, error) {
 	}
 
 	// Create admin user
-	_, err = s.db.CreateUser(context.Background(), db.CreateUserParams{
+	_, err = s.db.CreateUser(context.Background(), &db.CreateUserParams{
 		Username: "admin",
 		Password: string(hashedPassword),
 	})
@@ -105,7 +105,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Se
 
 	// Create session in database
 	expiresAt := time.Now().Add(24 * time.Hour) // Sessions expire after 24 hours
-	dbSession, err := s.db.CreateSession(ctx, db.CreateSessionParams{
+	dbSession, err := s.db.CreateSession(ctx, &db.CreateSessionParams{
 		SessionID: id,
 		UserID:    user.ID,
 		Token:     token,
@@ -197,7 +197,7 @@ func (s *AuthService) CreateUser(ctx context.Context, username, password string)
 	}
 
 	// Create user
-	_, err = s.db.CreateUser(ctx, db.CreateUserParams{
+	_, err = s.db.CreateUser(ctx, &db.CreateUserParams{
 		Username: username,
 		Password: string(hashedPassword),
 	})
@@ -230,7 +230,7 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*User, error) {
 
 // UpdateUser updates a user's details
 func (s *AuthService) UpdateUser(ctx context.Context, id int64, username, password string) error {
-	params := db.UpdateUserParams{
+	params := &db.UpdateUserParams{
 		ID:       id,
 		Username: username,
 	}

@@ -14,6 +14,7 @@ import './globals.css'
 
 import CreateBesuNodePage from '@/pages/nodes/besu/create'
 import CreateFabricNodePage from '@/pages/nodes/fabric/create'
+import EditFabricNodePage from '@/pages/nodes/fabric/edit'
 import NodesLogsPage from '@/pages/nodes/logs'
 import { Toaster } from './components/ui/sonner'
 import CertificateTemplatesPage from './pages/identity/certificates'
@@ -89,6 +90,7 @@ const App = () => {
 														<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
 														<Route path="fabric/organizations" element={<OrganizationsPage />} />
 														<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
+														<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
 														<Route path="nodes/:id" element={<NodeDetailPage />} />
 														<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
 														<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />

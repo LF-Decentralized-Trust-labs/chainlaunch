@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addRevokedCertificateStmt, err = db.PrepareContext(ctx, addRevokedCertificate); err != nil {
+		return nil, fmt.Errorf("error preparing query AddRevokedCertificate: %w", err)
+	}
 	if q.checkNetworkNodeExistsStmt, err = db.PrepareContext(ctx, checkNetworkNodeExists); err != nil {
 		return nil, fmt.Errorf("error preparing query CheckNetworkNodeExists: %w", err)
 	}
@@ -261,6 +264,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getOrdererPortsStmt, err = db.PrepareContext(ctx, getOrdererPorts); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrdererPorts: %w", err)
 	}
+	if q.getOrganizationCRLInfoStmt, err = db.PrepareContext(ctx, getOrganizationCRLInfo); err != nil {
+		return nil, fmt.Errorf("error preparing query GetOrganizationCRLInfo: %w", err)
+	}
 	if q.getPeerPortsStmt, err = db.PrepareContext(ctx, getPeerPorts); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPeerPorts: %w", err)
 	}
@@ -269,6 +275,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getRecentCompletedBackupsStmt, err = db.PrepareContext(ctx, getRecentCompletedBackups); err != nil {
 		return nil, fmt.Errorf("error preparing query GetRecentCompletedBackups: %w", err)
+	}
+	if q.getRevokedCertificateStmt, err = db.PrepareContext(ctx, getRevokedCertificate); err != nil {
+		return nil, fmt.Errorf("error preparing query GetRevokedCertificate: %w", err)
+	}
+	if q.getRevokedCertificatesStmt, err = db.PrepareContext(ctx, getRevokedCertificates); err != nil {
+		return nil, fmt.Errorf("error preparing query GetRevokedCertificates: %w", err)
 	}
 	if q.getSessionStmt, err = db.PrepareContext(ctx, getSession); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSession: %w", err)
@@ -366,6 +378,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateBackupTargetStmt, err = db.PrepareContext(ctx, updateBackupTarget); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateBackupTarget: %w", err)
 	}
+	if q.updateDeploymentConfigStmt, err = db.PrepareContext(ctx, updateDeploymentConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateDeploymentConfig: %w", err)
+	}
 	if q.updateFabricOrganizationStmt, err = db.PrepareContext(ctx, updateFabricOrganization); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateFabricOrganization: %w", err)
 	}
@@ -390,6 +405,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateNetworkStatusStmt, err = db.PrepareContext(ctx, updateNetworkStatus); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateNetworkStatus: %w", err)
 	}
+	if q.updateNodeConfigStmt, err = db.PrepareContext(ctx, updateNodeConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateNodeConfig: %w", err)
+	}
 	if q.updateNodeDeploymentConfigStmt, err = db.PrepareContext(ctx, updateNodeDeploymentConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateNodeDeploymentConfig: %w", err)
 	}
@@ -405,6 +423,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateNotificationProviderStmt, err = db.PrepareContext(ctx, updateNotificationProvider); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateNotificationProvider: %w", err)
 	}
+	if q.updateOrganizationCRLStmt, err = db.PrepareContext(ctx, updateOrganizationCRL); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateOrganizationCRL: %w", err)
+	}
 	if q.updateProviderTestResultsStmt, err = db.PrepareContext(ctx, updateProviderTestResults); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProviderTestResults: %w", err)
 	}
@@ -419,6 +440,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addRevokedCertificateStmt != nil {
+		if cerr := q.addRevokedCertificateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addRevokedCertificateStmt: %w", cerr)
+		}
+	}
 	if q.checkNetworkNodeExistsStmt != nil {
 		if cerr := q.checkNetworkNodeExistsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing checkNetworkNodeExistsStmt: %w", cerr)
@@ -814,6 +840,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOrdererPortsStmt: %w", cerr)
 		}
 	}
+	if q.getOrganizationCRLInfoStmt != nil {
+		if cerr := q.getOrganizationCRLInfoStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getOrganizationCRLInfoStmt: %w", cerr)
+		}
+	}
 	if q.getPeerPortsStmt != nil {
 		if cerr := q.getPeerPortsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getPeerPortsStmt: %w", cerr)
@@ -827,6 +858,16 @@ func (q *Queries) Close() error {
 	if q.getRecentCompletedBackupsStmt != nil {
 		if cerr := q.getRecentCompletedBackupsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getRecentCompletedBackupsStmt: %w", cerr)
+		}
+	}
+	if q.getRevokedCertificateStmt != nil {
+		if cerr := q.getRevokedCertificateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getRevokedCertificateStmt: %w", cerr)
+		}
+	}
+	if q.getRevokedCertificatesStmt != nil {
+		if cerr := q.getRevokedCertificatesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getRevokedCertificatesStmt: %w", cerr)
 		}
 	}
 	if q.getSessionStmt != nil {
@@ -989,6 +1030,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateBackupTargetStmt: %w", cerr)
 		}
 	}
+	if q.updateDeploymentConfigStmt != nil {
+		if cerr := q.updateDeploymentConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateDeploymentConfigStmt: %w", cerr)
+		}
+	}
 	if q.updateFabricOrganizationStmt != nil {
 		if cerr := q.updateFabricOrganizationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateFabricOrganizationStmt: %w", cerr)
@@ -1029,6 +1075,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateNetworkStatusStmt: %w", cerr)
 		}
 	}
+	if q.updateNodeConfigStmt != nil {
+		if cerr := q.updateNodeConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateNodeConfigStmt: %w", cerr)
+		}
+	}
 	if q.updateNodeDeploymentConfigStmt != nil {
 		if cerr := q.updateNodeDeploymentConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateNodeDeploymentConfigStmt: %w", cerr)
@@ -1052,6 +1103,11 @@ func (q *Queries) Close() error {
 	if q.updateNotificationProviderStmt != nil {
 		if cerr := q.updateNotificationProviderStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateNotificationProviderStmt: %w", cerr)
+		}
+	}
+	if q.updateOrganizationCRLStmt != nil {
+		if cerr := q.updateOrganizationCRLStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateOrganizationCRLStmt: %w", cerr)
 		}
 	}
 	if q.updateProviderTestResultsStmt != nil {
@@ -1108,6 +1164,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                        DBTX
 	tx                                        *sql.Tx
+	addRevokedCertificateStmt                 *sql.Stmt
 	checkNetworkNodeExistsStmt                *sql.Stmt
 	countBackupsByScheduleStmt                *sql.Stmt
 	countBackupsByTargetStmt                  *sql.Stmt
@@ -1187,9 +1244,12 @@ type Queries struct {
 	getNotificationProviderStmt               *sql.Stmt
 	getOldestBackupByTargetStmt               *sql.Stmt
 	getOrdererPortsStmt                       *sql.Stmt
+	getOrganizationCRLInfoStmt                *sql.Stmt
 	getPeerPortsStmt                          *sql.Stmt
 	getProvidersByNotificationTypeStmt        *sql.Stmt
 	getRecentCompletedBackupsStmt             *sql.Stmt
+	getRevokedCertificateStmt                 *sql.Stmt
+	getRevokedCertificatesStmt                *sql.Stmt
 	getSessionStmt                            *sql.Stmt
 	getUserStmt                               *sql.Stmt
 	getUserByUsernameStmt                     *sql.Stmt
@@ -1222,6 +1282,7 @@ type Queries struct {
 	updateBackupSizeStmt                      *sql.Stmt
 	updateBackupStatusStmt                    *sql.Stmt
 	updateBackupTargetStmt                    *sql.Stmt
+	updateDeploymentConfigStmt                *sql.Stmt
 	updateFabricOrganizationStmt              *sql.Stmt
 	updateKeyStmt                             *sql.Stmt
 	updateKeyProviderStmt                     *sql.Stmt
@@ -1230,11 +1291,13 @@ type Queries struct {
 	updateNetworkNodeRoleStmt                 *sql.Stmt
 	updateNetworkNodeStatusStmt               *sql.Stmt
 	updateNetworkStatusStmt                   *sql.Stmt
+	updateNodeConfigStmt                      *sql.Stmt
 	updateNodeDeploymentConfigStmt            *sql.Stmt
 	updateNodeEndpointStmt                    *sql.Stmt
 	updateNodePublicEndpointStmt              *sql.Stmt
 	updateNodeStatusStmt                      *sql.Stmt
 	updateNotificationProviderStmt            *sql.Stmt
+	updateOrganizationCRLStmt                 *sql.Stmt
 	updateProviderTestResultsStmt             *sql.Stmt
 	updateUserStmt                            *sql.Stmt
 	updateUserLastLoginStmt                   *sql.Stmt
@@ -1244,6 +1307,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                        tx,
 		tx:                                        tx,
+		addRevokedCertificateStmt:                 q.addRevokedCertificateStmt,
 		checkNetworkNodeExistsStmt:                q.checkNetworkNodeExistsStmt,
 		countBackupsByScheduleStmt:                q.countBackupsByScheduleStmt,
 		countBackupsByTargetStmt:                  q.countBackupsByTargetStmt,
@@ -1323,9 +1387,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getNotificationProviderStmt:               q.getNotificationProviderStmt,
 		getOldestBackupByTargetStmt:               q.getOldestBackupByTargetStmt,
 		getOrdererPortsStmt:                       q.getOrdererPortsStmt,
+		getOrganizationCRLInfoStmt:                q.getOrganizationCRLInfoStmt,
 		getPeerPortsStmt:                          q.getPeerPortsStmt,
 		getProvidersByNotificationTypeStmt:        q.getProvidersByNotificationTypeStmt,
 		getRecentCompletedBackupsStmt:             q.getRecentCompletedBackupsStmt,
+		getRevokedCertificateStmt:                 q.getRevokedCertificateStmt,
+		getRevokedCertificatesStmt:                q.getRevokedCertificatesStmt,
 		getSessionStmt:                            q.getSessionStmt,
 		getUserStmt:                               q.getUserStmt,
 		getUserByUsernameStmt:                     q.getUserByUsernameStmt,
@@ -1358,6 +1425,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateBackupSizeStmt:                      q.updateBackupSizeStmt,
 		updateBackupStatusStmt:                    q.updateBackupStatusStmt,
 		updateBackupTargetStmt:                    q.updateBackupTargetStmt,
+		updateDeploymentConfigStmt:                q.updateDeploymentConfigStmt,
 		updateFabricOrganizationStmt:              q.updateFabricOrganizationStmt,
 		updateKeyStmt:                             q.updateKeyStmt,
 		updateKeyProviderStmt:                     q.updateKeyProviderStmt,
@@ -1366,11 +1434,13 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateNetworkNodeRoleStmt:                 q.updateNetworkNodeRoleStmt,
 		updateNetworkNodeStatusStmt:               q.updateNetworkNodeStatusStmt,
 		updateNetworkStatusStmt:                   q.updateNetworkStatusStmt,
+		updateNodeConfigStmt:                      q.updateNodeConfigStmt,
 		updateNodeDeploymentConfigStmt:            q.updateNodeDeploymentConfigStmt,
 		updateNodeEndpointStmt:                    q.updateNodeEndpointStmt,
 		updateNodePublicEndpointStmt:              q.updateNodePublicEndpointStmt,
 		updateNodeStatusStmt:                      q.updateNodeStatusStmt,
 		updateNotificationProviderStmt:            q.updateNotificationProviderStmt,
+		updateOrganizationCRLStmt:                 q.updateOrganizationCRLStmt,
 		updateProviderTestResultsStmt:             q.updateProviderTestResultsStmt,
 		updateUserStmt:                            q.updateUserStmt,
 		updateUserLastLoginStmt:                   q.updateUserLastLoginStmt,

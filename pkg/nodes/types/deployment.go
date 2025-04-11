@@ -79,6 +79,11 @@ type FabricPeerDeploymentConfig struct {
 	ExternalEndpoint string `json:"externalEndpoint" example:"peer0.org1.example.com:7051"`
 	// @Description Domain names for the peer
 	DomainNames []string `json:"domainNames,omitempty"`
+
+	// @Description Address overrides for the peer
+	AddressOverrides []AddressOverride `json:"addressOverrides,omitempty"`
+	// @Description Fabric version to use
+	Version string `json:"version" example:"2.5.0"`
 }
 
 func (c *FabricPeerDeploymentConfig) GetMode() string { return c.Mode }
@@ -108,6 +113,7 @@ func (c *FabricPeerDeploymentConfig) ToFabricPeerConfig() *FabricPeerDeploymentC
 		TLSCert:                 c.TLSCert,
 		CACert:                  c.CACert,
 		TLSCACert:               c.TLSCACert,
+		Version:                 c.Version,
 	}
 }
 func (c *FabricPeerDeploymentConfig) ToFabricOrdererConfig() *FabricOrdererDeploymentConfig {
@@ -151,10 +157,16 @@ type FabricOrdererDeploymentConfig struct {
 	ExternalEndpoint string `json:"externalEndpoint" example:"orderer.example.com:7050"`
 	// @Description Domain names for the orderer
 	DomainNames []string `json:"domainNames,omitempty"`
+	// @Description Fabric version to use
+	Version string `json:"version" example:"2.5.0"`
 }
 
 func (c *FabricOrdererDeploymentConfig) GetURL() string {
 	return fmt.Sprintf("grpcs://%s", c.ExternalEndpoint)
+}
+
+func (c *FabricOrdererDeploymentConfig) GetAddress() string {
+	return c.ExternalEndpoint
 }
 
 func (c *FabricOrdererDeploymentConfig) GetMode() string { return c.Mode }
@@ -187,6 +199,7 @@ func (c *FabricOrdererDeploymentConfig) ToFabricOrdererConfig() *FabricOrdererDe
 		TLSCACert:               c.TLSCACert,
 		SignKeyID:               c.SignKeyID,
 		TLSKeyID:                c.TLSKeyID,
+		Version:                 c.Version,
 	}
 }
 
@@ -285,6 +298,10 @@ type FabricPeerConfig struct {
 	Env map[string]string `json:"env,omitempty"`
 	// @Description Fabric version to use
 	Version string `json:"version" example:"2.2.0"`
+	// @Description Orderer address overrides for the peer
+	OrdererAddressOverrides []OrdererAddressOverride `json:"ordererAddressOverrides,omitempty"`
+	// @Description Address overrides for the peer
+	AddressOverrides []AddressOverride `json:"addressOverrides,omitempty"`
 }
 
 // FabricOrdererConfig represents the parameters needed to create a Fabric orderer node
@@ -300,6 +317,8 @@ type FabricOrdererConfig struct {
 	DomainNames             []string          `json:"domainNames,omitempty"`
 	Env                     map[string]string `json:"env,omitempty"`
 	Version                 string            `json:"version"` // Fabric version to use
+	// @Description Address overrides for the orderer
+	AddressOverrides []AddressOverride `json:"addressOverrides,omitempty"`
 }
 
 // BesuNodeConfig represents the parameters needed to create a Besu node
@@ -441,4 +460,105 @@ func MapToNodeConfig(deploymentConfig NodeDeploymentConfig) (NodeConfig, error) 
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", deploymentConfig.GetType())
 	}
+}
+
+// UpdateNodeEnvRequest represents a request to update a node's environment variables
+type UpdateNodeEnvRequest struct {
+	// @Description Environment variables to update
+	Env map[string]string `json:"env" validate:"required"`
+}
+
+// UpdateNodeEnvResponse represents the response after updating a node's environment variables
+type UpdateNodeEnvResponse struct {
+	// @Description Updated environment variables
+	Env map[string]string `json:"env"`
+	// @Description Whether the node needs to be restarted for changes to take effect
+	RequiresRestart bool `json:"requiresRestart"`
+}
+
+// UpdateNodeConfigRequest represents a request to update a node's configuration
+type UpdateNodeConfigRequest struct {
+	// Common fields
+	// @Description Environment variables to update
+	Env map[string]string `json:"env,omitempty"`
+	// @Description Domain names for the node
+	DomainNames []string `json:"domainNames,omitempty"`
+	// @Description The deployment mode (service or docker)
+	Mode string `json:"mode,omitempty" validate:"omitempty,oneof=service docker"`
+
+	// Fabric peer specific fields
+	// @Description Listen address for the peer
+	ListenAddress string `json:"listenAddress,omitempty"`
+	// @Description Chaincode listen address
+	ChaincodeAddress string `json:"chaincodeAddress,omitempty"`
+	// @Description Events listen address
+	EventsAddress string `json:"eventsAddress,omitempty"`
+	// @Description Operations listen address
+	OperationsListenAddress string `json:"operationsListenAddress,omitempty"`
+	// @Description External endpoint for the peer
+	ExternalEndpoint string `json:"externalEndpoint,omitempty"`
+
+	// Fabric orderer specific fields
+	// @Description Admin listen address for orderer
+	AdminAddress string `json:"adminAddress,omitempty"`
+
+	// Besu specific fields
+	// @Description P2P port for Besu node
+	P2PPort uint `json:"p2pPort,omitempty"`
+	// @Description RPC port for Besu node
+	RPCPort uint `json:"rpcPort,omitempty"`
+	// @Description P2P host address
+	P2PHost string `json:"p2pHost,omitempty"`
+	// @Description RPC host address
+	RPCHost string `json:"rpcHost,omitempty"`
+	// @Description External IP address
+	ExternalIP string `json:"externalIp,omitempty"`
+	// @Description Internal IP address
+	InternalIP string `json:"internalIp,omitempty"`
+}
+
+// UpdateNodeConfigResponse represents the response after updating a node's configuration
+type UpdateNodeConfigResponse struct {
+	// @Description Updated node configuration
+	Config NodeConfig `json:"config"`
+	// @Description Whether the node needs to be restarted for changes to take effect
+	RequiresRestart bool `json:"requiresRestart"`
+}
+
+// OrdererAddressOverride represents an orderer address override configuration
+type OrdererAddressOverride struct {
+	// @Description Original orderer address
+	From string `json:"from" validate:"required"`
+	// @Description New orderer address to use
+	To string `json:"to" validate:"required"`
+	// @Description TLS CA certificate in PEM format
+	TLSCACert string `json:"tlsCACert" validate:"required"`
+}
+
+// UpdatePeerOrdererOverridesRequest represents a request to update a peer's orderer address overrides
+type UpdatePeerOrdererOverridesRequest struct {
+	// @Description List of orderer address overrides
+	Overrides []OrdererAddressOverride `json:"overrides" validate:"required,dive"`
+}
+
+// UpdatePeerOrdererOverridesResponse represents the response after updating orderer address overrides
+type UpdatePeerOrdererOverridesResponse struct {
+	// @Description Updated orderer address overrides
+	Overrides []OrdererAddressOverride `json:"overrides"`
+	// @Description Whether the node needs to be restarted for changes to take effect
+	RequiresRestart bool `json:"requiresRestart"`
+}
+
+// UpdateNodeAddressOverridesRequest represents a request to update a node's address overrides
+type UpdateNodeAddressOverridesRequest struct {
+	// @Description List of address overrides
+	Overrides []AddressOverride `json:"overrides" validate:"required,dive"`
+}
+
+// UpdateNodeAddressOverridesResponse represents the response after updating address overrides
+type UpdateNodeAddressOverridesResponse struct {
+	// @Description Updated address overrides
+	Overrides []AddressOverride `json:"overrides"`
+	// @Description Whether the node needs to be restarted for changes to take effect
+	RequiresRestart bool `json:"requiresRestart"`
 }

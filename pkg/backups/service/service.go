@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/notifications"
@@ -38,6 +39,7 @@ type BackupService struct {
 	mu                  sync.Mutex
 	stopCh              chan struct{}
 	databasePath        string
+	configService       *config.ConfigService
 }
 
 // NewBackupService creates a new backup service
@@ -323,14 +325,8 @@ func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, t
 		return fmt.Errorf("failed to initialize restic repository: %w", err)
 	}
 
-	// Get home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("system error: failed to get home directory: %w", err)
-	}
-
 	// Construct .chainlaunch path
-	chainlaunchPath := filepath.Join(homeDir, ".chainlaunch")
+	chainlaunchPath := s.configService.GetDataPath()
 
 	// Check if directory exists
 	if _, err := os.Stat(chainlaunchPath); os.IsNotExist(err) {

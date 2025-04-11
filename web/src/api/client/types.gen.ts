@@ -48,10 +48,6 @@ export type AuthUserResponse = {
     username?: string;
 };
 
-export type CryptoX509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
-
-export type CryptoX509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
-
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -81,6 +77,22 @@ export type HandlerOrganizationResponse = {
     tlsCertificate?: string;
     tlsPublicKey?: string;
     updatedAt?: string;
+};
+
+export type HandlerRevokeCertificateByPemRequest = {
+    /**
+     * PEM encoded certificate
+     */
+    certificate?: string;
+    revocationReason?: number;
+};
+
+export type HandlerRevokeCertificateBySerialRequest = {
+    revocationReason?: number;
+    /**
+     * Hex string of the serial number
+     */
+    serialNumber?: string;
 };
 
 export type HandlerUpdateOrganizationRequest = {
@@ -164,11 +176,76 @@ export type HttpBesuNetworkResponse = {
     updatedAt?: string;
 };
 
+export type HttpBlockListResponse = {
+    blocks?: Array<ServiceBlock>;
+    total?: number;
+};
+
+export type HttpBlockTransactionsResponse = {
+    block_number?: number;
+    transactions?: Array<ServiceTransaction>;
+};
+
 export type HttpChannelConfigResponse = {
     config?: {
         [key: string]: unknown;
     };
     name?: string;
+};
+
+export type HttpChannelResponse = {
+    blockNum?: number;
+    createdAt?: string;
+    name?: string;
+};
+
+/**
+ * A single configuration update operation
+ */
+export type HttpConfigUpdateOperationRequest = {
+    /**
+     * Payload contains the operation-specific data
+     * The structure depends on the operation type:
+     * - add_org: AddOrgPayload
+     * - remove_org: RemoveOrgPayload
+     * - update_org_msp: UpdateOrgMSPPayload
+     * - set_anchor_peers: SetAnchorPeersPayload
+     * - add_consenter: AddConsenterPayload
+     * - remove_consenter: RemoveConsenterPayload
+     * - update_consenter: UpdateConsenterPayload
+     * - update_etcd_raft_options: UpdateEtcdRaftOptionsPayload
+     * - update_batch_size: UpdateBatchSizePayload
+     * - update_batch_timeout: UpdateBatchTimeoutPayload
+     * @Description The payload for the configuration update operation
+     * @Description Can be one of:
+     * @Description - AddOrgPayload when type is "add_org"
+     * @Description - RemoveOrgPayload when type is "remove_org"
+     * @Description - UpdateOrgMSPPayload when type is "update_org_msp"
+     * @Description - SetAnchorPeersPayload when type is "set_anchor_peers"
+     * @Description - AddConsenterPayload when type is "add_consenter"
+     * @Description - RemoveConsenterPayload when type is "remove_consenter"
+     * @Description - UpdateConsenterPayload when type is "update_consenter"
+     * @Description - UpdateEtcdRaftOptionsPayload when type is "update_etcd_raft_options"
+     * @Description - UpdateBatchSizePayload when type is "update_batch_size"
+     * @Description - UpdateBatchTimeoutPayload when type is "update_batch_timeout"
+     */
+    payload: Array<number>;
+    /**
+     * Type is the type of configuration update operation
+     * enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
+     */
+    type: 'add_org' | 'remove_org' | 'update_org_msp' | 'set_anchor_peers' | 'add_consenter' | 'remove_consenter' | 'update_consenter' | 'update_etcd_raft_options' | 'update_batch_size' | 'update_batch_timeout';
+};
+
+export type HttpConfigUpdateResponse = {
+    channel_name?: string;
+    created_at?: string;
+    created_by?: string;
+    id?: string;
+    network_id?: number;
+    operations?: Array<HttpConfigUpdateOperationRequest>;
+    preview_json?: string;
+    status?: string;
 };
 
 export type HttpConsenterConfig = {
@@ -456,6 +533,11 @@ export type HttpNetworkResponse = {
     updatedAt?: string;
 };
 
+export type HttpNodeChannelsResponse = {
+    channels?: Array<HttpChannelResponse>;
+    nodeId?: number;
+};
+
 export type HttpNodeEventResponse = {
     created_at?: string;
     data?: unknown;
@@ -550,6 +632,10 @@ export type HttpTestProviderResponse = {
     testedAt?: string;
 };
 
+export type HttpTransactionResponse = {
+    transaction?: ServiceTransaction;
+};
+
 export type HttpUpdateBackupScheduleRequest = {
     cronExpression: string;
     description?: string;
@@ -584,6 +670,18 @@ export type HttpUpdateBatchTimeoutPayload = {
     timeout: string;
 };
 
+export type HttpUpdateBesuNodeRequest = {
+    env?: {
+        [key: string]: string;
+    };
+    networkConfig?: {
+        [key: string]: string;
+    };
+    p2pPort?: number;
+    rpcPort?: number;
+    wsPort?: number;
+};
+
 export type HttpUpdateConsenterPayload = {
     client_tls_cert: string;
     host: string;
@@ -599,6 +697,48 @@ export type HttpUpdateEtcdRaftOptionsPayload = {
     max_inflight_blocks: number;
     snapshot_interval_size: number;
     tick_interval: string;
+};
+
+export type HttpUpdateFabricNetworkRequest = {
+    operations: Array<HttpConfigUpdateOperationRequest>;
+};
+
+export type HttpUpdateFabricOrdererRequest = {
+    adminAddress?: string;
+    domainNames?: Array<string>;
+    env?: {
+        [key: string]: string;
+    };
+    externalEndpoint?: string;
+    listenAddress?: string;
+    operationsListenAddress?: string;
+};
+
+export type HttpUpdateFabricPeerRequest = {
+    addressOverrides?: Array<TypesAddressOverride>;
+    chaincodeAddress?: string;
+    domainNames?: Array<string>;
+    env?: {
+        [key: string]: string;
+    };
+    eventsAddress?: string;
+    externalEndpoint?: string;
+    listenAddress?: string;
+    operationsListenAddress?: string;
+};
+
+export type HttpUpdateNodeRequest = {
+    besuNode?: HttpUpdateBesuNodeRequest;
+    blockchainPlatform?: TypesBlockchainPlatform;
+    fabricOrderer?: HttpUpdateFabricOrdererRequest;
+    /**
+     * Platform-specific configurations
+     */
+    fabricPeer?: HttpUpdateFabricPeerRequest;
+    /**
+     * Common fields
+     */
+    name?: string;
 };
 
 export type HttpUpdateOrgMspPayload = {
@@ -623,10 +763,10 @@ export type ModelsCertificateRequest = {
     country?: Array<string>;
     dnsNames?: Array<string>;
     emailAddresses?: Array<string>;
-    extKeyUsage?: Array<CryptoX509ExtKeyUsage>;
+    extKeyUsage?: Array<X509ExtKeyUsage>;
     ipAddresses?: Array<Array<number>>;
     isCA?: boolean;
-    keyUsage?: CryptoX509KeyUsage;
+    keyUsage?: X509KeyUsage;
     locality?: Array<string>;
     organization?: Array<string>;
     organizationalUnit?: Array<string>;
@@ -715,6 +855,7 @@ export type ModelsKeyResponse = {
     publicKey?: string;
     sha1Fingerprint?: string;
     sha256Fingerprint?: string;
+    signingKeyID?: number;
     status?: string;
 };
 
@@ -773,6 +914,16 @@ export type ServiceBesuNodeProperties = {
     p2pPort?: number;
     rpcHost?: string;
     rpcPort?: number;
+    version?: string;
+};
+
+export type ServiceBlock = {
+    data?: Array<number>;
+    hash?: string;
+    number?: number;
+    previous_hash?: string;
+    timestamp?: string;
+    tx_count?: number;
 };
 
 export type ServiceFabricOrdererProperties = {
@@ -796,9 +947,11 @@ export type ServiceFabricOrdererProperties = {
     tlsCaCert?: string;
     tlsCert?: string;
     tlsKeyId?: number;
+    version?: string;
 };
 
 export type ServiceFabricPeerProperties = {
+    addressOverrides?: Array<TypesAddressOverride>;
     chaincodeAddress?: string;
     domainNames?: Array<string>;
     eventsAddress?: string;
@@ -820,6 +973,7 @@ export type ServiceFabricPeerProperties = {
     tlsCaCert?: string;
     tlsCert?: string;
     tlsKeyId?: number;
+    version?: string;
 };
 
 export type ServiceMode = 'service' | 'docker';
@@ -876,6 +1030,21 @@ export type ServiceNodesDefaultsResult = {
     peers?: Array<ServiceNodeDefaults>;
 };
 
+export type ServiceTransaction = {
+    block_number?: number;
+    creator?: string;
+    payload?: Array<number>;
+    timestamp?: string;
+    tx_id?: string;
+    type?: string;
+};
+
+export type TypesAddressOverride = {
+    from?: string;
+    tlsCACert?: string;
+    to?: string;
+};
+
 export type TypesBesuNodeConfig = {
     bootNodes?: Array<string>;
     env?: {
@@ -902,6 +1071,10 @@ export type TypesBesuNodeConfig = {
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
 
 export type TypesFabricOrdererConfig = {
+    /**
+     * @Description Address overrides for the orderer
+     */
+    addressOverrides?: Array<TypesAddressOverride>;
     adminAddress?: string;
     domainNames?: Array<string>;
     env?: {
@@ -931,6 +1104,10 @@ export type TypesFabricOrdererConfig = {
  * Configuration for creating a new Fabric peer node
  */
 export type TypesFabricPeerConfig = {
+    /**
+     * @Description Address overrides for the peer
+     */
+    addressOverrides?: Array<TypesAddressOverride>;
     /**
      * @Description Chaincode listen address
      */
@@ -974,6 +1151,10 @@ export type TypesFabricPeerConfig = {
      */
     operationsListenAddress?: string;
     /**
+     * @Description Orderer address overrides for the peer
+     */
+    ordererAddressOverrides?: Array<TypesOrdererAddressOverride>;
+    /**
      * @Description Organization ID that owns this peer
      */
     organizationId: number;
@@ -987,9 +1168,24 @@ export type TypesFabricPeerConfig = {
     version?: string;
 };
 
-export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'ERROR';
+export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
+
+export type TypesOrdererAddressOverride = {
+    /**
+     * @Description Original orderer address
+     */
+    from: string;
+    /**
+     * @Description TLS CA certificate in PEM format
+     */
+    tlsCACert: string;
+    /**
+     * @Description New orderer address to use
+     */
+    to: string;
+};
 
 export type UrlUrl = {
     /**
@@ -1038,6 +1234,10 @@ export type UrlUrl = {
 export type UrlUserinfo = {
     [key: string]: unknown;
 };
+
+export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+
+export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
 
 export type PostAuthLoginData = {
     /**
@@ -2631,6 +2831,99 @@ export type PostNetworksFabricByIdAnchorPeersResponses = {
 
 export type PostNetworksFabricByIdAnchorPeersResponse = PostNetworksFabricByIdAnchorPeersResponses[keyof PostNetworksFabricByIdAnchorPeersResponses];
 
+export type GetNetworksFabricByIdBlocksData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: {
+        /**
+         * Number of blocks to return (default: 10)
+         */
+        limit?: number;
+        /**
+         * Number of blocks to skip (default: 0)
+         */
+        offset?: number;
+        /**
+         * Get blocks in reverse order (default: false)
+         */
+        reverse?: boolean;
+    };
+    url: '/networks/fabric/{id}/blocks';
+};
+
+export type GetNetworksFabricByIdBlocksErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdBlocksError = GetNetworksFabricByIdBlocksErrors[keyof GetNetworksFabricByIdBlocksErrors];
+
+export type GetNetworksFabricByIdBlocksResponses = {
+    /**
+     * OK
+     */
+    200: HttpBlockListResponse;
+};
+
+export type GetNetworksFabricByIdBlocksResponse = GetNetworksFabricByIdBlocksResponses[keyof GetNetworksFabricByIdBlocksResponses];
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+        /**
+         * Block Number
+         */
+        blockNum: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/blocks/{blockNum}/transactions';
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsError = GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors];
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses = {
+    /**
+     * OK
+     */
+    200: HttpBlockTransactionsResponse;
+};
+
+export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponse = GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses];
+
 export type GetNetworksFabricByIdChannelConfigData = {
     body?: never;
     path: {
@@ -3090,6 +3383,85 @@ export type PostNetworksFabricByIdReloadBlockResponses = {
 
 export type PostNetworksFabricByIdReloadBlockResponse = PostNetworksFabricByIdReloadBlockResponses[keyof PostNetworksFabricByIdReloadBlockResponses];
 
+export type GetNetworksFabricByIdTransactionsByTxIdData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+        /**
+         * Transaction ID
+         */
+        txId: string;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/transactions/{txId}';
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdError = GetNetworksFabricByIdTransactionsByTxIdErrors[keyof GetNetworksFabricByIdTransactionsByTxIdErrors];
+
+export type GetNetworksFabricByIdTransactionsByTxIdResponses = {
+    /**
+     * OK
+     */
+    200: HttpTransactionResponse;
+};
+
+export type GetNetworksFabricByIdTransactionsByTxIdResponse = GetNetworksFabricByIdTransactionsByTxIdResponses[keyof GetNetworksFabricByIdTransactionsByTxIdResponses];
+
+export type PostNetworksFabricByIdUpdateConfigData = {
+    /**
+     * Config update operations
+     */
+    body: HttpUpdateFabricNetworkRequest;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/update-config';
+};
+
+export type PostNetworksFabricByIdUpdateConfigErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigError = PostNetworksFabricByIdUpdateConfigErrors[keyof PostNetworksFabricByIdUpdateConfigErrors];
+
+export type PostNetworksFabricByIdUpdateConfigResponses = {
+    /**
+     * OK
+     */
+    200: HttpConfigUpdateResponse;
+};
+
+export type PostNetworksFabricByIdUpdateConfigResponse = PostNetworksFabricByIdUpdateConfigResponses[keyof PostNetworksFabricByIdUpdateConfigResponses];
+
 export type GetNodesData = {
     body?: never;
     path?: never;
@@ -3397,6 +3769,123 @@ export type GetNodesByIdResponses = {
 };
 
 export type GetNodesByIdResponse = GetNodesByIdResponses[keyof GetNodesByIdResponses];
+
+export type PutNodesByIdData = {
+    /**
+     * Update node request
+     */
+    body: HttpUpdateNodeRequest;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}';
+};
+
+export type PutNodesByIdErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PutNodesByIdError = PutNodesByIdErrors[keyof PutNodesByIdErrors];
+
+export type PutNodesByIdResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeResponse;
+};
+
+export type PutNodesByIdResponse = PutNodesByIdResponses[keyof PutNodesByIdResponses];
+
+export type PostNodesByIdCertificatesRenewData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/certificates/renew';
+};
+
+export type PostNodesByIdCertificatesRenewErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PostNodesByIdCertificatesRenewError = PostNodesByIdCertificatesRenewErrors[keyof PostNodesByIdCertificatesRenewErrors];
+
+export type PostNodesByIdCertificatesRenewResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeResponse;
+};
+
+export type PostNodesByIdCertificatesRenewResponse = PostNodesByIdCertificatesRenewResponses[keyof PostNodesByIdCertificatesRenewResponses];
+
+export type GetNodesByIdChannelsData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/nodes/{id}/channels';
+};
+
+export type GetNodesByIdChannelsErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type GetNodesByIdChannelsError = GetNodesByIdChannelsErrors[keyof GetNodesByIdChannelsErrors];
+
+export type GetNodesByIdChannelsResponses = {
+    /**
+     * OK
+     */
+    200: HttpNodeChannelsResponse;
+};
+
+export type GetNodesByIdChannelsResponse = GetNodesByIdChannelsResponses[keyof GetNodesByIdChannelsResponses];
 
 export type GetNodesByIdEventsData = {
     body?: never;
@@ -4036,3 +4525,167 @@ export type PutOrganizationsByIdResponses = {
 };
 
 export type PutOrganizationsByIdResponse = PutOrganizationsByIdResponses[keyof PutOrganizationsByIdResponses];
+
+export type GetOrganizationsByIdCrlData = {
+    body?: never;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl';
+};
+
+export type GetOrganizationsByIdCrlErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetOrganizationsByIdCrlError = GetOrganizationsByIdCrlErrors[keyof GetOrganizationsByIdCrlErrors];
+
+export type GetOrganizationsByIdCrlResponses = {
+    /**
+     * PEM encoded CRL
+     */
+    200: string;
+};
+
+export type GetOrganizationsByIdCrlResponse = GetOrganizationsByIdCrlResponses[keyof GetOrganizationsByIdCrlResponses];
+
+export type PostOrganizationsByIdCrlInitializeData = {
+    body?: never;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/initialize';
+};
+
+export type PostOrganizationsByIdCrlInitializeErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlInitializeError = PostOrganizationsByIdCrlInitializeErrors[keyof PostOrganizationsByIdCrlInitializeErrors];
+
+export type PostOrganizationsByIdCrlInitializeResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlInitializeResponse = PostOrganizationsByIdCrlInitializeResponses[keyof PostOrganizationsByIdCrlInitializeResponses];
+
+export type PostOrganizationsByIdCrlRevokePemData = {
+    /**
+     * Certificate revocation request
+     */
+    body: HandlerRevokeCertificateByPemRequest;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/revoke/pem';
+};
+
+export type PostOrganizationsByIdCrlRevokePemErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokePemError = PostOrganizationsByIdCrlRevokePemErrors[keyof PostOrganizationsByIdCrlRevokePemErrors];
+
+export type PostOrganizationsByIdCrlRevokePemResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokePemResponse = PostOrganizationsByIdCrlRevokePemResponses[keyof PostOrganizationsByIdCrlRevokePemResponses];
+
+export type PostOrganizationsByIdCrlRevokeSerialData = {
+    /**
+     * Certificate revocation request
+     */
+    body: HandlerRevokeCertificateBySerialRequest;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/revoke/serial';
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialError = PostOrganizationsByIdCrlRevokeSerialErrors[keyof PostOrganizationsByIdCrlRevokeSerialErrors];
+
+export type PostOrganizationsByIdCrlRevokeSerialResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialResponse = PostOrganizationsByIdCrlRevokeSerialResponses[keyof PostOrganizationsByIdCrlRevokeSerialResponses];

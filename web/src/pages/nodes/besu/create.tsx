@@ -112,7 +112,7 @@ export default function CreateBesuNodePage() {
 			navigate('/nodes')
 		} catch (error: any) {
 			toast.error('Failed to create node', {
-				description: error.message,
+				description: error.error.message,
 			})
 		}
 	}

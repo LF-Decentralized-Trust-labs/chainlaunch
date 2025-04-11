@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
@@ -17,10 +18,11 @@ import (
 
 // LocalBesu represents a local Besu node
 type LocalBesu struct {
-	opts   StartBesuOpts
-	mode   string
-	nodeID int64
-	logger *logger.Logger
+	opts          StartBesuOpts
+	mode          string
+	nodeID        int64
+	logger        *logger.Logger
+	configService *config.ConfigService
 }
 
 // NewLocalBesu creates a new LocalBesu instance
@@ -29,12 +31,14 @@ func NewLocalBesu(
 	mode string,
 	nodeID int64,
 	logger *logger.Logger,
+	configService *config.ConfigService,
 ) *LocalBesu {
 	return &LocalBesu{
-		opts:   opts,
-		mode:   mode,
-		nodeID: nodeID,
-		logger: logger,
+		opts:          opts,
+		mode:          mode,
+		nodeID:        nodeID,
+		logger:        logger,
+		configService: configService,
 	}
 }
 
@@ -43,16 +47,13 @@ func (b *LocalBesu) Start() (interface{}, error) {
 	b.logger.Info("Starting Besu node", "opts", b.opts)
 
 	// Create necessary directories
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
+	chainlaunchDir := b.configService.GetDataPath()
 
 	slugifiedID := strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch/besu", slugifiedID)
+	dirPath := filepath.Join(chainlaunchDir, "besu", slugifiedID)
 	dataDir := filepath.Join(dirPath, "data")
 	configDir := filepath.Join(dirPath, "config")
-	binDir := filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version)
+	binDir := filepath.Join(chainlaunchDir, "bin/besu", b.opts.Version)
 
 	// Create directories
 	for _, dir := range []string{dataDir, configDir, binDir} {
@@ -144,8 +145,7 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
 			besuBinary = "/usr/local/opt/besu/bin/besu"
 		}
 	} else {
-		homeDir, _ := os.UserHomeDir()
-		besuBinary = filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version, "besu")
+		besuBinary = filepath.Join(b.configService.GetDataPath(), "bin/besu", b.opts.Version, "besu")
 	}
 
 	cmd := []string{
@@ -371,8 +371,7 @@ func (b *LocalBesu) installBesuMacOS() error {
 	}
 
 	// Create symlink to our bin directory
-	homeDir, _ := os.UserHomeDir()
-	binDir := filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version)
+	binDir := filepath.Join(b.configService.GetDataPath(), "bin/besu", b.opts.Version)
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return fmt.Errorf("failed to create bin directory: %w", err)
 	}
@@ -395,13 +394,8 @@ func (b *LocalBesu) TailLogs(ctx context.Context, tail int, follow bool) (<-chan
 	logChan := make(chan string, 100)
 
 	// Get log file path based on ID
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		close(logChan)
-		return logChan, fmt.Errorf("failed to get home directory: %w", err)
-	}
 	slugifiedID := strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-")
-	logPath := filepath.Join(homeDir, ".chainlaunch/besu", slugifiedID, b.getServiceName()+".log")
+	logPath := filepath.Join(b.configService.GetDataPath(), "besu", slugifiedID, b.getServiceName()+".log")
 
 	// Check if log file exists
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {

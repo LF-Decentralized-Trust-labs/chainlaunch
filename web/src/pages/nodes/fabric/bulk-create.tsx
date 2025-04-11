@@ -1,7 +1,6 @@
 import { getNodesDefaultsFabric } from '@/api/client'
 import { getNodesDefaultsFabricOptions, getNodesOptions, getOrganizationsOptions, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
 import { HttpCreateNodeRequest, TypesFabricOrdererConfig, TypesFabricPeerConfig } from '@/api/client/types.gen'
-// CreateFabricOrdererDto, CreateFabricPeerDto, CreateNodeDto
 import { FabricNodeForm, FabricNodeFormValues } from '@/components/nodes/fabric-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -218,6 +217,8 @@ export default function BulkCreateNodesPage() {
 						chaincodeAddress: config.fabricProperties.chaincodeAddress || '',
 						eventsAddress: config.fabricProperties.eventsAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
+						addressOverrides: config.fabricProperties.addressOverrides,
 					} as TypesFabricPeerConfig
 				} else {
 					fabricOrderer = {
@@ -231,6 +232,7 @@ export default function BulkCreateNodesPage() {
 						name: config.name,
 						adminAddress: config.fabricProperties.adminAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
 					} as TypesFabricOrdererConfig
 				}
 
@@ -256,7 +258,7 @@ export default function BulkCreateNodesPage() {
 			navigate('/nodes')
 		} catch (error: any) {
 			toast.error('Failed to create nodes', {
-				description: error.message,
+				description: error.error.message,
 			})
 		}
 	}
@@ -380,6 +382,12 @@ export default function BulkCreateNodesPage() {
 												onSubmit={(values) => {
 													const newConfigs = [...nodeConfigs]
 													newConfigs[index] = { ...values, name: config.name }
+													setNodeConfigs(newConfigs)
+												}}
+												onChange={(values) => {
+													const newConfigs = [...nodeConfigs]
+													newConfigs[index] = { ...values, name: config.name }
+													console.log('values', values, 'onChange')
 													setNodeConfigs(newConfigs)
 												}}
 												organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}

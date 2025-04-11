@@ -8,3 +8,5 @@ chainlaunch
 certs
 .cursorrules
 .env
+test-instance
+*.db

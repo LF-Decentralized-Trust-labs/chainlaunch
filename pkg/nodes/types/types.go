@@ -38,6 +38,7 @@ const (
 	NodeStatusStopped  NodeStatus = "STOPPED"
 	NodeStatusStopping NodeStatus = "STOPPING"
 	NodeStatusStarting NodeStatus = "STARTING"
+	NodeStatusUpdating NodeStatus = "UPDATING"
 	NodeStatusError    NodeStatus = "ERROR"
 )
 
@@ -45,4 +46,10 @@ const (
 type StoredConfig struct {
 	Type   string          `json:"type"`
 	Config json.RawMessage `json:"config"`
+}
+
+type AddressOverride struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	TLSCACert string `json:"tlsCACert"`
 }

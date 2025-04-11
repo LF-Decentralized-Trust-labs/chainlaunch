@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
@@ -57,6 +58,10 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/by-name/{name}", h.FabricNetworkGetByName)
 		r.Post("/import", h.ImportFabricNetwork)
 		r.Post("/import-with-org", h.ImportFabricNetworkWithOrg)
+		r.Post("/{id}/update-config", h.FabricUpdateChannelConfig)
+		r.Get("/{id}/blocks", h.FabricGetBlocks)
+		r.Get("/{id}/blocks/{blockNum}/transactions", h.FabricGetBlockTransactions)
+		r.Get("/{id}/transactions/{txId}", h.FabricGetTransaction)
 	})
 
 	// New Besu routes
@@ -1387,8 +1392,8 @@ type UpdateBatchTimeoutPayload struct {
 	Timeout string `json:"timeout" validate:"required"` // e.g., "2s"
 }
 
-// PrepareConfigUpdateRequest represents a request to prepare a config update
-type PrepareConfigUpdateRequest struct {
+// UpdateFabricNetworkRequest represents a request to update a Fabric network
+type UpdateFabricNetworkRequest struct {
 	Operations []ConfigUpdateOperationRequest `json:"operations" validate:"required,min=1,dive"`
 }
 
@@ -1412,4 +1417,350 @@ type PrepareConfigUpdateRequest struct {
 // @Router /dummy [post]
 func (h *Handler) DummyHandler(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusBadRequest, "dummy_error", "Dummy error")
+}
+
+// @Summary Prepare a config update for a Fabric network
+// @Description Prepare a config update proposal for a Fabric network using the provided operations.
+// @Description The following operation types are supported:
+// @Description - add_org: Add a new organization to the channel
+// @Description - remove_org: Remove an organization from the channel
+// @Description - update_org_msp: Update an organization's MSP configuration
+// @Description - set_anchor_peers: Set anchor peers for an organization
+// @Description - add_consenter: Add a new consenter to the orderer
+// @Description - remove_consenter: Remove a consenter from the orderer
+// @Description - update_consenter: Update a consenter in the orderer
+// @Description - update_etcd_raft_options: Update etcd raft options for the orderer
+// @Description - update_batch_size: Update batch size for the orderer
+// @Description - update_batch_timeout: Update batch timeout for the orderer
+// @Tags fabric-networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param request body UpdateFabricNetworkRequest true "Config update operations"
+// @Success 200 {object} ConfigUpdateResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/update-config [post]
+func (h *Handler) FabricUpdateChannelConfig(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse request body
+	var req UpdateFabricNetworkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	// Validate each operation's payload
+	for i, op := range req.Operations {
+		switch op.Type {
+		case "add_org":
+			var payload AddOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_org":
+			var payload RemoveOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_org_msp":
+			var payload UpdateOrgMSPPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "set_anchor_peers":
+			var payload SetAnchorPeersPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "add_consenter":
+			var payload AddConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_consenter":
+			var payload RemoveConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_consenter":
+			var payload UpdateConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_etcd_raft_options":
+			var payload UpdateEtcdRaftOptionsPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_size":
+			var payload UpdateBatchSizePayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_timeout":
+			var payload UpdateBatchTimeoutPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			// Validate that the timeout is a valid duration
+			if _, err := time.ParseDuration(payload.Timeout); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid timeout for operation %d: %s", i, err.Error()))
+				return
+			}
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_operation_type", fmt.Sprintf("Unsupported operation type: %s", op.Type))
+			return
+		}
+	}
+
+	// Convert operations to fabric.ConfigUpdateOperation
+	operations := make([]fabric.ConfigUpdateOperation, len(req.Operations))
+	for i, op := range req.Operations {
+		operations[i] = fabric.ConfigUpdateOperation{
+			Type:    fabric.ConfigUpdateOperationType(op.Type),
+			Payload: op.Payload,
+		}
+	}
+
+	// Call service to prepare config update
+	proposal, err := h.networkService.UpdateFabricNetwork(r.Context(), networkID, operations)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "prepare_config_update_failed", err.Error())
+		return
+	}
+
+	// Create response
+	resp := ConfigUpdateResponse{
+		ID:          proposal.ID,
+		NetworkID:   proposal.NetworkID,
+		ChannelName: proposal.ChannelName,
+		Status:      proposal.Status,
+		CreatedAt:   proposal.CreatedAt,
+		CreatedBy:   proposal.CreatedBy,
+		Operations:  req.Operations,
+	}
+
+	// Return response
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ConfigUpdateResponse represents the response from preparing a config update
+type ConfigUpdateResponse struct {
+	ID          string                         `json:"id"`
+	NetworkID   int64                          `json:"network_id"`
+	ChannelName string                         `json:"channel_name"`
+	Status      string                         `json:"status"`
+	CreatedAt   time.Time                      `json:"created_at"`
+	CreatedBy   string                         `json:"created_by"`
+	Operations  []ConfigUpdateOperationRequest `json:"operations"`
+	PreviewJSON string                         `json:"preview_json,omitempty"`
+}
+
+// @Summary Get list of blocks from Fabric network
+// @Description Get a paginated list of blocks from a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param limit query int false "Number of blocks to return (default: 10)"
+// @Param offset query int false "Number of blocks to skip (default: 0)"
+// @Param reverse query bool false "Get blocks in reverse order (default: false)"
+// @Success 200 {object} BlockListResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks [get]
+func (h *Handler) FabricGetBlocks(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse pagination parameters
+	limit := int32(10) // Default limit
+	offset := int32(0) // Default offset
+	reverse := false   // Default order
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		limitInt, err := strconv.ParseInt(limitStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_limit", "Invalid limit parameter")
+			return
+		}
+		limit = int32(limitInt)
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		offsetInt, err := strconv.ParseInt(offsetStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_offset", "Invalid offset parameter")
+			return
+		}
+		offset = int32(offsetInt)
+	}
+
+	if reverseStr := r.URL.Query().Get("reverse"); reverseStr != "" {
+		reverseBool, err := strconv.ParseBool(reverseStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_reverse", "Invalid reverse parameter")
+			return
+		}
+		reverse = reverseBool
+	}
+
+	blocks, total, err := h.networkService.GetBlocks(r.Context(), networkID, limit, offset, reverse)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "get_blocks_failed", err.Error())
+		return
+	}
+
+	resp := BlockListResponse{
+		Blocks: blocks,
+		Total:  total,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transactions from a specific block
+// @Description Get all transactions from a specific block in a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param blockNum path int true "Block Number"
+// @Success 200 {object} BlockTransactionsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks/{blockNum}/transactions [get]
+func (h *Handler) FabricGetBlockTransactions(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	blockNum, err := strconv.ParseUint(chi.URLParam(r, "blockNum"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_block_number", "Invalid block number")
+		return
+	}
+
+	transactions, err := h.networkService.GetBlockTransactions(r.Context(), networkID, blockNum)
+	if err != nil {
+		if err.Error() == "block not found" {
+			writeError(w, http.StatusNotFound, "block_not_found", "Block not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transactions_failed", err.Error())
+		return
+	}
+
+	resp := BlockTransactionsResponse{
+		BlockNumber:  blockNum,
+		Transactions: transactions,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transaction details by transaction ID
+// @Description Get detailed information about a specific transaction in a Fabric network
+// @Tags fabric-networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param txId path string true "Transaction ID"
+// @Success 200 {object} TransactionResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/transactions/{txId} [get]
+func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	txID := chi.URLParam(r, "txId")
+	if txID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_transaction_id", "Invalid transaction ID")
+		return
+	}
+
+	transaction, err := h.networkService.GetTransaction(r.Context(), networkID, txID)
+	if err != nil {
+		if err.Error() == "transaction not found" {
+			writeError(w, http.StatusNotFound, "transaction_not_found", "Transaction not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transaction_failed", err.Error())
+		return
+	}
+
+	resp := TransactionResponse{
+		Transaction: transaction,
+	}
+	writeJSON(w, http.StatusOK, resp)
 }

@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AddRevokedCertificate(ctx context.Context, arg AddRevokedCertificateParams) error
 	CheckNetworkNodeExists(ctx context.Context, arg CheckNetworkNodeExistsParams) (int64, error)
 	CountBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) (int64, error)
 	CountBackupsByTarget(ctx context.Context, targetID int64) (int64, error)
@@ -90,9 +91,12 @@ type Querier interface {
 	GetNotificationProvider(ctx context.Context, id int64) (NotificationProvider, error)
 	GetOldestBackupByTarget(ctx context.Context, targetID int64) (Backup, error)
 	GetOrdererPorts(ctx context.Context) ([]GetOrdererPortsRow, error)
+	GetOrganizationCRLInfo(ctx context.Context, id int64) (GetOrganizationCRLInfoRow, error)
 	GetPeerPorts(ctx context.Context) ([]GetPeerPortsRow, error)
 	GetProvidersByNotificationType(ctx context.Context, arg GetProvidersByNotificationTypeParams) ([]NotificationProvider, error)
 	GetRecentCompletedBackups(ctx context.Context) ([]Backup, error)
+	GetRevokedCertificate(ctx context.Context, arg GetRevokedCertificateParams) (FabricRevokedCertificate, error)
+	GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]FabricRevokedCertificate, error)
 	GetSession(ctx context.Context, sessionID string) (GetSessionRow, error)
 	GetUser(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
@@ -125,6 +129,7 @@ type Querier interface {
 	UpdateBackupSize(ctx context.Context, arg UpdateBackupSizeParams) (Backup, error)
 	UpdateBackupStatus(ctx context.Context, arg UpdateBackupStatusParams) (Backup, error)
 	UpdateBackupTarget(ctx context.Context, arg UpdateBackupTargetParams) (BackupTarget, error)
+	UpdateDeploymentConfig(ctx context.Context, arg UpdateDeploymentConfigParams) (Node, error)
 	UpdateFabricOrganization(ctx context.Context, arg UpdateFabricOrganizationParams) (FabricOrganization, error)
 	UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, error)
 	UpdateKeyProvider(ctx context.Context, arg UpdateKeyProviderParams) (KeyProvider, error)
@@ -133,11 +138,13 @@ type Querier interface {
 	UpdateNetworkNodeRole(ctx context.Context, arg UpdateNetworkNodeRoleParams) (NetworkNode, error)
 	UpdateNetworkNodeStatus(ctx context.Context, arg UpdateNetworkNodeStatusParams) (NetworkNode, error)
 	UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStatusParams) error
+	UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error)
 	UpdateNodeDeploymentConfig(ctx context.Context, arg UpdateNodeDeploymentConfigParams) (Node, error)
 	UpdateNodeEndpoint(ctx context.Context, arg UpdateNodeEndpointParams) (Node, error)
 	UpdateNodePublicEndpoint(ctx context.Context, arg UpdateNodePublicEndpointParams) (Node, error)
 	UpdateNodeStatus(ctx context.Context, arg UpdateNodeStatusParams) (Node, error)
 	UpdateNotificationProvider(ctx context.Context, arg UpdateNotificationProviderParams) (NotificationProvider, error)
+	UpdateOrganizationCRL(ctx context.Context, arg UpdateOrganizationCRLParams) error
 	UpdateProviderTestResults(ctx context.Context, arg UpdateProviderTestResultsParams) (NotificationProvider, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserLastLogin(ctx context.Context, id int64) (User, error)

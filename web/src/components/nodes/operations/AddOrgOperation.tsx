@@ -1,11 +1,12 @@
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { useFieldArray, useFormContext } from 'react-hook-form'
 import { z } from 'zod'
+import { useFieldArray, useFormContext } from 'react-hook-form'
 
 // Schema for the AddOrgPayload
 export const addOrgSchema = z.object({
@@ -87,32 +88,35 @@ export function AddOrgOperation({ index, onRemove }: AddOrgOperationProps) {
             <FormLabel>Root Certificates</FormLabel>
             {rootCertsFields.map((field, i) => (
               <div key={field.id} className="flex gap-2">
-                <Input 
+                <Textarea 
                   {...formContext.register(`operations.${index}.payload.root_certs.${i}`)}
-                  className="flex-1"
+                  className="flex-1 min-h-[100px]"
+                  placeholder="-----BEGIN CERTIFICATE-----
+MIICJzCCAc2gAwIBAgIUMR9...
+-----END CERTIFICATE-----"
                 />
                 <Button 
                   type="button" 
                   variant="ghost" 
                   size="icon" 
                   onClick={() => removeRootCert(i)}
-                  className="h-10 w-10 text-destructive"
+                  className="h-10 w-10 text-destructive self-start"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
             <div className="flex gap-2">
-              <Input 
+              <Textarea 
                 value={newRootCert}
                 onChange={(e) => setNewRootCert(e.target.value)}
                 placeholder="Paste PEM certificate"
-                className="flex-1"
+                className="flex-1 min-h-[100px]"
               />
               <Button 
                 type="button" 
                 onClick={handleAddRootCert}
-                className="whitespace-nowrap"
+                className="whitespace-nowrap self-start"
               >
                 Add Certificate
               </Button>
@@ -123,32 +127,35 @@ export function AddOrgOperation({ index, onRemove }: AddOrgOperationProps) {
             <FormLabel>TLS Root Certificates</FormLabel>
             {tlsRootCertsFields.map((field, i) => (
               <div key={field.id} className="flex gap-2">
-                <Input 
+                <Textarea 
                   {...formContext.register(`operations.${index}.payload.tls_root_certs.${i}`)}
-                  className="flex-1"
+                  className="flex-1 min-h-[100px]"
+                  placeholder="-----BEGIN CERTIFICATE-----
+MIICJzCCAc2gAwIBAgIUMR9...
+-----END CERTIFICATE-----"
                 />
                 <Button 
                   type="button" 
                   variant="ghost" 
                   size="icon" 
                   onClick={() => removeTlsRootCert(i)}
-                  className="h-10 w-10 text-destructive"
+                  className="h-10 w-10 text-destructive self-start"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
             <div className="flex gap-2">
-              <Input 
+              <Textarea 
                 value={newTlsRootCert}
                 onChange={(e) => setNewTlsRootCert(e.target.value)}
                 placeholder="Paste PEM certificate"
-                className="flex-1"
+                className="flex-1 min-h-[100px]"
               />
               <Button 
                 type="button" 
                 onClick={handleAddTlsRootCert}
-                className="whitespace-nowrap"
+                className="whitespace-nowrap self-start"
               >
                 Add Certificate
               </Button>

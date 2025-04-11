@@ -11,6 +11,35 @@ import (
 	"time"
 )
 
+const addRevokedCertificate = `-- name: AddRevokedCertificate :exec
+INSERT INTO fabric_revoked_certificates (
+    fabric_organization_id,
+    serial_number,
+    revocation_time,
+    reason,
+    issuer_certificate_id
+) VALUES (?, ?, ?, ?, ?)
+`
+
+type AddRevokedCertificateParams struct {
+	FabricOrganizationID int64         `json:"fabric_organization_id"`
+	SerialNumber         string        `json:"serial_number"`
+	RevocationTime       time.Time     `json:"revocation_time"`
+	Reason               int64         `json:"reason"`
+	IssuerCertificateID  sql.NullInt64 `json:"issuer_certificate_id"`
+}
+
+func (q *Queries) AddRevokedCertificate(ctx context.Context, arg AddRevokedCertificateParams) error {
+	_, err := q.exec(ctx, q.addRevokedCertificateStmt, addRevokedCertificate,
+		arg.FabricOrganizationID,
+		arg.SerialNumber,
+		arg.RevocationTime,
+		arg.Reason,
+		arg.IssuerCertificateID,
+	)
+	return err
+}
+
 const checkNetworkNodeExists = `-- name: CheckNetworkNodeExists :one
 SELECT EXISTS(SELECT 1 FROM network_nodes WHERE network_id = ? AND node_id = ?)
 `
@@ -294,7 +323,7 @@ INSERT INTO fabric_organizations (
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
-RETURNING id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at
+RETURNING id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update
 `
 
 type CreateFabricOrganizationParams struct {
@@ -341,6 +370,8 @@ func (q *Queries) CreateFabricOrganization(ctx context.Context, arg CreateFabric
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 	)
 	return i, err
 }
@@ -1532,7 +1563,7 @@ func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, not
 }
 
 const getFabricOrganization = `-- name: GetFabricOrganization :one
-SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at FROM fabric_organizations
+SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 WHERE id = ? LIMIT 1
 `
 
@@ -1554,12 +1585,14 @@ func (q *Queries) GetFabricOrganization(ctx context.Context, id int64) (FabricOr
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 	)
 	return i, err
 }
 
 const getFabricOrganizationByID = `-- name: GetFabricOrganizationByID :one
-SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at FROM fabric_organizations WHERE id = ? LIMIT 1
+SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetFabricOrganizationByID(ctx context.Context, id int64) (FabricOrganization, error) {
@@ -1580,12 +1613,14 @@ func (q *Queries) GetFabricOrganizationByID(ctx context.Context, id int64) (Fabr
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 	)
 	return i, err
 }
 
 const getFabricOrganizationByMSPID = `-- name: GetFabricOrganizationByMSPID :one
-SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at FROM fabric_organizations
+SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 WHERE msp_id = ? LIMIT 1
 `
 
@@ -1607,13 +1642,15 @@ func (q *Queries) GetFabricOrganizationByMSPID(ctx context.Context, mspID string
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 	)
 	return i, err
 }
 
 const getFabricOrganizationByMspID = `-- name: GetFabricOrganizationByMspID :one
 SELECT 
-    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at,
+    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
     sk.certificate as sign_certificate,
     tk.public_key as tls_public_key,
@@ -1641,6 +1678,8 @@ type GetFabricOrganizationByMspIDRow struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	CreatedBy       sql.NullInt64  `json:"created_by"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
+	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
 	SignPublicKey   sql.NullString `json:"sign_public_key"`
 	SignCertificate sql.NullString `json:"sign_certificate"`
 	TlsPublicKey    sql.NullString `json:"tls_public_key"`
@@ -1666,6 +1705,8 @@ func (q *Queries) GetFabricOrganizationByMspID(ctx context.Context, mspID string
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 		&i.SignPublicKey,
 		&i.SignCertificate,
 		&i.TlsPublicKey,
@@ -1677,7 +1718,7 @@ func (q *Queries) GetFabricOrganizationByMspID(ctx context.Context, mspID string
 
 const getFabricOrganizationWithKeys = `-- name: GetFabricOrganizationWithKeys :one
 SELECT 
-    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at,
+    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
     sk.certificate as sign_certificate,
     tk.public_key as tls_public_key,
@@ -1705,6 +1746,8 @@ type GetFabricOrganizationWithKeysRow struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	CreatedBy       sql.NullInt64  `json:"created_by"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
+	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
 	SignPublicKey   sql.NullString `json:"sign_public_key"`
 	SignCertificate sql.NullString `json:"sign_certificate"`
 	TlsPublicKey    sql.NullString `json:"tls_public_key"`
@@ -1730,6 +1773,8 @@ func (q *Queries) GetFabricOrganizationWithKeys(ctx context.Context, id int64) (
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 		&i.SignPublicKey,
 		&i.SignCertificate,
 		&i.TlsPublicKey,
@@ -2525,6 +2570,24 @@ func (q *Queries) GetOrdererPorts(ctx context.Context) ([]GetOrdererPortsRow, er
 	return items, nil
 }
 
+const getOrganizationCRLInfo = `-- name: GetOrganizationCRLInfo :one
+SELECT crl_key_id, crl_last_update
+FROM fabric_organizations
+WHERE id = ?
+`
+
+type GetOrganizationCRLInfoRow struct {
+	CrlKeyID      sql.NullInt64 `json:"crl_key_id"`
+	CrlLastUpdate sql.NullTime  `json:"crl_last_update"`
+}
+
+func (q *Queries) GetOrganizationCRLInfo(ctx context.Context, id int64) (GetOrganizationCRLInfoRow, error) {
+	row := q.queryRow(ctx, q.getOrganizationCRLInfoStmt, getOrganizationCRLInfo, id)
+	var i GetOrganizationCRLInfoRow
+	err := row.Scan(&i.CrlKeyID, &i.CrlLastUpdate)
+	return i, err
+}
+
 const getPeerPorts = `-- name: GetPeerPorts :many
 SELECT endpoint, public_endpoint
 FROM nodes
@@ -2650,6 +2713,70 @@ func (q *Queries) GetRecentCompletedBackups(ctx context.Context) ([]Backup, erro
 			&i.ErrorMessage,
 			&i.CreatedAt,
 			&i.NotificationSent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRevokedCertificate = `-- name: GetRevokedCertificate :one
+SELECT id, fabric_organization_id, serial_number, revocation_time, reason, issuer_certificate_id, created_at, updated_at FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?
+`
+
+type GetRevokedCertificateParams struct {
+	FabricOrganizationID int64  `json:"fabric_organization_id"`
+	SerialNumber         string `json:"serial_number"`
+}
+
+func (q *Queries) GetRevokedCertificate(ctx context.Context, arg GetRevokedCertificateParams) (FabricRevokedCertificate, error) {
+	row := q.queryRow(ctx, q.getRevokedCertificateStmt, getRevokedCertificate, arg.FabricOrganizationID, arg.SerialNumber)
+	var i FabricRevokedCertificate
+	err := row.Scan(
+		&i.ID,
+		&i.FabricOrganizationID,
+		&i.SerialNumber,
+		&i.RevocationTime,
+		&i.Reason,
+		&i.IssuerCertificateID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getRevokedCertificates = `-- name: GetRevokedCertificates :many
+SELECT id, fabric_organization_id, serial_number, revocation_time, reason, issuer_certificate_id, created_at, updated_at FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?
+ORDER BY revocation_time DESC
+`
+
+func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]FabricRevokedCertificate, error) {
+	rows, err := q.query(ctx, q.getRevokedCertificatesStmt, getRevokedCertificates, fabricOrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FabricRevokedCertificate{}
+	for rows.Next() {
+		var i FabricRevokedCertificate
+		if err := rows.Scan(
+			&i.ID,
+			&i.FabricOrganizationID,
+			&i.SerialNumber,
+			&i.RevocationTime,
+			&i.Reason,
+			&i.IssuerCertificateID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2952,7 +3079,7 @@ func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]Ba
 }
 
 const listFabricOrganizations = `-- name: ListFabricOrganizations :many
-SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at FROM fabric_organizations
+SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 ORDER BY created_at DESC
 `
 
@@ -2980,6 +3107,8 @@ func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]FabricOrganiza
 			&i.CreatedAt,
 			&i.CreatedBy,
 			&i.UpdatedAt,
+			&i.CrlKeyID,
+			&i.CrlLastUpdate,
 		); err != nil {
 			return nil, err
 		}
@@ -2996,7 +3125,7 @@ func (q *Queries) ListFabricOrganizations(ctx context.Context) ([]FabricOrganiza
 
 const listFabricOrganizationsWithKeys = `-- name: ListFabricOrganizationsWithKeys :many
 SELECT 
-    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at,
+    fo.id, fo.msp_id, fo.description, fo.config, fo.ca_config, fo.sign_key_id, fo.tls_root_key_id, fo.admin_tls_key_id, fo.admin_sign_key_id, fo.client_sign_key_id, fo.provider_id, fo.created_at, fo.created_by, fo.updated_at, fo.crl_key_id, fo.crl_last_update,
     sk.public_key as sign_public_key,
     sk.certificate as sign_certificate,
     tk.public_key as tls_public_key,
@@ -3024,6 +3153,8 @@ type ListFabricOrganizationsWithKeysRow struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	CreatedBy       sql.NullInt64  `json:"created_by"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
+	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
 	SignPublicKey   sql.NullString `json:"sign_public_key"`
 	SignCertificate sql.NullString `json:"sign_certificate"`
 	TlsPublicKey    sql.NullString `json:"tls_public_key"`
@@ -3055,6 +3186,8 @@ func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]ListFa
 			&i.CreatedAt,
 			&i.CreatedBy,
 			&i.UpdatedAt,
+			&i.CrlKeyID,
+			&i.CrlLastUpdate,
 			&i.SignPublicKey,
 			&i.SignCertificate,
 			&i.TlsPublicKey,
@@ -3970,11 +4103,51 @@ func (q *Queries) UpdateBackupTarget(ctx context.Context, arg UpdateBackupTarget
 	return i, err
 }
 
+const updateDeploymentConfig = `-- name: UpdateDeploymentConfig :one
+UPDATE nodes
+SET deployment_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+`
+
+type UpdateDeploymentConfigParams struct {
+	DeploymentConfig sql.NullString `json:"deployment_config"`
+	ID               int64          `json:"id"`
+}
+
+func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg UpdateDeploymentConfigParams) (Node, error) {
+	row := q.queryRow(ctx, q.updateDeploymentConfigStmt, updateDeploymentConfig, arg.DeploymentConfig, arg.ID)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Platform,
+		&i.Status,
+		&i.Description,
+		&i.NetworkID,
+		&i.Config,
+		&i.Resources,
+		&i.Endpoint,
+		&i.PublicEndpoint,
+		&i.P2pAddress,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.FabricOrganizationID,
+		&i.NodeType,
+		&i.NodeConfig,
+		&i.DeploymentConfig,
+	)
+	return i, err
+}
+
 const updateFabricOrganization = `-- name: UpdateFabricOrganization :one
 UPDATE fabric_organizations
 SET description = ?
 WHERE id = ?
-RETURNING id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at
+RETURNING id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update
 `
 
 type UpdateFabricOrganizationParams struct {
@@ -4000,6 +4173,8 @@ func (q *Queries) UpdateFabricOrganization(ctx context.Context, arg UpdateFabric
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,
+		&i.CrlKeyID,
+		&i.CrlLastUpdate,
 	)
 	return i, err
 }
@@ -4022,7 +4197,8 @@ SET name = ?,
     provider_id = ?,
     user_id = ?,
     ethereum_address = ?,
-    updated_at = CURRENT_TIMESTAMP
+    updated_at = CURRENT_TIMESTAMP,
+    signing_key_id = ?
 WHERE id = ?
 RETURNING id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address
 `
@@ -4044,6 +4220,7 @@ type UpdateKeyParams struct {
 	ProviderID        int64          `json:"provider_id"`
 	UserID            int64          `json:"user_id"`
 	EthereumAddress   sql.NullString `json:"ethereum_address"`
+	SigningKeyID      sql.NullInt64  `json:"signing_key_id"`
 	ID                int64          `json:"id"`
 }
 
@@ -4065,6 +4242,7 @@ func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (Key, erro
 		arg.ProviderID,
 		arg.UserID,
 		arg.EthereumAddress,
+		arg.SigningKeyID,
 		arg.ID,
 	)
 	var i Key
@@ -4263,6 +4441,46 @@ type UpdateNetworkStatusParams struct {
 func (q *Queries) UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStatusParams) error {
 	_, err := q.exec(ctx, q.updateNetworkStatusStmt, updateNetworkStatus, arg.Status, arg.ID)
 	return err
+}
+
+const updateNodeConfig = `-- name: UpdateNodeConfig :one
+UPDATE nodes
+SET node_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+`
+
+type UpdateNodeConfigParams struct {
+	NodeConfig sql.NullString `json:"node_config"`
+	ID         int64          `json:"id"`
+}
+
+func (q *Queries) UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error) {
+	row := q.queryRow(ctx, q.updateNodeConfigStmt, updateNodeConfig, arg.NodeConfig, arg.ID)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Platform,
+		&i.Status,
+		&i.Description,
+		&i.NetworkID,
+		&i.Config,
+		&i.Resources,
+		&i.Endpoint,
+		&i.PublicEndpoint,
+		&i.P2pAddress,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.FabricOrganizationID,
+		&i.NodeType,
+		&i.NodeConfig,
+		&i.DeploymentConfig,
+	)
+	return i, err
 }
 
 const updateNodeDeploymentConfig = `-- name: UpdateNodeDeploymentConfig :one
@@ -4483,6 +4701,24 @@ func (q *Queries) UpdateNotificationProvider(ctx context.Context, arg UpdateNoti
 		&i.LastTestMessage,
 	)
 	return i, err
+}
+
+const updateOrganizationCRL = `-- name: UpdateOrganizationCRL :exec
+UPDATE fabric_organizations
+SET crl_last_update = ?,
+    crl_key_id = ?
+WHERE id = ?
+`
+
+type UpdateOrganizationCRLParams struct {
+	CrlLastUpdate sql.NullTime  `json:"crl_last_update"`
+	CrlKeyID      sql.NullInt64 `json:"crl_key_id"`
+	ID            int64         `json:"id"`
+}
+
+func (q *Queries) UpdateOrganizationCRL(ctx context.Context, arg UpdateOrganizationCRLParams) error {
+	_, err := q.exec(ctx, q.updateOrganizationCRLStmt, updateOrganizationCRL, arg.CrlLastUpdate, arg.CrlKeyID, arg.ID)
+	return err
 }
 
 const updateProviderTestResults = `-- name: UpdateProviderTestResults :one

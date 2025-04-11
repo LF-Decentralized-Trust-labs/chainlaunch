@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"math/big"
 	"net/http"
 	"strconv"
 
@@ -20,6 +23,18 @@ func NewOrganizationHandler(service *service.OrganizationService) *OrganizationH
 	}
 }
 
+// RevokeCertificateBySerialRequest represents the request to revoke a certificate by serial number
+type RevokeCertificateBySerialRequest struct {
+	SerialNumber     string `json:"serialNumber"` // Hex string of the serial number
+	RevocationReason int    `json:"revocationReason"`
+}
+
+// RevokeCertificateByPEMRequest represents the request to revoke a certificate by PEM data
+type RevokeCertificateByPEMRequest struct {
+	Certificate      string `json:"certificate"` // PEM encoded certificate
+	RevocationReason int    `json:"revocationReason"`
+}
+
 // RegisterRoutes registers the organization routes
 func (h *OrganizationHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/organizations", func(r chi.Router) {
@@ -29,6 +44,14 @@ func (h *OrganizationHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}", h.GetOrganization)
 		r.Put("/{id}", h.UpdateOrganization)
 		r.Delete("/{id}", h.DeleteOrganization)
+
+		// Add CRL-related routes
+		r.Route("/{id}/crl", func(r chi.Router) {
+			r.Post("/initialize", h.InitializeCRL)
+			r.Post("/revoke/serial", h.RevokeCertificateBySerial)
+			r.Post("/revoke/pem", h.RevokeCertificateByPEM)
+			r.Get("/", h.GetCRL)
+		})
 	})
 }
 
@@ -212,4 +235,160 @@ func (h *OrganizationHandler) ListOrganizations(w http.ResponseWriter, r *http.R
 	}
 
 	render.JSON(w, r, response)
+}
+
+// @Summary Initialize CRL for an organization
+// @Description Initialize a new Certificate Revocation List for the organization
+// @Tags organizations
+// @Accept json
+// @Produce json
+// @Param id path int true "Organization ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /organizations/{id}/crl/initialize [post]
+func (h *OrganizationHandler) InitializeCRL(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid organization ID"})
+		return
+	}
+
+	err = h.service.InitializeCRL(r.Context(), id)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
+
+	render.JSON(w, r, map[string]string{"message": "CRL initialized successfully"})
+}
+
+// @Summary Revoke a certificate using its serial number
+// @Description Add a certificate to the organization's CRL using its serial number
+// @Tags organizations
+// @Accept json
+// @Produce json
+// @Param id path int true "Organization ID"
+// @Param request body RevokeCertificateBySerialRequest true "Certificate revocation request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /organizations/{id}/crl/revoke/serial [post]
+func (h *OrganizationHandler) RevokeCertificateBySerial(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid organization ID"})
+		return
+	}
+
+	var req RevokeCertificateBySerialRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		return
+	}
+
+	// Convert hex string to big.Int
+	serialNumber, ok := new(big.Int).SetString(req.SerialNumber, 16)
+	if !ok {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid serial number format"})
+		return
+	}
+
+	err = h.service.RevokeCertificate(r.Context(), id, serialNumber, req.RevocationReason)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
+
+	render.JSON(w, r, map[string]string{"message": "Certificate revoked successfully"})
+}
+
+// @Summary Revoke a certificate using PEM data
+// @Description Add a certificate to the organization's CRL using its PEM encoded data
+// @Tags organizations
+// @Accept json
+// @Produce json
+// @Param id path int true "Organization ID"
+// @Param request body RevokeCertificateByPEMRequest true "Certificate revocation request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /organizations/{id}/crl/revoke/pem [post]
+func (h *OrganizationHandler) RevokeCertificateByPEM(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid organization ID"})
+		return
+	}
+
+	var req RevokeCertificateByPEMRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		return
+	}
+
+	// Parse the certificate
+	block, _ := pem.Decode([]byte(req.Certificate))
+	if block == nil || block.Type != "CERTIFICATE" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid certificate PEM data"})
+		return
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Failed to parse certificate"})
+		return
+	}
+
+	err = h.service.RevokeCertificate(r.Context(), id, cert.SerialNumber, req.RevocationReason)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
+
+	render.JSON(w, r, map[string]string{
+		"message":      "Certificate revoked successfully",
+		"serialNumber": cert.SerialNumber.Text(16),
+	})
+}
+
+// @Summary Get organization's CRL
+// @Description Get the current Certificate Revocation List for the organization
+// @Tags organizations
+// @Accept json
+// @Produce application/x-pem-file
+// @Param id path int true "Organization ID"
+// @Success 200 {string} string "PEM encoded CRL"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /organizations/{id}/crl [get]
+func (h *OrganizationHandler) GetCRL(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Invalid organization ID"})
+		return
+	}
+
+	crlBytes, err := h.service.GetCRL(r.Context(), id)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Header().Set("Content-Disposition", "attachment; filename=crl.pem")
+	w.Write(crlBytes)
 }

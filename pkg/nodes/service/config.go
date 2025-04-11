@@ -31,7 +31,7 @@ type PaginatedNodes struct {
 	HasNextPage bool
 }
 
-// NodeResponse represents a node with type-specific properties
+// NodeResponse represents the response for node configuration
 type NodeResponse struct {
 	ID        int64          `json:"id"`
 	Name      string         `json:"name"`
@@ -67,6 +67,9 @@ type FabricPeerProperties struct {
 	TLSCert    string `json:"tlsCert,omitempty"`
 	SignCACert string `json:"signCaCert,omitempty"`
 	TLSCACert  string `json:"tlsCaCert,omitempty"`
+
+	AddressOverrides []types.AddressOverride `json:"addressOverrides,omitempty"`
+	Version          string                  `json:"version"`
 }
 
 // FabricOrdererProperties represents the properties specific to a Fabric orderer node
@@ -87,6 +90,7 @@ type FabricOrdererProperties struct {
 	TLSCert    string `json:"tlsCert,omitempty"`
 	SignCACert string `json:"signCaCert,omitempty"`
 	TLSCACert  string `json:"tlsCaCert,omitempty"`
+	Version    string `json:"version"`
 }
 
 // BesuNodeProperties represents the properties specific to a Besu node
@@ -102,4 +106,5 @@ type BesuNodeProperties struct {
 	RPCHost string `json:"rpcHost"`
 	KeyID   int64  `json:"keyId"`
 	Mode    string `json:"mode"`
+	Version string `json:"version"`
 }

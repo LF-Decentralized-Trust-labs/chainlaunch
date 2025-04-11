@@ -15,3 +15,15 @@ export function slugify(text: string): string {
 		.replace(/^-+/, '')
 		.replace(/-+$/, '')
 }
+
+export function numberToHex(num: number): string {
+	return `0x${num.toString(16)}`
+}
+
+export function hexToNumber(hex: string): number {
+	return parseInt(hex.replace('0x', ''), 16)
+}
+
+export function isValidHex(hex: string): boolean {
+	return /^0x[0-9a-fA-F]+$/.test(hex)
+}

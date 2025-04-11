@@ -60,7 +60,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory={{.DirPath}}
-ExecStart={{.Cmd}}
+ExecStart=/bin/bash -c "{{.Cmd}} > {{.LogPath}} 2>&1"
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -76,11 +76,13 @@ WantedBy=multi-user.target
 		DirPath string
 		Cmd     string
 		EnvVars []string
+		LogPath string
 	}{
 		ID:      p.opts.ID,
 		DirPath: dirPath,
 		Cmd:     cmd,
 		EnvVars: envStrings,
+		LogPath: p.GetStdOutPath(),
 	}
 
 	var buf bytes.Buffer

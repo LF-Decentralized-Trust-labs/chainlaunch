@@ -87,6 +87,12 @@ export function NodeListItem({ node, isSelected, onSelectionChange, disabled = f
 											<span className="font-mono text-xs">{node.fabricPeer.listenAddress}</span>
 										</>
 									)}
+									{node.fabricPeer?.version && (
+										<>
+											<span>•</span>
+											<span>v{node.fabricPeer.version}</span>
+										</>
+									)}
 								</>
 							)}
 							{node.fabricOrderer && (
@@ -105,6 +111,12 @@ export function NodeListItem({ node, isSelected, onSelectionChange, disabled = f
 										<>
 											<span>•</span>
 											<span className="font-mono text-xs">{node.fabricOrderer.listenAddress}</span>
+										</>
+									)}
+									{node.fabricOrderer?.version && (
+										<>
+											<span>•</span>
+											<span>v{node.fabricOrderer.version}</span>
 										</>
 									)}
 								</>
@@ -129,6 +141,12 @@ export function NodeListItem({ node, isSelected, onSelectionChange, disabled = f
 										<>
 											<span>•</span>
 											<span className="capitalize">{node.besuNode.mode}</span>
+										</>
+									)}
+									{node.besuNode?.version && (
+										<>
+											<span>•</span>
+											<span>v{node.besuNode.version}</span>
 										</>
 									)}
 								</>

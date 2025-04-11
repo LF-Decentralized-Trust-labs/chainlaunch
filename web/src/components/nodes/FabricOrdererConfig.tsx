@@ -2,6 +2,7 @@ import { ServiceFabricOrdererProperties } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Link } from 'react-router-dom'
 
 interface FabricOrdererConfigProps {
 	config: ServiceFabricOrdererProperties
@@ -15,7 +16,7 @@ export function FabricOrdererConfig({ config }: FabricOrdererConfigProps) {
 				<CardDescription>Orderer-specific node settings</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-6">
-				<div className="grid grid-cols-2 gap-4">
+				<div className="grid grid-cols-3 gap-4">
 					<div>
 						<p className="text-sm font-medium text-muted-foreground">Organization</p>
 						<p>MSP ID: {config.mspId}</p>
@@ -23,9 +24,15 @@ export function FabricOrdererConfig({ config }: FabricOrdererConfigProps) {
 					</div>
 					<div>
 						<p className="text-sm font-medium text-muted-foreground">Key IDs</p>
-						<p>Sign Key: {config.signKeyId}</p>
-						<p>TLS Key: {config.tlsKeyId}</p>
+						<p>Sign Key: <Link to={`/settings/keys/${config.signKeyId}`} className="text-blue-500 hover:underline">{config.signKeyId}</Link></p>
+						<p>TLS Key: <Link to={`/settings/keys/${config.tlsKeyId}`} className="text-blue-500 hover:underline">{config.tlsKeyId}</Link></p>
 					</div>
+					{config.version && (
+						<div>
+							<p className="text-sm font-medium text-muted-foreground">Version</p>
+							<p className="text-sm">{config.version}</p>
+						</div>
+					)}
 				</div>
 
 				<Separator />

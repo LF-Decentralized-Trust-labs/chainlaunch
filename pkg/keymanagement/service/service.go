@@ -195,6 +195,7 @@ func (s *KeyManagementService) GetKey(ctx context.Context, id int) (*models.KeyR
 	}
 	keySize := int(key.KeySize.Int64)
 	curve := models.ECCurve(key.Curve.String)
+	signingKeyID := int(key.SigningKeyID.Int64)
 	return &models.KeyResponse{
 		ID:                int(key.ID),
 		Name:              key.Name,
@@ -217,6 +218,7 @@ func (s *KeyManagementService) GetKey(ctx context.Context, id int) (*models.KeyR
 		},
 		PrivateKey:      key.PrivateKey,
 		EthereumAddress: key.EthereumAddress.String,
+		SigningKeyID:    &signingKeyID,
 	}, err
 }
 
@@ -607,4 +609,156 @@ type KeyInfo struct {
 	DID       string
 	KeyType   string
 	PublicKey string
+}
+
+// SetSigningKeyIDForKey updates a key with the ID of the key that signed its certificate
+func (s *KeyManagementService) SetSigningKeyIDForKey(ctx context.Context, keyID, signingKeyID int) error {
+	// Validate that both keys exist
+	key, err := s.queries.GetKey(ctx, int64(keyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("key not found")
+		}
+		return fmt.Errorf("failed to get key: %w", err)
+	}
+
+	signingKey, err := s.queries.GetKey(ctx, int64(signingKeyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("signing key not found")
+		}
+		return fmt.Errorf("failed to get signing key: %w", err)
+	}
+
+	// Verify that the signing key is a CA
+	if signingKey.IsCa != 1 {
+		return fmt.Errorf("signing key %d is not a CA", signingKeyID)
+	}
+
+	// Verify that the key has a certificate
+	if !key.Certificate.Valid {
+		return fmt.Errorf("key %d does not have a certificate", keyID)
+	}
+
+	// Update the key with the signing key ID
+	params := db.UpdateKeyParams{
+		ID:                key.ID,
+		Name:              key.Name,
+		Description:       key.Description,
+		Algorithm:         key.Algorithm,
+		KeySize:           key.KeySize,
+		Curve:             key.Curve,
+		Format:            key.Format,
+		PublicKey:         key.PublicKey,
+		PrivateKey:        key.PrivateKey,
+		Certificate:       key.Certificate,
+		Status:            key.Status,
+		ExpiresAt:         key.ExpiresAt,
+		Sha256Fingerprint: key.Sha256Fingerprint,
+		Sha1Fingerprint:   key.Sha1Fingerprint,
+		ProviderID:        key.ProviderID,
+		UserID:            key.UserID,
+		EthereumAddress:   key.EthereumAddress,
+		SigningKeyID:      sql.NullInt64{Int64: int64(signingKeyID), Valid: true},
+	}
+
+	_, err = s.queries.UpdateKey(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to update key with signing key ID: %w", err)
+	}
+
+	return nil
+}
+
+
+// RenewCertificate renews a certificate using the same keypair and CA that was used to generate it
+func (s *KeyManagementService) RenewCertificate(ctx context.Context, keyID int, certReq models.CertificateRequest) (*models.KeyResponse, error) {
+	// Get the key details
+	key, err := s.queries.GetKey(ctx, int64(keyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("key not found")
+		}
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	// Check if the key has a certificate
+	if !key.Certificate.Valid {
+		return nil, fmt.Errorf("key does not have a certificate to renew")
+	}
+
+	// Get the CA key ID that was used to sign this certificate
+	if !key.SigningKeyID.Valid {
+		return nil, fmt.Errorf("key does not have an associated CA key")
+	}
+	caKeyID := int(key.SigningKeyID.Int64)
+
+	// Validate that the CA key exists and is a CA
+	caKey, err := s.queries.GetKey(ctx, int64(caKeyID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("CA key not found")
+		}
+		return nil, fmt.Errorf("failed to get CA key: %w", err)
+	}
+
+	// Check if the CA key is marked as CA
+	if caKey.IsCa != 1 {
+		return nil, fmt.Errorf("key %d is not a CA", caKeyID)
+	}
+
+	// Get provider
+	provider, err := s.providerFactory.GetProvider(providers.ProviderTypeDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider: %w", err)
+	}
+
+	// If no certificate request is provided, use the existing certificate's details
+	if certReq.CommonName == "" {
+		existingCert, err := parseCertificate(key.Certificate.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse existing certificate: %w", err)
+		}
+
+		certReq = models.CertificateRequest{
+			CommonName:         existingCert.Subject.CommonName,
+			Organization:       existingCert.Subject.Organization,
+			OrganizationalUnit: existingCert.Subject.OrganizationalUnit,
+			Country:            existingCert.Subject.Country,
+			Province:           existingCert.Subject.Province,
+			Locality:           existingCert.Subject.Locality,
+			StreetAddress:      existingCert.Subject.StreetAddress,
+			PostalCode:         existingCert.Subject.PostalCode,
+			DNSNames:           existingCert.DNSNames,
+			EmailAddresses:     existingCert.EmailAddresses,
+			IPAddresses:        existingCert.IPAddresses,
+			URIs:               existingCert.URIs,
+			ValidFor:           models.Duration(365 * 24 * time.Hour),
+			IsCA:               existingCert.IsCA,
+			KeyUsage:           x509.KeyUsage(existingCert.KeyUsage),
+			ExtKeyUsage:        existingCert.ExtKeyUsage,
+		}
+	}
+
+	// Sign the certificate with the same CA
+	return provider.SignCertificate(ctx, types.SignCertificateRequest{
+		KeyID:              keyID,
+		CAKeyID:            caKeyID,
+		CertificateRequest: *ToProviderCertRequest(&certReq),
+	})
+}
+
+// Helper function to parse PEM certificate
+func parseCertificate(certPEM string) (*x509.Certificate, error) {
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing certificate")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	return cert, nil
 }

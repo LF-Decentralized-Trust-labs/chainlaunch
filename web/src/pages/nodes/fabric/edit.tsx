@@ -149,6 +149,7 @@ export default function EditFabricNodePage() {
 					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					defaults={peerDefaults}
 					hideNodeType={true}
+					submitText="Update Node"
 					defaultValues={defaultValues}
 				/>
 			</div>

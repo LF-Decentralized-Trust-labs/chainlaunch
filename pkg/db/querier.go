@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AddRevokedCertificate(ctx context.Context, arg AddRevokedCertificateParams) error
 	CheckNetworkNodeExists(ctx context.Context, arg CheckNetworkNodeExistsParams) (int64, error)
 	CountBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) (int64, error)
 	CountBackupsByTarget(ctx context.Context, targetID int64) (int64, error)
@@ -90,9 +91,12 @@ type Querier interface {
 	GetNotificationProvider(ctx context.Context, id int64) (NotificationProvider, error)
 	GetOldestBackupByTarget(ctx context.Context, targetID int64) (Backup, error)
 	GetOrdererPorts(ctx context.Context) ([]GetOrdererPortsRow, error)
+	GetOrganizationCRLInfo(ctx context.Context, id int64) (GetOrganizationCRLInfoRow, error)
 	GetPeerPorts(ctx context.Context) ([]GetPeerPortsRow, error)
 	GetProvidersByNotificationType(ctx context.Context, arg GetProvidersByNotificationTypeParams) ([]NotificationProvider, error)
 	GetRecentCompletedBackups(ctx context.Context) ([]Backup, error)
+	GetRevokedCertificate(ctx context.Context, arg GetRevokedCertificateParams) (FabricRevokedCertificate, error)
+	GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]FabricRevokedCertificate, error)
 	GetSession(ctx context.Context, sessionID string) (GetSessionRow, error)
 	GetUser(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
@@ -140,6 +144,7 @@ type Querier interface {
 	UpdateNodePublicEndpoint(ctx context.Context, arg UpdateNodePublicEndpointParams) (Node, error)
 	UpdateNodeStatus(ctx context.Context, arg UpdateNodeStatusParams) (Node, error)
 	UpdateNotificationProvider(ctx context.Context, arg UpdateNotificationProviderParams) (NotificationProvider, error)
+	UpdateOrganizationCRL(ctx context.Context, arg UpdateOrganizationCRLParams) error
 	UpdateProviderTestResults(ctx context.Context, arg UpdateProviderTestResultsParams) (NotificationProvider, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserLastLogin(ctx context.Context, id int64) (User, error)

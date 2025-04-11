@@ -14,13 +14,12 @@ export function FabricNodeChannels({ nodeId }: FabricNodeChannelsProps) {
       path: { id: nodeId },
     }),
   })
-
   if (isLoading) {
     return <div>Loading channels...</div>
   }
 
   if (error) {
-    return <div>Error loading channels: {(error as any).message}</div>
+    return <div>Error loading channels: {(error as any).error.message}</div>
   }
 
   if (!channels?.channels?.length) {

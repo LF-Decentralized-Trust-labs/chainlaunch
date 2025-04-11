@@ -886,3 +886,32 @@ WHERE is_default = true
     (:notification_type = 'S3_CONNECTION_ISSUE' AND notify_s3_connection_issue = true)
   )
 LIMIT 1;
+
+-- name: AddRevokedCertificate :exec
+INSERT INTO fabric_revoked_certificates (
+    fabric_organization_id,
+    serial_number,
+    revocation_time,
+    reason,
+    issuer_certificate_id
+) VALUES (?, ?, ?, ?, ?);
+
+-- name: GetRevokedCertificates :many
+SELECT * FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?
+ORDER BY revocation_time DESC;
+
+-- name: GetRevokedCertificate :one
+SELECT * FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?;
+
+-- name: UpdateOrganizationCRL :exec
+UPDATE fabric_organizations
+SET crl_last_update = ?,
+    crl_key_id = ?
+WHERE id = ?;
+
+-- name: GetOrganizationCRLInfo :one
+SELECT crl_key_id, crl_last_update
+FROM fabric_organizations
+WHERE id = ?; 

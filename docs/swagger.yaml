@@ -97,6 +97,22 @@ definitions:
       updatedAt:
         type: string
     type: object
+  handler.RevokeCertificateByPEMRequest:
+    properties:
+      certificate:
+        description: PEM encoded certificate
+        type: string
+      revocationReason:
+        type: integer
+    type: object
+  handler.RevokeCertificateBySerialRequest:
+    properties:
+      revocationReason:
+        type: integer
+      serialNumber:
+        description: Hex string of the serial number
+        type: string
+    type: object
   handler.UpdateOrganizationRequest:
     properties:
       description:
@@ -4958,6 +4974,157 @@ paths:
               type: string
             type: object
       summary: Update a Fabric organization
+      tags:
+      - organizations
+  /organizations/{id}/crl:
+    get:
+      consumes:
+      - application/json
+      description: Get the current Certificate Revocation List for the organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/x-pem-file
+      responses:
+        "200":
+          description: PEM encoded CRL
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get organization's CRL
+      tags:
+      - organizations
+  /organizations/{id}/crl/initialize:
+    post:
+      consumes:
+      - application/json
+      description: Initialize a new Certificate Revocation List for the organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Initialize CRL for an organization
+      tags:
+      - organizations
+  /organizations/{id}/crl/revoke/pem:
+    post:
+      consumes:
+      - application/json
+      description: Add a certificate to the organization's CRL using its PEM encoded
+        data
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RevokeCertificateByPEMRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revoke a certificate using PEM data
+      tags:
+      - organizations
+  /organizations/{id}/crl/revoke/serial:
+    post:
+      consumes:
+      - application/json
+      description: Add a certificate to the organization's CRL using its serial number
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RevokeCertificateBySerialRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revoke a certificate using its serial number
       tags:
       - organizations
   /organizations/by-mspid/{mspid}:

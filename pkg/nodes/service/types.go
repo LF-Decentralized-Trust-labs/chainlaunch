@@ -15,6 +15,7 @@ type UpdateFabricPeerOpts struct {
 	DomainNames             []string
 	Env                     map[string]string
 	AddressOverrides        []types.AddressOverride
+	Version                 string
 }
 
 // UpdateFabricOrdererOpts represents the options for updating a Fabric orderer node
@@ -26,4 +27,5 @@ type UpdateFabricOrdererOpts struct {
 	OperationsListenAddress string
 	DomainNames             []string
 	Env                     map[string]string
+	Version                 string
 }

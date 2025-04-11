@@ -82,6 +82,8 @@ type FabricPeerDeploymentConfig struct {
 
 	// @Description Address overrides for the peer
 	AddressOverrides []AddressOverride `json:"addressOverrides,omitempty"`
+	// @Description Fabric version to use
+	Version string `json:"version" example:"2.5.0"`
 }
 
 func (c *FabricPeerDeploymentConfig) GetMode() string { return c.Mode }
@@ -111,6 +113,7 @@ func (c *FabricPeerDeploymentConfig) ToFabricPeerConfig() *FabricPeerDeploymentC
 		TLSCert:                 c.TLSCert,
 		CACert:                  c.CACert,
 		TLSCACert:               c.TLSCACert,
+		Version:                 c.Version,
 	}
 }
 func (c *FabricPeerDeploymentConfig) ToFabricOrdererConfig() *FabricOrdererDeploymentConfig {
@@ -154,6 +157,8 @@ type FabricOrdererDeploymentConfig struct {
 	ExternalEndpoint string `json:"externalEndpoint" example:"orderer.example.com:7050"`
 	// @Description Domain names for the orderer
 	DomainNames []string `json:"domainNames,omitempty"`
+	// @Description Fabric version to use
+	Version string `json:"version" example:"2.5.0"`
 }
 
 func (c *FabricOrdererDeploymentConfig) GetURL() string {
@@ -194,6 +199,7 @@ func (c *FabricOrdererDeploymentConfig) ToFabricOrdererConfig() *FabricOrdererDe
 		TLSCACert:               c.TLSCACert,
 		SignKeyID:               c.SignKeyID,
 		TLSKeyID:                c.TLSKeyID,
+		Version:                 c.Version,
 	}
 }
 

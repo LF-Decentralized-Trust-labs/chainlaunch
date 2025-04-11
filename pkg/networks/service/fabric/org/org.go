@@ -2,15 +2,25 @@ package org
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"database/sql"
+	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/chainlaunch/chainlaunch/internal/protoutil"
+	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -26,6 +36,7 @@ type FabricOrg struct {
 	keyMgmtService *keymanagement.KeyManagementService
 	logger         *logger.Logger
 	mspID          string
+	queries        *db.Queries
 }
 
 func NewOrganizationService(
@@ -33,12 +44,14 @@ func NewOrganizationService(
 	keyMgmtService *keymanagement.KeyManagementService,
 	logger *logger.Logger,
 	mspID string,
+	queries *db.Queries,
 ) *FabricOrg {
 	return &FabricOrg{
 		orgService:     orgService,
 		keyMgmtService: keyMgmtService,
 		logger:         logger,
 		mspID:          mspID,
+		queries:        queries,
 	}
 }
 
@@ -65,16 +78,16 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 	}
 
 	// Get signing key
-	if !org.AdminSignKeyID.Valid {
+	if !org.SignKeyID.Valid {
 		return nil, fmt.Errorf("organization has no signing key")
 	}
 
 	// Get signing key
 	var privateKeyPEM string
-	if !org.AdminSignKeyID.Valid {
+	if !org.SignKeyID.Valid {
 		return nil, fmt.Errorf("organization has no admin sign key")
 	}
-	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.SignKeyID.Int64))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
 	}
@@ -82,7 +95,7 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 		return nil, fmt.Errorf("admin sign key has no certificate")
 	}
 	// Get private key from key management service
-	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.SignKeyID.Int64))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
@@ -390,4 +403,171 @@ func Concatenate[T any](slices ...[]T) []T {
 	}
 
 	return result
+}
+
+// RevokeCertificate adds a certificate to the CRL
+func (s *FabricOrg) RevokeCertificate(ctx context.Context, serialNumber *big.Int, revocationReason int) error {
+	s.logger.Info("Revoking certificate",
+		"mspID", s.mspID,
+		"serialNumber", serialNumber.String(),
+		"reason", revocationReason)
+
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Add the certificate to the database
+	err = s.queries.AddRevokedCertificate(ctx, db.AddRevokedCertificateParams{
+		FabricOrganizationID: org.ID,
+		SerialNumber:         serialNumber.Text(16), // Store as hex string
+		RevocationTime:       time.Now(),
+		Reason:               int64(revocationReason),
+		IssuerCertificateID: sql.NullInt64{
+			Int64: org.SignKeyID.Int64,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add revoked certificate to database: %w", err)
+	}
+
+	// Update the CRL timestamps in the organization
+	now := time.Now()
+
+	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+		ID:            org.ID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.AdminSignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update organization CRL info: %w", err)
+	}
+
+	s.logger.Info("Successfully revoked certificate",
+		"mspID", s.mspID,
+		"serialNumber", serialNumber.String())
+
+	return nil
+}
+
+// GetCRL returns the current CRL as PEM encoded bytes
+func (s *FabricOrg) GetCRL(ctx context.Context) ([]byte, error) {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get all revoked certificates for this organization
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, org.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get revoked certificates: %w", err)
+	}
+
+	// Get the admin signing key for signing the CRL
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+
+	// Parse the certificate
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	// Parse the private key
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Cast private key to crypto.Signer
+	signer, ok := priv.(crypto.Signer)
+	if !ok {
+		return nil, fmt.Errorf("private key does not implement crypto.Signer")
+	}
+
+	// Create CRL
+	now := time.Now()
+	crl := &x509.RevocationList{
+		Number:     big.NewInt(1),
+		ThisUpdate: now,
+		NextUpdate: now.AddDate(0, 0, 7), // Valid for 7 days
+	}
+
+	// Add all revoked certificates
+	for _, rc := range revokedCerts {
+		serialNumber, ok := new(big.Int).SetString(rc.SerialNumber, 16)
+		if !ok {
+			return nil, fmt.Errorf("invalid serial number format: %s", rc.SerialNumber)
+		}
+
+		revokedCert := pkix.RevokedCertificate{
+			SerialNumber:   serialNumber,
+			RevocationTime: rc.RevocationTime,
+			Extensions: []pkix.Extension{
+				{
+					Id:    asn1.ObjectIdentifier{2, 5, 29, 21}, // CRLReason OID
+					Value: []byte{byte(rc.Reason)},
+				},
+			},
+		}
+		crl.RevokedCertificates = append(crl.RevokedCertificates, revokedCert)
+	}
+
+	// Create the CRL
+	crlBytes, err := x509.CreateRevocationList(rand.Reader, crl, cert, signer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CRL: %w", err)
+	}
+
+	// Encode the CRL in PEM format
+	pemBlock := &pem.Block{
+		Type:  "X509 CRL",
+		Bytes: crlBytes,
+	}
+
+	return pem.EncodeToMemory(pemBlock), nil
+}
+
+// InitializeCRL creates a new CRL if one doesn't exist
+func (s *FabricOrg) InitializeCRL(ctx context.Context) error {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Update the CRL timestamps in the organization
+	now := time.Now()
+	err = s.queries.UpdateOrganizationCRL(ctx, db.UpdateOrganizationCRLParams{
+		ID:            org.ID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.SignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize organization CRL info: %w", err)
+	}
+
+	s.logger.Info("Successfully initialized CRL",
+		"mspID", s.mspID)
+
+	return nil
 }

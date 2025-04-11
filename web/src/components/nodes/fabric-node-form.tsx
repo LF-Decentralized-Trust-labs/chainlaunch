@@ -50,9 +50,10 @@ interface FabricNodeFormProps {
 	hideNodeType?: boolean
 	defaultValues?: FabricNodeFormValues
 	onChange?: (values: FabricNodeFormValues) => void
+	submitText?: string
 }
 
-export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults, onNodeTypeChange, hideSubmit, hideOrganization, hideNodeType, defaultValues, onChange }: FabricNodeFormProps) {
+export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults, onNodeTypeChange, hideSubmit, hideOrganization, hideNodeType, defaultValues, onChange, submitText = 'Create Node' }: FabricNodeFormProps) {
 	const form = useForm<FabricNodeFormValues>({
 		resolver: zodResolver(fabricNodeFormSchema),
 		defaultValues: defaultValues || {
@@ -450,7 +451,7 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 
 				{!hideSubmit && (
 					<Button type="submit" disabled={isSubmitting}>
-						{isSubmitting ? 'Creating...' : 'Create Node'}
+						{isSubmitting ? 'Creating...' : submitText}
 					</Button>
 				)}
 			</form>

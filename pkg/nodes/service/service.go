@@ -2819,18 +2819,5 @@ func (s *NodeService) SynchronizePeerConfig(ctx context.Context, nodeID int64) e
 		return fmt.Errorf("failed to synchronize peer config: %w", err)
 	}
 
-	// Get home directory
-	// homeDir, err := os.UserHomeDir()
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get home directory: %w", err)
-	// }
-
-	// // Update systemd service if running on Linux
-	// if runtime.GOOS == "linux" {
-	// 	if err := localPeer.UpdateSystemdService(); err != nil {
-	// 		return fmt.Errorf("failed to update systemd service: %w", err)
-	// 	}
-	// }
-
 	return nil
 }

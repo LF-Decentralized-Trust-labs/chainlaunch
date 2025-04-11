@@ -666,7 +666,7 @@ func (d *FabricDeployer) UpdateChannelConfig(ctx context.Context, networkID int6
 	// Collect signatures from the specified organizations
 	for _, orgID := range signingOrgIDs {
 		// Get organization details and MSP
-		orgService := org.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, orgID)
+		orgService := org.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, orgID, d.db)
 
 		// Sign the config update
 		envelope, err = orgService.CreateConfigSignature(ctx, network.Name, envelope)
@@ -1773,7 +1773,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
 	}
-	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID)
+	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID, d.db)
 
 	// Get all available orderers - first from active nodes
 	var orderersList []struct {
@@ -2130,7 +2130,7 @@ func (d *FabricDeployer) ImportNetworkWithOrg(ctx context.Context, channelID str
 	if err != nil {
 		return "", fmt.Errorf("failed to get organization: %w", err)
 	}
-	orgService := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, org.MspID)
+	orgService := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, org.MspID, d.db)
 
 	// Validate TLS certificate
 	block, _ := pem.Decode(ordererTLSCert)

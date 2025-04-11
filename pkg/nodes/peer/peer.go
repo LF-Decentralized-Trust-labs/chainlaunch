@@ -1143,7 +1143,7 @@ func (p *LocalPeer) buildPeerEnvironment(mspConfigPath string) map[string]string
 	env["CORE_OPERATIONS_TLS_CLIENTAUTHREQUIRED"] = "false"
 	env["CORE_PEER_GOSSIP_ORGLEADER"] = "true"
 	env["CORE_PEER_GOSSIP_BOOTSTRAP"] = p.opts.ExternalEndpoint
-	env["CORE_PEER_PROFILE_ENABLED"] = "true"
+	env["CORE_PEER_PROFILE_ENABLED"] = "false"
 	env["CORE_PEER_ADDRESSAUTODETECT"] = "false"
 	env["CORE_LOGGING_GOSSIP"] = "info"
 	env["FABRIC_LOGGING_SPEC"] = "info"

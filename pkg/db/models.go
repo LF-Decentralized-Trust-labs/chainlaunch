@@ -71,6 +71,19 @@ type FabricOrganization struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	CreatedBy       sql.NullInt64  `json:"created_by"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	CrlKeyID        sql.NullInt64  `json:"crl_key_id"`
+	CrlLastUpdate   sql.NullTime   `json:"crl_last_update"`
+}
+
+type FabricRevokedCertificate struct {
+	ID                   int64         `json:"id"`
+	FabricOrganizationID int64         `json:"fabric_organization_id"`
+	SerialNumber         string        `json:"serial_number"`
+	RevocationTime       time.Time     `json:"revocation_time"`
+	Reason               int64         `json:"reason"`
+	IssuerCertificateID  sql.NullInt64 `json:"issuer_certificate_id"`
+	CreatedAt            time.Time     `json:"created_at"`
+	UpdatedAt            time.Time     `json:"updated_at"`
 }
 
 type Key struct {

@@ -90,6 +90,7 @@ type FabricOrdererProperties struct {
 	TLSCert    string `json:"tlsCert,omitempty"`
 	SignCACert string `json:"signCaCert,omitempty"`
 	TLSCACert  string `json:"tlsCaCert,omitempty"`
+	Version    string `json:"version"`
 }
 
 // BesuNodeProperties represents the properties specific to a Besu node
@@ -105,4 +106,5 @@ type BesuNodeProperties struct {
 	RPCHost string `json:"rpcHost"`
 	KeyID   int64  `json:"keyId"`
 	Mode    string `json:"mode"`
+	Version string `json:"version"`
 }

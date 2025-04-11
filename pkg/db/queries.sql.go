@@ -4445,19 +4445,19 @@ func (q *Queries) UpdateNetworkStatus(ctx context.Context, arg UpdateNetworkStat
 
 const updateNodeConfig = `-- name: UpdateNodeConfig :one
 UPDATE nodes
-SET config = ?,
+SET node_config = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
 `
 
 type UpdateNodeConfigParams struct {
-	Config sql.NullString `json:"config"`
-	ID     int64          `json:"id"`
+	NodeConfig sql.NullString `json:"node_config"`
+	ID         int64          `json:"id"`
 }
 
 func (q *Queries) UpdateNodeConfig(ctx context.Context, arg UpdateNodeConfigParams) (Node, error) {
-	row := q.queryRow(ctx, q.updateNodeConfigStmt, updateNodeConfig, arg.Config, arg.ID)
+	row := q.queryRow(ctx, q.updateNodeConfigStmt, updateNodeConfig, arg.NodeConfig, arg.ID)
 	var i Node
 	err := row.Scan(
 		&i.ID,

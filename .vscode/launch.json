@@ -5,6 +5,23 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Node Custom",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}",
+			"args": [
+				"serve",
+				"--data=test-instance",
+				"--db=test.db"
+			],
+			"env": {
+				"CHAINLAUNCH_USER": "admin",
+				"CHAINLAUNCH_PASSWORD": "admin",
+				"JAVA_HOME": "/opt/homebrew/Cellar/openjdk/23.0.2"
+			}
+		},
+		{
 			"name": "Node 1",
 			"type": "go",
 			"request": "launch",

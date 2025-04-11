@@ -97,7 +97,7 @@ export default function EditFabricNodePage() {
 					fabricProperties: {
 						nodeType: 'FABRIC_PEER',
 						mode: node.fabricPeer?.mode || 'service',
-						version: node.fabricPeer?.version || '2.5.12',
+						version: node.fabricPeer?.version || '3.0.0',
 						organizationId: node.fabricPeer?.organizationId,
 						listenAddress: node.fabricPeer?.listenAddress || '',
 						operationsListenAddress: node.fabricPeer?.operationsAddress || '',

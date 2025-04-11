@@ -300,7 +300,8 @@ func (s *NotificationService) SendBackupSuccessNotification(ctx context.Context,
 	// Get default notification provider for backup successes
 	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "BACKUP_SUCCESS")
 	if err != nil {
-		return fmt.Errorf("failed to get default notification provider: %w", err)
+		s.logger.Warn("Failed to get default notification provider for backup successes", "error", err)
+		return nil
 	}
 
 	if !provider.NotifyBackupSuccess {
@@ -330,7 +331,8 @@ func (s *NotificationService) SendBackupFailureNotification(ctx context.Context,
 	// Get default notification provider for backup failures
 	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "BACKUP_FAILURE")
 	if err != nil {
-		return fmt.Errorf("failed to get default notification provider: %w", err)
+		s.logger.Warn("Failed to get default notification provider for backup failures", "error", err)
+		return nil
 	}
 
 	if !provider.NotifyBackupFailure {
@@ -360,7 +362,8 @@ func (s *NotificationService) SendS3ConnectionIssueNotification(ctx context.Cont
 	// Get default notification provider for S3 connection issues
 	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "S3_CONNECTION_ISSUE")
 	if err != nil {
-		return fmt.Errorf("failed to get default notification provider: %w", err)
+		s.logger.Warn("Failed to get default notification provider for S3 connection issues", "error", err)
+		return nil
 	}
 
 	if !provider.NotifyS3ConnectionIssue {
@@ -390,7 +393,8 @@ func (s *NotificationService) SendNodeDowntimeNotification(ctx context.Context, 
 	// Get default notification provider for node downtime
 	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "NODE_DOWNTIME")
 	if err != nil {
-		return fmt.Errorf("failed to get default notification provider: %w", err)
+		s.logger.Warn("Failed to get default notification provider for node downtime", "error", err)
+		return nil
 	}
 
 	if !provider.NotifyNodeDowntime {
@@ -420,7 +424,8 @@ func (s *NotificationService) SendNodeRecoveryNotification(ctx context.Context, 
 	// Get default notification provider for node downtime (same provider handles recovery)
 	provider, err := s.queries.GetDefaultNotificationProviderForType(ctx, "NODE_DOWNTIME")
 	if err != nil {
-		return fmt.Errorf("failed to get default notification provider: %w", err)
+		s.logger.Warn("Failed to get default notification provider for node recovery", "error", err)
+		return nil
 	}
 
 	if !provider.NotifyNodeDowntime {

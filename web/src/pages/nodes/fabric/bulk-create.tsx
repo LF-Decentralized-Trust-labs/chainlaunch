@@ -217,6 +217,8 @@ export default function BulkCreateNodesPage() {
 						chaincodeAddress: config.fabricProperties.chaincodeAddress || '',
 						eventsAddress: config.fabricProperties.eventsAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
+						addressOverrides: config.fabricProperties.addressOverrides,
 					} as TypesFabricPeerConfig
 				} else {
 					fabricOrderer = {
@@ -230,6 +232,7 @@ export default function BulkCreateNodesPage() {
 						name: config.name,
 						adminAddress: config.fabricProperties.adminAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
 					} as TypesFabricOrdererConfig
 				}
 

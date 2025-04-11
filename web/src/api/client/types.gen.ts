@@ -79,6 +79,22 @@ export type HandlerOrganizationResponse = {
     updatedAt?: string;
 };
 
+export type HandlerRevokeCertificateByPemRequest = {
+    /**
+     * PEM encoded certificate
+     */
+    certificate?: string;
+    revocationReason?: number;
+};
+
+export type HandlerRevokeCertificateBySerialRequest = {
+    revocationReason?: number;
+    /**
+     * Hex string of the serial number
+     */
+    serialNumber?: string;
+};
+
 export type HandlerUpdateOrganizationRequest = {
     description?: string;
 };
@@ -898,6 +914,7 @@ export type ServiceBesuNodeProperties = {
     p2pPort?: number;
     rpcHost?: string;
     rpcPort?: number;
+    version?: string;
 };
 
 export type ServiceBlock = {
@@ -930,6 +947,7 @@ export type ServiceFabricOrdererProperties = {
     tlsCaCert?: string;
     tlsCert?: string;
     tlsKeyId?: number;
+    version?: string;
 };
 
 export type ServiceFabricPeerProperties = {
@@ -4507,3 +4525,167 @@ export type PutOrganizationsByIdResponses = {
 };
 
 export type PutOrganizationsByIdResponse = PutOrganizationsByIdResponses[keyof PutOrganizationsByIdResponses];
+
+export type GetOrganizationsByIdCrlData = {
+    body?: never;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl';
+};
+
+export type GetOrganizationsByIdCrlErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetOrganizationsByIdCrlError = GetOrganizationsByIdCrlErrors[keyof GetOrganizationsByIdCrlErrors];
+
+export type GetOrganizationsByIdCrlResponses = {
+    /**
+     * PEM encoded CRL
+     */
+    200: string;
+};
+
+export type GetOrganizationsByIdCrlResponse = GetOrganizationsByIdCrlResponses[keyof GetOrganizationsByIdCrlResponses];
+
+export type PostOrganizationsByIdCrlInitializeData = {
+    body?: never;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/initialize';
+};
+
+export type PostOrganizationsByIdCrlInitializeErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlInitializeError = PostOrganizationsByIdCrlInitializeErrors[keyof PostOrganizationsByIdCrlInitializeErrors];
+
+export type PostOrganizationsByIdCrlInitializeResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlInitializeResponse = PostOrganizationsByIdCrlInitializeResponses[keyof PostOrganizationsByIdCrlInitializeResponses];
+
+export type PostOrganizationsByIdCrlRevokePemData = {
+    /**
+     * Certificate revocation request
+     */
+    body: HandlerRevokeCertificateByPemRequest;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/revoke/pem';
+};
+
+export type PostOrganizationsByIdCrlRevokePemErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokePemError = PostOrganizationsByIdCrlRevokePemErrors[keyof PostOrganizationsByIdCrlRevokePemErrors];
+
+export type PostOrganizationsByIdCrlRevokePemResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokePemResponse = PostOrganizationsByIdCrlRevokePemResponses[keyof PostOrganizationsByIdCrlRevokePemResponses];
+
+export type PostOrganizationsByIdCrlRevokeSerialData = {
+    /**
+     * Certificate revocation request
+     */
+    body: HandlerRevokeCertificateBySerialRequest;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/revoke/serial';
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialError = PostOrganizationsByIdCrlRevokeSerialErrors[keyof PostOrganizationsByIdCrlRevokeSerialErrors];
+
+export type PostOrganizationsByIdCrlRevokeSerialResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostOrganizationsByIdCrlRevokeSerialResponse = PostOrganizationsByIdCrlRevokeSerialResponses[keyof PostOrganizationsByIdCrlRevokeSerialResponses];

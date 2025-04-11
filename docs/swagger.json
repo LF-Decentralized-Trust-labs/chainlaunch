@@ -6184,6 +6184,9 @@
                 },
                 "operationsListenAddress": {
                     "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -6221,6 +6224,9 @@
                     "type": "string"
                 },
                 "operationsListenAddress": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -6796,6 +6802,9 @@
                 },
                 "rpcPort": {
                     "type": "integer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -6874,6 +6883,9 @@
                 },
                 "tlsKeyId": {
                     "type": "integer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },

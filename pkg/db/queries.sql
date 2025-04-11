@@ -270,7 +270,7 @@ RETURNING *;
 
 -- name: UpdateNodeConfig :one
 UPDATE nodes
-SET config = ?,
+SET node_config = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 RETURNING *;

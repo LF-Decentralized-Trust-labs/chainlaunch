@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
@@ -59,12 +60,14 @@ type UpdateOrganizationParams struct {
 type OrganizationService struct {
 	queries       *db.Queries
 	keyManagement *keymanagement.KeyManagementService
+	configService *config.ConfigService
 }
 
-func NewOrganizationService(queries *db.Queries, keyManagement *keymanagement.KeyManagementService) *OrganizationService {
+func NewOrganizationService(queries *db.Queries, keyManagement *keymanagement.KeyManagementService, configService *config.ConfigService) *OrganizationService {
 	return &OrganizationService{
 		queries:       queries,
 		keyManagement: keyManagement,
+		configService: configService,
 	}
 }
 
@@ -411,12 +414,8 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id int64) 
 	// Delete the organization directory
 	// Convert MspID to lowercase for the directory name
 	mspIDLower := strings.ToLower(org.MspID)
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
-	}
 
-	orgDir := filepath.Join(homeDir, ".chainlaunch", "orgs", mspIDLower)
+	orgDir := filepath.Join(s.configService.GetDataPath(), "orgs", mspIDLower)
 	err = os.RemoveAll(orgDir)
 	if err != nil {
 		// Log the error but don't fail the operation

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/binaries"
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	kmodels "github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
@@ -42,6 +43,7 @@ type LocalOrderer struct {
 	keyService     *keymanagement.KeyManagementService
 	nodeID         int64
 	logger         *logger.Logger
+	configService  *config.ConfigService
 }
 
 // NewLocalOrderer creates a new LocalOrderer instance
@@ -56,6 +58,7 @@ func NewLocalOrderer(
 	keyService *keymanagement.KeyManagementService,
 	nodeID int64,
 	logger *logger.Logger,
+	configService *config.ConfigService,
 ) *LocalOrderer {
 	return &LocalOrderer{
 		mspID:          mspID,
@@ -68,6 +71,7 @@ func NewLocalOrderer(
 		keyService:     keyService,
 		nodeID:         nodeID,
 		logger:         logger,
+		configService:  configService,
 	}
 }
 
@@ -78,7 +82,7 @@ func (o *LocalOrderer) getServiceName() string {
 
 // getLaunchdServiceName returns the launchd service name
 func (o *LocalOrderer) getLaunchdServiceName() string {
-	return fmt.Sprintf("ai.chainlaunch.orderer.%s.%s",
+	return fmt.Sprintf("dev.chainlaunch.orderer.%s.%s",
 		strings.ToLower(o.org.MspID),
 		strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-"))
 }
@@ -96,20 +100,15 @@ func (o *LocalOrderer) getLaunchdPlistPath() string {
 
 // GetStdOutPath returns the path to the stdout log file
 func (o *LocalOrderer) GetStdOutPath() string {
-	homeDir, _ := os.UserHomeDir()
-	dirPath := filepath.Join(homeDir, ".chainlaunch/orderers",
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers",
 		strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-"))
 	return filepath.Join(dirPath, o.getServiceName()+".log")
 }
 
 // findOrdererBinary finds the orderer binary in PATH
 func (o *LocalOrderer) findOrdererBinary() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
 
-	downloader, err := binaries.NewBinaryDownloader(homeDir)
+	downloader, err := binaries.NewBinaryDownloader(o.configService)
 	if err != nil {
 		return "", fmt.Errorf("failed to create binary downloader: %w", err)
 	}
@@ -121,12 +120,9 @@ func (o *LocalOrderer) findOrdererBinary() (string, error) {
 func (o *LocalOrderer) Start() (interface{}, error) {
 	o.logger.Info("Starting orderer", "opts", o.opts)
 	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
+	chainlaunchDir := o.configService.GetDataPath()
 
-	dirPath := filepath.Join(homeDir, ".chainlaunch/orderers", slugifiedID)
+	dirPath := filepath.Join(chainlaunchDir, "orderers", slugifiedID)
 	mspConfigPath := filepath.Join(dirPath, "config")
 	dataConfigPath := filepath.Join(dirPath, "data")
 
@@ -137,7 +133,7 @@ func (o *LocalOrderer) Start() (interface{}, error) {
 	}
 
 	// Build command and environment
-	cmd := fmt.Sprintf("%s", ordererBinary)
+	cmd := ordererBinary
 	env := o.buildOrdererEnvironment(mspConfigPath)
 
 	o.logger.Debug("Starting orderer",
@@ -430,13 +426,9 @@ func (o *LocalOrderer) Init() (interface{}, error) {
 	}
 
 	// Create directory structure
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
 
 	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch", "orderers", slugifiedID)
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers", slugifiedID)
 	dataConfigPath := filepath.Join(dirPath, "data")
 	mspConfigPath := filepath.Join(dirPath, "config")
 
@@ -1291,13 +1283,8 @@ func (o *LocalOrderer) RenewCertificates(ordererDeploymentConfig *types.FabricOr
 	}
 
 	// Update the certificates in the MSP directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
 	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch", "orderers", slugifiedID)
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers", slugifiedID)
 	mspConfigPath := filepath.Join(dirPath, "config")
 
 	err = o.writeCertificatesAndKeys(

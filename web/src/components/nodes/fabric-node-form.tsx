@@ -200,6 +200,7 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 									<SelectContent>
 										<SelectItem value="2.5.12">2.5.12</SelectItem>
 										<SelectItem value="3.0.0">3.0.0</SelectItem>
+										<SelectItem value="3.1.0">3.1.0</SelectItem>
 									</SelectContent>
 								</Select>
 								<FormDescription>Select the Fabric version to use</FormDescription>

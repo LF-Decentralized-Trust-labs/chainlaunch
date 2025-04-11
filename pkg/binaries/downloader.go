@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 )
 
 const (
@@ -28,16 +30,16 @@ const (
 
 // BinaryDownloader handles downloading and managing Fabric binaries
 type BinaryDownloader struct {
-	homeDir string
+	configService *config.ConfigService
 }
 
 // NewBinaryDownloader creates a new BinaryDownloader instance
-func NewBinaryDownloader(homeDir string) (*BinaryDownloader, error) {
-	binDir := filepath.Join(homeDir, ".chainlaunch", "bin")
+func NewBinaryDownloader(configService *config.ConfigService) (*BinaryDownloader, error) {
+	binDir := filepath.Join(configService.GetDataPath(), "bin")
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create binary directory: %w", err)
 	}
-	return &BinaryDownloader{homeDir: homeDir}, nil
+	return &BinaryDownloader{configService: configService}, nil
 }
 
 // GetBinaryPath returns the path to the binary, downloading it if necessary
@@ -46,7 +48,7 @@ func (d *BinaryDownloader) GetBinaryPath(binaryType BinaryType, version string) 
 		version = DefaultVersion
 	}
 
-	binDir := filepath.Join(d.homeDir, ".chainlaunch", "bin")
+	binDir := filepath.Join(d.configService.GetDataPath(), "bin")
 	binaryName := string(binaryType)
 	if runtime.GOOS == "windows" {
 		binaryName += ".exe"

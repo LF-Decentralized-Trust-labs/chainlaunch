@@ -16,7 +16,7 @@ export function FabricOrdererConfig({ config }: FabricOrdererConfigProps) {
 				<CardDescription>Orderer-specific node settings</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-6">
-				<div className="grid grid-cols-2 gap-4">
+				<div className="grid grid-cols-3 gap-4">
 					<div>
 						<p className="text-sm font-medium text-muted-foreground">Organization</p>
 						<p>MSP ID: {config.mspId}</p>
@@ -27,6 +27,12 @@ export function FabricOrdererConfig({ config }: FabricOrdererConfigProps) {
 						<p>Sign Key: <Link to={`/settings/keys/${config.signKeyId}`} className="text-blue-500 hover:underline">{config.signKeyId}</Link></p>
 						<p>TLS Key: <Link to={`/settings/keys/${config.tlsKeyId}`} className="text-blue-500 hover:underline">{config.tlsKeyId}</Link></p>
 					</div>
+					{config.version && (
+						<div>
+							<p className="text-sm font-medium text-muted-foreground">Version</p>
+							<p className="text-sm">{config.version}</p>
+						</div>
+					)}
 				</div>
 
 				<Separator />

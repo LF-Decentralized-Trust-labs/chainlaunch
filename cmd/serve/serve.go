@@ -20,6 +20,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/auth"
 	backuphttp "github.com/chainlaunch/chainlaunch/pkg/backups/http"
 	backupservice "github.com/chainlaunch/chainlaunch/pkg/backups/service"
+	configservice "github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabrichandler "github.com/chainlaunch/chainlaunch/pkg/fabric/handler"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
@@ -47,15 +48,17 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-var (
-	port    int
-	dbPath  string
-	queries *db.Queries
-	dev     bool
-	// HTTP TLS configuration variables
-	tlsCertFile string
-	tlsKeyFile  string
-)
+// var (
+// 	port    int
+// 	dbPath  string
+// 	queries *db.Queries
+// 	dev     bool
+// 	// HTTP TLS configuration variables
+// 	tlsCertFile string
+// 	tlsKeyFile  string
+
+// 	dataPath string
+// )
 
 // spaHandler implements the http.Handler interface for serving a Single Page Application
 type spaHandler struct {
@@ -144,7 +147,6 @@ const (
 	keyLength         = 32 // 256 bits
 	encryptionKeyFile = "encryption_key"
 	sessionKeyFile    = "session_key"
-	configDirName     = ".chainlaunch"
 )
 
 // Add these new functions
@@ -159,16 +161,21 @@ func generateRandomKey(length int) ([]byte, error) {
 	return key, nil
 }
 
-func getConfigDir() (string, error) {
-	// First check XDG_CONFIG_HOME
+func getConfigDir(dataPath string) (string, error) {
+	// If dataPath is provided, use it directly
+	if dataPath != "" {
+		return dataPath, nil
+	}
+
+	// Fallback to XDG_CONFIG_HOME
 	if configHome := os.Getenv("XDG_CONFIG_HOME"); configHome != "" {
 		return filepath.Join(configHome, "chainlaunch"), nil
 	}
 
-	// Then check HOME
+	// Then fallback to HOME
 	home := os.Getenv("HOME")
 	if home == "" {
-		// Fallback to user home dir
+		// Final fallback to user home dir
 		var err error
 		home, err = os.UserHomeDir()
 		if err != nil {
@@ -176,18 +183,18 @@ func getConfigDir() (string, error) {
 		}
 	}
 
-	// For Linux/Mac: ~/.chainlaunch
-	return filepath.Join(home, configDirName), nil
+	// Default fallback: ~/.chainlaunch
+	return filepath.Join(home, "chainlaunch"), nil
 }
 
-func ensureKeyExists(filename string) (string, error) {
+func ensureKeyExists(filename string, dataPath string) (string, error) {
 	// First check if the key is already set in environment
 	envKey := strings.ToUpper(strings.TrimSuffix(filename, "_key"))
 	if key := os.Getenv(envKey); key != "" {
 		return key, nil
 	}
 
-	configDir, err := getConfigDir()
+	configDir, err := getConfigDir(dataPath)
 	if err != nil {
 		return "", err
 	}
@@ -252,7 +259,7 @@ func formatDuration(d time.Duration) string {
 }
 
 // setupServer configures and returns the HTTP server
-func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS) *chi.Mux {
+func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string) *chi.Mux {
 	// Initialize services
 	keyManagementService, err := service.NewKeyManagementService(queries)
 	if err != nil {
@@ -261,12 +268,12 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	if err := keyManagementService.InitializeKeyProviders(context.Background()); err != nil {
 		log.Fatal("Failed to initialize key providers:", err)
 	}
-
-	organizationService := fabricservice.NewOrganizationService(queries, keyManagementService)
+	configService := configservice.NewConfigService(dataPath)
+	organizationService := fabricservice.NewOrganizationService(queries, keyManagementService, configService)
 	logger := logger.NewDefault()
 
 	nodeEventService := nodesservice.NewNodeEventService(queries, logger)
-	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService)
+	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService)
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
 	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath)
@@ -278,7 +285,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		DefaultFailureThreshold: 3,                // Alert after 3 consecutive failures
 		Workers:                 3,                // Use 3 worker goroutines
 	}
-	monitoringService := monitoring.NewService(monitoringConfig, notificationService)
+	monitoringService := monitoring.NewService(logger, monitoringConfig, notificationService)
 
 	// Start the monitoring service with a background context
 	monitoringCtx, monitoringCancel := context.WithCancel(context.Background())
@@ -449,140 +456,237 @@ func runMigrations(database *sql.DB, migrationsFS embed.FS) error {
 	return nil
 }
 
+type serveCmd struct {
+	logger    *logger.Logger
+	configCMD config.ConfigCMD
+
+	port        int
+	dbPath      string
+	tlsCertFile string
+	tlsKeyFile  string
+	dataPath    string
+	dev         bool
+
+	queries *db.Queries
+}
+
+// validate validates the serve command configuration
+func (c *serveCmd) validate() error {
+	if c.port <= 0 || c.port > 65535 {
+		return fmt.Errorf("invalid port number: %d", c.port)
+	}
+
+	if c.dbPath == "" {
+		return fmt.Errorf("database path cannot be empty")
+	}
+
+	// If TLS is configured, both cert and key files must be provided
+	if (c.tlsCertFile != "" && c.tlsKeyFile == "") || (c.tlsCertFile == "" && c.tlsKeyFile != "") {
+		return fmt.Errorf("both TLS certificate and key files must be provided")
+	}
+
+	// If TLS files are provided, verify they exist
+	if c.tlsCertFile != "" {
+		if _, err := os.Stat(c.tlsCertFile); os.IsNotExist(err) {
+			return fmt.Errorf("TLS certificate file not found: %s", c.tlsCertFile)
+		}
+	}
+	if c.tlsKeyFile != "" {
+		if _, err := os.Stat(c.tlsKeyFile); os.IsNotExist(err) {
+			return fmt.Errorf("TLS key file not found: %s", c.tlsKeyFile)
+		}
+	}
+
+	// Ensure data path exists or can be created
+	if c.dataPath != "" {
+		if err := os.MkdirAll(c.dataPath, 0755); err != nil {
+			return fmt.Errorf("failed to create data directory: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *serveCmd) preRun() error {
+	// Ensure the database directory exists
+	dbDir := filepath.Dir(c.dbPath)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	// Convert dataPath to absolute path if it's not empty
+	if c.dataPath != "" {
+		absPath, err := filepath.Abs(c.dataPath)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path for data directory: %v", err)
+		}
+		c.dataPath = absPath
+	}
+
+	// Initialize database connection
+	database, err := sql.Open("sqlite3", c.dbPath)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	// Run migrations
+	if err := runMigrations(database, c.configCMD.MigrationsFS); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	// Create queries instance
+	c.queries = db.New(database)
+
+	return nil
+}
+
+func (c *serveCmd) run() error {
+	// Initialize encryption key with dataPath
+	encryptionKey, err := ensureKeyExists(encryptionKeyFile, c.dataPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize encryption key: %v", err)
+	}
+	if err := os.Setenv("KEY_ENCRYPTION_KEY", encryptionKey); err != nil {
+		log.Fatalf("Failed to set encryption key environment variable: %v", err)
+	}
+
+	// Initialize session key with dataPath
+	sessionKey, err := ensureKeyExists(sessionKeyFile, c.dataPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize session key: %v", err)
+	}
+	if err := os.Setenv("SESSION_ENCRYPTION_KEY", sessionKey); err != nil {
+		log.Fatalf("Failed to set session key environment variable: %v", err)
+	}
+
+	c.logger.Infof("Starting server on port %d...", c.port)
+	c.logger.Infof("Using database: %s", c.dbPath)
+	if c.dev {
+		c.logger.Info("Running in development mode")
+	} else {
+		c.logger.Info("Running in production mode")
+	}
+
+	// Initialize auth service with database
+	authService := auth.NewAuthService(c.queries)
+
+	// Check if any users exist
+	users, err := authService.ListUsers(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to check existing users: %v", err)
+	}
+
+	if len(users) == 0 {
+		// No users exist, check for required environment variables
+		username := os.Getenv("CHAINLAUNCH_USER")
+		password := os.Getenv("CHAINLAUNCH_PASSWORD")
+
+		if username == "" || password == "" {
+			log.Fatal("No users found in database. CHAINLAUNCH_USER and CHAINLAUNCH_PASSWORD environment variables must be set for initial user creation")
+		}
+
+		// Create initial user with provided credentials
+		if err := authService.CreateUser(context.Background(), username, password); err != nil {
+			log.Fatalf("Failed to create initial user: %v", err)
+		}
+		log.Printf("Created initial user with username: %s", username)
+	}
+
+	// Setup and start HTTP server
+	router := setupServer(c.queries, authService, c.configCMD.Views, c.dev, c.dbPath, c.dataPath)
+
+	// Start HTTP server in a goroutine
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", c.port),
+		Handler: router,
+	}
+
+	isTLS := c.tlsCertFile != "" && c.tlsKeyFile != ""
+	// Check if TLS cert and key files exist
+	if isTLS {
+		if _, err := os.Stat(c.tlsCertFile); os.IsNotExist(err) {
+			log.Fatalf("TLS certificate file not found: %s", c.tlsCertFile)
+		}
+		if _, err := os.Stat(c.tlsKeyFile); os.IsNotExist(err) {
+			log.Fatalf("TLS key file not found: %s", c.tlsKeyFile)
+		}
+	}
+	if isTLS {
+		c.logger.Infof("HTTPS server listening on :%d", c.port)
+		err = httpServer.ListenAndServeTLS(c.tlsCertFile, c.tlsKeyFile)
+	} else {
+		c.logger.Infof("HTTP server listening on :%d", c.port)
+		err = httpServer.ListenAndServe()
+	}
+
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Failed to start HTTP server: %v", err)
+	}
+
+	return nil
+}
+
+func (c *serveCmd) postRun() error {
+	// Clean up database connection
+	if c.queries != nil {
+		if err := c.queries.Close(); err != nil {
+			return fmt.Errorf("error closing database connection: %v", err)
+		}
+	}
+
+	return nil
+}
+
 // Command returns the serve command
 func Command(configCMD config.ConfigCMD, logger *logger.Logger) *cobra.Command {
-	serveCmd := &cobra.Command{
+	serveCmd := &serveCmd{
+		configCMD: configCMD,
+		logger:    logger,
+	}
+	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Start the API server",
 		Long: `Start the HTTP API server on the specified port.
 For example:
   chainlaunch serve --port 8100`,
-		PreRun: func(cmd *cobra.Command, args []string) {
-			// Ensure the database directory exists
-			dbDir := filepath.Dir(dbPath)
-			if err := os.MkdirAll(dbDir, 0755); err != nil {
-				log.Fatalf("Failed to create database directory: %v", err)
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := serveCmd.validate(); err != nil {
+				return err
 			}
-
-			// Initialize database connection
-			database, err := sql.Open("sqlite3", dbPath)
-			if err != nil {
-				log.Fatalf("Failed to open database: %v", err)
-			}
-			// Run migrations
-			if err := runMigrations(database, configCMD.MigrationsFS); err != nil {
-				log.Fatalf("Failed to run migrations: %v", err)
-			}
-
-			// Create queries instance
-			queries = db.New(database)
+			return serveCmd.preRun()
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			// Initialize encryption key
-			encryptionKey, err := ensureKeyExists(encryptionKeyFile)
-			if err != nil {
-				log.Fatalf("Failed to initialize encryption key: %v", err)
-			}
-			if err := os.Setenv("KEY_ENCRYPTION_KEY", encryptionKey); err != nil {
-				log.Fatalf("Failed to set encryption key environment variable: %v", err)
-			}
-
-			// Initialize session key
-			sessionKey, err := ensureKeyExists(sessionKeyFile)
-			if err != nil {
-				log.Fatalf("Failed to initialize session key: %v", err)
-			}
-			if err := os.Setenv("SESSION_ENCRYPTION_KEY", sessionKey); err != nil {
-				log.Fatalf("Failed to set session key environment variable: %v", err)
-			}
-
-			fmt.Printf("Starting server on port %d...\n", port)
-			fmt.Printf("Using database: %s\n", dbPath)
-			if dev {
-				fmt.Println("Running in development mode")
-			} else {
-				fmt.Println("Running in production mode")
-			}
-
-			// Initialize auth service with database
-			authService := auth.NewAuthService(queries)
-
-			// Check if any users exist
-			users, err := authService.ListUsers(context.Background())
-			if err != nil {
-				log.Fatalf("Failed to check existing users: %v", err)
-			}
-
-			if len(users) == 0 {
-				// No users exist, check for required environment variables
-				username := os.Getenv("CHAINLAUNCH_USER")
-				password := os.Getenv("CHAINLAUNCH_PASSWORD")
-
-				if username == "" || password == "" {
-					log.Fatal("No users found in database. CHAINLAUNCH_USER and CHAINLAUNCH_PASSWORD environment variables must be set for initial user creation")
-				}
-
-				// Create initial user with provided credentials
-				if err := authService.CreateUser(context.Background(), username, password); err != nil {
-					log.Fatalf("Failed to create initial user: %v", err)
-				}
-				log.Printf("Created initial user with username: %s", username)
-			}
-
-			// Setup and start HTTP server
-			router := setupServer(queries, authService, configCMD.Views)
-
-			// Start HTTP server in a goroutine
-			httpServer := &http.Server{
-				Addr:    fmt.Sprintf(":%d", port),
-				Handler: router,
-			}
-
-			isTLS := tlsCertFile != "" && tlsKeyFile != ""
-			// Check if TLS cert and key files exist
-			if isTLS {
-				if _, err := os.Stat(tlsCertFile); os.IsNotExist(err) {
-					log.Fatalf("TLS certificate file not found: %s", tlsCertFile)
-				}
-				if _, err := os.Stat(tlsKeyFile); os.IsNotExist(err) {
-					log.Fatalf("TLS key file not found: %s", tlsKeyFile)
-				}
-			}
-			if isTLS {
-				logger.Infof("HTTPS server listening on :%d", port)
-				err = httpServer.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
-			} else {
-				logger.Infof("HTTP server listening on :%d", port)
-				err = httpServer.ListenAndServe()
-			}
-
-			if err != nil && err != http.ErrServerClosed {
-				log.Fatalf("Failed to start HTTP server: %v", err)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return serveCmd.run()
 		},
-		PostRun: func(cmd *cobra.Command, args []string) {
-			// Clean up database connection
-			if queries != nil {
-				if err := queries.Close(); err != nil {
-					log.Printf("Error closing database connection: %v", err)
-				}
-			}
+		PostRunE: func(cmd *cobra.Command, args []string) error {
+			return serveCmd.postRun()
 		},
 	}
 
 	// Add port flags
-	serveCmd.Flags().IntVarP(&port, "port", "p", 8100, "Port to run the HTTP server on")
+	cmd.Flags().IntVarP(&serveCmd.port, "port", "p", 8100, "Port to run the HTTP server on")
 
 	// Add database path flag
 	defaultDBPath := filepath.Join("data", "chainlaunch.db")
-	serveCmd.Flags().StringVar(&dbPath, "db", defaultDBPath, "Path to SQLite database file")
+	cmd.Flags().StringVar(&serveCmd.dbPath, "db", defaultDBPath, "Path to SQLite database file")
 
 	// Add HTTP TLS configuration flags
-	serveCmd.Flags().StringVar(&tlsCertFile, "tls-cert", "", "Path to TLS certificate file for HTTP server (required)")
-	serveCmd.Flags().StringVar(&tlsKeyFile, "tls-key", "", "Path to TLS key file for HTTP server (required)")
+	cmd.Flags().StringVar(&serveCmd.tlsCertFile, "tls-cert", "", "Path to TLS certificate file for HTTP server (required)")
+	cmd.Flags().StringVar(&serveCmd.tlsKeyFile, "tls-key", "", "Path to TLS key file for HTTP server (required)")
 
+	// Update the default data path to use the OS-specific user config directory
+	defaultDataPath := ""
+	if configDir, err := os.UserConfigDir(); err == nil {
+		defaultDataPath = filepath.Join(configDir, "chainlaunch")
+	} else {
+		// Fallback to home directory if UserConfigDir fails
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			defaultDataPath = filepath.Join(homeDir, ".chainlaunch")
+		}
+	}
+
+	cmd.Flags().StringVar(&serveCmd.dataPath, "data", defaultDataPath, "Path to data directory")
 	// Add development mode flag
-	serveCmd.Flags().BoolVar(&dev, "dev", false, "Run in development mode")
+	cmd.Flags().BoolVar(&serveCmd.dev, "dev", false, "Run in development mode")
 
-	return serveCmd
+	return cmd
 }

@@ -818,6 +818,9 @@ func (h *NodeHandler) updateFabricPeer(w http.ResponseWriter, r *http.Request, n
 	if req.AddressOverrides != nil {
 		opts.AddressOverrides = req.AddressOverrides
 	}
+	if req.Version != nil {
+		opts.Version = *req.Version
+	}
 
 	updatedNode, err := h.service.UpdateFabricPeer(r.Context(), opts)
 	if err != nil {

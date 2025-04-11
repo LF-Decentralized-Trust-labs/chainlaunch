@@ -31,6 +31,7 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/chainlaunch/chainlaunch/pkg/binaries"
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	kmodels "github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
@@ -790,6 +791,7 @@ type LocalPeer struct {
 	keyService     *keymanagement.KeyManagementService
 	nodeID         int64
 	logger         *logger.Logger
+	configService  *config.ConfigService
 }
 
 // NewLocalPeer creates a new LocalPeer instance
@@ -804,6 +806,7 @@ func NewLocalPeer(
 	keyService *keymanagement.KeyManagementService,
 	nodeID int64,
 	logger *logger.Logger,
+	configService *config.ConfigService,
 ) *LocalPeer {
 	return &LocalPeer{
 		mspID:          mspID,
@@ -816,6 +819,7 @@ func NewLocalPeer(
 		keyService:     keyService,
 		nodeID:         nodeID,
 		logger:         logger,
+		configService:  configService,
 	}
 }
 
@@ -851,8 +855,7 @@ func (p *LocalPeer) GetStdOutPath() string {
 }
 
 func (p *LocalPeer) getPeerPath() string {
-	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, ".chainlaunch/peers",
+	return filepath.Join(p.configService.GetDataPath(), "peers",
 		strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-"))
 }
 
@@ -869,12 +872,8 @@ func (p *LocalPeer) getContainerName() (string, error) {
 
 // findPeerBinary finds the peer binary in PATH
 func (p *LocalPeer) findPeerBinary() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
 
-	downloader, err := binaries.NewBinaryDownloader(homeDir)
+	downloader, err := binaries.NewBinaryDownloader(p.configService)
 	if err != nil {
 		return "", fmt.Errorf("failed to create binary downloader: %w", err)
 	}
@@ -1015,13 +1014,8 @@ func (p *LocalPeer) Init() (types.NodeDeploymentConfig, error) {
 		return nil, fmt.Errorf("failed to get TLS private key: %w", err)
 	}
 	// Create directory structure
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
-
 	slugifiedID := strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch", "peers", slugifiedID)
+	dirPath := filepath.Join(p.configService.GetDataPath(), "peers", slugifiedID)
 	dataConfigPath := filepath.Join(dirPath, "data")
 	mspConfigPath := filepath.Join(dirPath, "config")
 
@@ -1074,12 +1068,8 @@ func (p *LocalPeer) Init() (types.NodeDeploymentConfig, error) {
 func (p *LocalPeer) Start() (interface{}, error) {
 	p.logger.Info("Starting peer", "opts", p.opts)
 	slugifiedID := strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-")
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
 
-	dirPath := filepath.Join(homeDir, ".chainlaunch/peers", slugifiedID)
+	dirPath := filepath.Join(p.configService.GetDataPath(), "peers", slugifiedID)
 	mspConfigPath := filepath.Join(dirPath, "config")
 	dataConfigPath := filepath.Join(dirPath, "data")
 
@@ -2043,12 +2033,7 @@ type CAConfig struct {
 func (p *LocalPeer) PrepareAdminCertMSP(mspID string) (string, error) {
 	// Create all required directories with proper permissions
 	// Determine admin cert path based on mspID
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	adminMspPath := filepath.Join(homeDir, ".chainlaunch/orgs", strings.ToLower(mspID), "users/admin")
+	adminMspPath := filepath.Join(p.configService.GetDataPath(), "orgs", strings.ToLower(mspID), "users/admin")
 
 	// Check if admin cert directory already exists
 	if _, err := os.Stat(adminMspPath); err == nil {
@@ -2784,11 +2769,7 @@ func (p *LocalPeer) GetBlockByTxID(ctx context.Context, channelID string, txID s
 // SynchronizeConfig synchronizes the peer's configuration files and service
 func (p *LocalPeer) SynchronizeConfig(deployConfig *types.FabricPeerDeploymentConfig) error {
 	slugifiedID := strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-")
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-	dirPath := filepath.Join(homeDir, ".chainlaunch/peers", slugifiedID)
+	dirPath := filepath.Join(p.configService.GetDataPath(), "peers", slugifiedID)
 	mspConfigPath := filepath.Join(dirPath, "config")
 	dataConfigPath := filepath.Join(dirPath, "data")
 	// Write config.yaml

@@ -67,7 +67,7 @@ export function FabricPeerConfig({ config }: FabricPeerConfigProps) {
 				<CardDescription>Peer-specific node settings</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-6">
-				<div className="grid grid-cols-2 gap-4">
+				<div className="grid grid-cols-3 gap-4">
 					<div>
 						<p className="text-sm font-medium text-muted-foreground">Organization</p>
 						<p>MSP ID: {config.mspId}</p>
@@ -88,6 +88,12 @@ export function FabricPeerConfig({ config }: FabricPeerConfigProps) {
 							</Link>
 						</p>
 					</div>
+					{config.version && (
+						<div>
+							<p className="text-sm font-medium text-muted-foreground">Version</p>
+							<p className="text-sm">{config.version}</p>
+						</div>
+					)}
 				</div>
 
 				<Separator />

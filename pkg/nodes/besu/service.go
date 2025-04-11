@@ -18,7 +18,7 @@ func (b *LocalBesu) getServiceName() string {
 
 // getLaunchdServiceName returns the launchd service name
 func (b *LocalBesu) getLaunchdServiceName() string {
-	return fmt.Sprintf("ai.chainlaunch.besu.%s",
+	return fmt.Sprintf("dev.chainlaunch.besu.%s",
 		strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-"))
 }
 

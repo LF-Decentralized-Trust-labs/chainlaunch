@@ -712,6 +712,7 @@ export type HttpUpdateFabricOrdererRequest = {
     externalEndpoint?: string;
     listenAddress?: string;
     operationsListenAddress?: string;
+    version?: string;
 };
 
 export type HttpUpdateFabricPeerRequest = {
@@ -725,6 +726,7 @@ export type HttpUpdateFabricPeerRequest = {
     externalEndpoint?: string;
     listenAddress?: string;
     operationsListenAddress?: string;
+    version?: string;
 };
 
 export type HttpUpdateNodeRequest = {
@@ -926,6 +928,10 @@ export type ServiceBlock = {
     tx_count?: number;
 };
 
+export type ServiceCreateSettingParams = {
+    config?: ServiceSettingConfig;
+};
+
 export type ServiceFabricOrdererProperties = {
     adminAddress?: string;
     domainNames?: Array<string>;
@@ -1028,6 +1034,19 @@ export type ServiceNodesDefaultsResult = {
     availableAddresses?: Array<string>;
     orderers?: Array<ServiceNodeDefaults>;
     peers?: Array<ServiceNodeDefaults>;
+};
+
+export type ServiceSetting = {
+    config?: ServiceSettingConfig;
+    created_at?: string;
+    id?: number;
+    updated_at?: string;
+};
+
+export type ServiceSettingConfig = {
+    besuTemplateCMD?: string;
+    ordererTemplateCMD?: string;
+    peerTemplateCMD?: string;
 };
 
 export type ServiceTransaction = {
@@ -4689,3 +4708,38 @@ export type PostOrganizationsByIdCrlRevokeSerialResponses = {
 };
 
 export type PostOrganizationsByIdCrlRevokeSerialResponse = PostOrganizationsByIdCrlRevokeSerialResponses[keyof PostOrganizationsByIdCrlRevokeSerialResponses];
+
+export type GetSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/settings';
+};
+
+export type GetSettingsResponses = {
+    /**
+     * OK
+     */
+    200: ServiceSetting;
+};
+
+export type GetSettingsResponse = GetSettingsResponses[keyof GetSettingsResponses];
+
+export type PostSettingsData = {
+    /**
+     * Setting configuration
+     */
+    body: ServiceCreateSettingParams;
+    path?: never;
+    query?: never;
+    url: '/settings';
+};
+
+export type PostSettingsResponses = {
+    /**
+     * OK
+     */
+    200: ServiceSetting;
+};
+
+export type PostSettingsResponse = PostSettingsResponses[keyof PostSettingsResponses];

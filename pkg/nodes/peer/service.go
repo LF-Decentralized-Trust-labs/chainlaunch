@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"text/template"
 )
 
@@ -103,6 +104,13 @@ func (p *LocalPeer) createLaunchdService(cmd string, env map[string]string, dirP
 	for k, v := range env {
 		envStrings = append(envStrings, fmt.Sprintf("<key>%s</key>\n    <string>%s</string>", k, v))
 	}
+
+	// Escape special XML characters in cmd
+	cmd = strings.ReplaceAll(cmd, "&", "&amp;")
+	cmd = strings.ReplaceAll(cmd, "<", "&lt;")
+	cmd = strings.ReplaceAll(cmd, ">", "&gt;")
+	cmd = strings.ReplaceAll(cmd, "'", "&apos;")
+	cmd = strings.ReplaceAll(cmd, "\"", "&quot;")
 
 	tmpl := template.Must(template.New("launchd").Parse(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

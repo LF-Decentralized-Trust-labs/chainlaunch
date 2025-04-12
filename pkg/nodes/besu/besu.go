@@ -12,17 +12,19 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
 
 // LocalBesu represents a local Besu node
 type LocalBesu struct {
-	opts          StartBesuOpts
-	mode          string
-	nodeID        int64
-	logger        *logger.Logger
-	configService *config.ConfigService
+	opts            StartBesuOpts
+	mode            string
+	nodeID          int64
+	logger          *logger.Logger
+	configService   *config.ConfigService
+	settingsService *settingsservice.SettingsService
 }
 
 // NewLocalBesu creates a new LocalBesu instance
@@ -32,13 +34,15 @@ func NewLocalBesu(
 	nodeID int64,
 	logger *logger.Logger,
 	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *LocalBesu {
 	return &LocalBesu{
-		opts:          opts,
-		mode:          mode,
-		nodeID:        nodeID,
-		logger:        logger,
-		configService: configService,
+		opts:            opts,
+		mode:            mode,
+		nodeID:          nodeID,
+		logger:          logger,
+		configService:   configService,
+		settingsService: settingsService,
 	}
 }
 

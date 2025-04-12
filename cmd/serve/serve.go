@@ -36,6 +36,8 @@ import (
 	nodesservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	notificationhttp "github.com/chainlaunch/chainlaunch/pkg/notifications/http"
 	notificationservice "github.com/chainlaunch/chainlaunch/pkg/notifications/service"
+	settingshttp "github.com/chainlaunch/chainlaunch/pkg/settings/http"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -273,7 +275,14 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	logger := logger.NewDefault()
 
 	nodeEventService := nodesservice.NewNodeEventService(queries, logger)
-	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService)
+	settingsService := settingsservice.NewSettingsService(queries, logger)
+	_, err = settingsService.InitializeDefaultSettings(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to initialize default settings: %v", err)
+	}
+	settingsHandler := settingshttp.NewHandler(settingsService, logger)
+
+	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService, settingsService)
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
 	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath)
@@ -406,6 +415,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			backupHandler.RegisterRoutes(r)
 			// Mount notifications routes
 			notificationHandler.RegisterRoutes(r)
+			// Mount settings routes
+			settingsHandler.RegisterRoutes(r)
 		})
 	})
 
@@ -575,11 +586,12 @@ func (c *serveCmd) run() error {
 		log.Fatalf("Failed to check existing users: %v", err)
 	}
 
+	// Get environment variables
+	username := os.Getenv("CHAINLAUNCH_USER")
+	password := os.Getenv("CHAINLAUNCH_PASSWORD")
+
 	if len(users) == 0 {
 		// No users exist, check for required environment variables
-		username := os.Getenv("CHAINLAUNCH_USER")
-		password := os.Getenv("CHAINLAUNCH_PASSWORD")
-
 		if username == "" || password == "" {
 			log.Fatal("No users found in database. CHAINLAUNCH_USER and CHAINLAUNCH_PASSWORD environment variables must be set for initial user creation")
 		}
@@ -589,6 +601,12 @@ func (c *serveCmd) run() error {
 			log.Fatalf("Failed to create initial user: %v", err)
 		}
 		log.Printf("Created initial user with username: %s", username)
+	} else if password != "" {
+		// If password is set and users exist, update the first user's password
+		if err := authService.UpdateUserPassword(context.Background(), users[0].Username, password); err != nil {
+			log.Fatalf("Failed to update user password: %v", err)
+		}
+		log.Printf("Updated password for user: %s", users[0].Username)
 	}
 
 	// Setup and start HTTP server
@@ -600,17 +618,8 @@ func (c *serveCmd) run() error {
 		Handler: router,
 	}
 
-	isTLS := c.tlsCertFile != "" && c.tlsKeyFile != ""
 	// Check if TLS cert and key files exist
-	if isTLS {
-		if _, err := os.Stat(c.tlsCertFile); os.IsNotExist(err) {
-			log.Fatalf("TLS certificate file not found: %s", c.tlsCertFile)
-		}
-		if _, err := os.Stat(c.tlsKeyFile); os.IsNotExist(err) {
-			log.Fatalf("TLS key file not found: %s", c.tlsKeyFile)
-		}
-	}
-	if isTLS {
+	if c.tlsCertFile != "" && c.tlsKeyFile != "" {
 		c.logger.Infof("HTTPS server listening on :%d", c.port)
 		err = httpServer.ListenAndServeTLS(c.tlsCertFile, c.tlsKeyFile)
 	} else {

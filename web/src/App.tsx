@@ -43,6 +43,7 @@ import NetworkConfigPage from './pages/settings/network'
 import SmartContractsPage from './pages/smart-contracts'
 import SharedNetworksPage from '@/pages/networks/fabric/shared'
 import ImportNetworkPage from '@/pages/networks/import'
+import TemplatesPage from '@/pages/settings/general'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -87,6 +88,7 @@ const App = () => {
 														<Route path="settings/backups" element={<BackupsPage />} />
 														<Route path="settings/general" element={<SettingsPage />} />
 														<Route path="settings/monitoring" element={<MonitoringPage />} />
+														<Route path="settings/templates" element={<TemplatesPage />} />
 														<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
 														<Route path="fabric/organizations" element={<OrganizationsPage />} />
 														<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />

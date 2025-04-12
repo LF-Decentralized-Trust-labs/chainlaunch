@@ -25,6 +25,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/peer"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 )
 
 // NodeService handles business logic for node management
@@ -35,6 +36,7 @@ type NodeService struct {
 	orgService           *fabricservice.OrganizationService
 	eventService         *NodeEventService
 	configService        *config.ConfigService
+	settingsService      *settingsservice.SettingsService
 }
 
 // CreateNodeRequest represents the service-layer request to create a node
@@ -55,6 +57,7 @@ func NewNodeService(
 	orgService *fabricservice.OrganizationService,
 	eventService *NodeEventService,
 	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *NodeService {
 	return &NodeService{
 		db:                   db,
@@ -63,6 +66,7 @@ func NewNodeService(
 		orgService:           orgService,
 		eventService:         eventService,
 		configService:        configService,
+		settingsService:      settingsService,
 	}
 }
 
@@ -494,6 +498,7 @@ func (s *NodeService) getPeerFromConfig(dbNode *db.Node, org *fabricservice.Orga
 		dbNode.ID,
 		s.logger,
 		s.configService,
+		s.settingsService,
 	)
 }
 
@@ -539,6 +544,7 @@ func (s *NodeService) getOrdererFromConfig(dbNode *db.Node, org *fabricservice.O
 		dbNode.ID,
 		s.logger,
 		s.configService,
+		s.settingsService,
 	)
 }
 
@@ -1186,6 +1192,7 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 		dbNode.ID,
 		s.logger,
 		s.configService,
+		s.settingsService,
 	)
 
 	return localBesu, nil
@@ -1284,6 +1291,7 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 		dbNode.ID,
 		s.logger,
 		s.configService,
+		s.settingsService,
 	)
 
 	// Start the node

@@ -10,7 +10,8 @@ import {
 	LogOut,
 	Network,
 	Server,
-	Share2
+	Share2,
+	FileText
 } from 'lucide-react';
 ('use client')
 
@@ -75,6 +76,11 @@ const data = {
 					title: 'Backups',
 					url: '/settings/backups',
 					icon: DatabaseBackup,
+				},
+				{
+					title: 'Templates',
+					url: '/settings/templates',
+					icon: FileText,
 				},
 			],
 		},

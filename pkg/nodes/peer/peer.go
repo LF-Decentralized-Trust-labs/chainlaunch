@@ -38,6 +38,7 @@ import (
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 )
 
 type AddressOverridePath struct {
@@ -781,17 +782,18 @@ metrics:
 
 // LocalPeer represents a local Fabric peer node
 type LocalPeer struct {
-	mspID          string
-	db             *db.Queries
-	opts           StartPeerOpts
-	mode           string
-	org            *fabricservice.OrganizationDTO
-	organizationID int64
-	orgService     *fabricservice.OrganizationService
-	keyService     *keymanagement.KeyManagementService
-	nodeID         int64
-	logger         *logger.Logger
-	configService  *config.ConfigService
+	mspID           string
+	db              *db.Queries
+	opts            StartPeerOpts
+	mode            string
+	org             *fabricservice.OrganizationDTO
+	organizationID  int64
+	orgService      *fabricservice.OrganizationService
+	keyService      *keymanagement.KeyManagementService
+	nodeID          int64
+	logger          *logger.Logger
+	configService   *config.ConfigService
+	settingsService *settingsservice.SettingsService
 }
 
 // NewLocalPeer creates a new LocalPeer instance
@@ -807,19 +809,21 @@ func NewLocalPeer(
 	nodeID int64,
 	logger *logger.Logger,
 	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *LocalPeer {
 	return &LocalPeer{
-		mspID:          mspID,
-		db:             db,
-		opts:           opts,
-		mode:           mode,
-		org:            org,
-		organizationID: organizationID,
-		orgService:     orgService,
-		keyService:     keyService,
-		nodeID:         nodeID,
-		logger:         logger,
-		configService:  configService,
+		mspID:           mspID,
+		db:              db,
+		opts:            opts,
+		mode:            mode,
+		org:             org,
+		organizationID:  organizationID,
+		orgService:      orgService,
+		keyService:      keyService,
+		nodeID:          nodeID,
+		logger:          logger,
+		configService:   configService,
+		settingsService: settingsService,
 	}
 }
 
@@ -848,8 +852,7 @@ func (p *LocalPeer) getLaunchdPlistPath() string {
 
 // GetStdOutPath returns the path to the stdout log file
 func (p *LocalPeer) GetStdOutPath() string {
-	homeDir, _ := os.UserHomeDir()
-	dirPath := filepath.Join(homeDir, ".chainlaunch/peers",
+	dirPath := filepath.Join(p.configService.GetDataPath(), "peers",
 		strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-"))
 	return filepath.Join(dirPath, p.getServiceName()+".log")
 }
@@ -1064,6 +1067,8 @@ func (p *LocalPeer) Init() (types.NodeDeploymentConfig, error) {
 	}, nil
 }
 
+const DefaultPeerCmdTemplate = "{{.Cmd}}"
+
 // Start starts the peer node
 func (p *LocalPeer) Start() (interface{}, error) {
 	p.logger.Info("Starting peer", "opts", p.opts)
@@ -1078,9 +1083,30 @@ func (p *LocalPeer) Start() (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to find peer binary: %w", err)
 	}
+	setting, err := p.settingsService.GetSetting(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get setting: %w", err)
+	}
+	var peerTemplateCMD string
+	if setting.Config.PeerTemplateCMD == "" {
+		peerTemplateCMD = DefaultPeerCmdTemplate
+	} else {
+		peerTemplateCMD = setting.Config.PeerTemplateCMD
+	}
 
-	// Build command and environment
-	cmd := fmt.Sprintf("%s node start", peerBinary)
+	// Parse template and build command
+	tmpl, err := template.New("peer").Parse(peerTemplateCMD)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse peer template: %w", err)
+	}
+
+	var cmdBuf bytes.Buffer
+	if err := tmpl.Execute(&cmdBuf, struct{ Cmd string }{
+		Cmd: fmt.Sprintf("%s node start", peerBinary),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to execute peer template: %w", err)
+	}
+	cmd := cmdBuf.String()
 	env := p.buildPeerEnvironment(mspConfigPath)
 
 	p.logger.Debug("Starting peer",
@@ -1223,6 +1249,18 @@ func (p *LocalPeer) startDocker(env map[string]string, mspConfigPath, dataConfig
 
 // Stop stops the peer node
 func (p *LocalPeer) Stop() error {
+	if p.mode == "service" {
+		var cmd *exec.Cmd
+		if runtime.GOOS == "darwin" {
+			cmd = exec.Command("launchctl", "unload", p.getLaunchdPlistPath())
+		} else {
+			cmd = exec.Command("systemctl", "stop", p.getServiceName())
+		}
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to stop service: %w: %s", err, output)
+		}
+		return nil
+	}
 	p.logger.Info("Stopping peer", "opts", p.opts)
 
 	switch p.mode {
@@ -2820,6 +2858,15 @@ func (p *LocalPeer) SynchronizeConfig(deployConfig *types.FabricPeerDeploymentCo
 		return fmt.Errorf("failed to write core.yaml: %w", err)
 	}
 
+	// Stop the peer if it's running
+	if err := p.Stop(); err != nil {
+		return fmt.Errorf("failed to stop peer before regenerating config: %w", err)
+	}
+
+	// Start the peer to regenerate config files
+	if _, err := p.Start(); err != nil {
+		return fmt.Errorf("failed to restart peer after regenerating config: %w", err)
+	}
 	return nil
 }
 

@@ -1600,8 +1600,7 @@ definitions:
   service.CreateSettingParams:
     properties:
       config:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/service.SettingConfig'
     type: object
   service.FabricOrdererProperties:
     properties:
@@ -1781,13 +1780,21 @@ definitions:
   service.Setting:
     properties:
       config:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/service.SettingConfig'
       created_at:
         type: string
       id:
         type: integer
       updated_at:
+        type: string
+    type: object
+  service.SettingConfig:
+    properties:
+      besuTemplateCMD:
+        type: string
+      ordererTemplateCMD:
+        type: string
+      peerTemplateCMD:
         type: string
     type: object
   service.Transaction:
@@ -1806,12 +1813,6 @@ definitions:
         type: string
       type:
         type: string
-    type: object
-  service.UpdateSettingParams:
-    properties:
-      config:
-        additionalProperties: true
-        type: object
     type: object
   types.AddressOverride:
     properties:
@@ -5194,23 +5195,21 @@ paths:
       - organizations
   /settings:
     get:
-      description: Get a list of all settings
+      description: Get the default setting's details
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/service.Setting'
-            type: array
-      summary: List all settings
+            $ref: '#/definitions/service.Setting'
+      summary: Get the default setting
       tags:
       - settings
     post:
       consumes:
       - application/json
-      description: Create a new setting with the provided configuration
+      description: Create or update the default setting with the provided configuration
       parameters:
       - description: Setting configuration
         in: body
@@ -5225,66 +5224,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/service.Setting'
-      summary: Create a new setting
-      tags:
-      - settings
-  /settings/{id}:
-    delete:
-      description: Delete a setting by its ID
-      parameters:
-      - description: Setting ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      responses:
-        "204":
-          description: No Content
-      summary: Delete a setting
-      tags:
-      - settings
-    get:
-      description: Get a setting's details by its ID
-      parameters:
-      - description: Setting ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.Setting'
-      summary: Get a setting by ID
-      tags:
-      - settings
-    put:
-      consumes:
-      - application/json
-      description: Update an existing setting by its ID
-      parameters:
-      - description: Setting ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Updated setting configuration
-        in: body
-        name: setting
-        required: true
-        schema:
-          $ref: '#/definitions/service.UpdateSettingParams'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.Setting'
-      summary: Update a setting
+      summary: Create or update the default setting
       tags:
       - settings
 schemes:

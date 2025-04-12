@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
@@ -15,16 +14,13 @@ import (
 
 // AuthService handles authentication operations
 type AuthService struct {
-	db       *db.Queries
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	db *db.Queries
 }
 
 // NewAuthService creates a new authentication service
 func NewAuthService(db *db.Queries) *AuthService {
 	return &AuthService{
-		db:       db,
-		sessions: make(map[string]*Session),
+		db: db,
 	}
 }
 
@@ -275,4 +271,48 @@ func (s *AuthService) GetUserByID(ctx context.Context, id int64) (*User, error) 
 		CreatedAt:   dbUser.CreatedAt,
 		LastLoginAt: dbUser.LastLoginAt.Time,
 	}, nil
+}
+
+// UpdateUserPassword updates a user's password
+func (s *AuthService) UpdateUserPassword(ctx context.Context, username, newPassword string) error {
+	// Get user from database
+	user, err := s.db.GetUserByUsername(ctx, username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("user not found")
+		}
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Check if new password matches current password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword)); err == nil {
+		// Passwords match, no need to update
+		return nil
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update user's password
+	params := &db.UpdateUserParams{
+		ID:       user.ID,
+		Username: user.Username,
+		Column2:  string(hashedPassword),
+		Password: string(hashedPassword),
+	}
+
+	_, err = s.db.UpdateUser(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to update user password: %w", err)
+	}
+
+	// Delete all existing sessions for this user for security
+	if err := s.db.DeleteUserSessions(ctx, user.ID); err != nil {
+		return fmt.Errorf("failed to delete user sessions: %w", err)
+	}
+
+	return nil
 }

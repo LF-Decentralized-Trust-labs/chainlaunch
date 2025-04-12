@@ -26,6 +26,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	"google.golang.org/grpc"
@@ -44,6 +45,7 @@ type LocalOrderer struct {
 	nodeID         int64
 	logger         *logger.Logger
 	configService  *config.ConfigService
+	settingsService *settingsservice.SettingsService
 }
 
 // NewLocalOrderer creates a new LocalOrderer instance
@@ -59,6 +61,7 @@ func NewLocalOrderer(
 	nodeID int64,
 	logger *logger.Logger,
 	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *LocalOrderer {
 	return &LocalOrderer{
 		mspID:          mspID,
@@ -72,6 +75,7 @@ func NewLocalOrderer(
 		nodeID:         nodeID,
 		logger:         logger,
 		configService:  configService,
+		settingsService: settingsService,
 	}
 }
 

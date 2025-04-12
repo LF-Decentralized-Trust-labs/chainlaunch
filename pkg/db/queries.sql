@@ -942,3 +942,11 @@ RETURNING *;
 -- name: DeleteSetting :exec
 DELETE FROM settings
 WHERE id = ?; 
+
+-- name: DeleteRevokedCertificate :exec
+DELETE FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?;
+
+-- name: GetRevokedCertificateCount :one
+SELECT COUNT(*) FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?;

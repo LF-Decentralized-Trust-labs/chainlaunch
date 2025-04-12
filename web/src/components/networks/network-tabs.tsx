@@ -3,7 +3,7 @@ import { ProBadge } from '@/components/pro/ProBadge'
 import { ProFeatureGate } from '@/components/pro/ProFeatureGate'
 import { useState, useEffect } from 'react'
 
-export type TabValue = 'details' | 'genesis' | 'anchor-peers' | 'consenters' | 'chaincode' | 'share' | 'channel-update' | 'proposals' | 'explorer'
+export type TabValue = 'details' | 'genesis' | 'anchor-peers' | 'consenters' | 'chaincode' | 'share' | 'channel-update' | 'proposals' | 'explorer' | 'crl'
 
 interface NetworkTabsProps {
 	tab: TabValue
@@ -16,9 +16,10 @@ interface NetworkTabsProps {
 	channelUpdate?: React.ReactNode
 	proposals?: React.ReactNode
 	explorer?: React.ReactNode
+	crl?: React.ReactNode
 }
 
-export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consenters, chaincode, share, channelUpdate, proposals, explorer }: NetworkTabsProps) {
+export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consenters, chaincode, share, channelUpdate, proposals, explorer, crl }: NetworkTabsProps) {
 	// Check if current tab is a pro feature and redirect to details if needed
 	useEffect(() => {
 		const proTabs: TabValue[] = ['share', 'proposals']
@@ -60,6 +61,10 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 					</>
 				)}
 
+				{explorer && <TabsTrigger value="explorer">Explorer</TabsTrigger>}
+
+				{crl && <TabsTrigger value="crl">Revocation</TabsTrigger>}
+
 				{proposals && (
 					<TabsTrigger value="proposals" onClick={() => window.open('https://chainlaunch.dev/premium', '_blank')} className="flex items-center gap-2">
 						Proposals
@@ -71,12 +76,6 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 					<TabsTrigger value="share" onClick={() => window.open('https://chainlaunch.dev/premium', '_blank')} className="flex items-center gap-2">
 						Share
 						<ProBadge />
-					</TabsTrigger>
-				)}
-
-				{explorer && (
-					<TabsTrigger value="explorer">
-						Explorer
 					</TabsTrigger>
 				)}
 			</TabsList>
@@ -125,6 +124,12 @@ export function NetworkTabs({ tab, setTab, networkDetails, anchorPeers, consente
 			{explorer && (
 				<TabsContent className="mt-8" value="explorer">
 					{explorer}
+				</TabsContent>
+			)}
+
+			{crl && (
+				<TabsContent className="mt-8" value="crl">
+					{crl}
 				</TabsContent>
 			)}
 		</Tabs>

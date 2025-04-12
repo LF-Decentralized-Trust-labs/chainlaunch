@@ -49,6 +49,7 @@ type Querier interface {
 	DeleteNode(ctx context.Context, id int64) error
 	DeleteNotificationProvider(ctx context.Context, id int64) error
 	DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsParams) error
+	DeleteRevokedCertificate(ctx context.Context, arg *DeleteRevokedCertificateParams) error
 	DeleteSession(ctx context.Context, sessionID string) error
 	DeleteSetting(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
@@ -98,6 +99,7 @@ type Querier interface {
 	GetProvidersByNotificationType(ctx context.Context, arg *GetProvidersByNotificationTypeParams) ([]*NotificationProvider, error)
 	GetRecentCompletedBackups(ctx context.Context) ([]*Backup, error)
 	GetRevokedCertificate(ctx context.Context, arg *GetRevokedCertificateParams) (*FabricRevokedCertificate, error)
+	GetRevokedCertificateCount(ctx context.Context, fabricOrganizationID int64) (int64, error)
 	GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]*FabricRevokedCertificate, error)
 	GetSession(ctx context.Context, sessionID string) (*GetSessionRow, error)
 	GetSetting(ctx context.Context, id int64) (*Setting, error)

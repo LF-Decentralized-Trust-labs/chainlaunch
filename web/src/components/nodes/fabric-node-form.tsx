@@ -53,7 +53,19 @@ interface FabricNodeFormProps {
 	submitText?: string
 }
 
-export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults, onNodeTypeChange, hideSubmit, hideOrganization, hideNodeType, defaultValues, onChange, submitText = 'Create Node' }: FabricNodeFormProps) {
+export function FabricNodeForm({
+	onSubmit,
+	isSubmitting,
+	organizations,
+	defaults,
+	onNodeTypeChange,
+	hideSubmit,
+	hideOrganization,
+	hideNodeType,
+	defaultValues,
+	onChange,
+	submitText = 'Create Node',
+}: FabricNodeFormProps) {
 	const form = useForm<FabricNodeFormValues>({
 		resolver: zodResolver(fabricNodeFormSchema),
 		defaultValues: defaultValues || {
@@ -61,7 +73,7 @@ export function FabricNodeForm({ onSubmit, isSubmitting, organizations, defaults
 			fabricProperties: {
 				nodeType: 'FABRIC_PEER',
 				mode: 'service',
-				version: '2.5.12',
+				version: '3.1.0',
 				organizationId: undefined,
 				listenAddress: defaults?.listenAddress || '',
 				operationsListenAddress: defaults?.operationsListenAddress || '',

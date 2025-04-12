@@ -2596,6 +2596,65 @@
                 }
             }
         },
+        "/networks/fabric/{id}/organization-crl": {
+            "post": {
+                "description": "Update the Certificate Revocation List (CRL) for an organization in the network",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fabric-networks"
+                ],
+                "summary": "Update organization CRL",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Organization CRL update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.UpdateOrganizationCRLRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.UpdateOrganizationCRLResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/networks/fabric/{id}/organizations/{orgId}/config": {
             "get": {
                 "description": "Get the network configuration as YAML",
@@ -4431,59 +4490,6 @@
                 }
             }
         },
-        "/organizations/{id}/crl/initialize": {
-            "post": {
-                "description": "Initialize a new Certificate Revocation List for the organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Initialize CRL for an organization",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Organization ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/organizations/{id}/crl/revoke/pem": {
             "post": {
                 "description": "Add a certificate to the organization's CRL using its PEM encoded data",
@@ -4584,6 +4590,128 @@
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a certificate from the organization's CRL using its serial number",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Delete a revoked certificate using its serial number",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Certificate deletion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.DeleteRevokedCertificateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{id}/revoked-certificates": {
+            "get": {
+                "description": "Get all revoked certificates for the organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Get organization's revoked certificates",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handler.RevokedCertificateResponse"
                             }
                         }
                     },
@@ -4754,6 +4882,15 @@
                 }
             }
         },
+        "handler.DeleteRevokedCertificateRequest": {
+            "type": "object",
+            "properties": {
+                "serialNumber": {
+                    "description": "Hex string of the serial number",
+                    "type": "string"
+                }
+            }
+        },
         "handler.OrganizationResponse": {
             "type": "object",
             "properties": {
@@ -4812,6 +4949,20 @@
                 },
                 "serialNumber": {
                     "description": "Hex string of the serial number",
+                    "type": "string"
+                }
+            }
+        },
+        "handler.RevokedCertificateResponse": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "integer"
+                },
+                "revocationTime": {
+                    "type": "string"
+                },
+                "serialNumber": {
                     "type": "string"
                 }
             }
@@ -6333,6 +6484,25 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "http.UpdateOrganizationCRLRequest": {
+            "type": "object",
+            "required": [
+                "organizationId"
+            ],
+            "properties": {
+                "organizationId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "http.UpdateOrganizationCRLResponse": {
+            "type": "object",
+            "properties": {
+                "transactionId": {
+                    "type": "string"
                 }
             }
         },

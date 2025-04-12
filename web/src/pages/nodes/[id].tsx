@@ -1,4 +1,4 @@
-import { HttpNodeResponse, ResponseErrorResponse } from '@/api/client'
+import { HttpNodeResponse } from '@/api/client'
 import {
 	deleteNodesByIdMutation,
 	getNodesByIdEventsOptions,
@@ -9,24 +9,24 @@ import {
 	postNodesByIdStopMutation,
 } from '@/api/client/@tanstack/react-query.gen'
 import { BesuNodeConfig } from '@/components/nodes/BesuNodeConfig'
+import { FabricNodeChannels } from '@/components/nodes/FabricNodeChannels'
 import { FabricOrdererConfig } from '@/components/nodes/FabricOrdererConfig'
 import { FabricPeerConfig } from '@/components/nodes/FabricPeerConfig'
-import { FabricNodeChannels } from '@/components/nodes/FabricNodeChannels'
+import { LogViewer } from '@/components/nodes/LogViewer'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CertificateViewer } from '@/components/ui/certificate-viewer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns/format'
-import { AlertCircle, CheckCircle2, Clock, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle, KeyRound, Pencil } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, KeyRound, Pencil, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 interface DeploymentConfig {
 	type?: string
@@ -50,10 +50,6 @@ interface DeploymentConfig {
 
 function isFabricNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
 	return node.platform === 'FABRIC' && (node.fabricPeer !== undefined || node.fabricOrderer !== undefined)
-}
-
-function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse {
-	return node.platform === 'BESU' && node.besuNode !== undefined
 }
 
 function getNodeActions(status: string) {
@@ -348,22 +344,13 @@ export default function NodeDetailPage() {
 						</Button>
 					))}
 					{isFabricNode(node) && (
-						<Button
-							onClick={() => handleAction('renew-certificates')}
-							variant="outline"
-							size="sm"
-							disabled={renewCertificates.isPending}
-						>
+						<Button onClick={() => handleAction('renew-certificates')} variant="outline" size="sm" disabled={renewCertificates.isPending}>
 							<KeyRound className="mr-2 h-4 w-4" />
 							Renew Certificates
 						</Button>
 					)}
-					{node.nodeType === 'FABRIC_PEER' && (
-						<Button
-							onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)}
-							variant="outline"
-							size="sm"
-						>
+					{isFabricNode(node) && (
+						<Button onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)} variant="outline" size="sm">
 							<Pencil className="mr-2 h-4 w-4" />
 							Edit
 						</Button>
@@ -423,17 +410,7 @@ export default function NodeDetailPage() {
 							<CardDescription>Real-time node logs</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<Textarea
-								ref={logsRef}
-								value={logs}
-								readOnly
-								className="font-mono text-sm h-[400px] bg-muted"
-								style={{
-									whiteSpace: 'pre',
-									overflowWrap: 'normal',
-									overflowX: 'auto',
-								}}
-							/>
+							<LogViewer logs={logs} onScroll={() => {}} />
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -508,18 +485,14 @@ export default function NodeDetailPage() {
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="channels">
-					{isFabricNode(node) && <FabricNodeChannels nodeId={node.id!} />}
-				</TabsContent>
+				<TabsContent value="channels">{isFabricNode(node) && <FabricNodeChannels nodeId={node.id!} />}</TabsContent>
 			</Tabs>
 
 			<AlertDialog open={showRenewCertDialog} onOpenChange={setShowRenewCertDialog}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Renew Certificates</AlertDialogTitle>
-						<AlertDialogDescription>
-							Are you sure you want to renew the certificates for this node? This will generate new TLS and signing certificates.
-						</AlertDialogDescription>
+						<AlertDialogDescription>Are you sure you want to renew the certificates for this node? This will generate new TLS and signing certificates.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>

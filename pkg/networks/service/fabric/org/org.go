@@ -78,16 +78,11 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 	}
 
 	// Get signing key
-	if !org.SignKeyID.Valid {
-		return nil, fmt.Errorf("organization has no signing key")
-	}
-
-	// Get signing key
 	var privateKeyPEM string
-	if !org.SignKeyID.Valid {
+	if !org.AdminSignKeyID.Valid {
 		return nil, fmt.Errorf("organization has no admin sign key")
 	}
-	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.SignKeyID.Int64))
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
 	}
@@ -95,7 +90,7 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 		return nil, fmt.Errorf("admin sign key has no certificate")
 	}
 	// Get private key from key management service
-	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.SignKeyID.Int64))
+	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}

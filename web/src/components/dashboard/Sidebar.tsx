@@ -1,29 +1,16 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
-import {
-	BadgeCheck,
-	Bell,
-	Building,
-	ChevronsUpDown,
-	DatabaseBackup,
-	Globe,
-	Key,
-	LogOut,
-	Network,
-	Server,
-	Share2,
-	FileText
-} from 'lucide-react';
-('use client')
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
+import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, Globe, Key, LogOut, Network, Server, Share2, Settings } from 'lucide-react'
+;('use client')
 
 // import { Project } from '@/api/client'
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext'
 // import { useProjects } from '@/contexts/ProjectsContext'
-import { type LucideIcon } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import logo from '../../../public/logo.svg';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { ProBadge } from '../pro/ProBadge';
+import { type LucideIcon } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import logo from '../../../public/logo.svg'
+import { Avatar, AvatarFallback } from '../ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
+import { ProBadge } from '../pro/ProBadge'
 
 type NavItem = {
 	title: string
@@ -78,9 +65,9 @@ const data = {
 					icon: DatabaseBackup,
 				},
 				{
-					title: 'Templates',
-					url: '/settings/templates',
-					icon: FileText,
+					title: 'Settings',
+					url: '/settings/general',
+					icon: Settings,
 				},
 			],
 		},
@@ -229,7 +216,7 @@ function NavUser() {
 							</div>
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
-{/* 
+						{/* 
 						<DropdownMenuGroup>
 							<DropdownMenuItem>
 								<BadgeCheck />

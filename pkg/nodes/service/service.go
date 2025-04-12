@@ -824,17 +824,18 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeRespo
 			}
 			// Enrich with deployment config if available
 			if peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig); ok {
-				nodeResponse.FabricPeer.ExternalEndpoint = peerDeployConfig.ExternalEndpoint
-				nodeResponse.FabricPeer.ListenAddress = peerDeployConfig.ListenAddress
-				nodeResponse.FabricPeer.ChaincodeAddress = peerDeployConfig.ChaincodeAddress
-				nodeResponse.FabricPeer.EventsAddress = peerDeployConfig.EventsAddress
-				nodeResponse.FabricPeer.OperationsAddress = peerDeployConfig.OperationsListenAddress
+				nodeResponse.FabricPeer.ExternalEndpoint = config.ExternalEndpoint
+				nodeResponse.FabricPeer.ListenAddress = config.ListenAddress
+				nodeResponse.FabricPeer.ChaincodeAddress = config.ChaincodeAddress
+				nodeResponse.FabricPeer.EventsAddress = config.EventsAddress
+				nodeResponse.FabricPeer.OperationsAddress = config.OperationsListenAddress
 				nodeResponse.FabricPeer.TLSKeyID = peerDeployConfig.TLSKeyID
 				nodeResponse.FabricPeer.SignKeyID = peerDeployConfig.SignKeyID
-				nodeResponse.FabricPeer.Mode = peerDeployConfig.Mode
+				nodeResponse.FabricPeer.Mode = config.Mode
 			}
 			// Add certificate information
-			peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+			peerConfig, _ := nodeConfig.(*types.FabricPeerConfig)
+
 			peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
 			if ok && peerConfig != nil {
 				nodeResponse.FabricPeer.AddressOverrides = peerDeployConfig.AddressOverrides
@@ -884,13 +885,13 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeRespo
 			}
 			// Enrich with deployment config if available
 			if ordererDeployConfig, ok := deploymentConfig.(*types.FabricOrdererDeploymentConfig); ok {
-				nodeResponse.FabricOrderer.ExternalEndpoint = ordererDeployConfig.ExternalEndpoint
-				nodeResponse.FabricOrderer.ListenAddress = ordererDeployConfig.ListenAddress
-				nodeResponse.FabricOrderer.AdminAddress = ordererDeployConfig.AdminAddress
-				nodeResponse.FabricOrderer.OperationsAddress = ordererDeployConfig.OperationsListenAddress
+				nodeResponse.FabricOrderer.ExternalEndpoint = config.ExternalEndpoint
+				nodeResponse.FabricOrderer.ListenAddress = config.ListenAddress
+				nodeResponse.FabricOrderer.AdminAddress = config.AdminAddress
+				nodeResponse.FabricOrderer.OperationsAddress = config.OperationsListenAddress
 				nodeResponse.FabricOrderer.TLSKeyID = ordererDeployConfig.TLSKeyID
 				nodeResponse.FabricOrderer.SignKeyID = ordererDeployConfig.SignKeyID
-				nodeResponse.FabricOrderer.Mode = ordererDeployConfig.Mode
+				nodeResponse.FabricOrderer.Mode = config.Mode
 			}
 			// Add certificate information
 			ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
@@ -1741,6 +1742,81 @@ func (s *NodeService) GetNodesDefaults(params NodesDefaultsParams) (*NodesDefaul
 	return result, nil
 }
 
+func (s *NodeService) GetNodeLogPath(ctx context.Context, node *NodeResponse) (string, error) {
+	dbNode, err := s.db.GetNode(ctx, node.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(dbNode.DeploymentConfig.String)
+	if err != nil {
+		return "", fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	switch types.NodeType(dbNode.NodeType.String) {
+	case types.NodeTypeFabricPeer:
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		peerNodeConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to FabricPeerConfig")
+		}
+		s.logger.Debug("Peer config", "config", peerNodeConfig, "deploymentConfig", deploymentConfig)
+		// Get organization
+		org, err := s.orgService.GetOrganization(ctx, peerNodeConfig.OrganizationID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get organization: %w", err)
+		}
+
+		// Create peer instance
+		localPeer := s.getPeerFromConfig(dbNode, org, peerNodeConfig)
+
+		// Tail logs from peer
+		return localPeer.GetStdOutPath(), nil
+	case types.NodeTypeFabricOrderer:
+		// Convert to FabricOrdererDeploymentConfig
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		ordererNodeConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to FabricOrdererConfig")
+		}
+		s.logger.Info("Orderer config", "config", ordererNodeConfig, "deploymentConfig", deploymentConfig)
+		// Get organization
+		org, err := s.orgService.GetOrganization(ctx, ordererNodeConfig.OrganizationID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get organization: %w", err)
+		}
+		// Create orderer instance
+		localOrderer := s.getOrdererFromConfig(dbNode, org, ordererNodeConfig)
+		// Tail logs from orderer
+		return localOrderer.GetStdOutPath(), nil
+	case types.NodeTypeBesuFullnode:
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		besuNodeConfig, ok := nodeConfig.(*types.BesuNodeConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to BesuNodeConfig")
+		}
+		besuDeployConfig := deploymentConfig.ToBesuNodeConfig()
+
+		localBesu, err := s.getBesuFromConfig(ctx, dbNode, besuNodeConfig, besuDeployConfig)
+		if err != nil {
+			return "", fmt.Errorf("failed to get besu from config: %w", err)
+		}
+		return localBesu.GetStdOutPath(), nil
+	default:
+		return "", fmt.Errorf("unsupported node type for log tailing: %s", dbNode.NodeType.String)
+	}
+}
+
 // TailLogs returns a channel that receives log lines from the specified node
 func (s *NodeService) TailLogs(ctx context.Context, nodeID int64, tail int, follow bool) (<-chan string, error) {
 	// Get the node first to verify it exists
@@ -2448,23 +2524,37 @@ func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabric
 		return nil, fmt.Errorf("invalid orderer config type")
 	}
 
+	// Load deployment config
+	deployOrdererConfig := &types.FabricOrdererDeploymentConfig{}
+	if node.DeploymentConfig.Valid {
+		deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+		}
+		var ok bool
+		deployOrdererConfig, ok = deploymentConfig.(*types.FabricOrdererDeploymentConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid orderer deployment config type")
+		}
+	}
+
 	// Update configuration fields if provided
-	if opts.ExternalEndpoint != "" {
+	if opts.ExternalEndpoint != "" && opts.ExternalEndpoint != ordererConfig.ExternalEndpoint {
 		ordererConfig.ExternalEndpoint = opts.ExternalEndpoint
 	}
-	if opts.ListenAddress != "" {
+	if opts.ListenAddress != "" && opts.ListenAddress != ordererConfig.ListenAddress {
 		if err := s.validateAddress(opts.ListenAddress); err != nil {
 			return nil, fmt.Errorf("invalid listen address: %w", err)
 		}
 		ordererConfig.ListenAddress = opts.ListenAddress
 	}
-	if opts.AdminAddress != "" {
+	if opts.AdminAddress != "" && opts.AdminAddress != ordererConfig.AdminAddress {
 		if err := s.validateAddress(opts.AdminAddress); err != nil {
 			return nil, fmt.Errorf("invalid admin address: %w", err)
 		}
 		ordererConfig.AdminAddress = opts.AdminAddress
 	}
-	if opts.OperationsListenAddress != "" {
+	if opts.OperationsListenAddress != "" && opts.OperationsListenAddress != ordererConfig.OperationsListenAddress {
 		if err := s.validateAddress(opts.OperationsListenAddress); err != nil {
 			return nil, fmt.Errorf("invalid operations listen address: %w", err)
 		}
@@ -2478,18 +2568,13 @@ func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabric
 	}
 	if opts.Version != "" {
 		ordererConfig.Version = opts.Version
-	}
-	// Validate all addresses together for port conflicts
-	if err := s.validateFabricOrdererAddresses(ordererConfig); err != nil {
-		return nil, err
+		deployOrdererConfig.Version = opts.Version
 	}
 
-	// Update the config in the database
-	configBytes, err := json.Marshal(ordererConfig)
+	configBytes, err := utils.StoreNodeConfig(nodeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
+		return nil, fmt.Errorf("failed to store node config: %w", err)
 	}
-
 	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
 		ID: opts.NodeID,
 		NodeConfig: sql.NullString{
@@ -2500,6 +2585,20 @@ func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabric
 	if err != nil {
 		return nil, fmt.Errorf("failed to update node config: %w", err)
 	}
+
+	// Update the deployment config in the database
+	deploymentConfigBytes, err := json.Marshal(deployOrdererConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
+		ID: opts.NodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
 
 	// Return updated node response
 	_, nodeResponse := s.mapDBNodeToServiceNode(node)

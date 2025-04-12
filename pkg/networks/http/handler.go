@@ -62,6 +62,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/blocks", h.FabricGetBlocks)
 		r.Get("/{id}/blocks/{blockNum}/transactions", h.FabricGetBlockTransactions)
 		r.Get("/{id}/transactions/{txId}", h.FabricGetTransaction)
+		r.Post("/{id}/organization-crl", h.UpdateOrganizationCRL)
 	})
 
 	// New Besu routes
@@ -72,6 +73,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}", h.BesuNetworkGet)
 		r.Delete("/{id}", h.BesuNetworkDelete)
 	})
+
 }
 
 // @Summary List Fabric networks
@@ -1761,6 +1763,67 @@ func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
 
 	resp := TransactionResponse{
 		Transaction: transaction,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// UpdateOrganizationCRLRequest represents the request to update an organization's CRL
+type UpdateOrganizationCRLRequest struct {
+	OrganizationID int64 `json:"organizationId" validate:"required"`
+}
+
+// UpdateOrganizationCRLResponse represents the response from updating an organization's CRL
+type UpdateOrganizationCRLResponse struct {
+	TransactionID string `json:"transactionId"`
+}
+
+// @Summary Update organization CRL
+// @Description Update the Certificate Revocation List (CRL) for an organization in the network
+// @Tags fabric-networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param request body UpdateOrganizationCRLRequest true "Organization CRL update request"
+// @Success 200 {object} UpdateOrganizationCRLResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/organization-crl [post]
+func (h *Handler) UpdateOrganizationCRL(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse request body
+	var req UpdateOrganizationCRLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_failed", err.Error())
+		return
+	}
+
+	// Update CRL using network service
+	txID, err := h.networkService.UpdateOrganizationCRL(r.Context(), networkID, req.OrganizationID)
+	if err != nil {
+		if err.Error() == "organization not found" {
+			writeError(w, http.StatusNotFound, "org_not_found", "Organization not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "update_crl_failed", err.Error())
+		return
+	}
+
+	// Return response
+	resp := UpdateOrganizationCRLResponse{
+		TransactionID: txID,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

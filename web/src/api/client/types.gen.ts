@@ -65,6 +65,13 @@ export type HandlerCreateOrganizationRequest = {
     providerId?: number;
 };
 
+export type HandlerDeleteRevokedCertificateRequest = {
+    /**
+     * Hex string of the serial number
+     */
+    serialNumber?: string;
+};
+
 export type HandlerOrganizationResponse = {
     createdAt?: string;
     description?: string;
@@ -92,6 +99,12 @@ export type HandlerRevokeCertificateBySerialRequest = {
     /**
      * Hex string of the serial number
      */
+    serialNumber?: string;
+};
+
+export type HandlerRevokedCertificateResponse = {
+    reason?: number;
+    revocationTime?: string;
     serialNumber?: string;
 };
 
@@ -747,6 +760,14 @@ export type HttpUpdateOrgMspPayload = {
     msp_id: string;
     root_certs: Array<string>;
     tls_root_certs: Array<string>;
+};
+
+export type HttpUpdateOrganizationCrlRequest = {
+    organizationId: number;
+};
+
+export type HttpUpdateOrganizationCrlResponse = {
+    transactionId?: string;
 };
 
 export type HttpUpdateProviderRequest = {
@@ -3200,6 +3221,47 @@ export type PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponses = {
 
 export type PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponse = PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponses[keyof PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponses];
 
+export type PostNetworksFabricByIdOrganizationCrlData = {
+    /**
+     * Organization CRL update request
+     */
+    body: HttpUpdateOrganizationCrlRequest;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/organization-crl';
+};
+
+export type PostNetworksFabricByIdOrganizationCrlErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type PostNetworksFabricByIdOrganizationCrlError = PostNetworksFabricByIdOrganizationCrlErrors[keyof PostNetworksFabricByIdOrganizationCrlErrors];
+
+export type PostNetworksFabricByIdOrganizationCrlResponses = {
+    /**
+     * OK
+     */
+    200: HttpUpdateOrganizationCrlResponse;
+};
+
+export type PostNetworksFabricByIdOrganizationCrlResponse = PostNetworksFabricByIdOrganizationCrlResponses[keyof PostNetworksFabricByIdOrganizationCrlResponses];
+
 export type GetNetworksFabricByIdOrganizationsByOrgIdConfigData = {
     body?: never;
     path: {
@@ -4583,46 +4645,6 @@ export type GetOrganizationsByIdCrlResponses = {
 
 export type GetOrganizationsByIdCrlResponse = GetOrganizationsByIdCrlResponses[keyof GetOrganizationsByIdCrlResponses];
 
-export type PostOrganizationsByIdCrlInitializeData = {
-    body?: never;
-    path: {
-        /**
-         * Organization ID
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/organizations/{id}/crl/initialize';
-};
-
-export type PostOrganizationsByIdCrlInitializeErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostOrganizationsByIdCrlInitializeError = PostOrganizationsByIdCrlInitializeErrors[keyof PostOrganizationsByIdCrlInitializeErrors];
-
-export type PostOrganizationsByIdCrlInitializeResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: string;
-    };
-};
-
-export type PostOrganizationsByIdCrlInitializeResponse = PostOrganizationsByIdCrlInitializeResponses[keyof PostOrganizationsByIdCrlInitializeResponses];
-
 export type PostOrganizationsByIdCrlRevokePemData = {
     /**
      * Certificate revocation request
@@ -4666,6 +4688,55 @@ export type PostOrganizationsByIdCrlRevokePemResponses = {
 
 export type PostOrganizationsByIdCrlRevokePemResponse = PostOrganizationsByIdCrlRevokePemResponses[keyof PostOrganizationsByIdCrlRevokePemResponses];
 
+export type DeleteOrganizationsByIdCrlRevokeSerialData = {
+    /**
+     * Certificate deletion request
+     */
+    body: HandlerDeleteRevokedCertificateRequest;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/crl/revoke/serial';
+};
+
+export type DeleteOrganizationsByIdCrlRevokeSerialErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Not Found
+     */
+    404: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type DeleteOrganizationsByIdCrlRevokeSerialError = DeleteOrganizationsByIdCrlRevokeSerialErrors[keyof DeleteOrganizationsByIdCrlRevokeSerialErrors];
+
+export type DeleteOrganizationsByIdCrlRevokeSerialResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type DeleteOrganizationsByIdCrlRevokeSerialResponse = DeleteOrganizationsByIdCrlRevokeSerialResponses[keyof DeleteOrganizationsByIdCrlRevokeSerialResponses];
+
 export type PostOrganizationsByIdCrlRevokeSerialData = {
     /**
      * Certificate revocation request
@@ -4708,6 +4779,44 @@ export type PostOrganizationsByIdCrlRevokeSerialResponses = {
 };
 
 export type PostOrganizationsByIdCrlRevokeSerialResponse = PostOrganizationsByIdCrlRevokeSerialResponses[keyof PostOrganizationsByIdCrlRevokeSerialResponses];
+
+export type GetOrganizationsByIdRevokedCertificatesData = {
+    body?: never;
+    path: {
+        /**
+         * Organization ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/organizations/{id}/revoked-certificates';
+};
+
+export type GetOrganizationsByIdRevokedCertificatesErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetOrganizationsByIdRevokedCertificatesError = GetOrganizationsByIdRevokedCertificatesErrors[keyof GetOrganizationsByIdRevokedCertificatesErrors];
+
+export type GetOrganizationsByIdRevokedCertificatesResponses = {
+    /**
+     * OK
+     */
+    200: Array<HandlerRevokedCertificateResponse>;
+};
+
+export type GetOrganizationsByIdRevokedCertificatesResponse = GetOrganizationsByIdRevokedCertificatesResponses[keyof GetOrganizationsByIdRevokedCertificatesResponses];
 
 export type GetSettingsData = {
     body?: never;

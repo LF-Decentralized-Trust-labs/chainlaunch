@@ -854,6 +854,9 @@ func (h *NodeHandler) updateFabricOrderer(w http.ResponseWriter, r *http.Request
 	if req.Env != nil {
 		opts.Env = req.Env
 	}
+	if req.Version != nil {
+		opts.Version = *req.Version
+	}
 
 	updatedNode, err := h.service.UpdateFabricOrderer(r.Context(), opts)
 	if err != nil {

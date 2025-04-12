@@ -1114,3 +1114,41 @@ func (s *NetworkService) getFabricDeployerForNetwork(ctx context.Context, networ
 
 	return fabricDeployer, nil
 }
+
+// UpdateOrganizationCRL updates the CRL for an organization in the network
+func (s *NetworkService) UpdateOrganizationCRL(ctx context.Context, networkID, organizationID int64) (string, error) {
+	// Get network details
+	network, err := s.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get deployer
+	deployer, err := s.deployerFactory.GetDeployer(network.Platform)
+	if err != nil {
+		return "", fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return "", fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	// Update the CRL in the network
+	txID, err := fabricDeployer.UpdateOrganizationCRL(ctx, networkID, fabric.UpdateOrganizationCRLInput{
+		OrganizationID: organizationID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to update CRL: %w", err)
+	}
+
+	logrus.Info("Reloading network block after updating CRL, waiting 3 seconds")
+	time.Sleep(3 * time.Second)
+
+	// Reload network block
+	if err := s.ReloadNetworkBlock(ctx, networkID); err != nil {
+		logrus.Errorf("Failed to reload network block after updating CRL: %v", err)
+	}
+
+	return txID, nil
+}

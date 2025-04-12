@@ -72,6 +72,12 @@ definitions:
     - mspId
     - name
     type: object
+  handler.DeleteRevokedCertificateRequest:
+    properties:
+      serialNumber:
+        description: Hex string of the serial number
+        type: string
+    type: object
   handler.OrganizationResponse:
     properties:
       createdAt:
@@ -111,6 +117,15 @@ definitions:
         type: integer
       serialNumber:
         description: Hex string of the serial number
+        type: string
+    type: object
+  handler.RevokedCertificateResponse:
+    properties:
+      reason:
+        type: integer
+      revocationTime:
+        type: string
+      serialNumber:
         type: string
     type: object
   handler.UpdateOrganizationRequest:
@@ -1217,6 +1232,18 @@ definitions:
     - msp_id
     - root_certs
     - tls_root_certs
+    type: object
+  http.UpdateOrganizationCRLRequest:
+    properties:
+      organizationId:
+        type: integer
+    required:
+    - organizationId
+    type: object
+  http.UpdateOrganizationCRLResponse:
+    properties:
+      transactionId:
+        type: string
     type: object
   http.UpdateProviderRequest:
     properties:
@@ -3752,6 +3779,46 @@ paths:
       summary: Unjoin orderer from Fabric network
       tags:
       - fabric-networks
+  /networks/fabric/{id}/organization-crl:
+    post:
+      consumes:
+      - application/json
+      description: Update the Certificate Revocation List (CRL) for an organization
+        in the network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization CRL update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateOrganizationCRLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UpdateOrganizationCRLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Update organization CRL
+      tags:
+      - fabric-networks
   /networks/fabric/{id}/organizations/{orgId}/config:
     get:
       description: Get the network configuration as YAML
@@ -5042,41 +5109,6 @@ paths:
       summary: Get organization's CRL
       tags:
       - organizations
-  /organizations/{id}/crl/initialize:
-    post:
-      consumes:
-      - application/json
-      description: Initialize a new Certificate Revocation List for the organization
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Initialize CRL for an organization
-      tags:
-      - organizations
   /organizations/{id}/crl/revoke/pem:
     post:
       consumes:
@@ -5120,6 +5152,53 @@ paths:
       tags:
       - organizations
   /organizations/{id}/crl/revoke/serial:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a certificate from the organization's CRL using its serial
+        number
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate deletion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DeleteRevokedCertificateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a revoked certificate using its serial number
+      tags:
+      - organizations
     post:
       consumes:
       - application/json
@@ -5158,6 +5237,41 @@ paths:
               type: string
             type: object
       summary: Revoke a certificate using its serial number
+      tags:
+      - organizations
+  /organizations/{id}/revoked-certificates:
+    get:
+      consumes:
+      - application/json
+      description: Get all revoked certificates for the organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handler.RevokedCertificateResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get organization's revoked certificates
       tags:
       - organizations
   /organizations/by-mspid/{mspid}:

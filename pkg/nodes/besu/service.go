@@ -251,6 +251,10 @@ func (b *LocalBesu) startSystemdService() error {
 	return b.execSystemctl("restart", b.getServiceName())
 }
 
+func (b *LocalBesu) GetStdOutPath() string {
+	return filepath.Join(b.configService.GetDataPath(), "besu", strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-"), b.getServiceName()+".log")
+}
+
 // startLaunchdService starts the launchd service
 func (b *LocalBesu) startLaunchdService() error {
 	cmd := exec.Command("launchctl", "load", b.getLaunchdPlistPath())

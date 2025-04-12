@@ -393,6 +393,11 @@ func (b *LocalBesu) installBesuMacOS() error {
 	return nil
 }
 
+
+func (b *LocalBesu) getLogPath() string {
+	return b.GetStdOutPath()
+}
+
 // TailLogs tails the logs of the besu service
 func (b *LocalBesu) TailLogs(ctx context.Context, tail int, follow bool) (<-chan string, error) {
 	logChan := make(chan string, 100)

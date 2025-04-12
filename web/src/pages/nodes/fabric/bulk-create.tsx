@@ -138,7 +138,7 @@ export default function BulkCreateNodesPage() {
 				name,
 				fabricProperties: {
 					nodeType: 'FABRIC_PEER',
-					version: '2.5.12',
+					version: '3.1.0',
 					mode: 'service',
 					organizationId: selectedOrg?.id!,
 					listenAddress: peer.listenAddress || '',
@@ -158,7 +158,7 @@ export default function BulkCreateNodesPage() {
 				fabricProperties: {
 					nodeType: 'FABRIC_ORDERER',
 					mode: 'service',
-					version: '2.5.12',
+					version: '3.1.0',
 					organizationId: selectedOrg?.id!,
 					listenAddress: orderer.listenAddress || '',
 					operationsListenAddress: orderer.operationsListenAddress || '',

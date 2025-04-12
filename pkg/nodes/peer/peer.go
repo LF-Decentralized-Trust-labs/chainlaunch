@@ -834,7 +834,7 @@ func (p *LocalPeer) getServiceName() string {
 
 // getLaunchdServiceName returns the launchd service name
 func (p *LocalPeer) getLaunchdServiceName() string {
-	return fmt.Sprintf("ai.chainlaunch.peer.%s.%s",
+	return fmt.Sprintf("dev.chainlaunch.peer.%s.%s",
 		strings.ToLower(p.org.MspID),
 		strings.ReplaceAll(strings.ToLower(p.opts.ID), " ", "-"))
 }
@@ -1982,6 +1982,10 @@ func (p *LocalPeer) writeConfigFiles(mspConfigPath, dataConfigPath string) error
 	}
 
 	return nil
+}
+
+func (p *LocalPeer) getLogPath() string {
+	return p.GetStdOutPath()
 }
 
 // TailLogs tails the logs of the peer service

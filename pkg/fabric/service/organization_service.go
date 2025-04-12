@@ -57,6 +57,13 @@ type UpdateOrganizationParams struct {
 	Description *string
 }
 
+// RevokedCertificateDTO represents a revoked certificate
+type RevokedCertificateDTO struct {
+	SerialNumber   string    `json:"serialNumber"`
+	RevocationTime time.Time `json:"revocationTime"`
+	Reason         int64     `json:"reason"`
+}
+
 type OrganizationService struct {
 	queries       *db.Queries
 	keyManagement *keymanagement.KeyManagementService
@@ -439,81 +446,6 @@ func (s *OrganizationService) ListOrganizations(ctx context.Context) ([]Organiza
 	return dtos, nil
 }
 
-// InitializeCRL initializes a new CRL for the organization
-func (s *OrganizationService) InitializeCRL(ctx context.Context, orgID int64) error {
-	// Get organization details
-	org, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("organization not found")
-		}
-		return fmt.Errorf("failed to get organization: %w", err)
-	}
-
-	if !org.SignKeyID.Valid {
-		return fmt.Errorf("organization has no admin sign key")
-	}
-
-	// Update the CRL timestamps in the organization
-	now := time.Now()
-
-	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
-		ID:            orgID,
-		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
-		CrlKeyID:      org.SignKeyID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to initialize CRL: %w", err)
-	}
-
-	return nil
-}
-
-// RevokeCertificate adds a certificate to the organization's CRL
-func (s *OrganizationService) RevokeCertificate(ctx context.Context, orgID int64, serialNumber *big.Int, reason int) error {
-	// Get organization details
-	org, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("organization not found")
-		}
-		return fmt.Errorf("failed to get organization: %w", err)
-	}
-
-	if !org.SignKeyID.Valid {
-		return fmt.Errorf("organization has no admin sign key")
-	}
-
-	// Add the certificate to the database
-	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
-		FabricOrganizationID: orgID,
-		SerialNumber:         serialNumber.Text(16), // Store as hex string
-		RevocationTime:       time.Now(),
-		Reason:               int64(reason),
-		IssuerCertificateID: sql.NullInt64{
-			Int64: org.SignKeyID.Int64,
-			Valid: true,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to add revoked certificate: %w", err)
-	}
-
-	// Update the CRL timestamps
-	now := time.Now()
-
-	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
-		ID:            orgID,
-		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
-		CrlKeyID:      org.AdminSignKeyID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update CRL timestamps: %w", err)
-	}
-
-	return nil
-}
-
 // GetCRL returns the current CRL for the organization in PEM format
 func (s *OrganizationService) GetCRL(ctx context.Context, orgID int64) ([]byte, error) {
 	// Get organization details
@@ -602,4 +534,118 @@ func (s *OrganizationService) GetCRL(ctx context.Context, orgID int64) ([]byte, 
 	}
 
 	return pem.EncodeToMemory(pemBlock), nil
+}
+
+// GetRevokedCertificates returns all revoked certificates for an organization
+func (s *OrganizationService) GetRevokedCertificates(ctx context.Context, orgID int64) ([]RevokedCertificateDTO, error) {
+	// Get organization details to verify it exists
+	_, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("organization not found")
+		}
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get all revoked certificates for this organization
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get revoked certificates: %w", err)
+	}
+
+	// Convert to DTOs
+	dtos := make([]RevokedCertificateDTO, len(revokedCerts))
+	for i, cert := range revokedCerts {
+		dtos[i] = RevokedCertificateDTO{
+			SerialNumber:   cert.SerialNumber,
+			RevocationTime: cert.RevocationTime,
+			Reason:         cert.Reason,
+		}
+	}
+
+	return dtos, nil
+}
+
+// RevokeCertificate adds a certificate to the organization's CRL
+func (s *OrganizationService) RevokeCertificate(ctx context.Context, orgID int64, serialNumber *big.Int, reason int) error {
+	// Get organization details
+	org, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("organization not found")
+		}
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Check if certificate is already revoked
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to check revoked certificates: %w", err)
+	}
+
+	serialNumberHex := serialNumber.Text(16)
+	for _, cert := range revokedCerts {
+		if cert.SerialNumber == serialNumberHex {
+			return fmt.Errorf("certificate with serial number %s is already revoked", serialNumberHex)
+		}
+	}
+
+	// Check if CRL is initialized (has last update time)
+	if !org.CrlLastUpdate.Valid {
+		// Initialize CRL timestamps
+		now := time.Now()
+		err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+			ID:            orgID,
+			CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+			CrlKeyID:      org.SignKeyID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize CRL: %w", err)
+		}
+	}
+
+	// Add the certificate to the database
+	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
+		FabricOrganizationID: orgID,
+		SerialNumber:         serialNumberHex, // Store as hex string
+		RevocationTime:       time.Now(),
+		Reason:               int64(reason),
+		IssuerCertificateID: sql.NullInt64{
+			Int64: org.SignKeyID.Int64,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add revoked certificate: %w", err)
+	}
+
+	// Update the CRL timestamps
+	now := time.Now()
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+		ID:            orgID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.AdminSignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update CRL timestamps: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRevokedCertificate removes a certificate from the organization's revocation list
+func (s *OrganizationService) DeleteRevokedCertificate(ctx context.Context, orgID int64, serialNumber string) error {
+	err := s.queries.DeleteRevokedCertificate(ctx, &db.DeleteRevokedCertificateParams{
+		FabricOrganizationID: orgID,
+		SerialNumber:         serialNumber,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

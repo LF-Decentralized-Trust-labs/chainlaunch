@@ -2,8 +2,8 @@
 
 import type { Options } from '@hey-api/client-fetch';
 import { queryOptions, type UseMutationOptions, type DefaultError, infiniteQueryOptions, type InfiniteData } from '@tanstack/react-query';
-import type { PostAuthLoginData, PostAuthLoginError, PostAuthLoginResponse, PostAuthLogoutData, PostAuthLogoutError, PostAuthLogoutResponse, GetAuthMeData, GetBackupsData, PostBackupsData, PostBackupsError, PostBackupsResponse, GetBackupsSchedulesData, PostBackupsSchedulesData, PostBackupsSchedulesError, PostBackupsSchedulesResponse, DeleteBackupsSchedulesByIdData, DeleteBackupsSchedulesByIdError, GetBackupsSchedulesByIdData, PutBackupsSchedulesByIdData, PutBackupsSchedulesByIdError, PutBackupsSchedulesByIdResponse, PutBackupsSchedulesByIdDisableData, PutBackupsSchedulesByIdDisableError, PutBackupsSchedulesByIdDisableResponse, PutBackupsSchedulesByIdEnableData, PutBackupsSchedulesByIdEnableError, PutBackupsSchedulesByIdEnableResponse, GetBackupsTargetsData, PostBackupsTargetsData, PostBackupsTargetsError, PostBackupsTargetsResponse, DeleteBackupsTargetsByIdData, DeleteBackupsTargetsByIdError, GetBackupsTargetsByIdData, PutBackupsTargetsByIdData, PutBackupsTargetsByIdError, PutBackupsTargetsByIdResponse, DeleteBackupsByIdData, DeleteBackupsByIdError, GetBackupsByIdData, PostDummyData, PostDummyResponse, GetKeyProvidersData, PostKeyProvidersData, PostKeyProvidersError, PostKeyProvidersResponse, DeleteKeyProvidersByIdData, DeleteKeyProvidersByIdError, GetKeyProvidersByIdData, GetKeysData, GetKeysError, GetKeysResponse, PostKeysData, PostKeysError, PostKeysResponse, GetKeysAllData, GetKeysFilterData, GetKeysFilterError, GetKeysFilterResponse, DeleteKeysByIdData, DeleteKeysByIdError, GetKeysByIdData, PostKeysByKeyIdSignData, PostKeysByKeyIdSignError, PostKeysByKeyIdSignResponse, GetNetworksBesuData, GetNetworksBesuError, GetNetworksBesuResponse, PostNetworksBesuData, PostNetworksBesuError, PostNetworksBesuResponse, PostNetworksBesuImportData, PostNetworksBesuImportError, PostNetworksBesuImportResponse, DeleteNetworksBesuByIdData, DeleteNetworksBesuByIdError, GetNetworksBesuByIdData, GetNetworksFabricData, GetNetworksFabricError, GetNetworksFabricResponse, PostNetworksFabricData, PostNetworksFabricError, PostNetworksFabricResponse, GetNetworksFabricByNameByNameData, PostNetworksFabricImportData, PostNetworksFabricImportError, PostNetworksFabricImportResponse, PostNetworksFabricImportWithOrgData, PostNetworksFabricImportWithOrgError, PostNetworksFabricImportWithOrgResponse, DeleteNetworksFabricByIdData, DeleteNetworksFabricByIdError, GetNetworksFabricByIdData, PostNetworksFabricByIdAnchorPeersData, PostNetworksFabricByIdAnchorPeersError, PostNetworksFabricByIdAnchorPeersResponse, GetNetworksFabricByIdBlocksData, GetNetworksFabricByIdBlocksError, GetNetworksFabricByIdBlocksResponse, GetNetworksFabricByIdBlocksByBlockNumTransactionsData, GetNetworksFabricByIdChannelConfigData, GetNetworksFabricByIdCurrentChannelConfigData, GetNetworksFabricByIdNodesData, PostNetworksFabricByIdNodesData, PostNetworksFabricByIdNodesError, PostNetworksFabricByIdNodesResponse, DeleteNetworksFabricByIdOrderersByOrdererIdData, DeleteNetworksFabricByIdOrderersByOrdererIdError, DeleteNetworksFabricByIdOrderersByOrdererIdResponse, PostNetworksFabricByIdOrderersByOrdererIdJoinData, PostNetworksFabricByIdOrderersByOrdererIdJoinError, PostNetworksFabricByIdOrderersByOrdererIdJoinResponse, PostNetworksFabricByIdOrderersByOrdererIdUnjoinData, PostNetworksFabricByIdOrderersByOrdererIdUnjoinError, PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponse, GetNetworksFabricByIdOrganizationsByOrgIdConfigData, DeleteNetworksFabricByIdPeersByPeerIdData, DeleteNetworksFabricByIdPeersByPeerIdError, DeleteNetworksFabricByIdPeersByPeerIdResponse, PostNetworksFabricByIdPeersByPeerIdJoinData, PostNetworksFabricByIdPeersByPeerIdJoinError, PostNetworksFabricByIdPeersByPeerIdJoinResponse, PostNetworksFabricByIdPeersByPeerIdUnjoinData, PostNetworksFabricByIdPeersByPeerIdUnjoinError, PostNetworksFabricByIdPeersByPeerIdUnjoinResponse, PostNetworksFabricByIdReloadBlockData, PostNetworksFabricByIdReloadBlockError, PostNetworksFabricByIdReloadBlockResponse, GetNetworksFabricByIdTransactionsByTxIdData, PostNetworksFabricByIdUpdateConfigData, PostNetworksFabricByIdUpdateConfigError, PostNetworksFabricByIdUpdateConfigResponse, GetNodesData, GetNodesError, GetNodesResponse, PostNodesData, PostNodesError, PostNodesResponse, GetNodesDefaultsBesuNodeData, GetNodesDefaultsFabricData, GetNodesDefaultsFabricOrdererData, GetNodesDefaultsFabricPeerData, GetNodesPlatformByPlatformData, GetNodesPlatformByPlatformError, GetNodesPlatformByPlatformResponse, DeleteNodesByIdData, DeleteNodesByIdError, GetNodesByIdData, PutNodesByIdData, PutNodesByIdError, PutNodesByIdResponse, PostNodesByIdCertificatesRenewData, PostNodesByIdCertificatesRenewError, PostNodesByIdCertificatesRenewResponse, GetNodesByIdChannelsData, GetNodesByIdEventsData, GetNodesByIdEventsError, GetNodesByIdEventsResponse, GetNodesByIdLogsData, PostNodesByIdRestartData, PostNodesByIdRestartError, PostNodesByIdRestartResponse, PostNodesByIdStartData, PostNodesByIdStartError, PostNodesByIdStartResponse, PostNodesByIdStopData, PostNodesByIdStopError, PostNodesByIdStopResponse, GetNotificationsProvidersData, PostNotificationsProvidersData, PostNotificationsProvidersError, PostNotificationsProvidersResponse, DeleteNotificationsProvidersByIdData, DeleteNotificationsProvidersByIdError, GetNotificationsProvidersByIdData, PutNotificationsProvidersByIdData, PutNotificationsProvidersByIdError, PutNotificationsProvidersByIdResponse, PostNotificationsProvidersByIdTestData, PostNotificationsProvidersByIdTestError, PostNotificationsProvidersByIdTestResponse, GetOrganizationsData, PostOrganizationsData, PostOrganizationsError, PostOrganizationsResponse, GetOrganizationsByMspidByMspidData, DeleteOrganizationsByIdData, DeleteOrganizationsByIdError, GetOrganizationsByIdData, PutOrganizationsByIdData, PutOrganizationsByIdError, PutOrganizationsByIdResponse, GetOrganizationsByIdCrlData, PostOrganizationsByIdCrlInitializeData, PostOrganizationsByIdCrlInitializeError, PostOrganizationsByIdCrlInitializeResponse, PostOrganizationsByIdCrlRevokePemData, PostOrganizationsByIdCrlRevokePemError, PostOrganizationsByIdCrlRevokePemResponse, PostOrganizationsByIdCrlRevokeSerialData, PostOrganizationsByIdCrlRevokeSerialError, PostOrganizationsByIdCrlRevokeSerialResponse, GetSettingsData, PostSettingsData, PostSettingsResponse } from '../types.gen';
-import { postAuthLogin, postAuthLogout, getAuthMe, getBackups, postBackups, getBackupsSchedules, postBackupsSchedules, deleteBackupsSchedulesById, getBackupsSchedulesById, putBackupsSchedulesById, putBackupsSchedulesByIdDisable, putBackupsSchedulesByIdEnable, getBackupsTargets, postBackupsTargets, deleteBackupsTargetsById, getBackupsTargetsById, putBackupsTargetsById, deleteBackupsById, getBackupsById, postDummy, getKeyProviders, postKeyProviders, deleteKeyProvidersById, getKeyProvidersById, getKeys, postKeys, getKeysAll, getKeysFilter, deleteKeysById, getKeysById, postKeysByKeyIdSign, getNetworksBesu, postNetworksBesu, postNetworksBesuImport, deleteNetworksBesuById, getNetworksBesuById, getNetworksFabric, postNetworksFabric, getNetworksFabricByNameByName, postNetworksFabricImport, postNetworksFabricImportWithOrg, deleteNetworksFabricById, getNetworksFabricById, postNetworksFabricByIdAnchorPeers, getNetworksFabricByIdBlocks, getNetworksFabricByIdBlocksByBlockNumTransactions, getNetworksFabricByIdChannelConfig, getNetworksFabricByIdCurrentChannelConfig, getNetworksFabricByIdNodes, postNetworksFabricByIdNodes, deleteNetworksFabricByIdOrderersByOrdererId, postNetworksFabricByIdOrderersByOrdererIdJoin, postNetworksFabricByIdOrderersByOrdererIdUnjoin, getNetworksFabricByIdOrganizationsByOrgIdConfig, deleteNetworksFabricByIdPeersByPeerId, postNetworksFabricByIdPeersByPeerIdJoin, postNetworksFabricByIdPeersByPeerIdUnjoin, postNetworksFabricByIdReloadBlock, getNetworksFabricByIdTransactionsByTxId, postNetworksFabricByIdUpdateConfig, getNodes, postNodes, getNodesDefaultsBesuNode, getNodesDefaultsFabric, getNodesDefaultsFabricOrderer, getNodesDefaultsFabricPeer, getNodesPlatformByPlatform, deleteNodesById, getNodesById, putNodesById, postNodesByIdCertificatesRenew, getNodesByIdChannels, getNodesByIdEvents, getNodesByIdLogs, postNodesByIdRestart, postNodesByIdStart, postNodesByIdStop, getNotificationsProviders, postNotificationsProviders, deleteNotificationsProvidersById, getNotificationsProvidersById, putNotificationsProvidersById, postNotificationsProvidersByIdTest, getOrganizations, postOrganizations, getOrganizationsByMspidByMspid, deleteOrganizationsById, getOrganizationsById, putOrganizationsById, getOrganizationsByIdCrl, postOrganizationsByIdCrlInitialize, postOrganizationsByIdCrlRevokePem, postOrganizationsByIdCrlRevokeSerial, getSettings, postSettings, client } from '../sdk.gen';
+import type { PostAuthLoginData, PostAuthLoginError, PostAuthLoginResponse, PostAuthLogoutData, PostAuthLogoutError, PostAuthLogoutResponse, GetAuthMeData, GetBackupsData, PostBackupsData, PostBackupsError, PostBackupsResponse, GetBackupsSchedulesData, PostBackupsSchedulesData, PostBackupsSchedulesError, PostBackupsSchedulesResponse, DeleteBackupsSchedulesByIdData, DeleteBackupsSchedulesByIdError, GetBackupsSchedulesByIdData, PutBackupsSchedulesByIdData, PutBackupsSchedulesByIdError, PutBackupsSchedulesByIdResponse, PutBackupsSchedulesByIdDisableData, PutBackupsSchedulesByIdDisableError, PutBackupsSchedulesByIdDisableResponse, PutBackupsSchedulesByIdEnableData, PutBackupsSchedulesByIdEnableError, PutBackupsSchedulesByIdEnableResponse, GetBackupsTargetsData, PostBackupsTargetsData, PostBackupsTargetsError, PostBackupsTargetsResponse, DeleteBackupsTargetsByIdData, DeleteBackupsTargetsByIdError, GetBackupsTargetsByIdData, PutBackupsTargetsByIdData, PutBackupsTargetsByIdError, PutBackupsTargetsByIdResponse, DeleteBackupsByIdData, DeleteBackupsByIdError, GetBackupsByIdData, PostDummyData, PostDummyResponse, GetKeyProvidersData, PostKeyProvidersData, PostKeyProvidersError, PostKeyProvidersResponse, DeleteKeyProvidersByIdData, DeleteKeyProvidersByIdError, GetKeyProvidersByIdData, GetKeysData, GetKeysError, GetKeysResponse, PostKeysData, PostKeysError, PostKeysResponse, GetKeysAllData, GetKeysFilterData, GetKeysFilterError, GetKeysFilterResponse, DeleteKeysByIdData, DeleteKeysByIdError, GetKeysByIdData, PostKeysByKeyIdSignData, PostKeysByKeyIdSignError, PostKeysByKeyIdSignResponse, GetNetworksBesuData, GetNetworksBesuError, GetNetworksBesuResponse, PostNetworksBesuData, PostNetworksBesuError, PostNetworksBesuResponse, PostNetworksBesuImportData, PostNetworksBesuImportError, PostNetworksBesuImportResponse, DeleteNetworksBesuByIdData, DeleteNetworksBesuByIdError, GetNetworksBesuByIdData, GetNetworksFabricData, GetNetworksFabricError, GetNetworksFabricResponse, PostNetworksFabricData, PostNetworksFabricError, PostNetworksFabricResponse, GetNetworksFabricByNameByNameData, PostNetworksFabricImportData, PostNetworksFabricImportError, PostNetworksFabricImportResponse, PostNetworksFabricImportWithOrgData, PostNetworksFabricImportWithOrgError, PostNetworksFabricImportWithOrgResponse, DeleteNetworksFabricByIdData, DeleteNetworksFabricByIdError, GetNetworksFabricByIdData, PostNetworksFabricByIdAnchorPeersData, PostNetworksFabricByIdAnchorPeersError, PostNetworksFabricByIdAnchorPeersResponse, GetNetworksFabricByIdBlocksData, GetNetworksFabricByIdBlocksError, GetNetworksFabricByIdBlocksResponse, GetNetworksFabricByIdBlocksByBlockNumTransactionsData, GetNetworksFabricByIdChannelConfigData, GetNetworksFabricByIdCurrentChannelConfigData, GetNetworksFabricByIdNodesData, PostNetworksFabricByIdNodesData, PostNetworksFabricByIdNodesError, PostNetworksFabricByIdNodesResponse, DeleteNetworksFabricByIdOrderersByOrdererIdData, DeleteNetworksFabricByIdOrderersByOrdererIdError, DeleteNetworksFabricByIdOrderersByOrdererIdResponse, PostNetworksFabricByIdOrderersByOrdererIdJoinData, PostNetworksFabricByIdOrderersByOrdererIdJoinError, PostNetworksFabricByIdOrderersByOrdererIdJoinResponse, PostNetworksFabricByIdOrderersByOrdererIdUnjoinData, PostNetworksFabricByIdOrderersByOrdererIdUnjoinError, PostNetworksFabricByIdOrderersByOrdererIdUnjoinResponse, PostNetworksFabricByIdOrganizationCrlData, PostNetworksFabricByIdOrganizationCrlError, PostNetworksFabricByIdOrganizationCrlResponse, GetNetworksFabricByIdOrganizationsByOrgIdConfigData, DeleteNetworksFabricByIdPeersByPeerIdData, DeleteNetworksFabricByIdPeersByPeerIdError, DeleteNetworksFabricByIdPeersByPeerIdResponse, PostNetworksFabricByIdPeersByPeerIdJoinData, PostNetworksFabricByIdPeersByPeerIdJoinError, PostNetworksFabricByIdPeersByPeerIdJoinResponse, PostNetworksFabricByIdPeersByPeerIdUnjoinData, PostNetworksFabricByIdPeersByPeerIdUnjoinError, PostNetworksFabricByIdPeersByPeerIdUnjoinResponse, PostNetworksFabricByIdReloadBlockData, PostNetworksFabricByIdReloadBlockError, PostNetworksFabricByIdReloadBlockResponse, GetNetworksFabricByIdTransactionsByTxIdData, PostNetworksFabricByIdUpdateConfigData, PostNetworksFabricByIdUpdateConfigError, PostNetworksFabricByIdUpdateConfigResponse, GetNodesData, GetNodesError, GetNodesResponse, PostNodesData, PostNodesError, PostNodesResponse, GetNodesDefaultsBesuNodeData, GetNodesDefaultsFabricData, GetNodesDefaultsFabricOrdererData, GetNodesDefaultsFabricPeerData, GetNodesPlatformByPlatformData, GetNodesPlatformByPlatformError, GetNodesPlatformByPlatformResponse, DeleteNodesByIdData, DeleteNodesByIdError, GetNodesByIdData, PutNodesByIdData, PutNodesByIdError, PutNodesByIdResponse, PostNodesByIdCertificatesRenewData, PostNodesByIdCertificatesRenewError, PostNodesByIdCertificatesRenewResponse, GetNodesByIdChannelsData, GetNodesByIdEventsData, GetNodesByIdEventsError, GetNodesByIdEventsResponse, GetNodesByIdLogsData, PostNodesByIdRestartData, PostNodesByIdRestartError, PostNodesByIdRestartResponse, PostNodesByIdStartData, PostNodesByIdStartError, PostNodesByIdStartResponse, PostNodesByIdStopData, PostNodesByIdStopError, PostNodesByIdStopResponse, GetNotificationsProvidersData, PostNotificationsProvidersData, PostNotificationsProvidersError, PostNotificationsProvidersResponse, DeleteNotificationsProvidersByIdData, DeleteNotificationsProvidersByIdError, GetNotificationsProvidersByIdData, PutNotificationsProvidersByIdData, PutNotificationsProvidersByIdError, PutNotificationsProvidersByIdResponse, PostNotificationsProvidersByIdTestData, PostNotificationsProvidersByIdTestError, PostNotificationsProvidersByIdTestResponse, GetOrganizationsData, PostOrganizationsData, PostOrganizationsError, PostOrganizationsResponse, GetOrganizationsByMspidByMspidData, DeleteOrganizationsByIdData, DeleteOrganizationsByIdError, GetOrganizationsByIdData, PutOrganizationsByIdData, PutOrganizationsByIdError, PutOrganizationsByIdResponse, GetOrganizationsByIdCrlData, PostOrganizationsByIdCrlRevokePemData, PostOrganizationsByIdCrlRevokePemError, PostOrganizationsByIdCrlRevokePemResponse, DeleteOrganizationsByIdCrlRevokeSerialData, DeleteOrganizationsByIdCrlRevokeSerialError, DeleteOrganizationsByIdCrlRevokeSerialResponse, PostOrganizationsByIdCrlRevokeSerialData, PostOrganizationsByIdCrlRevokeSerialError, PostOrganizationsByIdCrlRevokeSerialResponse, GetOrganizationsByIdRevokedCertificatesData, GetSettingsData, PostSettingsData, PostSettingsResponse } from '../types.gen';
+import { postAuthLogin, postAuthLogout, getAuthMe, getBackups, postBackups, getBackupsSchedules, postBackupsSchedules, deleteBackupsSchedulesById, getBackupsSchedulesById, putBackupsSchedulesById, putBackupsSchedulesByIdDisable, putBackupsSchedulesByIdEnable, getBackupsTargets, postBackupsTargets, deleteBackupsTargetsById, getBackupsTargetsById, putBackupsTargetsById, deleteBackupsById, getBackupsById, postDummy, getKeyProviders, postKeyProviders, deleteKeyProvidersById, getKeyProvidersById, getKeys, postKeys, getKeysAll, getKeysFilter, deleteKeysById, getKeysById, postKeysByKeyIdSign, getNetworksBesu, postNetworksBesu, postNetworksBesuImport, deleteNetworksBesuById, getNetworksBesuById, getNetworksFabric, postNetworksFabric, getNetworksFabricByNameByName, postNetworksFabricImport, postNetworksFabricImportWithOrg, deleteNetworksFabricById, getNetworksFabricById, postNetworksFabricByIdAnchorPeers, getNetworksFabricByIdBlocks, getNetworksFabricByIdBlocksByBlockNumTransactions, getNetworksFabricByIdChannelConfig, getNetworksFabricByIdCurrentChannelConfig, getNetworksFabricByIdNodes, postNetworksFabricByIdNodes, deleteNetworksFabricByIdOrderersByOrdererId, postNetworksFabricByIdOrderersByOrdererIdJoin, postNetworksFabricByIdOrderersByOrdererIdUnjoin, postNetworksFabricByIdOrganizationCrl, getNetworksFabricByIdOrganizationsByOrgIdConfig, deleteNetworksFabricByIdPeersByPeerId, postNetworksFabricByIdPeersByPeerIdJoin, postNetworksFabricByIdPeersByPeerIdUnjoin, postNetworksFabricByIdReloadBlock, getNetworksFabricByIdTransactionsByTxId, postNetworksFabricByIdUpdateConfig, getNodes, postNodes, getNodesDefaultsBesuNode, getNodesDefaultsFabric, getNodesDefaultsFabricOrderer, getNodesDefaultsFabricPeer, getNodesPlatformByPlatform, deleteNodesById, getNodesById, putNodesById, postNodesByIdCertificatesRenew, getNodesByIdChannels, getNodesByIdEvents, getNodesByIdLogs, postNodesByIdRestart, postNodesByIdStart, postNodesByIdStop, getNotificationsProviders, postNotificationsProviders, deleteNotificationsProvidersById, getNotificationsProvidersById, putNotificationsProvidersById, postNotificationsProvidersByIdTest, getOrganizations, postOrganizations, getOrganizationsByMspidByMspid, deleteOrganizationsById, getOrganizationsById, putOrganizationsById, getOrganizationsByIdCrl, postOrganizationsByIdCrlRevokePem, deleteOrganizationsByIdCrlRevokeSerial, postOrganizationsByIdCrlRevokeSerial, getOrganizationsByIdRevokedCertificates, getSettings, postSettings, client } from '../sdk.gen';
 
 type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -1400,6 +1400,39 @@ export const postNetworksFabricByIdOrderersByOrdererIdUnjoinMutation = (options?
     return mutationOptions;
 };
 
+export const postNetworksFabricByIdOrganizationCrlQueryKey = (options: Options<PostNetworksFabricByIdOrganizationCrlData>) => [
+    createQueryKey('postNetworksFabricByIdOrganizationCrl', options)
+];
+
+export const postNetworksFabricByIdOrganizationCrlOptions = (options: Options<PostNetworksFabricByIdOrganizationCrlData>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await postNetworksFabricByIdOrganizationCrl({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: postNetworksFabricByIdOrganizationCrlQueryKey(options)
+    });
+};
+
+export const postNetworksFabricByIdOrganizationCrlMutation = (options?: Partial<Options<PostNetworksFabricByIdOrganizationCrlData>>) => {
+    const mutationOptions: UseMutationOptions<PostNetworksFabricByIdOrganizationCrlResponse, PostNetworksFabricByIdOrganizationCrlError, Options<PostNetworksFabricByIdOrganizationCrlData>> = {
+        mutationFn: async (localOptions) => {
+            const { data } = await postNetworksFabricByIdOrganizationCrl({
+                ...options,
+                ...localOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const getNetworksFabricByIdOrganizationsByOrgIdConfigQueryKey = (options: Options<GetNetworksFabricByIdOrganizationsByOrgIdConfigData>) => [
     createQueryKey('getNetworksFabricByIdOrganizationsByOrgIdConfig', options)
 ];
@@ -2320,39 +2353,6 @@ export const getOrganizationsByIdCrlOptions = (options: Options<GetOrganizations
     });
 };
 
-export const postOrganizationsByIdCrlInitializeQueryKey = (options: Options<PostOrganizationsByIdCrlInitializeData>) => [
-    createQueryKey('postOrganizationsByIdCrlInitialize', options)
-];
-
-export const postOrganizationsByIdCrlInitializeOptions = (options: Options<PostOrganizationsByIdCrlInitializeData>) => {
-    return queryOptions({
-        queryFn: async ({ queryKey, signal }) => {
-            const { data } = await postOrganizationsByIdCrlInitialize({
-                ...options,
-                ...queryKey[0],
-                signal,
-                throwOnError: true
-            });
-            return data;
-        },
-        queryKey: postOrganizationsByIdCrlInitializeQueryKey(options)
-    });
-};
-
-export const postOrganizationsByIdCrlInitializeMutation = (options?: Partial<Options<PostOrganizationsByIdCrlInitializeData>>) => {
-    const mutationOptions: UseMutationOptions<PostOrganizationsByIdCrlInitializeResponse, PostOrganizationsByIdCrlInitializeError, Options<PostOrganizationsByIdCrlInitializeData>> = {
-        mutationFn: async (localOptions) => {
-            const { data } = await postOrganizationsByIdCrlInitialize({
-                ...options,
-                ...localOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
 export const postOrganizationsByIdCrlRevokePemQueryKey = (options: Options<PostOrganizationsByIdCrlRevokePemData>) => [
     createQueryKey('postOrganizationsByIdCrlRevokePem', options)
 ];
@@ -2376,6 +2376,20 @@ export const postOrganizationsByIdCrlRevokePemMutation = (options?: Partial<Opti
     const mutationOptions: UseMutationOptions<PostOrganizationsByIdCrlRevokePemResponse, PostOrganizationsByIdCrlRevokePemError, Options<PostOrganizationsByIdCrlRevokePemData>> = {
         mutationFn: async (localOptions) => {
             const { data } = await postOrganizationsByIdCrlRevokePem({
+                ...options,
+                ...localOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const deleteOrganizationsByIdCrlRevokeSerialMutation = (options?: Partial<Options<DeleteOrganizationsByIdCrlRevokeSerialData>>) => {
+    const mutationOptions: UseMutationOptions<DeleteOrganizationsByIdCrlRevokeSerialResponse, DeleteOrganizationsByIdCrlRevokeSerialError, Options<DeleteOrganizationsByIdCrlRevokeSerialData>> = {
+        mutationFn: async (localOptions) => {
+            const { data } = await deleteOrganizationsByIdCrlRevokeSerial({
                 ...options,
                 ...localOptions,
                 throwOnError: true
@@ -2417,6 +2431,25 @@ export const postOrganizationsByIdCrlRevokeSerialMutation = (options?: Partial<O
         }
     };
     return mutationOptions;
+};
+
+export const getOrganizationsByIdRevokedCertificatesQueryKey = (options: Options<GetOrganizationsByIdRevokedCertificatesData>) => [
+    createQueryKey('getOrganizationsByIdRevokedCertificates', options)
+];
+
+export const getOrganizationsByIdRevokedCertificatesOptions = (options: Options<GetOrganizationsByIdRevokedCertificatesData>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getOrganizationsByIdRevokedCertificates({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: getOrganizationsByIdRevokedCertificatesQueryKey(options)
+    });
 };
 
 export const getSettingsQueryKey = (options?: Options<GetSettingsData>) => [

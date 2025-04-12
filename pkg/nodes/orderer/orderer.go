@@ -24,9 +24,9 @@ import (
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
-	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	"google.golang.org/grpc"
@@ -34,17 +34,17 @@ import (
 
 // LocalOrderer represents a local Fabric orderer node
 type LocalOrderer struct {
-	mspID          string
-	db             *db.Queries
-	opts           StartOrdererOpts
-	mode           string
-	org            *fabricservice.OrganizationDTO
-	organizationID int64
-	orgService     *fabricservice.OrganizationService
-	keyService     *keymanagement.KeyManagementService
-	nodeID         int64
-	logger         *logger.Logger
-	configService  *config.ConfigService
+	mspID           string
+	db              *db.Queries
+	opts            StartOrdererOpts
+	mode            string
+	org             *fabricservice.OrganizationDTO
+	organizationID  int64
+	orgService      *fabricservice.OrganizationService
+	keyService      *keymanagement.KeyManagementService
+	nodeID          int64
+	logger          *logger.Logger
+	configService   *config.ConfigService
 	settingsService *settingsservice.SettingsService
 }
 
@@ -64,17 +64,17 @@ func NewLocalOrderer(
 	settingsService *settingsservice.SettingsService,
 ) *LocalOrderer {
 	return &LocalOrderer{
-		mspID:          mspID,
-		db:             db,
-		opts:           opts,
-		mode:           mode,
-		org:            org,
-		organizationID: organizationID,
-		orgService:     orgService,
-		keyService:     keyService,
-		nodeID:         nodeID,
-		logger:         logger,
-		configService:  configService,
+		mspID:           mspID,
+		db:              db,
+		opts:            opts,
+		mode:            mode,
+		org:             org,
+		organizationID:  organizationID,
+		orgService:      orgService,
+		keyService:      keyService,
+		nodeID:          nodeID,
+		logger:          logger,
+		configService:   configService,
 		settingsService: settingsService,
 	}
 }
@@ -220,6 +220,10 @@ func (o *LocalOrderer) buildOrdererEnvironment(mspConfigPath string) map[string]
 	env["ORDERER_OPERATIONS_TLS_ENABLED"] = "false"
 
 	return env
+}
+
+func (o *LocalOrderer) getLogPath() string {
+	return o.GetStdOutPath()
 }
 
 // TailLogs tails the logs of the orderer service

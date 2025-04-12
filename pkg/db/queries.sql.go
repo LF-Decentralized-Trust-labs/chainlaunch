@@ -1098,6 +1098,21 @@ func (q *Queries) DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsPar
 	return err
 }
 
+const DeleteRevokedCertificate = `-- name: DeleteRevokedCertificate :exec
+DELETE FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?
+`
+
+type DeleteRevokedCertificateParams struct {
+	FabricOrganizationID int64  `json:"fabricOrganizationId"`
+	SerialNumber         string `json:"serialNumber"`
+}
+
+func (q *Queries) DeleteRevokedCertificate(ctx context.Context, arg *DeleteRevokedCertificateParams) error {
+	_, err := q.db.ExecContext(ctx, DeleteRevokedCertificate, arg.FabricOrganizationID, arg.SerialNumber)
+	return err
+}
+
 const DeleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions
 WHERE session_id = ?
@@ -2782,6 +2797,18 @@ func (q *Queries) GetRevokedCertificate(ctx context.Context, arg *GetRevokedCert
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const GetRevokedCertificateCount = `-- name: GetRevokedCertificateCount :one
+SELECT COUNT(*) FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?
+`
+
+func (q *Queries) GetRevokedCertificateCount(ctx context.Context, fabricOrganizationID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, GetRevokedCertificateCount, fabricOrganizationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const GetRevokedCertificates = `-- name: GetRevokedCertificates :many

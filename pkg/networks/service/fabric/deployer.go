@@ -1410,6 +1410,126 @@ func (d *FabricDeployer) UnjoinNode(networkID int64, nodeID int64) error {
 	return nil
 }
 
+type UpdateOrganizationCRLInput struct {
+	OrganizationID int64 `json:"organizationId" validate:"required"`
+}
+
+func (d *FabricDeployer) UpdateOrganizationCRL(ctx context.Context, networkID int64, input UpdateOrganizationCRLInput) (string, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get organization details
+	org, err := d.db.GetFabricOrganizationByID(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get the CRL from organization service
+	crl, err := d.orgService.GetCRL(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get CRL: %w", err)
+	}
+
+	// Get a peer from the organization to submit the update
+	nodes, err := d.nodes.GetFabricNodesByOrganization(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization nodes: %w", err)
+	}
+
+	var peer *nodeservice.NodeResponse
+	for _, node := range nodes {
+		if node.NodeType == nodetypes.NodeTypeFabricPeer {
+			peer = &node
+			break
+		}
+	}
+	if peer == nil {
+		return "", fmt.Errorf("no peer found for organization %d", input.OrganizationID)
+	}
+
+	// Get an orderer node from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var orderer *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) {
+			orderer = node
+			break
+		}
+	}
+	if orderer == nil {
+		return "", fmt.Errorf("no orderer found in network %d", networkID)
+	}
+
+	// Get orderer TLS CA cert
+	ordererConfig := &nodetypes.FabricOrdererDeploymentConfig{}
+	if err := json.Unmarshal([]byte(orderer.DeploymentConfig.String), ordererConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal orderer config: %w", err)
+	}
+
+	ordererTLSKey, err := d.keyMgmt.GetKey(ctx, int(ordererConfig.TLSKeyID))
+	if err != nil {
+		return "", fmt.Errorf("failed to get orderer TLS key: %w", err)
+	}
+	if ordererTLSKey.Certificate == nil {
+		return "", fmt.Errorf("orderer TLS certificate not found")
+	}
+	ordererURL := ordererConfig.GetAddress()
+	ordererCert := *ordererTLSKey.Certificate
+
+	p, err := d.nodes.GetFabricPeer(ctx, peer.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get fabric peer: %w", err)
+	}
+	channelConfig, err := p.GetChannelConfig(ctx, network.Name, ordererURL, ordererCert)
+	if err != nil {
+		return "", fmt.Errorf("failed to get channel config: %w", err)
+	}
+
+	// Get channel name from network config
+	var fabricConfig types.FabricNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &fabricConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
+
+	// Generate channel update
+	channelUpdate, err := d.channelService.SetCRL(&channel.SetCRLInput{
+		CurrentConfig: channelConfig.ChannelGroup,
+		ChannelName:   fabricConfig.ChannelName,
+		MSPID:         org.MspID,
+		CRL:           crl,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create anchor peer update: %w", err)
+	}
+
+	// Get peer instance
+	fabricPeer, err := d.nodes.GetFabricPeer(ctx, peer.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get fabric peer: %w", err)
+	}
+
+	// Save channel config
+	resp, err := fabricPeer.SaveChannelConfig(ctx,
+		fabricConfig.ChannelName,
+		ordererURL,
+		*ordererTLSKey.Certificate,
+		channelUpdate,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to save channel config: %w", err)
+	}
+
+	return resp.TransactionID, nil
+
+}
+
 type CreateAnchorPeerUpdateInput struct {
 	ChannelName string
 	OrgMSPID    string
@@ -1745,7 +1865,17 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network nodes: %w", err)
 	}
-	firstNode := networkNodes[0]
+	// Find first peer node
+	var firstNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.NodeType.String == string(nodetypes.NodeTypeFabricPeer) {
+			firstNode = node
+			break
+		}
+	}
+	if firstNode == nil {
+		return nil, fmt.Errorf("no peer nodes found in network %d", networkID)
+	}
 	nodeResponse, err := d.nodes.GetNode(ctx, firstNode.NodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)

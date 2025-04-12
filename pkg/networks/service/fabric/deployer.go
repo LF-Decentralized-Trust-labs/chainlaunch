@@ -1865,17 +1865,7 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network nodes: %w", err)
 	}
-	// Find first peer node
-	var firstNode *db.GetNetworkNodesRow
-	for _, node := range networkNodes {
-		if node.NodeType.String == string(nodetypes.NodeTypeFabricPeer) {
-			firstNode = node
-			break
-		}
-	}
-	if firstNode == nil {
-		return nil, fmt.Errorf("no peer nodes found in network %d", networkID)
-	}
+	firstNode := networkNodes[0]
 	nodeResponse, err := d.nodes.GetNode(ctx, firstNode.NodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)

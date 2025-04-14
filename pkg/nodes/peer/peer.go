@@ -1177,26 +1177,6 @@ func (p *LocalPeer) buildPeerEnvironment(mspConfigPath string) map[string]string
 	env["CORE_LOGGING_GRPC"] = "info"
 	env["CORE_LOGGING_PEER"] = "info"
 
-	// Handle orderer address overrides if present
-	if len(p.opts.AddressOverrides) > 0 {
-		convertedOverrides, err := p.convertAddressOverrides(mspConfigPath, p.opts.AddressOverrides)
-		if err != nil {
-			p.logger.Error("Failed to convert address overrides", "error", err)
-			return env
-		}
-
-		var overrides []string
-		for _, override := range convertedOverrides {
-			overrides = append(overrides, fmt.Sprintf("%s %s %s",
-				override.From, override.To, override.TLSCAPath))
-		}
-
-		// Set the address overrides environment variable
-		if len(overrides) > 0 {
-			env["CORE_PEER_DELIVERYCLIENT_ADDRESSOVERRIDES"] = strings.Join(overrides, ";")
-		}
-	}
-
 	return env
 }
 

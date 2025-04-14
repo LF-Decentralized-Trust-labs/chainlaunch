@@ -147,7 +147,7 @@ type BlockListResponse struct {
 
 // BlockTransactionsResponse represents the response for listing transactions in a block
 type BlockTransactionsResponse struct {
-	BlockNumber  uint64                        `json:"block_number"`
+	Block        *networksservice.Block        `json:"block"`
 	Transactions []networksservice.Transaction `json:"transactions"`
 }
 

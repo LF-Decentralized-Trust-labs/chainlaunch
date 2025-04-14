@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 interface BlockExplorerProps {
 	networkId: number
@@ -40,8 +41,8 @@ export function BlockExplorer({ networkId }: BlockExplorerProps) {
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<h3 className="text-lg font-medium">Recent Blocks</h3>
-				<Button variant="outline" size="sm">
-					View All Blocks
+				<Button variant="outline" size="sm" asChild>
+					<Link to={`/networks/${networkId}/blocks`}>View All Blocks</Link>
 				</Button>
 			</div>
 			<div className="space-y-2">
@@ -54,8 +55,8 @@ export function BlockExplorer({ networkId }: BlockExplorerProps) {
 									{block.tx_count} {block.tx_count === 1 ? 'transaction' : 'transactions'} • {formatDistanceToNow(new Date(block.timestamp || ''), { addSuffix: true })}
 								</p>
 							</div>
-							<Button variant="ghost" size="sm">
-								View Details
+							<Button variant="ghost" size="sm" asChild>
+								<Link to={`/networks/${networkId}/blocks/${block.number}`}>View Details</Link>
 							</Button>
 						</div>
 					</Card>

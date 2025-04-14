@@ -2557,7 +2557,7 @@ func (p *LocalPeer) GetChannels(ctx context.Context) ([]PeerChannel, error) {
 
 	channels := make([]PeerChannel, len(channelList))
 	for i, channel := range channelList {
-		blockInfo, err := p.getChannelInfoOnPeer(ctx, channel.ChannelId)
+		blockInfo, err := p.GetChannelInfoOnPeer(ctx, channel.ChannelId)
 		if err != nil {
 			channels[i] = PeerChannel{
 				Name:      channel.ChannelId,
@@ -2625,6 +2625,41 @@ func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
 	}
 	return cfgEnv.Config, nil
 }
+
+// GetBlock retrieves a specific block by its number
+func (p *LocalPeer) GetBlock(ctx context.Context, channelID string, blockNum uint64) (*cb.Block, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	defer gateway.Close()
+	network := gateway.GetNetwork(channelID)
+	blockEvents, err := network.BlockAndPrivateDataEvents(ctx, client.WithStartBlock(blockNum))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block: %w", err)
+	}
+
+	for blockEvent := range blockEvents {
+		return blockEvent.Block, nil
+	}
+	return nil, fmt.Errorf("block not found")
+}
+
+
 func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, blockNum uint64) ([]*cb.Envelope, error) {
 	peerUrl := p.GetPeerAddress()
 	tlsCACert, err := p.GetTLSRootCACert(ctx)
@@ -2794,7 +2829,7 @@ func (p *LocalPeer) GetBlockByTxID(ctx context.Context, channelID string, txID s
 }
 
 // GetBlockByTxID retrieves a block containing the specified transaction ID
-func (p *LocalPeer) getChannelInfoOnPeer(ctx context.Context, channelID string) (*cb.BlockchainInfo, error) {
+func (p *LocalPeer) GetChannelInfoOnPeer(ctx context.Context, channelID string) (*cb.BlockchainInfo, error) {
 	peerUrl := p.GetPeerAddress()
 	tlsCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {

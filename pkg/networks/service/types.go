@@ -90,3 +90,9 @@ type Transaction struct {
 	Creator     string    `json:"creator"`
 	Payload     []byte    `json:"payload"`
 }
+
+type ChainInfo struct {
+	Height            uint64
+	CurrentBlockHash  string
+	PreviousBlockHash string
+}

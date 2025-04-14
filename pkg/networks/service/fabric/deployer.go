@@ -2409,7 +2409,54 @@ func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
 	return cfgEnv.Config, nil
 }
 
-// GetBlocks retrieves a paginated list of blocks from the network
+type ChainInfo struct {
+	Height            uint64
+	CurrentBlockHash  string
+	PreviousBlockHash string
+}
+
+func (d *FabricDeployer) GetChainInfo(ctx context.Context, networkID int64) (*ChainInfo, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	chainInfo, err := peer.GetChannelInfoOnPeer(ctx, network.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain info: %w", err)
+	}
+
+	return &ChainInfo{
+		Height:            uint64(chainInfo.Height),
+		CurrentBlockHash:  fmt.Sprintf("%x", chainInfo.CurrentBlockHash),
+		PreviousBlockHash: fmt.Sprintf("%x", chainInfo.PreviousBlockHash),
+	}, nil
+}
 func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
@@ -2448,29 +2495,42 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 	}
 
 	total := int64(channelInfo.Height)
-
 	// Calculate start and end blocks based on reverse flag
-	var startBlock, endBlock uint64
+	var startBlock, endBlock int64
+
+	// Check if offset is greater than channel height
+	if int64(offset) >= int64(channelInfo.Height) {
+		return []Block{}, total, nil // Return empty slice if offset exceeds height
+	}
+
 	if reverse {
 		// If reverse is true, we start from the newest blocks
-		endBlock = channelInfo.Height - 1 - uint64(offset)
-
+		endBlock = int64(channelInfo.Height) - 1 - int64(offset)
+		if endBlock < 0 {
+			endBlock = 0
+		}
 		// Calculate endBlock based on startBlock and limit
-		startBlock = endBlock - uint64(limit)
+		startBlock = endBlock - int64(limit)
+		if startBlock > endBlock { // Handle underflow
+			startBlock = 0
+		}
+		if startBlock < 0 {
+			startBlock = 0
+		}
 
 		// Example: if height is 31, limit is 10, offset is 0
 		// endBlock = 30, startBlock = 21
 	} else {
 		// Normal order (oldest first)
-		startBlock = uint64(offset)
-		endBlock = uint64(offset + limit - 1)
-		if endBlock >= channelInfo.Height {
-			endBlock = channelInfo.Height - 1
+		startBlock = int64(offset)
+		endBlock = int64(offset + limit - 1)
+		if endBlock >= int64(channelInfo.Height) {
+			endBlock = int64(channelInfo.Height) - 1
 		}
 	}
 
 	// Get blocks in range
-	blocks, err := peer.GetBlocksInRange(ctx, network.Name, startBlock, endBlock)
+	blocks, err := peer.GetBlocksInRange(ctx, network.Name, uint64(startBlock), uint64(endBlock))
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get blocks: %w", err)
 	}
@@ -2478,51 +2538,65 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 	// Convert blocks to response type
 	result := make([]Block, len(blocks))
 	for i, block := range blocks {
-		timestamp := time.Now()
-		for _, txData := range block.Data.Data {
-			env := &cb.Envelope{}
-			err = proto.Unmarshal(txData, env)
-			if err != nil {
-				return nil, 0, fmt.Errorf("failed to unmarshal envelope: %w", err)
-			}
-			payload := &cb.Payload{}
-			err = proto.Unmarshal(env.Payload, payload)
-			if err != nil {
-				return nil, 0, fmt.Errorf("failed to unmarshal payload: %w", err)
-			}
-			chdr := &cb.ChannelHeader{}
-			err = proto.Unmarshal(payload.Header.ChannelHeader, chdr)
-			if err != nil {
-				return nil, 0, fmt.Errorf("failed to unmarshal channel header: %w", err)
-			}
-			txDate, err := ptypes.Timestamp(chdr.Timestamp)
-			if err != nil {
-				return nil, 0, fmt.Errorf("failed to parse timestamp: %w", err)
-			}
-			timestamp = txDate
-			break
-		}
-		buffer := &bytes.Buffer{}
-		err = protolator.DeepMarshalJSON(buffer, block)
+		blck, err := d.MapBlock(block)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to marshal block data: %w", err)
+			return nil, 0, fmt.Errorf("failed to map block: %w", err)
 		}
-		blockDataJson := buffer.Bytes()
-		result[i] = Block{
-			Number:       block.Header.Number,
-			Hash:         fmt.Sprintf("%x", block.Header.DataHash),
-			PreviousHash: fmt.Sprintf("%x", block.Header.PreviousHash),
-			Timestamp:    timestamp,
-			TxCount:      len(block.Data.Data),
-			Data:         blockDataJson,
-		}
+		result[i] = *blck
 	}
 
 	return result, total, nil
 }
 
+// GetBlocks retrieves blocks from a specific network
+func (d *FabricDeployer) MapBlock(block *cb.Block) (*Block, error) {
+	timestamp := time.Now()
+	for _, txData := range block.Data.Data {
+		env := &cb.Envelope{}
+		err := proto.Unmarshal(txData, env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal envelope: %w", err)
+		}
+		payload := &cb.Payload{}
+		err = proto.Unmarshal(env.Payload, payload)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
+		}
+		chdr := &cb.ChannelHeader{}
+		err = proto.Unmarshal(payload.Header.ChannelHeader, chdr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal channel header: %w", err)
+		}
+		txDate, err := ptypes.Timestamp(chdr.Timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+		}
+		timestamp = txDate
+		break
+	}
+	buffer := &bytes.Buffer{}
+	err := protolator.DeepMarshalJSON(buffer, block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block data: %w", err)
+	}
+	blockDataJson := buffer.Bytes()
+	return &Block{
+		Number:       block.Header.Number,
+		Hash:         fmt.Sprintf("%x", block.Header.DataHash),
+		PreviousHash: fmt.Sprintf("%x", block.Header.PreviousHash),
+		Timestamp:    timestamp,
+		TxCount:      len(block.Data.Data),
+		Data:         blockDataJson,
+	}, nil
+}
+
+type BlockWithTransactions struct {
+	Block        Block
+	Transactions []Transaction
+}
+
 // GetBlockTransactions retrieves all transactions from a specific block
-func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) ([]Transaction, error) {
+func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*BlockWithTransactions, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
 	if err != nil {
@@ -2554,6 +2628,10 @@ func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int
 	}
 
 	// Get transactions from block
+	block, err := peer.GetBlock(ctx, network.Name, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block: %w", err)
+	}
 	envelopes, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block transactions: %w", err)
@@ -2586,8 +2664,15 @@ func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int
 			Status:    "success",
 		}
 	}
-
-	return transactions, nil
+	blck, err := d.MapBlock(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map block: %w", err)
+	}
+	blockWithTransactions := &BlockWithTransactions{
+		Block:        *blck,
+		Transactions: transactions,
+	}
+	return blockWithTransactions, nil
 }
 
 // GetTransaction retrieves a specific transaction by its ID

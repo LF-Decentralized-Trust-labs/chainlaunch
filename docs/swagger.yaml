@@ -303,12 +303,21 @@ definitions:
     type: object
   http.BlockTransactionsResponse:
     properties:
-      block_number:
-        type: integer
+      block:
+        $ref: '#/definitions/service.Block'
       transactions:
         items:
           $ref: '#/definitions/service.Transaction'
         type: array
+    type: object
+  http.ChainInfoResponse:
+    properties:
+      currentBlockHash:
+        type: string
+      height:
+        type: integer
+      previousBlockHash:
+        type: string
     type: object
   http.ChannelConfigResponse:
     properties:
@@ -3522,7 +3531,7 @@ paths:
       summary: Get list of blocks from Fabric network
       tags:
       - fabric-networks
-  /networks/fabric/{id}/blocks/{blockNum}/transactions:
+  /networks/fabric/{id}/blocks/{blockNum}:
     get:
       description: Get all transactions from a specific block in a Fabric network
       parameters:
@@ -3610,6 +3619,37 @@ paths:
           schema:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get Fabric network current channel configuration
+      tags:
+      - fabric-networks
+  /networks/fabric/{id}/info:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ChainInfoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       tags:
       - fabric-networks
   /networks/fabric/{id}/nodes:

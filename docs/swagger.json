@@ -2209,7 +2209,7 @@
                 }
             }
         },
-        "/networks/fabric/{id}/blocks/{blockNum}/transactions": {
+        "/networks/fabric/{id}/blocks/{blockNum}": {
             "get": {
                 "description": "Get all transactions from a specific block in a Fabric network",
                 "produces": [
@@ -2332,6 +2332,54 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/networks/fabric/{id}/info": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fabric-networks"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Network ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.ChainInfoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse"
                         }
@@ -5228,14 +5276,28 @@
         "http.BlockTransactionsResponse": {
             "type": "object",
             "properties": {
-                "block_number": {
-                    "type": "integer"
+                "block": {
+                    "$ref": "#/definitions/service.Block"
                 },
                 "transactions": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/service.Transaction"
                     }
+                }
+            }
+        },
+        "http.ChainInfoResponse": {
+            "type": "object",
+            "properties": {
+                "currentBlockHash": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "previousBlockHash": {
+                    "type": "string"
                 }
             }
         },

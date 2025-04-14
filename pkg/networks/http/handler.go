@@ -60,7 +60,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/import-with-org", h.ImportFabricNetworkWithOrg)
 		r.Post("/{id}/update-config", h.FabricUpdateChannelConfig)
 		r.Get("/{id}/blocks", h.FabricGetBlocks)
-		r.Get("/{id}/blocks/{blockNum}/transactions", h.FabricGetBlockTransactions)
+		r.Get("/{id}/blocks/{blockNum}", h.FabricGetBlock)
+		r.Get("/{id}/info", h.GetChainInfo)
 		r.Get("/{id}/transactions/{txId}", h.FabricGetTransaction)
 		r.Post("/{id}/organization-crl", h.UpdateOrganizationCRL)
 	})
@@ -1696,8 +1697,8 @@ func (h *Handler) FabricGetBlocks(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /networks/fabric/{id}/blocks/{blockNum}/transactions [get]
-func (h *Handler) FabricGetBlockTransactions(w http.ResponseWriter, r *http.Request) {
+// @Router /networks/fabric/{id}/blocks/{blockNum} [get]
+func (h *Handler) FabricGetBlock(w http.ResponseWriter, r *http.Request) {
 	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
@@ -1710,7 +1711,7 @@ func (h *Handler) FabricGetBlockTransactions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	transactions, err := h.networkService.GetBlockTransactions(r.Context(), networkID, blockNum)
+	blck, err := h.networkService.GetBlockTransactions(r.Context(), networkID, blockNum)
 	if err != nil {
 		if err.Error() == "block not found" {
 			writeError(w, http.StatusNotFound, "block_not_found", "Block not found")
@@ -1721,8 +1722,8 @@ func (h *Handler) FabricGetBlockTransactions(w http.ResponseWriter, r *http.Requ
 	}
 
 	resp := BlockTransactionsResponse{
-		BlockNumber:  blockNum,
-		Transactions: transactions,
+		Block:        &blck.Block,
+		Transactions: blck.Transactions,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -1826,4 +1827,43 @@ func (h *Handler) UpdateOrganizationCRL(w http.ResponseWriter, r *http.Request) 
 		TransactionID: txID,
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Tags fabric-networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Success 200 {object} ChainInfoResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/info [get]
+func (h *Handler) GetChainInfo(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Get chain info from service layer
+	chainInfo, err := h.networkService.GetChainInfo(r.Context(), networkID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "get_chain_info_failed", err.Error())
+		return
+	}
+
+	// Return response
+	resp := ChainInfoResponse{
+		Height:            chainInfo.Height,
+		CurrentBlockHash:  chainInfo.CurrentBlockHash,
+		PreviousBlockHash: chainInfo.PreviousBlockHash,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+type ChainInfoResponse struct {
+	Height            uint64 `json:"height"`
+	CurrentBlockHash  string `json:"currentBlockHash"`
+	PreviousBlockHash string `json:"previousBlockHash"`
 }

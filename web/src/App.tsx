@@ -43,6 +43,8 @@ import KeyManagementPage from './pages/settings/keys'
 import KeyDetailPage from './pages/settings/keys/[id]'
 import NetworkConfigPage from './pages/settings/network'
 import SmartContractsPage from './pages/smart-contracts'
+import { BlocksOverview } from '@/components/networks/blocks-overview'
+import { BlockDetails } from '@/components/networks/block-details'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -96,6 +98,8 @@ const App = () => {
 														<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />
 														<Route path="networks/:id/besu" element={<BesuNetworkDetailPage />} />
 														<Route path="networks/:id/fabric" element={<FabricNetworkDetailPage />} />
+														<Route path="networks/:id/blocks" element={<BlocksOverview />} />
+														<Route path="networks/:id/blocks/:blockNumber" element={<BlockDetails />} />
 														<Route path="organizations/:id" element={<OrganizationDetailPage />} />
 														<Route path="settings/keys/:id" element={<KeyDetailPage />} />
 														<Route path="nodes/fabric/bulk" element={<BulkCreateNodesPage />} />

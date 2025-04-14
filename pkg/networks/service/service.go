@@ -1010,6 +1010,22 @@ func (s *NetworkService) getOrdererAddressAndCertForNetwork(ctx context.Context,
 	return ordererAddress, ordererTLSCert, nil
 }
 
+func (s *NetworkService) GetChainInfo(ctx context.Context, networkID int64) (*ChainInfo, error) {
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+	chainInfo, err := fabricDeployer.GetChainInfo(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain info: %w", err)
+	}
+	return &ChainInfo{
+		Height:            chainInfo.Height,
+		CurrentBlockHash:  chainInfo.CurrentBlockHash,
+		PreviousBlockHash: chainInfo.PreviousBlockHash,
+	}, nil
+}
+
 // GetBlocks retrieves a paginated list of blocks from the network
 func (s *NetworkService) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
 	// Get the fabric deployer for this network
@@ -1027,21 +1043,33 @@ func (s *NetworkService) GetBlocks(ctx context.Context, networkID int64, limit, 
 	// Map fabric.Block to service.Block
 	blocks := make([]Block, len(fabricBlocks))
 	for i, fb := range fabricBlocks {
-		blocks[i] = Block{
-			Number:       fb.Number,
-			Hash:         fb.Hash,
-			PreviousHash: fb.PreviousHash,
-			Timestamp:    fb.Timestamp,
-			TxCount:      fb.TxCount,
-			Data:         fb.Data,
+		blocks[i], err = s.mapBlockToServiceBlock(fb)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to map block to service block: %w", err)
 		}
 	}
 
 	return blocks, total, nil
 }
 
+func (s *NetworkService) mapBlockToServiceBlock(fb fabric.Block) (Block, error) {
+	return Block{
+		Number:       fb.Number,
+		Hash:         fb.Hash,
+		PreviousHash: fb.PreviousHash,
+		Timestamp:    fb.Timestamp,
+		TxCount:      fb.TxCount,
+		Data:         fb.Data,
+	}, nil
+}
+
+type BlockWithTransactions struct {
+	Block        Block
+	Transactions []Transaction
+}
+
 // GetBlockTransactions retrieves all transactions from a specific block
-func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) ([]Transaction, error) {
+func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*BlockWithTransactions, error) {
 	// Get the fabric deployer for this network
 	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
 	if err != nil {
@@ -1055,8 +1083,8 @@ func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int
 	}
 
 	// Map fabric.Transaction to service.Transaction
-	transactions := make([]Transaction, len(fabricTransactions))
-	for i, ft := range fabricTransactions {
+	transactions := make([]Transaction, len(fabricTransactions.Transactions))
+	for i, ft := range fabricTransactions.Transactions {
 		transactions[i] = Transaction{
 			TxID:        ft.ID,
 			BlockNumber: ft.BlockNum,
@@ -1065,8 +1093,15 @@ func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int
 			Creator:     ft.Creator,
 		}
 	}
-
-	return transactions, nil
+	block, err := s.mapBlockToServiceBlock(fabricTransactions.Block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map block to service block: %w", err)
+	}
+	blockWithTransactions := &BlockWithTransactions{
+		Block:        block,
+		Transactions: transactions,
+	}
+	return blockWithTransactions, nil
 }
 
 // GetTransaction retrieves a specific transaction by its ID

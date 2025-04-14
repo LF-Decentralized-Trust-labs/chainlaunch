@@ -195,8 +195,14 @@ export type HttpBlockListResponse = {
 };
 
 export type HttpBlockTransactionsResponse = {
-    block_number?: number;
+    block?: ServiceBlock;
     transactions?: Array<ServiceTransaction>;
+};
+
+export type HttpChainInfoResponse = {
+    currentBlockHash?: string;
+    height?: number;
+    previousBlockHash?: string;
 };
 
 export type HttpChannelConfigResponse = {
@@ -2922,7 +2928,7 @@ export type GetNetworksFabricByIdBlocksResponses = {
 
 export type GetNetworksFabricByIdBlocksResponse = GetNetworksFabricByIdBlocksResponses[keyof GetNetworksFabricByIdBlocksResponses];
 
-export type GetNetworksFabricByIdBlocksByBlockNumTransactionsData = {
+export type GetNetworksFabricByIdBlocksByBlockNumData = {
     body?: never;
     path: {
         /**
@@ -2935,10 +2941,10 @@ export type GetNetworksFabricByIdBlocksByBlockNumTransactionsData = {
         blockNum: number;
     };
     query?: never;
-    url: '/networks/fabric/{id}/blocks/{blockNum}/transactions';
+    url: '/networks/fabric/{id}/blocks/{blockNum}';
 };
 
-export type GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors = {
+export type GetNetworksFabricByIdBlocksByBlockNumErrors = {
     /**
      * Bad Request
      */
@@ -2953,16 +2959,16 @@ export type GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors = {
     500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
 };
 
-export type GetNetworksFabricByIdBlocksByBlockNumTransactionsError = GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsErrors];
+export type GetNetworksFabricByIdBlocksByBlockNumError = GetNetworksFabricByIdBlocksByBlockNumErrors[keyof GetNetworksFabricByIdBlocksByBlockNumErrors];
 
-export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses = {
+export type GetNetworksFabricByIdBlocksByBlockNumResponses = {
     /**
      * OK
      */
     200: HttpBlockTransactionsResponse;
 };
 
-export type GetNetworksFabricByIdBlocksByBlockNumTransactionsResponse = GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses[keyof GetNetworksFabricByIdBlocksByBlockNumTransactionsResponses];
+export type GetNetworksFabricByIdBlocksByBlockNumResponse = GetNetworksFabricByIdBlocksByBlockNumResponses[keyof GetNetworksFabricByIdBlocksByBlockNumResponses];
 
 export type GetNetworksFabricByIdChannelConfigData = {
     body?: never;
@@ -3031,6 +3037,44 @@ export type GetNetworksFabricByIdCurrentChannelConfigResponses = {
 };
 
 export type GetNetworksFabricByIdCurrentChannelConfigResponse = GetNetworksFabricByIdCurrentChannelConfigResponses[keyof GetNetworksFabricByIdCurrentChannelConfigResponses];
+
+export type GetNetworksFabricByIdInfoData = {
+    body?: never;
+    path: {
+        /**
+         * Network ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/networks/fabric/{id}/info';
+};
+
+export type GetNetworksFabricByIdInfoErrors = {
+    /**
+     * Bad Request
+     */
+    400: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Not Found
+     */
+    404: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse;
+};
+
+export type GetNetworksFabricByIdInfoError = GetNetworksFabricByIdInfoErrors[keyof GetNetworksFabricByIdInfoErrors];
+
+export type GetNetworksFabricByIdInfoResponses = {
+    /**
+     * OK
+     */
+    200: HttpChainInfoResponse;
+};
+
+export type GetNetworksFabricByIdInfoResponse = GetNetworksFabricByIdInfoResponses[keyof GetNetworksFabricByIdInfoResponses];
 
 export type GetNetworksFabricByIdNodesData = {
     body?: never;

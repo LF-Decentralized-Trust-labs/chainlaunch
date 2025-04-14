@@ -2557,14 +2557,19 @@ func (p *LocalPeer) GetChannels(ctx context.Context) ([]PeerChannel, error) {
 
 	channels := make([]PeerChannel, len(channelList))
 	for i, channel := range channelList {
-		blockInfo, err := p.getChannelBlockInfo(ctx, channel.ChannelId)
+		blockInfo, err := p.getChannelInfoOnPeer(ctx, channel.ChannelId)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get block height for channel: %w", err)
-		}
-		channels[i] = PeerChannel{
-			Name:      channel.ChannelId,
-			BlockNum:  int64(blockInfo.Height),
-			CreatedAt: time.Now(),
+			channels[i] = PeerChannel{
+				Name:      channel.ChannelId,
+				BlockNum:  0,
+				CreatedAt: time.Now(),
+			}
+		} else {
+			channels[i] = PeerChannel{
+				Name:      channel.ChannelId,
+				BlockNum:  int64(blockInfo.Height),
+				CreatedAt: time.Now(),
+			}
 		}
 	}
 	return channels, nil
@@ -2786,6 +2791,44 @@ func (p *LocalPeer) GetBlockByTxID(ctx context.Context, channelID string, txID s
 	}
 
 	return block, nil
+}
+
+// GetBlockByTxID retrieves a block containing the specified transaction ID
+func (p *LocalPeer) getChannelInfoOnPeer(ctx context.Context, channelID string) (*cb.BlockchainInfo, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	defer gateway.Close()
+	network := gateway.GetNetwork(channelID)
+	contract := network.GetContract(qscc)
+	response, err := contract.EvaluateTransaction(qsccChannelInfo, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query block by transaction ID: %w", err)
+	}
+	p.logger.Info("Channel info", "response", response)
+	bci := &cb.BlockchainInfo{}
+	if err := proto.Unmarshal(response, bci); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal block chain info: %w", err)
+	}
+	return bci, nil
 }
 
 // SynchronizeConfig synchronizes the peer's configuration files and service

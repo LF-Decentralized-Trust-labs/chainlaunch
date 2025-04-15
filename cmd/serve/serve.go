@@ -114,8 +114,8 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
-// @contact.url http://www.chainlaunch.com/support
-// @contact.email support@chainlaunch.com
+// @contact.url http://chainlaunch.dev/support
+// @contact.email support@chainlaunch.dev
 
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
@@ -137,9 +137,6 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // @tag.name Providers
 // @tag.description Key provider management operations
-
-// @tag.name Networks
-// @tag.description Blockchain network management operations
 
 // @tag.name Nodes
 // @tag.description Network node management operations
@@ -419,7 +416,12 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			settingsHandler.RegisterRoutes(r)
 		})
 	})
-
+	r.Get("/api/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/api/swagger/doc.json"),
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("swagger-ui"),
+	))
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),

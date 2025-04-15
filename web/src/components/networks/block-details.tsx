@@ -1,14 +1,13 @@
-import { getNetworksFabricByIdBlocksByBlockNumOptions, getNetworksFabricByIdBlocksByBlockNumTransactionsOptions } from '@/api/client/@tanstack/react-query.gen'
+import { getNetworksFabricByIdBlocksByBlockNumOptions } from '@/api/client/@tanstack/react-query.gen'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
-import { DropdownMenu } from '@radix-ui/react-dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow } from 'date-fns'
 import { ArrowLeft, EllipsisVertical } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { decodeBlockToJson } from '@/utils/block'
 
 export function BlockDetails() {
 	const { id, blockNumber } = useParams<{ id: string; blockNumber: string }>()
@@ -20,7 +19,10 @@ export function BlockDetails() {
 			path: { id: networkId, blockNum },
 		}),
 	})
-	const block = useMemo(() => blockResponse?.block || null, [blockResponse])
+	const decodedBlock = useMemo(() => {
+		if (!blockResponse?.block?.data) return null
+		return decodeBlockToJson(blockResponse.block.data as unknown as string)
+	}, [blockResponse?.block?.data])
 
 	const transactions = useMemo(() => blockResponse?.transactions || [], [blockResponse])
 	if (isLoading) {
@@ -50,7 +52,7 @@ export function BlockDetails() {
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
-					<h2 className="text-2xl font-bold">Block #{block?.number}</h2>
+					<h2 className="text-2xl font-bold">Block #{decodedBlock?.number}</h2>
 					{/* <p className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(transactions.timestamp || ''), { addSuffix: true })}</p> */}
 				</div>
 				<Button variant="outline" asChild>
@@ -70,15 +72,15 @@ export function BlockDetails() {
 						<dl className="grid gap-4 sm:grid-cols-2">
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Block Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{block?.hash}</dd>
+								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.hash}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Previous Block Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{block?.previous_hash}</dd>
+								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.previous_hash}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Timestamp</dt>
-								<dd className="mt-1 text-sm">{new Date(block?.timestamp || '').toLocaleString()}</dd>
+								<dd className="mt-1 text-sm">{new Date(decodedBlock?.timestamp || '').toLocaleString()}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Transactions</dt>
@@ -86,7 +88,7 @@ export function BlockDetails() {
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Data Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{block?.hash}</dd>
+								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.hash}</dd>
 							</div>
 						</dl>
 					</CardContent>

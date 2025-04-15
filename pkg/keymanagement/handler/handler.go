@@ -24,7 +24,7 @@ func NewKeyManagementHandler(service *service.KeyManagementService) *KeyManageme
 
 // @Summary Get all keys
 // @Description Get all keys with their certificates and metadata
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Success 200 {array} models.KeyResponse
@@ -44,7 +44,7 @@ func (h *KeyManagementHandler) GetAllKeys(w http.ResponseWriter, r *http.Request
 
 // @Summary Create a new key
 // @Description Create a new key pair with specified algorithm and parameters
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param request body models.CreateKeyRequest true "Key creation request"
@@ -99,7 +99,7 @@ func (h *KeyManagementHandler) RegisterRoutes(r chi.Router) {
 
 // @Summary Get paginated keys
 // @Description Get a paginated list of keys
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number" default(1)
@@ -139,7 +139,7 @@ func (h *KeyManagementHandler) GetKeys(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get a specific key by ID
 // @Description Get detailed information about a specific key
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param id path int true "Key ID"
@@ -169,7 +169,7 @@ func (h *KeyManagementHandler) GetKey(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Delete a key
 // @Description Delete a specific key by ID
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param id path int true "Key ID"
@@ -198,7 +198,7 @@ func (h *KeyManagementHandler) DeleteKey(w http.ResponseWriter, r *http.Request)
 
 // @Summary Create a new key provider
 // @Description Create a new provider for key management
-// @Tags providers
+// @Tags Providers
 // @Accept json
 // @Produce json
 // @Param request body models.CreateProviderRequest true "Provider creation request"
@@ -228,7 +228,7 @@ func (h *KeyManagementHandler) CreateProvider(w http.ResponseWriter, r *http.Req
 
 // @Summary List all key providers
 // @Description Get a list of all configured key providers
-// @Tags providers
+// @Tags Providers
 // @Accept json
 // @Produce json
 // @Success 200 {array} models.ProviderResponse
@@ -248,7 +248,7 @@ func (h *KeyManagementHandler) ListProviders(w http.ResponseWriter, r *http.Requ
 
 // @Summary Get a specific provider
 // @Description Get detailed information about a specific key provider
-// @Tags providers
+// @Tags Providers
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"
@@ -278,7 +278,7 @@ func (h *KeyManagementHandler) GetProvider(w http.ResponseWriter, r *http.Reques
 
 // @Summary Delete a provider
 // @Description Delete a specific key provider
-// @Tags providers
+// @Tags Providers
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"
@@ -308,7 +308,7 @@ func (h *KeyManagementHandler) DeleteProvider(w http.ResponseWriter, r *http.Req
 
 // @Summary Sign a certificate
 // @Description Sign a certificate for a key using a CA key
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param keyID path int true "Key ID to sign"
@@ -352,7 +352,7 @@ func (h *KeyManagementHandler) SignCertificate(w http.ResponseWriter, r *http.Re
 
 // @Summary Filter keys by algorithm and curve
 // @Description Get keys filtered by algorithm type and/or curve type
-// @Tags keys
+// @Tags Keys
 // @Accept json
 // @Produce json
 // @Param algorithm query string false "Algorithm type (e.g., RSA, ECDSA)"

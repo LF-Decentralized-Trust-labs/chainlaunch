@@ -45,6 +45,7 @@ import NetworkConfigPage from './pages/settings/network'
 import SmartContractsPage from './pages/smart-contracts'
 import { BlocksOverview } from '@/components/networks/blocks-overview'
 import { BlockDetails } from '@/components/networks/block-details'
+import ApiDocumentationPage from './pages/api-documentation'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -70,7 +71,7 @@ const App = () => {
 										<AppSidebar />
 										<SidebarInset>
 											<Header />
-											<div className="p-4">
+											<div className="p-0">
 												<Routes>
 													<Route path="/">
 														<Route path="/" element={<Navigate to="/nodes" replace />} />
@@ -106,6 +107,7 @@ const App = () => {
 														<Route path="nodes/logs" element={<NodesLogsPage />} />
 														<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
 														<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
+														<Route path="docs" element={<ApiDocumentationPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

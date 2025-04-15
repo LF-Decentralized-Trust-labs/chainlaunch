@@ -65,7 +65,7 @@ func (h *OrganizationHandler) RegisterRoutes(r chi.Router) {
 
 // @Summary Create a new Fabric organization
 // @Description Create a new Fabric organization with the specified configuration
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param request body CreateOrganizationRequest true "Organization creation request"
@@ -99,7 +99,7 @@ func (h *OrganizationHandler) CreateOrganization(w http.ResponseWriter, r *http.
 
 // @Summary Get a Fabric organization
 // @Description Get a Fabric organization by ID
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -129,7 +129,7 @@ func (h *OrganizationHandler) GetOrganization(w http.ResponseWriter, r *http.Req
 
 // @Summary Get a Fabric organization by MSP ID
 // @Description Get a Fabric organization by MSP ID
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param mspid path string true "MSP ID"
@@ -159,7 +159,7 @@ func (h *OrganizationHandler) GetOrganizationByMspID(w http.ResponseWriter, r *h
 
 // @Summary Update a Fabric organization
 // @Description Update an existing Fabric organization
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -198,7 +198,7 @@ func (h *OrganizationHandler) UpdateOrganization(w http.ResponseWriter, r *http.
 
 // @Summary Delete a Fabric organization
 // @Description Delete a Fabric organization by ID
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -224,7 +224,7 @@ func (h *OrganizationHandler) DeleteOrganization(w http.ResponseWriter, r *http.
 
 // @Summary List all Fabric organizations
 // @Description Get a list of all Fabric organizations
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Success 200 {array} OrganizationResponse
@@ -246,7 +246,7 @@ func (h *OrganizationHandler) ListOrganizations(w http.ResponseWriter, r *http.R
 
 // @Summary Revoke a certificate using its serial number
 // @Description Add a certificate to the organization's CRL using its serial number
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -290,7 +290,7 @@ func (h *OrganizationHandler) RevokeCertificateBySerial(w http.ResponseWriter, r
 
 // @Summary Revoke a certificate using PEM data
 // @Description Add a certificate to the organization's CRL using its PEM encoded data
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -345,7 +345,7 @@ func (h *OrganizationHandler) RevokeCertificateByPEM(w http.ResponseWriter, r *h
 
 // @Summary Get organization's CRL
 // @Description Get the current Certificate Revocation List for the organization
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce application/x-pem-file
 // @Param id path int true "Organization ID"
@@ -379,7 +379,7 @@ func (h *OrganizationHandler) GetCRL(w http.ResponseWriter, r *http.Request) err
 
 // @Summary Get organization's revoked certificates
 // @Description Get all revoked certificates for the organization
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"
@@ -412,7 +412,7 @@ func (h *OrganizationHandler) GetRevokedCertificates(w http.ResponseWriter, r *h
 
 // @Summary Delete a revoked certificate using its serial number
 // @Description Remove a certificate from the organization's CRL using its serial number
-// @Tags organizations
+// @Tags Organizations
 // @Accept json
 // @Produce json
 // @Param id path int true "Organization ID"

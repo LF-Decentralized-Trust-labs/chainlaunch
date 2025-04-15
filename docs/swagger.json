@@ -10,8 +10,8 @@
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "url": "http://www.chainlaunch.com/support",
-            "email": "support@chainlaunch.com"
+            "url": "http://chainlaunch.dev/support",
+            "email": "support@chainlaunch.dev"
         },
         "license": {
             "name": "Apache 2.0",
@@ -149,7 +149,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backups"
+                    "Backups"
                 ],
                 "summary": "List all backups",
                 "responses": {
@@ -179,7 +179,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backups"
+                    "Backups"
                 ],
                 "summary": "Create a new backup",
                 "parameters": [
@@ -225,7 +225,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "List all backup schedules",
                 "responses": {
@@ -255,7 +255,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Create a new backup schedule",
                 "parameters": [
@@ -301,7 +301,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Get a backup schedule by ID",
                 "parameters": [
@@ -349,7 +349,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Update a backup schedule",
                 "parameters": [
@@ -406,7 +406,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Delete a backup schedule",
                 "parameters": [
@@ -453,7 +453,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Disable a backup schedule",
                 "parameters": [
@@ -503,7 +503,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-schedules"
+                    "Backup Schedules"
                 ],
                 "summary": "Enable a backup schedule",
                 "parameters": [
@@ -553,7 +553,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-targets"
+                    "Backup Targets"
                 ],
                 "summary": "List all backup targets",
                 "responses": {
@@ -583,7 +583,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-targets"
+                    "Backup Targets"
                 ],
                 "summary": "Create a new backup target",
                 "parameters": [
@@ -629,7 +629,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-targets"
+                    "Backup Targets"
                 ],
                 "summary": "Get a backup target by ID",
                 "parameters": [
@@ -677,7 +677,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-targets"
+                    "Backup Targets"
                 ],
                 "summary": "Update a backup target",
                 "parameters": [
@@ -734,7 +734,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backup-targets"
+                    "Backup Targets"
                 ],
                 "summary": "Delete a backup target",
                 "parameters": [
@@ -781,7 +781,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backups"
+                    "Backups"
                 ],
                 "summary": "Get a backup by ID",
                 "parameters": [
@@ -829,7 +829,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "backups"
+                    "Backups"
                 ],
                 "summary": "Delete a backup",
                 "parameters": [
@@ -876,7 +876,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Submit config update proposal",
                 "parameters": [
@@ -963,7 +963,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "providers"
+                    "Providers"
                 ],
                 "summary": "List all key providers",
                 "responses": {
@@ -996,7 +996,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "providers"
+                    "Providers"
                 ],
                 "summary": "Create a new key provider",
                 "parameters": [
@@ -1048,7 +1048,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "providers"
+                    "Providers"
                 ],
                 "summary": "Get a specific provider",
                 "parameters": [
@@ -1105,7 +1105,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "providers"
+                    "Providers"
                 ],
                 "summary": "Delete a provider",
                 "parameters": [
@@ -1170,7 +1170,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Get paginated keys",
                 "parameters": [
@@ -1221,7 +1221,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Create a new key",
                 "parameters": [
@@ -1273,7 +1273,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Get all keys",
                 "responses": {
@@ -1308,7 +1308,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Filter keys by algorithm and curve",
                 "parameters": [
@@ -1377,7 +1377,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Get a specific key by ID",
                 "parameters": [
@@ -1434,7 +1434,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Delete a key",
                 "parameters": [
@@ -1490,7 +1490,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "keys"
+                    "Keys"
                 ],
                 "summary": "Sign a certificate",
                 "parameters": [
@@ -1555,7 +1555,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "besu-networks"
+                    "Besu Networks"
                 ],
                 "summary": "List Besu networks",
                 "parameters": [
@@ -1602,7 +1602,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "besu-networks"
+                    "Besu Networks"
                 ],
                 "summary": "Create a new Besu network",
                 "parameters": [
@@ -1648,7 +1648,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "besu-networks"
+                    "Besu Networks"
                 ],
                 "summary": "Import a Besu network",
                 "parameters": [
@@ -1691,7 +1691,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "besu-networks"
+                    "Besu Networks"
                 ],
                 "summary": "Get a Besu network by ID",
                 "parameters": [
@@ -1736,7 +1736,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "besu-networks"
+                    "Besu Networks"
                 ],
                 "summary": "Delete a Besu network",
                 "parameters": [
@@ -1780,7 +1780,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "List Fabric networks",
                 "parameters": [
@@ -1827,7 +1827,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Create a new Fabric network",
                 "parameters": [
@@ -1870,7 +1870,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get a Fabric network by slug",
                 "parameters": [
@@ -1920,7 +1920,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Import a Fabric network",
                 "parameters": [
@@ -1966,7 +1966,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Import a Fabric network with organization",
                 "parameters": [
@@ -2009,7 +2009,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get a Fabric network by ID",
                 "parameters": [
@@ -2054,7 +2054,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Delete a Fabric network",
                 "parameters": [
@@ -2101,7 +2101,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Set anchor peers for an organization",
                 "parameters": [
@@ -2151,7 +2151,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get list of blocks from Fabric network",
                 "parameters": [
@@ -2216,7 +2216,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get transactions from a specific block",
                 "parameters": [
@@ -2270,7 +2270,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get Fabric network channel configuration",
                 "parameters": [
@@ -2311,7 +2311,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get Fabric network current channel configuration",
                 "parameters": [
@@ -2347,6 +2347,7 @@
         },
         "/networks/fabric/{id}/info": {
             "get": {
+                "description": "Retrieve detailed information about the Fabric blockchain including height and block hashes",
                 "consumes": [
                     "application/json"
                 ],
@@ -2354,8 +2355,9 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
+                "summary": "Get Fabric chain information",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2400,7 +2402,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get network nodes",
                 "parameters": [
@@ -2448,7 +2450,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Add node to network",
                 "parameters": [
@@ -2501,7 +2503,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Remove orderer from Fabric network",
                 "parameters": [
@@ -2552,7 +2554,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Join orderer to Fabric network",
                 "parameters": [
@@ -2603,7 +2605,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Unjoin orderer from Fabric network",
                 "parameters": [
@@ -2654,7 +2656,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Update organization CRL",
                 "parameters": [
@@ -2710,7 +2712,7 @@
                     "text/yaml"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get network configuration",
                 "parameters": [
@@ -2767,7 +2769,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Remove peer from Fabric network",
                 "parameters": [
@@ -2818,7 +2820,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Join peer to Fabric network",
                 "parameters": [
@@ -2869,7 +2871,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Unjoin peer from Fabric network",
                 "parameters": [
@@ -2920,7 +2922,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Reload network config block",
                 "parameters": [
@@ -2979,7 +2981,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Get transaction details by transaction ID",
                 "parameters": [
@@ -3036,7 +3038,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "fabric-networks"
+                    "Fabric Networks"
                 ],
                 "summary": "Prepare a config update for a Fabric network",
                 "parameters": [
@@ -3089,7 +3091,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "List all nodes",
                 "parameters": [
@@ -3144,7 +3146,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Create a new node",
                 "parameters": [
@@ -3187,7 +3189,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get default values for Besu node",
                 "responses": {
@@ -3213,7 +3215,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get default values for multiple Fabric nodes",
                 "parameters": [
@@ -3274,7 +3276,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get default values for Fabric orderer node",
                 "responses": {
@@ -3300,7 +3302,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get default values for Fabric peer node",
                 "responses": {
@@ -3329,7 +3331,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "List nodes by platform",
                 "parameters": [
@@ -3391,7 +3393,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get a node",
                 "parameters": [
@@ -3439,7 +3441,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Update a node",
                 "parameters": [
@@ -3496,7 +3498,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Delete a node",
                 "parameters": [
@@ -3543,7 +3545,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Renew node certificates",
                 "parameters": [
@@ -3593,7 +3595,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get channels for a Fabric node",
                 "parameters": [
@@ -3643,7 +3645,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Get node events",
                 "parameters": [
@@ -3707,7 +3709,7 @@
                     "text/event-stream"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Tail node logs",
                 "parameters": [
@@ -3771,7 +3773,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Restart a node",
                 "parameters": [
@@ -3821,7 +3823,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Start a node",
                 "parameters": [
@@ -3871,7 +3873,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "nodes"
+                    "Nodes"
                 ],
                 "summary": "Stop a node",
                 "parameters": [
@@ -3921,7 +3923,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "List notification providers",
                 "responses": {
@@ -3951,7 +3953,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "Create a notification provider",
                 "parameters": [
@@ -3997,7 +3999,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "Get a notification provider",
                 "parameters": [
@@ -4045,7 +4047,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "Update a notification provider",
                 "parameters": [
@@ -4102,7 +4104,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "Delete a notification provider",
                 "parameters": [
@@ -4149,7 +4151,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "notifications"
+                    "Notifications"
                 ],
                 "summary": "Test a notification provider",
                 "parameters": [
@@ -4202,7 +4204,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "List all Fabric organizations",
                 "responses": {
@@ -4235,7 +4237,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Create a new Fabric organization",
                 "parameters": [
@@ -4287,7 +4289,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Get a Fabric organization by MSP ID",
                 "parameters": [
@@ -4337,7 +4339,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Get a Fabric organization",
                 "parameters": [
@@ -4385,7 +4387,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Update a Fabric organization",
                 "parameters": [
@@ -4451,7 +4453,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Delete a Fabric organization",
                 "parameters": [
@@ -4498,7 +4500,7 @@
                     "application/x-pem-file"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Get organization's CRL",
                 "parameters": [
@@ -4548,7 +4550,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Revoke a certificate using PEM data",
                 "parameters": [
@@ -4610,7 +4612,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Revoke a certificate using its serial number",
                 "parameters": [
@@ -4670,7 +4672,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Delete a revoked certificate using its serial number",
                 "parameters": [
@@ -4741,7 +4743,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "Organizations"
                 ],
                 "summary": "Get organization's revoked certificates",
                 "parameters": [
@@ -4791,7 +4793,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "settings"
+                    "Settings"
                 ],
                 "summary": "Get the default setting",
                 "responses": {
@@ -4812,7 +4814,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "settings"
+                    "Settings"
                 ],
                 "summary": "Create or update the default setting",
                 "parameters": [

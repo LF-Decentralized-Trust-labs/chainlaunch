@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Link, useParams } from 'react-router-dom'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useMemo } from 'react'
+import { decodeBlockToJson } from '@/utils/block'
 
 export function BlocksOverview() {
 	const { id } = useParams<{ id: string }>()
@@ -34,7 +35,9 @@ export function BlocksOverview() {
 		}),
 	})
 	const blocks = useMemo(() => blocksResponse?.blocks?.sort((a, b) => b.number! - a.number!) || [], [blocksResponse?.blocks])
-
+	const lastBlock = useMemo(() => blocks[0], [blocks])
+	const lastBlockJson = useMemo(() => lastBlock ? decodeBlockToJson(lastBlock.data as unknown as string) : null, [lastBlock])
+	console.log(lastBlockJson)
 	if (chainLoading || networkLoading || blocksLoading) {
 		return (
 			<div className="space-y-6">
@@ -70,7 +73,7 @@ export function BlocksOverview() {
 						<CardTitle>Total Transactions</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-2xl font-bold">{blocks.length || 0}</p>
+						<p className="text-2xl font-bold">{lastBlockJson?.data?.data?.length || 0}</p>
 						<p className="text-sm text-muted-foreground">In Latest Block</p>
 					</CardContent>
 				</Card>

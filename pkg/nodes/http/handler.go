@@ -68,7 +68,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 // CreateNode godoc
 // @Summary Create a new node
 // @Description Create a new node with the specified configuration
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param request body CreateNodeRequest true "Node creation request"
@@ -118,7 +118,7 @@ func (h *NodeHandler) CreateNode(w http.ResponseWriter, r *http.Request) error {
 // GetNode godoc
 // @Summary Get a node
 // @Description Get a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -149,7 +149,7 @@ func (h *NodeHandler) GetNode(w http.ResponseWriter, r *http.Request) error {
 // ListNodes godoc
 // @Summary List all nodes
 // @Description Get a paginated list of nodes with optional platform filter
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param platform query string false "Filter by blockchain platform"
@@ -196,7 +196,7 @@ func (h *NodeHandler) ListNodes(w http.ResponseWriter, r *http.Request) error {
 // ListNodesByPlatform godoc
 // @Summary List nodes by platform
 // @Description Get a paginated list of nodes filtered by blockchain platform
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param platform path string true "Blockchain platform (FABRIC/BESU)" Enums(FABRIC,BESU)
@@ -241,7 +241,7 @@ func (h *NodeHandler) ListNodesByPlatform(w http.ResponseWriter, r *http.Request
 // StartNode godoc
 // @Summary Start a node
 // @Description Start a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -272,7 +272,7 @@ func (h *NodeHandler) StartNode(w http.ResponseWriter, r *http.Request) error {
 // StopNode godoc
 // @Summary Stop a node
 // @Description Stop a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -303,7 +303,7 @@ func (h *NodeHandler) StopNode(w http.ResponseWriter, r *http.Request) error {
 // RestartNode godoc
 // @Summary Restart a node
 // @Description Restart a node by ID (stops and starts the node)
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -341,7 +341,7 @@ func (h *NodeHandler) RestartNode(w http.ResponseWriter, r *http.Request) error 
 // DeleteNode godoc
 // @Summary Delete a node
 // @Description Delete a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -371,7 +371,7 @@ func (h *NodeHandler) DeleteNode(w http.ResponseWriter, r *http.Request) error {
 // GetFabricPeerDefaults godoc
 // @Summary Get default values for Fabric peer node
 // @Description Get default configuration values for a Fabric peer node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Success 200 {object} service.NodeDefaults
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
@@ -384,7 +384,7 @@ func (h *NodeHandler) GetFabricPeerDefaults(w http.ResponseWriter, r *http.Reque
 // GetFabricOrdererDefaults godoc
 // @Summary Get default values for Fabric orderer node
 // @Description Get default configuration values for a Fabric orderer node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Success 200 {object} service.NodeDefaults
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
@@ -397,7 +397,7 @@ func (h *NodeHandler) GetFabricOrdererDefaults(w http.ResponseWriter, r *http.Re
 // GetNodesDefaults godoc
 // @Summary Get default values for multiple Fabric nodes
 // @Description Get default configuration values for multiple Fabric nodes
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Param peerCount query int false "Number of peer nodes" default(1) minimum(0)
 // @Param ordererCount query int false "Number of orderer nodes" default(1) minimum(0)
@@ -449,7 +449,7 @@ func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) e
 // GetBesuNodeDefaults godoc
 // @Summary Get default values for Besu node
 // @Description Get default configuration values for a Besu node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Success 200 {object} service.BesuNodeDefaults
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
@@ -465,7 +465,7 @@ func (h *NodeHandler) GetBesuNodeDefaults(w http.ResponseWriter, r *http.Request
 // TailLogs godoc
 // @Summary Tail node logs
 // @Description Stream logs from a specific node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce text/event-stream
 // @Param id path int true "Node ID"
@@ -543,7 +543,7 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 // GetNodeEvents godoc
 // @Summary Get node events
 // @Description Get a paginated list of events for a specific node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -599,7 +599,7 @@ func (h *NodeHandler) GetNodeEvents(w http.ResponseWriter, r *http.Request) erro
 // GetNodeChannels godoc
 // @Summary Get channels for a Fabric node
 // @Description Retrieves all channels for a specific Fabric node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -699,7 +699,7 @@ func toNodeEventResponse(event service.NodeEvent) NodeEventResponse {
 // RenewCertificates godoc
 // @Summary Renew node certificates
 // @Description Renews the TLS and signing certificates for a Fabric node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -730,7 +730,7 @@ func (h *NodeHandler) RenewCertificates(w http.ResponseWriter, r *http.Request) 
 // UpdateNode godoc
 // @Summary Update a node
 // @Description Updates an existing node's configuration based on its type
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"

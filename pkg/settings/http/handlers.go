@@ -35,7 +35,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // CreateOrUpdateSetting handles setting creation or update
 // @Summary Create or update the default setting
 // @Description Create or update the default setting with the provided configuration
-// @Tags settings
+// @Tags Settings
 // @Accept json
 // @Produce json
 // @Param setting body service.CreateSettingParams true "Setting configuration"
@@ -63,7 +63,7 @@ func (h *Handler) CreateOrUpdateSetting(w http.ResponseWriter, r *http.Request) 
 // GetSetting handles default setting retrieval
 // @Summary Get the default setting
 // @Description Get the default setting's details
-// @Tags settings
+// @Tags Settings
 // @Produce json
 // @Success 200 {object} service.Setting
 // @Router /settings [get]

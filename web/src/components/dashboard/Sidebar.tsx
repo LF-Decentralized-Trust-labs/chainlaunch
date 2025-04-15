@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
-import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, Globe, Key, LogOut, Network, Server, Share2, Settings } from 'lucide-react'
+import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, FileText, Globe, Key, LogOut, Network, Server, Share2, Settings } from 'lucide-react'
 ;('use client')
 
 // import { Project } from '@/api/client'
@@ -72,6 +72,16 @@ const data = {
 			],
 		},
 		{
+			title: 'API',
+			items: [
+				{
+					title: 'API Documentation',
+					url: '/docs',
+					icon: FileText,
+				},
+			],
+		},
+		{
 			title: 'Connect',
 			items: [
 				{
@@ -94,6 +104,7 @@ const data = {
 				},
 			],
 		},
+
 		// {
 		// 	title: 'Decentralized Identity',
 		// 	items: [

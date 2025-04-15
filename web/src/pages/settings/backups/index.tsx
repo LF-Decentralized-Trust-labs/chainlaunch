@@ -16,7 +16,7 @@ export default function BackupsPage() {
 	}
 
 	return (
-		<div className="container space-y-6">
+		<div className="container space-y-6 p-4">
 			<div>
 				<h1 className="text-2xl font-semibold tracking-tight">Backups</h1>
 				<p className="text-sm text-muted-foreground">Manage your backup targets, schedules and create backups</p>

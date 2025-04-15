@@ -79,7 +79,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 // @Summary List Fabric networks
 // @Description Get a paginated list of Fabric networks
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param limit query int false "Number of items to return (default: 10)"
 // @Param offset query int false "Number of items to skip (default: 0)"
@@ -135,7 +135,7 @@ func (h *Handler) FabricNetworkList(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Create a new Fabric network
 // @Description Create a new Hyperledger Fabric network with the specified configuration
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body CreateFabricNetworkRequest true "Network creation request"
@@ -230,7 +230,7 @@ func (h *Handler) FabricNetworkCreate(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Join peer to Fabric network
 // @Description Join a peer node to an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -267,7 +267,7 @@ func (h *Handler) FabricNetworkJoinPeer(w http.ResponseWriter, r *http.Request) 
 
 // @Summary Join orderer to Fabric network
 // @Description Join an orderer node to an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -304,7 +304,7 @@ func (h *Handler) FabricNetworkJoinOrderer(w http.ResponseWriter, r *http.Reques
 
 // @Summary Remove peer from Fabric network
 // @Description Remove a peer node from an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -340,7 +340,7 @@ func (h *Handler) FabricNetworkRemovePeer(w http.ResponseWriter, r *http.Request
 
 // @Summary Remove orderer from Fabric network
 // @Description Remove an orderer node from an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -376,7 +376,7 @@ func (h *Handler) FabricNetworkRemoveOrderer(w http.ResponseWriter, r *http.Requ
 
 // @Summary Get Fabric network channel configuration
 // @Description Retrieve the channel configuration for a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} ChannelConfigResponse
@@ -409,7 +409,7 @@ func (h *Handler) FabricNetworkGetChannelConfig(w http.ResponseWriter, r *http.R
 
 // @Summary Get Fabric network current channel configuration
 // @Description Retrieve the current channel configuration for a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} ChannelConfigResponse
@@ -442,7 +442,7 @@ func (h *Handler) FabricNetworkGetCurrentChannelConfig(w http.ResponseWriter, r 
 
 // @Summary Delete a Fabric network
 // @Description Delete an existing Fabric network and all its resources
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 204 "No Content"
@@ -467,7 +467,7 @@ func (h *Handler) FabricNetworkDelete(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get a Fabric network by ID
 // @Description Get details of a specific Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} NetworkResponse
@@ -506,7 +506,7 @@ func (h *Handler) FabricNetworkGet(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get network nodes
 // @Description Get all nodes associated with a network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} GetNetworkNodesResponse
@@ -539,7 +539,7 @@ func (h *Handler) FabricNetworkGetNodes(w http.ResponseWriter, r *http.Request) 
 
 // @Summary Add node to network
 // @Description Add a node (peer or orderer) to an existing network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -581,7 +581,7 @@ func (h *Handler) FabricNetworkAddNode(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Unjoin peer from Fabric network
 // @Description Remove a peer node from a channel but keep it in the network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -617,7 +617,7 @@ func (h *Handler) FabricNetworkUnjoinPeer(w http.ResponseWriter, r *http.Request
 
 // @Summary Unjoin orderer from Fabric network
 // @Description Remove an orderer node from a channel but keep it in the network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -653,7 +653,7 @@ func (h *Handler) FabricNetworkUnjoinOrderer(w http.ResponseWriter, r *http.Requ
 
 // @Summary Set anchor peers for an organization
 // @Description Set the anchor peers for an organization in a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -701,7 +701,7 @@ func (h *Handler) FabricNetworkSetAnchorPeers(w http.ResponseWriter, r *http.Req
 
 // @Summary Get network configuration
 // @Description Get the network configuration as YAML
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce text/yaml
 // @Param id path int true "Network ID"
 // @Param orgId path int true "Organization ID"
@@ -741,7 +741,7 @@ func (h *Handler) FabricNetworkGetOrganizationConfig(w http.ResponseWriter, r *h
 
 // @Summary Get a Fabric network by slug
 // @Description Get details of a specific Fabric network using its slug
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param slug path string true "Network Slug"
 // @Success 200 {object} NetworkResponse
@@ -814,7 +814,7 @@ func writeError(w http.ResponseWriter, code int, error string, message string) {
 
 // @Summary List Besu networks
 // @Description Get a paginated list of Besu networks
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param limit query int false "Number of items to return (default: 10)"
 // @Param offset query int false "Number of items to skip (default: 0)"
@@ -868,7 +868,7 @@ func (h *Handler) BesuNetworkList(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Create a new Besu network
 // @Description Create a new Besu network with the specified configuration
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Accept json
 // @Produce json
 // @Param request body CreateBesuNetworkRequest true "Network creation request"
@@ -929,7 +929,7 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get a Besu network by ID
 // @Description Get details of a specific Besu network
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} BesuNetworkResponse
@@ -960,7 +960,7 @@ func (h *Handler) BesuNetworkGet(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Delete a Besu network
 // @Description Delete an existing Besu network and all its resources
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 204 "No Content"
@@ -1017,7 +1017,7 @@ func mapBesuNetworkToResponse(n service.Network) BesuNetworkResponse {
 
 // @Summary Reload network config block
 // @Description Reloads the current config block for a network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1060,7 +1060,7 @@ func (h *Handler) ReloadNetworkBlock(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Import a Fabric network
 // @Description Import an existing Fabric network using its genesis block
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportFabricNetworkRequest true "Import network request"
@@ -1107,7 +1107,7 @@ func (h *Handler) ImportFabricNetwork(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Import a Fabric network with organization
 // @Description Import an existing Fabric network using organization details
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportFabricNetworkWithOrgRequest true "Import network with org request"
@@ -1156,7 +1156,7 @@ func (h *Handler) ImportFabricNetworkWithOrg(w http.ResponseWriter, r *http.Requ
 
 // @Summary Import a Besu network
 // @Description Import an existing Besu network using its genesis file
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportBesuNetworkRequest true "Import network request"
@@ -1402,7 +1402,7 @@ type UpdateFabricNetworkRequest struct {
 
 // @Summary Submit config update proposal
 // @Description Submit a signed config update proposal for execution
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1435,7 +1435,7 @@ func (h *Handler) DummyHandler(w http.ResponseWriter, r *http.Request) {
 // @Description - update_etcd_raft_options: Update etcd raft options for the orderer
 // @Description - update_batch_size: Update batch size for the orderer
 // @Description - update_batch_timeout: Update batch timeout for the orderer
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1624,7 +1624,7 @@ type ConfigUpdateResponse struct {
 
 // @Summary Get list of blocks from Fabric network
 // @Description Get a paginated list of blocks from a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Param limit query int false "Number of blocks to return (default: 10)"
@@ -1689,7 +1689,7 @@ func (h *Handler) FabricGetBlocks(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get transactions from a specific block
 // @Description Get all transactions from a specific block in a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Param blockNum path int true "Block Number"
@@ -1730,7 +1730,7 @@ func (h *Handler) FabricGetBlock(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get transaction details by transaction ID
 // @Description Get detailed information about a specific transaction in a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Param txId path string true "Transaction ID"
@@ -1780,7 +1780,7 @@ type UpdateOrganizationCRLResponse struct {
 
 // @Summary Update organization CRL
 // @Description Update the Certificate Revocation List (CRL) for an organization in the network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1829,7 +1829,9 @@ func (h *Handler) UpdateOrganizationCRL(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// @Tags fabric-networks
+// @Summary Get Fabric chain information
+// @Description Retrieve detailed information about the Fabric blockchain including height and block hashes
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"

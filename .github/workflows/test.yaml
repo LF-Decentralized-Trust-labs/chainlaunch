@@ -11,6 +11,10 @@ on:
             - '**/*.md'
             - 'docs/**'
 
+# Set explicit permissions following the principle of least privilege
+permissions:
+    contents: read # Only need read access to the repository contents
+
 jobs:
     build-and-test:
         name: Build and Test on Linux

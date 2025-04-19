@@ -3,6 +3,7 @@ package monitoring
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/certutils"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	nodes "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/chainlaunch/chainlaunch/pkg/notifications"
 )
 
@@ -46,10 +49,11 @@ type service struct {
 	workerWaitGroup  sync.WaitGroup
 	lastCheckResults map[int64]*NodeCheck
 	resultsMutex     sync.RWMutex
+	nodeService      *nodes.NodeService
 }
 
 // NewService creates a new monitoring service
-func NewService(logger *logger.Logger, config *Config, notificationSvc notifications.Service) Service {
+func NewService(logger *logger.Logger, config *Config, notificationSvc notifications.Service, nodeService *nodes.NodeService) Service {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -64,6 +68,7 @@ func NewService(logger *logger.Logger, config *Config, notificationSvc notificat
 		httpClient: &http.Client{
 			Timeout: config.DefaultTimeout,
 		},
+		nodeService: nodeService,
 	}
 }
 
@@ -219,11 +224,43 @@ func (s *service) checkNode(ctx context.Context, node *Node) {
 	dialer := &net.Dialer{
 		Timeout: node.Timeout,
 	}
-
+	nodeResponse, err := s.nodeService.GetNode(ctx, node.ID)
+	if err != nil {
+		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+		return
+	}
+	var x509Cert *x509.Certificate
+	if nodeResponse.FabricPeer != nil {
+		tlsCertStr := nodeResponse.FabricPeer.TLSCert
+		if tlsCertStr != "" {
+			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
+			if err != nil {
+				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+				return
+			}
+		}
+	} else if nodeResponse.FabricOrderer != nil {
+		tlsCertStr := nodeResponse.FabricOrderer.TLSCert
+		if tlsCertStr != "" {
+			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
+			if err != nil {
+				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+				return
+			}
+		}
+	}
+	var tlsCert tls.Certificate
+	if x509Cert != nil {
+		tlsCert = tls.Certificate{
+			Certificate: [][]byte{x509Cert.Raw},
+			PrivateKey:  nil,
+		}
+	}
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+	}
 	// Try TLS connection
-	conn, err := tls.DialWithDialer(dialer, "tcp", host, &tls.Config{
-		InsecureSkipVerify: true, // For development - in production should verify certs
-	})
+	conn, err := tls.DialWithDialer(dialer, "tcp", host, tlsConfig)
 	if err != nil {
 		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
 		return
@@ -239,9 +276,7 @@ func (s *service) checkNode(ctx context.Context, node *Node) {
 
 	// Create a client with the TLS connection
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // For development
-		},
+		TLSClientConfig: tlsConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return conn, nil
 		},

@@ -599,6 +599,10 @@ export const getNetworksFabricByIdCurrentChannelConfig = <ThrowOnError extends b
     });
 };
 
+/**
+ * Get Fabric chain information
+ * Retrieve detailed information about the Fabric blockchain including height and block hashes
+ */
 export const getNetworksFabricByIdInfo = <ThrowOnError extends boolean = false>(options: Options<GetNetworksFabricByIdInfoData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetNetworksFabricByIdInfoResponse, GetNetworksFabricByIdInfoError, ThrowOnError>({
         url: '/networks/fabric/{id}/info',

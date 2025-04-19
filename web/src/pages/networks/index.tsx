@@ -138,6 +138,12 @@ export default function NetworksPage() {
 											</Link>
 										</DropdownMenuItem>
 										<DropdownMenuItem asChild>
+											<Link to="/networks/besu/bulk-create">
+												<Upload className="mr-2 h-4 w-4" />
+												Bulk Create Network
+											</Link>
+										</DropdownMenuItem>
+										<DropdownMenuItem asChild>
 											<Link to="/networks/import">
 												<Upload className="mr-2 h-4 w-4" />
 												Import Network
@@ -180,6 +186,12 @@ export default function NetworksPage() {
 									<Link to="/networks/besu/create">
 										<BesuIcon className="mr-2 h-4 w-4" />
 										Besu Network
+									</Link>
+								</DropdownMenuItem>
+								<DropdownMenuItem asChild>
+									<Link to="/networks/besu/bulk-create">
+										<Upload className="mr-2 h-4 w-4" />
+										Besu Network (Bulk)
 									</Link>
 								</DropdownMenuItem>
 								<DropdownMenuItem asChild>

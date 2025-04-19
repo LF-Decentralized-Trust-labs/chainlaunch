@@ -46,6 +46,7 @@ import SmartContractsPage from './pages/smart-contracts'
 import { BlocksOverview } from '@/components/networks/blocks-overview'
 import { BlockDetails } from '@/components/networks/block-details'
 import ApiDocumentationPage from './pages/api-documentation'
+import BulkCreateBesuNetworkPage from './pages/networks/besu/bulk-create'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -108,6 +109,7 @@ const App = () => {
 														<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
 														<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
 														<Route path="docs" element={<ApiDocumentationPage />} />
+														<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

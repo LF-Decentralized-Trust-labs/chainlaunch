@@ -1617,8 +1617,8 @@
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/http.BesuNetworkResponse"
                         }
@@ -7880,10 +7880,6 @@
         {
             "description": "Key provider management operations",
             "name": "Providers"
-        },
-        {
-            "description": "Blockchain network management operations",
-            "name": "Networks"
         },
         {
             "description": "Network node management operations",

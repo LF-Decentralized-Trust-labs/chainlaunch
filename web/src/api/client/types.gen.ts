@@ -2481,9 +2481,9 @@ export type PostNetworksBesuError = PostNetworksBesuErrors[keyof PostNetworksBes
 
 export type PostNetworksBesuResponses = {
     /**
-     * Created
+     * OK
      */
-    201: HttpBesuNetworkResponse;
+    200: HttpBesuNetworkResponse;
 };
 
 export type PostNetworksBesuResponse = PostNetworksBesuResponses[keyof PostNetworksBesuResponses];

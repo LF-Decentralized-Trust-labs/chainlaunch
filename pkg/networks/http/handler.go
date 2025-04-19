@@ -872,7 +872,7 @@ func (h *Handler) BesuNetworkList(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param request body CreateBesuNetworkRequest true "Network creation request"
-// @Success 201 {object} BesuNetworkResponse
+// @Success 200 {object} BesuNetworkResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /networks/besu [post]
@@ -887,7 +887,7 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "validation_failed", err.Error())
 		return
 	}
-	// writeError(w, http.StatusInternalServerError, "not_implemented", "Creating Besu network is not implemented yet")
+
 	// Create the Besu network config
 	besuConfig := types.BesuNetworkConfig{
 		ChainID:                req.Config.ChainID,
@@ -924,7 +924,15 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Return network response
 	resp := mapBesuNetworkToResponse(*network)
-	writeJSON(w, http.StatusCreated, resp)
+
+	// Ensure proper JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		// If encoding fails, log the error and return a generic error
+		writeError(w, http.StatusInternalServerError, "response_encoding_failed", "Failed to encode response")
+		return
+	}
 }
 
 // @Summary Get a Besu network by ID
@@ -996,10 +1004,8 @@ func mapBesuNetworkToResponse(n service.Network) BesuNetworkResponse {
 		if err := json.Unmarshal(n.Config, &config); err == nil {
 			chainID = config.ChainID
 		}
-	}
-	var genesisConfig json.RawMessage
-	if n.GenesisBlock != "" {
-		genesisConfig = json.RawMessage(n.GenesisBlock)
+	} else {
+		chainID = 0
 	}
 	return BesuNetworkResponse{
 		ID:            n.ID,
@@ -1010,7 +1016,7 @@ func mapBesuNetworkToResponse(n service.Network) BesuNetworkResponse {
 		CreatedAt:     n.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     updatedAt,
 		Config:        n.Config,
-		GenesisConfig: genesisConfig,
+		GenesisConfig: n.GenesisBlock,
 		Platform:      n.Platform,
 	}
 }

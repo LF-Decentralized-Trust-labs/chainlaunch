@@ -291,7 +291,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		DefaultFailureThreshold: 3,                // Alert after 3 consecutive failures
 		Workers:                 3,                // Use 3 worker goroutines
 	}
-	monitoringService := monitoring.NewService(logger, monitoringConfig, notificationService)
+	monitoringService := monitoring.NewService(logger, monitoringConfig, notificationService, nodesService)
 
 	// Start the monitoring service with a background context
 	monitoringCtx, monitoringCancel := context.WithCancel(context.Background())

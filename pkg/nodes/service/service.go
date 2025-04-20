@@ -349,7 +349,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	deploymentConfig, err := s.initializeNode(ctx, node, req)
 	if err != nil {
 		// Update node status to failed if initialization fails
-		s.updateNodeStatus(ctx, node.ID, types.NodeStatusError)
+		s.updateNodeStatusWithError(ctx, node.ID, types.NodeStatusError, fmt.Sprintf("Failed to initialize node: %v", err))
 		return nil, fmt.Errorf("failed to initialize node: %w", err)
 	}
 
@@ -665,28 +665,18 @@ func (s *NodeService) updateNodeStatus(ctx context.Context, nodeID int64, status
 	if err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
 	}
-	dataBytes, err := json.Marshal(map[string]string{"status": string(status)})
-	if err != nil {
-		return fmt.Errorf("failed to marshal node status: %w", err)
-	}
-	// Add node status change to event history
-	_, err = s.db.CreateNodeEvent(ctx, &db.CreateNodeEventParams{
-		NodeID:      nodeID,
-		EventType:   string(status),
-		Data:        sql.NullString{String: string(dataBytes), Valid: true},
-		Description: "status changed",
-		Status:      string(status),
+	return nil
+}
+
+func (s *NodeService) updateNodeStatusWithError(ctx context.Context, nodeID int64, status types.NodeStatus, errorMessage string) error {
+	_, err := s.db.UpdateNodeStatusWithError(ctx, &db.UpdateNodeStatusWithErrorParams{
+		ID:           nodeID,
+		Status:       string(status),
+		ErrorMessage: sql.NullString{String: errorMessage, Valid: true},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create node event: %w", err)
+		return fmt.Errorf("failed to update node status with error: %w", err)
 	}
-
-	// Log the status change
-	s.logger.Info("Node status updated",
-		"nodeID", nodeID,
-		"status", status,
-	)
-
 	return nil
 }
 
@@ -792,18 +782,20 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeRespo
 		DeploymentConfig:   deploymentConfig,
 		CreatedAt:          dbNode.CreatedAt,
 		UpdatedAt:          dbNode.UpdatedAt.Time,
+		ErrorMessage:       dbNode.ErrorMessage.String,
 	}
 
 	// Create node response
 	nodeResponse := &NodeResponse{
-		ID:        dbNode.ID,
-		Name:      dbNode.Name,
-		Platform:  dbNode.Platform,
-		Status:    dbNode.Status,
-		NodeType:  types.NodeType(dbNode.NodeType.String),
-		Endpoint:  dbNode.Endpoint.String,
-		CreatedAt: dbNode.CreatedAt,
-		UpdatedAt: dbNode.UpdatedAt.Time,
+		ID:           dbNode.ID,
+		Name:         dbNode.Name,
+		Platform:     dbNode.Platform,
+		Status:       dbNode.Status,
+		NodeType:     types.NodeType(dbNode.NodeType.String),
+		ErrorMessage: dbNode.ErrorMessage.String,
+		Endpoint:     dbNode.Endpoint.String,
+		CreatedAt:    dbNode.CreatedAt,
+		UpdatedAt:    dbNode.UpdatedAt.Time,
 	}
 
 	// Add type-specific properties
@@ -991,7 +983,7 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 	if stopErr != nil {
 		s.logger.Error("Failed to stop node", "error", stopErr)
 		// Update status to error if stop failed
-		if err := s.updateNodeStatus(ctx, id, types.NodeStatusError); err != nil {
+		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to stop node: %v", stopErr)); err != nil {
 			s.logger.Error("Failed to update node status after stop error", "error", err)
 		}
 		return nil, fmt.Errorf("failed to stop node: %w", stopErr)
@@ -1028,7 +1020,7 @@ func (s *NodeService) startNode(ctx context.Context, dbNode *db.Node) error {
 	if startErr != nil {
 		s.logger.Error("Failed to start node", "error", startErr)
 		// Update status to error if start failed
-		if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusError); err != nil {
+		if err := s.updateNodeStatusWithError(ctx, dbNode.ID, types.NodeStatusError, fmt.Sprintf("Failed to start node: %v", startErr)); err != nil {
 			s.logger.Error("Failed to update node status after start error", "error", err)
 		}
 		return fmt.Errorf("failed to start node: %w", startErr)
@@ -2208,7 +2200,7 @@ func (s *NodeService) RenewCertificates(ctx context.Context, id int64) (*NodeRes
 
 	if renewErr != nil {
 		// Update status to error if renewal failed
-		if err := s.updateNodeStatus(ctx, id, types.NodeStatusError); err != nil {
+		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to renew certificates: %v", renewErr)); err != nil {
 			s.logger.Error("Failed to update node status after renewal error", "error", err)
 		}
 		return nil, fmt.Errorf("failed to renew certificates: %w", renewErr)

@@ -13,6 +13,7 @@ type Node struct {
 	BlockchainPlatform types.BlockchainPlatform   `json:"platform"`
 	NodeType           types.NodeType             `json:"nodeType"`
 	Status             types.NodeStatus           `json:"status"`
+	ErrorMessage       string                     `json:"errorMessage"`
 	Endpoint           string                     `json:"endpoint"`
 	PublicEndpoint     string                     `json:"publicEndpoint"`
 	NodeConfig         types.NodeConfig           `json:"nodeConfig"`
@@ -33,14 +34,15 @@ type PaginatedNodes struct {
 
 // NodeResponse represents the response for node configuration
 type NodeResponse struct {
-	ID        int64          `json:"id"`
-	Name      string         `json:"name"`
-	Platform  string         `json:"platform"`
-	Status    string         `json:"status"`
-	NodeType  types.NodeType `json:"nodeType"`
-	Endpoint  string         `json:"endpoint"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Platform     string         `json:"platform"`
+	Status       string         `json:"status"`
+	ErrorMessage string         `json:"errorMessage"`
+	NodeType     types.NodeType `json:"nodeType"`
+	Endpoint     string         `json:"endpoint"`
+	CreatedAt    time.Time      `json:"createdAt"`
+	UpdatedAt    time.Time      `json:"updatedAt"`
 
 	// Type-specific fields
 	FabricPeer    *FabricPeerProperties    `json:"fabricPeer,omitempty"`

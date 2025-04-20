@@ -301,6 +301,35 @@ export default function BulkCreateBesuNetworkPage() {
 			// Store the network ID for use in step 3
 			localStorage.setItem('besuBulkCreateNetworkId', network.id.toString())
 
+			// Initialize node configs before moving to step 3
+			const numberOfNodes = nodesForm.getValues('numberOfNodes')
+			const networkName = data.networkName
+			const newNodeConfigs = Array.from({ length: numberOfNodes }).map((_, index) => {
+				const bootNodes = index > 0
+					? index === 1
+						? `enode://${validatorKeys[0]?.publicKey.substring(2)}@127.0.0.1:30303`
+						: `enode://${validatorKeys[0]?.publicKey.substring(2)}@127.0.0.1:30303,enode://${validatorKeys[1]?.publicKey.substring(2)}@127.0.0.1:30304`
+					: ''
+
+				return {
+					name: `besu-${networkName}-${index + 1}`,
+					blockchainPlatform: 'BESU',
+					type: 'besu',
+					mode: 'service',
+					externalIp: '127.0.0.1',
+					internalIp: '127.0.0.1',
+					keyId: validatorKeys[index]?.id || 0,
+					networkId: network.id,
+					p2pHost: '127.0.0.1',
+					p2pPort: 30303 + index,
+					rpcHost: '127.0.0.1',
+					rpcPort: 8545 + index,
+					bootNodes: bootNodes,
+					requestTimeout: 30,
+				} as BesuNodeFormValues
+			})
+
+			setNodeConfigs(newNodeConfigs)
 			setCreationProgress({ current: 1, total: 1, currentNode: null })
 			toast.success('Network created successfully')
 			setCurrentStep('nodes-config')
@@ -842,8 +871,8 @@ export default function BulkCreateBesuNetworkPage() {
 											<dt className="text-sm font-medium text-muted-foreground">Nodes</dt>
 											<dd className="mt-1">
 												<ul className="list-disc list-inside">
-													{nodeConfigs.map((config, index) => (
-														<li key={index}>{config.name}</li>
+													{nodeConfigs?.map((config, index) => (
+														<li key={index}>{config?.name}</li>
 													))}
 												</ul>
 											</dd>

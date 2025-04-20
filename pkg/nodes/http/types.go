@@ -152,6 +152,7 @@ type NodeResponse struct {
 	BlockchainPlatform string                           `json:"platform"`
 	NodeType           string                           `json:"nodeType"`
 	Status             string                           `json:"status"`
+	ErrorMessage       string                           `json:"errorMessage"`
 	Endpoint           string                           `json:"endpoint"`
 	CreatedAt          time.Time                        `json:"createdAt"`
 	UpdatedAt          time.Time                        `json:"updatedAt"`

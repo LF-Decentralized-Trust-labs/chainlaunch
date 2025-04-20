@@ -283,9 +283,18 @@ WHERE id = ?
 RETURNING *;
 
 
+-- name: UpdateNodeStatusWithError :one
+UPDATE nodes
+SET status = ?,
+    error_message = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
 -- name: UpdateNodeStatus :one
 UPDATE nodes
 SET status = ?,
+    error_message = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 RETURNING *;

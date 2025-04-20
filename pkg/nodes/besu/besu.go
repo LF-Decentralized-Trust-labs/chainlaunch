@@ -154,24 +154,24 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
 
 	cmd := []string{
 		besuBinary,
-		"--data-path=" + dataDir,
-		"--genesis-file=" + genesisPath,
-		fmt.Sprintf("--network-id=%d", b.opts.NetworkID),
+		fmt.Sprintf("--data-path=%s", dataDir),
+		fmt.Sprintf("--genesis-file=%s", genesisPath),
 		"--rpc-http-enabled",
 		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
 		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
-		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3",
+		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3,TXPOOL",
 		"--host-allowlist=*",
 		"--miner-enabled",
 		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
 		"--min-gas-price=1000000000",
-		"--sync-mode=FULL",
 		"--rpc-http-cors-origins=all",
 		fmt.Sprintf("--node-private-key-file=%s", b.opts.NodePrivateKey),
 		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
 		"--rpc-http-host=0.0.0.0",
 		"--discovery-enabled=true",
-		"--p2p-enabled=true",
+		"--sync-mode=FULL",
+		"--revert-reason-enabled=true",
+		"--validator-priority-enabled=true",
 	}
 
 	// Add bootnodes if specified
@@ -392,7 +392,6 @@ func (b *LocalBesu) installBesuMacOS() error {
 
 	return nil
 }
-
 
 func (b *LocalBesu) getLogPath() string {
 	return b.GetStdOutPath()

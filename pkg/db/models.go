@@ -174,6 +174,7 @@ type Node struct {
 	NodeType             sql.NullString `json:"nodeType"`
 	NodeConfig           sql.NullString `json:"nodeConfig"`
 	DeploymentConfig     sql.NullString `json:"deploymentConfig"`
+	ErrorMessage         sql.NullString `json:"errorMessage"`
 }
 
 type NodeEvent struct {

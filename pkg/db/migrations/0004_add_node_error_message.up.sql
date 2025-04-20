@@ -1,0 +1,1 @@
+ALTER TABLE nodes ADD COLUMN error_message TEXT DEFAULT NULL; 

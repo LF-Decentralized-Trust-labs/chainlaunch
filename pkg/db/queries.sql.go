@@ -680,7 +680,7 @@ INSERT INTO nodes (
     ?,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
-) RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+) RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type CreateNodeParams struct {
@@ -740,6 +740,7 @@ func (q *Queries) CreateNode(ctx context.Context, arg *CreateNodeParams) (*Node,
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -1295,7 +1296,7 @@ func (q *Queries) GetAllKeys(ctx context.Context, arg *GetAllKeysParams) ([]*Get
 }
 
 const GetAllNodes = `-- name: GetAllNodes :many
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes
 `
 
 func (q *Queries) GetAllNodes(ctx context.Context) ([]*Node, error) {
@@ -1327,6 +1328,7 @@ func (q *Queries) GetAllNodes(ctx context.Context) ([]*Node, error) {
 			&i.NodeType,
 			&i.NodeConfig,
 			&i.DeploymentConfig,
+			&i.ErrorMessage,
 		); err != nil {
 			return nil, err
 		}
@@ -2357,7 +2359,7 @@ func (q *Queries) GetNetworkNode(ctx context.Context, arg *GetNetworkNodeParams)
 }
 
 const GetNetworkNodes = `-- name: GetNetworkNodes :many
-SELECT nn.id, nn.network_id, nn.node_id, nn.role, nn.status, nn.config, nn.created_at, nn.updated_at, n.id, n.name, n.slug, n.platform, n.status, n.description, n.network_id, n.config, n.resources, n.endpoint, n.public_endpoint, n.p2p_address, n.created_at, n.created_by, n.updated_at, n.fabric_organization_id, n.node_type, n.node_config, n.deployment_config 
+SELECT nn.id, nn.network_id, nn.node_id, nn.role, nn.status, nn.config, nn.created_at, nn.updated_at, n.id, n.name, n.slug, n.platform, n.status, n.description, n.network_id, n.config, n.resources, n.endpoint, n.public_endpoint, n.p2p_address, n.created_at, n.created_by, n.updated_at, n.fabric_organization_id, n.node_type, n.node_config, n.deployment_config, n.error_message 
 FROM network_nodes nn
 JOIN nodes n ON nn.node_id = n.id
 WHERE nn.network_id = ? 
@@ -2392,6 +2394,7 @@ type GetNetworkNodesRow struct {
 	NodeType             sql.NullString `json:"nodeType"`
 	NodeConfig           sql.NullString `json:"nodeConfig"`
 	DeploymentConfig     sql.NullString `json:"deploymentConfig"`
+	ErrorMessage         sql.NullString `json:"errorMessage"`
 }
 
 func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]*GetNetworkNodesRow, error) {
@@ -2431,6 +2434,7 @@ func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]*GetN
 			&i.NodeType,
 			&i.NodeConfig,
 			&i.DeploymentConfig,
+			&i.ErrorMessage,
 		); err != nil {
 			return nil, err
 		}
@@ -2446,7 +2450,7 @@ func (q *Queries) GetNetworkNodes(ctx context.Context, networkID int64) ([]*GetN
 }
 
 const GetNode = `-- name: GetNode :one
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes
 WHERE id = ? LIMIT 1
 `
 
@@ -2473,12 +2477,13 @@ func (q *Queries) GetNode(ctx context.Context, id int64) (*Node, error) {
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
 
 const GetNodeBySlug = `-- name: GetNodeBySlug :one
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes WHERE slug = ?
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes WHERE slug = ?
 `
 
 func (q *Queries) GetNodeBySlug(ctx context.Context, slug string) (*Node, error) {
@@ -2504,6 +2509,7 @@ func (q *Queries) GetNodeBySlug(ctx context.Context, slug string) (*Node, error)
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -3620,7 +3626,7 @@ func (q *Queries) ListNodeEventsByType(ctx context.Context, arg *ListNodeEventsB
 }
 
 const ListNodes = `-- name: ListNodes :many
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
 `
@@ -3659,6 +3665,7 @@ func (q *Queries) ListNodes(ctx context.Context, arg *ListNodesParams) ([]*Node,
 			&i.NodeType,
 			&i.NodeConfig,
 			&i.DeploymentConfig,
+			&i.ErrorMessage,
 		); err != nil {
 			return nil, err
 		}
@@ -3674,7 +3681,7 @@ func (q *Queries) ListNodes(ctx context.Context, arg *ListNodesParams) ([]*Node,
 }
 
 const ListNodesByNetwork = `-- name: ListNodesByNetwork :many
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes
 WHERE network_id = ?
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -3715,6 +3722,7 @@ func (q *Queries) ListNodesByNetwork(ctx context.Context, arg *ListNodesByNetwor
 			&i.NodeType,
 			&i.NodeConfig,
 			&i.DeploymentConfig,
+			&i.ErrorMessage,
 		); err != nil {
 			return nil, err
 		}
@@ -3730,7 +3738,7 @@ func (q *Queries) ListNodesByNetwork(ctx context.Context, arg *ListNodesByNetwor
 }
 
 const ListNodesByPlatform = `-- name: ListNodesByPlatform :many
-SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config FROM nodes
+SELECT id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message FROM nodes
 WHERE platform = ?
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -3771,6 +3779,7 @@ func (q *Queries) ListNodesByPlatform(ctx context.Context, arg *ListNodesByPlatf
 			&i.NodeType,
 			&i.NodeConfig,
 			&i.DeploymentConfig,
+			&i.ErrorMessage,
 		); err != nil {
 			return nil, err
 		}
@@ -4216,7 +4225,7 @@ UPDATE nodes
 SET deployment_config = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateDeploymentConfigParams struct {
@@ -4247,6 +4256,7 @@ func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploym
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -4556,7 +4566,7 @@ UPDATE nodes
 SET node_config = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateNodeConfigParams struct {
@@ -4587,6 +4597,7 @@ func (q *Queries) UpdateNodeConfig(ctx context.Context, arg *UpdateNodeConfigPar
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -4596,7 +4607,7 @@ UPDATE nodes
 SET deployment_config = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateNodeDeploymentConfigParams struct {
@@ -4627,6 +4638,7 @@ func (q *Queries) UpdateNodeDeploymentConfig(ctx context.Context, arg *UpdateNod
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -4636,7 +4648,7 @@ UPDATE nodes
 SET endpoint = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateNodeEndpointParams struct {
@@ -4667,6 +4679,7 @@ func (q *Queries) UpdateNodeEndpoint(ctx context.Context, arg *UpdateNodeEndpoin
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -4676,7 +4689,7 @@ UPDATE nodes
 SET public_endpoint = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateNodePublicEndpointParams struct {
@@ -4707,6 +4720,7 @@ func (q *Queries) UpdateNodePublicEndpoint(ctx context.Context, arg *UpdateNodeP
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }
@@ -4714,9 +4728,10 @@ func (q *Queries) UpdateNodePublicEndpoint(ctx context.Context, arg *UpdateNodeP
 const UpdateNodeStatus = `-- name: UpdateNodeStatus :one
 UPDATE nodes
 SET status = ?,
+    error_message = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
-RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
 `
 
 type UpdateNodeStatusParams struct {
@@ -4747,6 +4762,50 @@ func (q *Queries) UpdateNodeStatus(ctx context.Context, arg *UpdateNodeStatusPar
 		&i.NodeType,
 		&i.NodeConfig,
 		&i.DeploymentConfig,
+		&i.ErrorMessage,
+	)
+	return &i, err
+}
+
+const UpdateNodeStatusWithError = `-- name: UpdateNodeStatusWithError :one
+UPDATE nodes
+SET status = ?,
+    error_message = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, slug, platform, status, description, network_id, config, resources, endpoint, public_endpoint, p2p_address, created_at, created_by, updated_at, fabric_organization_id, node_type, node_config, deployment_config, error_message
+`
+
+type UpdateNodeStatusWithErrorParams struct {
+	Status       string         `json:"status"`
+	ErrorMessage sql.NullString `json:"errorMessage"`
+	ID           int64          `json:"id"`
+}
+
+func (q *Queries) UpdateNodeStatusWithError(ctx context.Context, arg *UpdateNodeStatusWithErrorParams) (*Node, error) {
+	row := q.db.QueryRowContext(ctx, UpdateNodeStatusWithError, arg.Status, arg.ErrorMessage, arg.ID)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Platform,
+		&i.Status,
+		&i.Description,
+		&i.NetworkID,
+		&i.Config,
+		&i.Resources,
+		&i.Endpoint,
+		&i.PublicEndpoint,
+		&i.P2pAddress,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.FabricOrganizationID,
+		&i.NodeType,
+		&i.NodeConfig,
+		&i.DeploymentConfig,
+		&i.ErrorMessage,
 	)
 	return &i, err
 }

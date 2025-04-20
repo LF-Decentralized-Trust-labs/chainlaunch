@@ -22,6 +22,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
@@ -508,7 +509,7 @@ func (s *DatabaseProvider) generateECKeyPair(req models.CreateKeyRequest) (*KeyP
 
 			// Generate Ethereum address
 			address := crypto.PubkeyToAddress(*publicKeyECDSA)
-			ethereumAddress = address.Hex()
+			ethereumAddress = strings.ToLower(address.Hex())
 		}
 
 		return &KeyPair{
@@ -550,7 +551,7 @@ func (s *DatabaseProvider) generateECKeyPair(req models.CreateKeyRequest) (*KeyP
 
 		// Generate Ethereum address
 		address := crypto.PubkeyToAddress(*publicKeyECDSA)
-		ethereumAddress = address.Hex()
+		ethereumAddress = strings.ToLower(address.Hex())
 	}
 
 	return &KeyPair{

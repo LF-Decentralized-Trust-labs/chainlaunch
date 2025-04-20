@@ -149,6 +149,7 @@ type Querier interface {
 	UpdateNodeEndpoint(ctx context.Context, arg *UpdateNodeEndpointParams) (*Node, error)
 	UpdateNodePublicEndpoint(ctx context.Context, arg *UpdateNodePublicEndpointParams) (*Node, error)
 	UpdateNodeStatus(ctx context.Context, arg *UpdateNodeStatusParams) (*Node, error)
+	UpdateNodeStatusWithError(ctx context.Context, arg *UpdateNodeStatusWithErrorParams) (*Node, error)
 	UpdateNotificationProvider(ctx context.Context, arg *UpdateNotificationProviderParams) (*NotificationProvider, error)
 	UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganizationCRLParams) error
 	UpdateProviderTestResults(ctx context.Context, arg *UpdateProviderTestResultsParams) (*NotificationProvider, error)

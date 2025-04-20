@@ -155,7 +155,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to start node: ${error.message}`)
+			toast.error(`Failed to start node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -166,7 +166,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to stop node: ${error.message}`)
+			toast.error(`Failed to stop node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -177,7 +177,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to restart node: ${error.message}`)
+			toast.error(`Failed to restart node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -188,7 +188,7 @@ export default function NodeDetailPage() {
 			navigate('/nodes')
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to delete node: ${error.message}`)
+			toast.error(`Failed to delete node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -199,7 +199,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to renew certificates: ${error.message}`)
+			toast.error(`Failed to renew certificates: ${(error as any).error.message}`)
 		},
 	})
 

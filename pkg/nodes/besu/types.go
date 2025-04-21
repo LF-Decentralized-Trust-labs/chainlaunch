@@ -4,7 +4,9 @@ package besu
 type StartBesuOpts struct {
 	ID             string            `json:"id"`
 	ListenAddress  string            `json:"listenAddress"`
+	P2PHost        string            `json:"p2pHost"`
 	P2PPort        string            `json:"p2pPort"`
+	RPCHost        string            `json:"rpcHost"`
 	RPCPort        string            `json:"rpcPort"`
 	ConsensusType  string            `json:"consensusType"`
 	NetworkID      int64             `json:"networkId"`

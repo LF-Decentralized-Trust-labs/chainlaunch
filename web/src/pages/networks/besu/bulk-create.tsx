@@ -223,14 +223,11 @@ export default function BulkCreateBesuNetworkPage() {
 					const newNodeConfigs = Array.from({ length: numberOfNodes }).map((_, index) => {
 						const defaultNode = besuDefaultNodes.data.defaults![index]!
 
-						// Parse default addresses for this node
-						// const [p2pHost, p2pPort] = defaultNode?.p2pAddress?.split(':') || ['127.0.0.1', '30303']
-						// const [rpcHost, rpcPort] = defaultNode?.rpcAddress?.split(':') || ['127.0.0.1', '8545']
 						const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = defaultNode
 						let bootNodes = ''
 						if (index > 0 && validatorKeys[0]?.publicKey) {
 							// For all nodes after the first one, use the first node as bootnode
-							const firstNodeExternalIp = '127.0.0.1'
+							const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
 							const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pPort || '30303'
 							bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${firstNodeP2pPort}`
 						}
@@ -240,7 +237,7 @@ export default function BulkCreateBesuNetworkPage() {
 							blockchainPlatform: 'BESU',
 							type: 'besu',
 							mode: 'service',
-							externalIp: '127.0.0.1',
+							externalIp: externalIp,
 							internalIp: internalIp,
 							keyId: validatorKeys[index]?.id || 0,
 							networkId: networkId ? parseInt(networkId) : 0,
@@ -399,11 +396,8 @@ export default function BulkCreateBesuNetworkPage() {
 				if (index > 0 && validatorKeys[0]?.publicKey) {
 					// For all nodes after the first one, use the first node as bootnode
 					// Use the first node's external IP and p2p port
-					const firstNodeExternalIp = '127.0.0.1'
-					// const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
+					const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
 					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pAddress?.split(':')[1] || '30303'
-					console.log('firstNodeExternalIp', firstNodeExternalIp)
-					console.log('firstNodeP2pPort', firstNodeP2pPort)
 					bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${Number(firstNodeP2pPort)}`
 				}
 

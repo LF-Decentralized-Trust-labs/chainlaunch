@@ -1183,9 +1183,11 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 			MinerAddress:   key.EthereumAddress,
 			ConsensusType:  "qbft", // TODO: get consensus type from network
 			BootNodes:      config.BootNodes,
-			Version:        "25.2.0", // TODO: get version from network
+			Version:        "25.4.1", // TODO: get version from network
 			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
 			Env:            config.Env,
+			P2PHost:        config.P2PHost,
+			RPCHost:        config.RPCHost,
 		},
 		string(config.Mode),
 		dbNode.ID,
@@ -1288,9 +1290,11 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 			MinerAddress:   key.EthereumAddress,
 			ConsensusType:  "qbft", // TODO: get consensus type from network
 			BootNodes:      besuNodeConfig.BootNodes,
-			Version:        "25.2.0", // TODO: get version from network
+			Version:        "25.4.1", // TODO: get version from network
 			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
 			Env:            besuNodeConfig.Env,
+			P2PHost:        besuNodeConfig.P2PHost,
+			RPCHost:        besuNodeConfig.RPCHost,
 		},
 		string(besuNodeConfig.Mode),
 		dbNode.ID,
@@ -2815,6 +2819,11 @@ func (s *NodeService) UpdateBesuNode(ctx context.Context, nodeID int64, req Upda
 	besuConfig.RPCPort = req.RPCPort
 	besuConfig.P2PHost = req.P2PHost
 	besuConfig.RPCHost = req.RPCHost
+	deployBesuConfig.NetworkID = int64(req.NetworkID)
+	deployBesuConfig.P2PPort = req.P2PPort
+	deployBesuConfig.RPCPort = req.RPCPort
+	deployBesuConfig.P2PHost = req.P2PHost
+	deployBesuConfig.RPCHost = req.RPCHost
 	if req.Bootnodes != nil {
 		besuConfig.BootNodes = req.Bootnodes
 	}

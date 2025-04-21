@@ -173,8 +173,9 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string, configDir s
 		fmt.Sprintf("--node-private-key-file=%s", keyPath),
 
 		"--p2p-enabled=true",
-		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
+		fmt.Sprintf("--p2p-host=%s", b.opts.P2PHost),
 		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
+		"--nat-method=NONE",
 		"--discovery-enabled=true",
 		"--profile=ENTERPRISE",
 	}

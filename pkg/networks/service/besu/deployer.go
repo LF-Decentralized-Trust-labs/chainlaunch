@@ -192,7 +192,7 @@ func (d *BesuDeployer) createExtraData(validators []BesuNode) (string, error) {
 	for i, validator := range validators {
 		validatorAddresses[i] = common.HexToAddress(validator.Address)
 	}
-
+	d.logger.Info("validatorAddresses: %v", validatorAddresses)
 	// First, RLP encode the main components
 	rlpList := []interface{}{
 		make([]byte, EXTRA_VANITY_LENGTH), // 32 bytes of zeros

@@ -8,6 +8,7 @@ type StartBesuOpts struct {
 	RPCPort        string            `json:"rpcPort"`
 	ConsensusType  string            `json:"consensusType"`
 	NetworkID      int64             `json:"networkId"`
+	ChainID        int64             `json:"chainId"`
 	GenesisFile    string            `json:"genesisFile"`
 	NodePrivateKey string            `json:"nodePrivateKey"`
 	MinerAddress   string            `json:"minerAddress"`

@@ -81,7 +81,7 @@ func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string
 	// Create container config
 	config := &container.Config{
 		Image:        imageName,
-		Cmd:          b.buildBesuCommand("/opt/besu/data", "/opt/besu/config"),
+		Cmd:          b.buildDockerBesuCommand("/opt/besu/data", "/opt/besu/config"),
 		Env:          formatEnvForDocker(env),
 		ExposedPorts: nat.PortSet{},
 	}
@@ -187,4 +187,37 @@ func formatEnvForDocker(env map[string]string) []string {
 		result = append(result, fmt.Sprintf("%s=%s", k, v))
 	}
 	return result
+}
+
+// buildBesuCommand builds the command arguments for Besu
+func (b *LocalBesu) buildDockerBesuCommand(dataPath, configPath string) []string {
+	cmd := []string{
+		"besu",
+		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
+		fmt.Sprintf("--data-path=%s", dataPath),
+		fmt.Sprintf("--genesis-file=%s", filepath.Join(configPath, "genesis.json")),
+		"--rpc-http-enabled",
+		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
+		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
+		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3,TXPOOL",
+		"--host-allowlist=*",
+		"--miner-enabled",
+		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
+		"--min-gas-price=1000000000",
+		"--rpc-http-cors-origins=all",
+		fmt.Sprintf("--node-private-key-file=%s", filepath.Join(configPath, "key")),
+		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
+		"--rpc-http-host=0.0.0.0",
+		"--discovery-enabled=true",
+		"--sync-mode=FULL",
+		"--revert-reason-enabled=true",
+		"--validator-priority-enabled=true",
+	}
+
+	// Add bootnodes if specified
+	if len(b.opts.BootNodes) > 0 {
+		cmd = append(cmd, fmt.Sprintf("--bootnodes=%s", strings.Join(b.opts.BootNodes, ",")))
+	}
+
+	return cmd
 }

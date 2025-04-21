@@ -12,6 +12,7 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
@@ -22,6 +23,7 @@ type LocalBesu struct {
 	opts            StartBesuOpts
 	mode            string
 	nodeID          int64
+	NetworkConfig   types.BesuNetworkConfig
 	logger          *logger.Logger
 	configService   *config.ConfigService
 	settingsService *settingsservice.SettingsService
@@ -35,6 +37,7 @@ func NewLocalBesu(
 	logger *logger.Logger,
 	configService *config.ConfigService,
 	settingsService *settingsservice.SettingsService,
+	networkConfig types.BesuNetworkConfig,
 ) *LocalBesu {
 	return &LocalBesu{
 		opts:            opts,
@@ -43,6 +46,7 @@ func NewLocalBesu(
 		logger:          logger,
 		configService:   configService,
 		settingsService: settingsService,
+		NetworkConfig:   networkConfig,
 	}
 }
 
@@ -83,12 +87,12 @@ func (b *LocalBesu) Start() (interface{}, error) {
 	}
 
 	// Build command and environment
-	cmd := b.buildCommand(dataDir, genesisPath)
+	cmd := b.buildCommand(dataDir, genesisPath, configDir)
 	env := b.buildEnvironment()
 
 	switch b.mode {
 	case "service":
-		return b.startService(cmd, env, dirPath)
+		return b.startService(cmd, env, dirPath, configDir)
 	case "docker":
 		return b.startDocker(env, dataDir, configDir)
 	default:
@@ -140,7 +144,7 @@ func (b *LocalBesu) checkPrerequisites() error {
 }
 
 // buildCommand builds the command to start Besu
-func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
+func (b *LocalBesu) buildCommand(dataDir string, genesisPath string, configDir string) string {
 	var besuBinary string
 	if runtime.GOOS == "darwin" {
 		if runtime.GOARCH == "arm64" {
@@ -152,26 +156,27 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
 		besuBinary = filepath.Join(b.configService.GetDataPath(), "bin/besu", b.opts.Version, "besu")
 	}
 
+	keyPath := filepath.Join(configDir, "key")
+
 	cmd := []string{
 		besuBinary,
 		fmt.Sprintf("--data-path=%s", dataDir),
 		fmt.Sprintf("--genesis-file=%s", genesisPath),
 		"--rpc-http-enabled",
-		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
-		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
-		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3,TXPOOL",
-		"--host-allowlist=*",
-		"--miner-enabled",
-		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
-		"--min-gas-price=1000000000",
+		"--rpc-http-api=ETH,NET,QBFT",
 		"--rpc-http-cors-origins=all",
-		fmt.Sprintf("--node-private-key-file=%s", b.opts.NodePrivateKey),
-		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
 		"--rpc-http-host=0.0.0.0",
+		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
+		"--min-gas-price=1000000000",
+		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
+		"--host-allowlist=*",
+		fmt.Sprintf("--node-private-key-file=%s", keyPath),
+
+		"--p2p-enabled=true",
+		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
+		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
 		"--discovery-enabled=true",
-		"--sync-mode=FULL",
-		"--revert-reason-enabled=true",
-		"--validator-priority-enabled=true",
+		"--profile=ENTERPRISE",
 	}
 
 	// Add bootnodes if specified

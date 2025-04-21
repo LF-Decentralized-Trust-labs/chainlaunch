@@ -2098,19 +2098,67 @@ func (q *Queries) GetKeyProviderByID(ctx context.Context, id int64) (*KeyProvide
 	return &i, err
 }
 
-const GetKeysByAlgorithm = `-- name: GetKeysByAlgorithm :many
-SELECT id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address FROM keys WHERE algorithm = ?
+const GetKeysByFilter = `-- name: GetKeysByFilter :many
+SELECT k.id, k.name, k.description, k.algorithm, k.key_size, k.curve, k.format, k.public_key, k.private_key, k.certificate, k.status, k.created_at, k.updated_at, k.expires_at, k.last_rotated_at, k.signing_key_id, k.sha256_fingerprint, k.sha1_fingerprint, k.provider_id, k.user_id, k.is_ca, k.ethereum_address, kp.name as provider_name, kp.type as provider_type
+FROM keys k
+JOIN key_providers kp ON k.provider_id = kp.id
+WHERE (?1 = '' OR k.algorithm = ?2) 
+  AND (?3 = 0 OR k.provider_id = ?4)
+  AND (?5 = '' OR k.curve = ?6)
 `
 
-func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]*Key, error) {
-	rows, err := q.db.QueryContext(ctx, GetKeysByAlgorithm, algorithm)
+type GetKeysByFilterParams struct {
+	AlgorithmFilter  interface{}    `json:"algorithmFilter"`
+	Algorithm        string         `json:"algorithm"`
+	ProviderIDFilter interface{}    `json:"providerIdFilter"`
+	ProviderID       int64          `json:"providerId"`
+	CurveFilter      interface{}    `json:"curveFilter"`
+	Curve            sql.NullString `json:"curve"`
+}
+
+type GetKeysByFilterRow struct {
+	ID                int64          `json:"id"`
+	Name              string         `json:"name"`
+	Description       sql.NullString `json:"description"`
+	Algorithm         string         `json:"algorithm"`
+	KeySize           sql.NullInt64  `json:"keySize"`
+	Curve             sql.NullString `json:"curve"`
+	Format            string         `json:"format"`
+	PublicKey         string         `json:"publicKey"`
+	PrivateKey        string         `json:"privateKey"`
+	Certificate       sql.NullString `json:"certificate"`
+	Status            string         `json:"status"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	ExpiresAt         sql.NullTime   `json:"expiresAt"`
+	LastRotatedAt     sql.NullTime   `json:"lastRotatedAt"`
+	SigningKeyID      sql.NullInt64  `json:"signingKeyId"`
+	Sha256Fingerprint string         `json:"sha256Fingerprint"`
+	Sha1Fingerprint   string         `json:"sha1Fingerprint"`
+	ProviderID        int64          `json:"providerId"`
+	UserID            int64          `json:"userId"`
+	IsCa              int64          `json:"isCa"`
+	EthereumAddress   sql.NullString `json:"ethereumAddress"`
+	ProviderName      string         `json:"providerName"`
+	ProviderType      string         `json:"providerType"`
+}
+
+func (q *Queries) GetKeysByFilter(ctx context.Context, arg *GetKeysByFilterParams) ([]*GetKeysByFilterRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetKeysByFilter,
+		arg.AlgorithmFilter,
+		arg.Algorithm,
+		arg.ProviderIDFilter,
+		arg.ProviderID,
+		arg.CurveFilter,
+		arg.Curve,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*Key{}
+	items := []*GetKeysByFilterRow{}
 	for rows.Next() {
-		var i Key
+		var i GetKeysByFilterRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -2134,61 +2182,8 @@ func (q *Queries) GetKeysByAlgorithm(ctx context.Context, algorithm string) ([]*
 			&i.UserID,
 			&i.IsCa,
 			&i.EthereumAddress,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const GetKeysByProviderAndCurve = `-- name: GetKeysByProviderAndCurve :many
-SELECT id, name, description, algorithm, key_size, curve, format, public_key, private_key, certificate, status, created_at, updated_at, expires_at, last_rotated_at, signing_key_id, sha256_fingerprint, sha1_fingerprint, provider_id, user_id, is_ca, ethereum_address FROM keys WHERE provider_id = ? AND curve = ?
-`
-
-type GetKeysByProviderAndCurveParams struct {
-	ProviderID int64          `json:"providerId"`
-	Curve      sql.NullString `json:"curve"`
-}
-
-func (q *Queries) GetKeysByProviderAndCurve(ctx context.Context, arg *GetKeysByProviderAndCurveParams) ([]*Key, error) {
-	rows, err := q.db.QueryContext(ctx, GetKeysByProviderAndCurve, arg.ProviderID, arg.Curve)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*Key{}
-	for rows.Next() {
-		var i Key
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.Algorithm,
-			&i.KeySize,
-			&i.Curve,
-			&i.Format,
-			&i.PublicKey,
-			&i.PrivateKey,
-			&i.Certificate,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ExpiresAt,
-			&i.LastRotatedAt,
-			&i.SigningKeyID,
-			&i.Sha256Fingerprint,
-			&i.Sha1Fingerprint,
-			&i.ProviderID,
-			&i.UserID,
-			&i.IsCa,
-			&i.EthereumAddress,
+			&i.ProviderName,
+			&i.ProviderType,
 		); err != nil {
 			return nil, err
 		}

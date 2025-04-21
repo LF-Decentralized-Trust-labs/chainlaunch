@@ -173,7 +173,8 @@ func (s *KeyManagementService) GetKeys(ctx context.Context, page, pageSize int) 
 				ID:   int(key.ProviderID),
 				Name: key.ProviderName,
 			},
-			PrivateKey: key.PrivateKey,
+			PrivateKey:      key.PrivateKey,
+			EthereumAddress: key.EthereumAddress.String,
 		}
 	}
 
@@ -550,20 +551,31 @@ func (s *KeyManagementService) GetDecryptedPrivateKey(id int) (string, error) {
 
 // FilterKeys returns keys filtered by algorithm and/or curve
 func (s *KeyManagementService) FilterKeys(ctx context.Context, algorithm, curve string, page, pageSize int) (*models.PaginatedResponse, error) {
-	var keys []*db.Key
+	var keys []*db.GetKeysByFilterRow
 	var err error
 
 	if curve != "" {
 		// If curve is specified, use GetKeysByProviderAndCurve
 		// TODO: Get provider ID from context or configuration
 		providerID := int64(1)
-		keys, err = s.queries.GetKeysByProviderAndCurve(ctx, &db.GetKeysByProviderAndCurveParams{
-			ProviderID: providerID,
-			Curve:      sql.NullString{String: curve, Valid: true},
+		keys, err = s.queries.GetKeysByFilter(ctx, &db.GetKeysByFilterParams{
+			AlgorithmFilter:  algorithm,
+			Algorithm:        algorithm,
+			ProviderIDFilter: 0,
+			ProviderID:       providerID,
+			CurveFilter:      curve,
+			Curve:            sql.NullString{String: curve, Valid: true},
 		})
 	} else if algorithm != "" {
 		// If only algorithm is specified, use GetKeysByAlgorithm
-		keys, err = s.queries.GetKeysByAlgorithm(ctx, algorithm)
+		keys, err = s.queries.GetKeysByFilter(ctx, &db.GetKeysByFilterParams{
+			AlgorithmFilter:  algorithm,
+			Algorithm:        algorithm,
+			ProviderIDFilter: 0,
+			ProviderID:       0,
+			CurveFilter:      "",
+			Curve:            sql.NullString{String: "", Valid: false},
+		})
 	} else {
 		// If no filters, get all keys
 		return nil, fmt.Errorf("no filters provided")
@@ -587,13 +599,30 @@ func (s *KeyManagementService) FilterKeys(ctx context.Context, algorithm, curve 
 	// Convert db.Key to models.KeyResponse
 	keyResponses := make([]models.KeyResponse, 0)
 	for _, key := range keys[start:end] {
+		keySize := int(key.KeySize.Int64)
 		curve := models.ECCurve(key.Curve.String)
 		keyResponses = append(keyResponses, models.KeyResponse{
-			ID:        int(key.ID),
-			Name:      key.Name,
-			Algorithm: models.KeyAlgorithm(key.Algorithm),
-			Curve:     &curve,
-			CreatedAt: key.CreatedAt,
+			ID:                int(key.ID),
+			Name:              key.Name,
+			Description:       &key.Description.String,
+			Algorithm:         models.KeyAlgorithm(key.Algorithm),
+			KeySize:           &keySize,
+			Curve:             &curve,
+			Format:            key.Format,
+			PublicKey:         key.PublicKey,
+			Certificate:       &key.Certificate.String,
+			Status:            key.Status,
+			CreatedAt:         key.CreatedAt,
+			ExpiresAt:         &key.ExpiresAt.Time,
+			LastRotatedAt:     &key.LastRotatedAt.Time,
+			SHA256Fingerprint: key.Sha256Fingerprint,
+			SHA1Fingerprint:   key.Sha1Fingerprint,
+			Provider: models.KeyProviderInfo{
+				ID:   int(key.ProviderID),
+				Name: key.ProviderName,
+			},
+			PrivateKey:      key.PrivateKey,
+			EthereumAddress: key.EthereumAddress.String,
 		})
 	}
 

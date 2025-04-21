@@ -104,9 +104,10 @@ type BesuNodeProperties struct {
 	InternalIP string `json:"internalIp"`
 	EnodeURL   string `json:"enodeUrl"`
 	// Add deployment config fields
-	P2PHost string `json:"p2pHost"`
-	RPCHost string `json:"rpcHost"`
-	KeyID   int64  `json:"keyId"`
-	Mode    string `json:"mode"`
-	Version string `json:"version"`
+	P2PHost   string   `json:"p2pHost"`
+	RPCHost   string   `json:"rpcHost"`
+	KeyID     int64    `json:"keyId"`
+	Mode      string   `json:"mode"`
+	Version   string   `json:"version"`
+	BootNodes []string `json:"bootNodes"`
 }

@@ -278,9 +278,7 @@ definitions:
       description:
         type: string
       genesisConfig:
-        items:
-          type: integer
-        type: array
+        type: string
       id:
         type: integer
       name:
@@ -291,6 +289,15 @@ definitions:
         type: string
       updatedAt:
         type: string
+    type: object
+  http.BesuNodeDefaultsResponse:
+    properties:
+      defaults:
+        items:
+          $ref: '#/definitions/service.BesuNodeDefaults'
+        type: array
+      nodeCount:
+        type: integer
     type: object
   http.BlockListResponse:
     properties:
@@ -844,6 +851,8 @@ definitions:
         type: string
       endpoint:
         type: string
+      errorMessage:
+        type: string
       fabricOrderer:
         $ref: '#/definitions/service.FabricOrdererProperties'
       fabricPeer:
@@ -1085,20 +1094,34 @@ definitions:
     type: object
   http.UpdateBesuNodeRequest:
     properties:
+      bootnodes:
+        items:
+          type: string
+        type: array
       env:
         additionalProperties:
           type: string
         type: object
-      networkConfig:
-        additionalProperties:
-          type: string
-        type: object
+      externalIp:
+        type: string
+      internalIp:
+        type: string
+      networkId:
+        type: integer
+      p2pHost:
+        type: string
       p2pPort:
         type: integer
+      rpcHost:
+        type: string
       rpcPort:
         type: integer
-      wsPort:
-        type: integer
+    required:
+    - networkId
+    - p2pHost
+    - p2pPort
+    - rpcHost
+    - rpcPort
     type: object
   http.UpdateConsenterPayload:
     properties:
@@ -1577,21 +1600,31 @@ definitions:
     type: object
   service.BesuNodeDefaults:
     properties:
-      externalIP:
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      externalIp:
         type: string
-      internalIP:
+      internalIp:
         type: string
       mode:
         $ref: '#/definitions/service.Mode'
-      networkId:
+      p2pHost:
+        type: string
+      p2pPort:
         type: integer
-      p2pAddress:
+      rpcHost:
         type: string
-      rpcAddress:
-        type: string
+      rpcPort:
+        type: integer
     type: object
   service.BesuNodeProperties:
     properties:
+      bootNodes:
+        items:
+          type: string
+        type: array
       enodeUrl:
         type: string
       externalIp:
@@ -1753,6 +1786,8 @@ definitions:
         description: 'Node deployment configuration interface that can be one of:
           FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig'
       endpoint:
+        type: string
+      errorMessage:
         type: string
       id:
         type: integer
@@ -4638,13 +4673,22 @@ paths:
   /nodes/defaults/besu-node:
     get:
       description: Get default configuration values for a Besu node
+      parameters:
+      - default: 1
+        description: Number of Besu nodes
+        in: query
+        minimum: 0
+        name: besuNodes
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.BesuNodeDefaults'
+            items:
+              $ref: '#/definitions/http.BesuNodeDefaultsResponse'
+            type: array
         "500":
           description: Internal server error
           schema:

@@ -1,5 +1,5 @@
-import { postKeys } from '@/api/client'
-import { getKeyProvidersOptions, getKeysOptions, postKeysMutation, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { getNodesDefaultsBesuNode, postKeys } from '@/api/client'
+import { getKeyProvidersOptions, getKeysOptions, getNodesDefaultsBesuNodeOptions, postKeysMutation, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -12,7 +12,7 @@ import { hexToNumber, isValidHex, numberToHex } from '@/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, CheckCircle2, Server } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -61,7 +61,7 @@ const defaultNetworkValues: Partial<NetworkStepValues> = {
 	mixHash: '0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365',
 	nonce: numberToHex(0),
 	requestTimeout: 10,
-	timestamp: numberToHex(1740000392),
+	timestamp: numberToHex(new Date().getUTCSeconds()),
 }
 
 type Step = 'nodes' | 'network' | 'nodes-config' | 'review'
@@ -89,17 +89,18 @@ export default function BulkCreateBesuNetworkPage() {
 		}
 		return []
 	})
-	console.log('validatorKeys', validatorKeys)
+
 	const [creationProgress, setCreationProgress] = useState<{
 		current: number
 		total: number
 		currentNode: string | null
 	}>({ current: 0, total: 0, currentNode: null })
-	const [nodeConfigs, setNodeConfigs] = useState<BesuNodeFormValues[]>(() => {
-		const savedConfigs = localStorage.getItem('besuBulkCreateNodeConfigs')
-		return savedConfigs ? JSON.parse(savedConfigs) : []
-	})
-
+	// const [nodeConfigs, setNodeConfigs] = useState<BesuNodeFormValues[]>(() => {
+	// 	const savedConfigs = localStorage.getItem('besuBulkCreateNodeConfigs')
+	// 	return savedConfigs ? JSON.parse(savedConfigs) : []
+	// })
+	const [nodeConfigs, setNodeConfigs] = useState<BesuNodeFormValues[]>([])
+	console.log('nodeConfigs', nodeConfigs)
 	const { data: providersData } = useQuery({
 		...getKeyProvidersOptions({}),
 	})
@@ -132,16 +133,26 @@ export default function BulkCreateBesuNetworkPage() {
 					...parsedData,
 				}
 			}
-
+			// Get current time in seconds (not milliseconds)
+			const currentTimeInSeconds = Math.floor(new Date().getTime() / 1000)
 			return {
 				...defaultNetworkValues,
-				timestamp: numberToHex(new Date().getTime()),
+				timestamp: numberToHex(currentTimeInSeconds),
 				selectedValidatorKeys: [],
 			}
 		})(),
 	})
 
 	const createNode = useMutation(postNodesMutation())
+	const numberOfNodes = useMemo(() => nodesForm.getValues('numberOfNodes'), [nodesForm])
+	const { data: defaultBesuNodeConfigs } = useQuery({
+		...getNodesDefaultsBesuNodeOptions({
+			query: {
+				besuNodes: numberOfNodes,
+			},
+		}),
+		enabled: !!numberOfNodes,
+	})
 
 	// Save form data to localStorage whenever it changes
 	useEffect(() => {
@@ -187,9 +198,71 @@ export default function BulkCreateBesuNetworkPage() {
 		}
 	}, [validatorKeys, networkForm])
 
-	const createKey = useMutation({
-		...postKeysMutation(),
-	})
+	// Add this effect after the other useEffect hooks
+	useEffect(() => {
+		const initializeNodeConfigs = async () => {
+			// Only run if we're on nodes-config step and have no existing configs
+			if (currentStep === 'nodes-config') {
+				try {
+					const networkId = localStorage.getItem('besuBulkCreateNetworkId')
+					const networkName = networkForm.getValues('networkName')
+					const numberOfNodes = nodesForm.getValues('numberOfNodes')
+
+					// Fetch default Besu node configuration
+					const besuDefaultNodes = await getNodesDefaultsBesuNode({
+						query: {
+							besuNodes: numberOfNodes,
+						},
+					})
+
+					if (!besuDefaultNodes.data) {
+						throw new Error('No default nodes found')
+					}
+
+					// Create node configs using the default nodes array
+					const newNodeConfigs = Array.from({ length: numberOfNodes }).map((_, index) => {
+						const defaultNode = besuDefaultNodes.data.defaults![index]!
+
+						// Parse default addresses for this node
+						// const [p2pHost, p2pPort] = defaultNode?.p2pAddress?.split(':') || ['127.0.0.1', '30303']
+						// const [rpcHost, rpcPort] = defaultNode?.rpcAddress?.split(':') || ['127.0.0.1', '8545']
+						const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = defaultNode
+						let bootNodes = ''
+						if (index > 0 && validatorKeys[0]?.publicKey) {
+							// For all nodes after the first one, use the first node as bootnode
+							const firstNodeExternalIp = '127.0.0.1'
+							const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pPort || '30303'
+							bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${firstNodeP2pPort}`
+						}
+
+						return {
+							name: `besu-${networkName}-${index + 1}`,
+							blockchainPlatform: 'BESU',
+							type: 'besu',
+							mode: 'service',
+							externalIp: '127.0.0.1',
+							internalIp: internalIp,
+							keyId: validatorKeys[index]?.id || 0,
+							networkId: networkId ? parseInt(networkId) : 0,
+							p2pHost: p2pHost,
+							p2pPort: Number(p2pPort),
+							rpcHost: rpcHost,
+							rpcPort: Number(rpcPort),
+							bootNodes: bootNodes,
+							requestTimeout: 30,
+						} as BesuNodeFormValues
+					})
+					setNodeConfigs(newNodeConfigs)
+				} catch (error: any) {
+					toast.error('Failed to initialize node configurations', {
+						description: error.message,
+					})
+				}
+			}
+		}
+
+		initializeNodeConfigs()
+	}, [currentStep, nodeConfigs.length, networkForm, nodesForm, validatorKeys])
 
 	const createNetwork = useMutation({
 		...postNetworksBesuMutation(),
@@ -232,7 +305,7 @@ export default function BulkCreateBesuNetworkPage() {
 				name: key.data!.name!,
 				publicKey: key.data!.publicKey!,
 			}))
-
+			console.log('newValidatorKeys', newValidatorKeys)
 			setValidatorKeys(newValidatorKeys)
 			setCreationProgress({ current: 0, total: 0, currentNode: null })
 			return newValidatorKeys
@@ -247,12 +320,12 @@ export default function BulkCreateBesuNetworkPage() {
 	const onNodesStepSubmit = async (data: NodesStepValues) => {
 		try {
 			const newValidatorKeys = await createValidatorKeys(data.numberOfNodes, networkForm.getValues('networkName'))
-
+			console.log('newValidatorKeys', newValidatorKeys)
 			// Update the network form with the new validator keys
-			networkForm.reset({
-				...networkForm.getValues(),
-				selectedValidatorKeys: newValidatorKeys.map((key) => key.id),
-			})
+			// networkForm.reset({
+			// 	...networkForm.getValues(),
+			// 	selectedValidatorKeys: newValidatorKeys.map((key) => key.id),
+			// })
 
 			setCurrentStep('network')
 		} catch (error) {
@@ -304,26 +377,49 @@ export default function BulkCreateBesuNetworkPage() {
 			// Initialize node configs before moving to step 3
 			const numberOfNodes = nodesForm.getValues('numberOfNodes')
 			const networkName = data.networkName
+
+			// Fetch default Besu node configuration
+			const besuDefaultNodes = await getNodesDefaultsBesuNode({
+				query: {
+					besuNodes: numberOfNodes,
+				},
+			})
+			if (!besuDefaultNodes.data) {
+				throw new Error('No default nodes found')
+			}
+			// Create node configs using the default nodes array
 			const newNodeConfigs = Array.from({ length: numberOfNodes }).map((_, index) => {
-				const bootNodes = index > 0
-					? index === 1
-						? `enode://${validatorKeys[0]?.publicKey.substring(2)}@127.0.0.1:30303`
-						: `enode://${validatorKeys[0]?.publicKey.substring(2)}@127.0.0.1:30303,enode://${validatorKeys[1]?.publicKey.substring(2)}@127.0.0.1:30304`
-					: ''
+				// Get the default node config for this index, or use empty object if not available
+				const defaultNode = besuDefaultNodes.data.defaults![index]!
+
+				// Parse default addresses for this node
+				const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = defaultNode
+
+				let bootNodes = ''
+				if (index > 0 && validatorKeys[0]?.publicKey) {
+					// For all nodes after the first one, use the first node as bootnode
+					// Use the first node's external IP and p2p port
+					const firstNodeExternalIp = '127.0.0.1'
+					// const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
+					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pAddress?.split(':')[1] || '30303'
+					console.log('firstNodeExternalIp', firstNodeExternalIp)
+					console.log('firstNodeP2pPort', firstNodeP2pPort)
+					bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${Number(firstNodeP2pPort)}`
+				}
 
 				return {
 					name: `besu-${networkName}-${index + 1}`,
 					blockchainPlatform: 'BESU',
 					type: 'besu',
 					mode: 'service',
-					externalIp: '127.0.0.1',
-					internalIp: '127.0.0.1',
+					externalIp: externalIp,
+					internalIp: internalIp,
 					keyId: validatorKeys[index]?.id || 0,
 					networkId: network.id,
-					p2pHost: '127.0.0.1',
-					p2pPort: 30303 + index,
-					rpcHost: '127.0.0.1',
-					rpcPort: 8545 + index,
+					p2pHost: p2pHost,
+					p2pPort: Number(p2pPort),
+					rpcHost: rpcHost,
+					rpcPort: Number(rpcPort),
 					bootNodes: bootNodes,
 					requestTimeout: 30,
 				} as BesuNodeFormValues
@@ -331,7 +427,7 @@ export default function BulkCreateBesuNetworkPage() {
 
 			setNodeConfigs(newNodeConfigs)
 			setCreationProgress({ current: 1, total: 1, currentNode: null })
-			toast.success('Network created successfully')
+
 			setCurrentStep('nodes-config')
 		} catch (error: any) {
 			toast.error('Failed to create network', {
@@ -778,18 +874,9 @@ export default function BulkCreateBesuNetworkPage() {
 									// Calculate bootnodes based on node position
 									let bootNodes = ''
 									if (index > 0) {
-										// For nodes after the first one, use the first node as bootnode
+										// For all nodes after the first one, use only the first node as bootnode
 										const firstNodeP2PPort = 30303
 										bootNodes = `enode://${validatorKeys[0]?.publicKey.substring(2)}@127.0.0.1:${firstNodeP2PPort}`
-
-										// If this is the second node, it's also a bootnode
-										if (index === 1) {
-											// Second node is also a bootnode, no additional bootnodes needed
-										} else {
-											// For nodes after the second one, use both first and second nodes as bootnodes
-											const secondNodeP2PPort = 30304
-											bootNodes += `,enode://${validatorKeys[1]?.publicKey.substring(2)}@127.0.0.1:${secondNodeP2PPort}`
-										}
 									}
 
 									const defaultNodeConfig = {

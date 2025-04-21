@@ -45,17 +45,10 @@ interface BesuNodeFormProps {
 	onChange?: (values: BesuNodeFormValues) => void
 	submitText?: string
 	networkId?: number
+	submitButtonText?: string
 }
 
-export function BesuNodeForm({
-	onSubmit,
-	isSubmitting,
-	hideSubmit,
-	defaultValues,
-	onChange,
-	submitText = 'Create Node',
-	networkId,
-}: BesuNodeFormProps) {
+export function BesuNodeForm({ onSubmit, isSubmitting, hideSubmit, defaultValues, onChange, submitText = 'Create Node', networkId, submitButtonText = 'Create Node' }: BesuNodeFormProps) {
 	const form = useForm<BesuNodeFormValues>({
 		resolver: zodResolver(besuNodeFormSchema),
 		defaultValues: {
@@ -75,17 +68,27 @@ export function BesuNodeForm({
 	const { data: besuDefaultConfig } = useQuery(getNodesDefaultsBesuNodeOptions())
 	const { data: networks } = useQuery(getNetworksBesuOptions({}))
 	const { data: keys } = useQuery(getKeysOptions({}))
-
+	useEffect(() => {
+		// Set form values from defaultValues if they exist
+		if (defaultValues) {
+			// Use Object.entries to iterate through all properties of defaultValues
+			Object.entries(defaultValues).forEach(([key, value]) => {
+				// Only set the value if it's defined
+				if (value !== undefined) {
+					form.setValue(key as keyof BesuNodeFormValues, value)
+				}
+			})
+		}
+	}, [defaultValues])
 	useEffect(() => {
 		if (besuDefaultConfig && !defaultValues) {
-			const [p2pHost, p2pPort] = besuDefaultConfig.p2pAddress!.split(':')
-			const [rpcHost, rpcPort] = besuDefaultConfig.rpcAddress!.split(':')
-			form.setValue('p2pHost', p2pHost)
-			form.setValue('p2pPort', Number(p2pPort))
-			form.setValue('rpcHost', rpcHost)
-			form.setValue('rpcPort', Number(rpcPort))
-			form.setValue('externalIp', besuDefaultConfig.externalIP!)
-			form.setValue('internalIp', besuDefaultConfig.internalIP!)
+			const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = besuDefaultConfig
+			form.setValue('p2pHost', p2pHost || '127.0.0.1')
+			form.setValue('p2pPort', Number(p2pPort) || 30303)
+			form.setValue('externalIp', externalIp || '127.0.0.1')
+			form.setValue('internalIp', internalIp || '127.0.0.1')
+			form.setValue('rpcHost', rpcHost || '127.0.0.1')
+			form.setValue('rpcPort', Number(rpcPort) || 8545)
 		}
 	}, [besuDefaultConfig, defaultValues, form.setValue])
 
@@ -294,10 +297,10 @@ export function BesuNodeForm({
 
 				{!hideSubmit && (
 					<Button type="submit" disabled={isSubmitting}>
-						{isSubmitting ? 'Creating...' : submitText}
+						{isSubmitting ? 'Creating...' : submitButtonText}
 					</Button>
 				)}
 			</form>
 		</Form>
 	)
-} 
+}

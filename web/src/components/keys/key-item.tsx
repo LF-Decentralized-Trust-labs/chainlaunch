@@ -44,10 +44,7 @@ export function KeyItem({ keyResponse, onDelete, createdAt }: KeyItemProps) {
 								{createdAt && (
 									<span>
 										{' '}
-										<span 
-											className="text-xs text-muted-foreground"
-											title={format(new Date(createdAt), 'PPP p')}
-										>
+										<span className="text-xs text-muted-foreground" title={format(new Date(createdAt), 'PPP p')}>
 											Created {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
 										</span>
 									</span>
@@ -113,6 +110,12 @@ export function KeyItem({ keyResponse, onDelete, createdAt }: KeyItemProps) {
 							<div className="flex items-center gap-2">
 								<span className="font-medium">SHA256:</span>
 								<code className="px-2 py-1 rounded-md bg-muted font-mono">{keyResponse.sha256Fingerprint}</code>
+							</div>
+						)}
+						{keyResponse.ethereumAddress && (
+							<div className="flex items-center gap-2">
+								<span className="font-medium">Ethereum Address:</span>
+								<code className="px-2 py-1 rounded-md bg-muted font-mono">{keyResponse.ethereumAddress}</code>
 							</div>
 						)}
 					</div>

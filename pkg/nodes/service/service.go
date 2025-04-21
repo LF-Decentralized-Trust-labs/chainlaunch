@@ -20,6 +20,7 @@ import (
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	networktypes "github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/besu"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/orderer"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/peer"
@@ -918,23 +919,23 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeRespo
 					}
 				}
 			}
-		}
-	}
-
-	if deploymentConfig != nil {
-		switch config := deploymentConfig.(type) {
-		case *types.BesuNodeDeploymentConfig:
+		case *types.BesuNodeConfig:
 			nodeResponse.BesuNode = &BesuNodeProperties{
 				NetworkID:  config.NetworkID,
 				P2PPort:    config.P2PPort,
 				RPCPort:    config.RPCPort,
 				ExternalIP: config.ExternalIP,
 				InternalIP: config.InternalIP,
-				EnodeURL:   config.EnodeURL,
 				P2PHost:    config.P2PHost,
 				RPCHost:    config.RPCHost,
 				KeyID:      config.KeyID,
 				Mode:       config.Mode,
+				BootNodes:  config.BootNodes,
+			}
+			deployConfig, ok := deploymentConfig.(*types.BesuNodeDeploymentConfig)
+			if ok {
+				nodeResponse.BesuNode.KeyID = deployConfig.KeyID
+				nodeResponse.BesuNode.EnodeURL = deployConfig.EnodeURL
 			}
 		}
 	}
@@ -1166,6 +1167,11 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt key: %w", err)
 	}
+	var networkConfig networktypes.BesuNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &networkConfig); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
+
 	localBesu := besu.NewLocalBesu(
 		besu.StartBesuOpts{
 			ID:             dbNode.Slug,
@@ -1186,6 +1192,7 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 		s.logger,
 		s.configService,
 		s.settingsService,
+		networkConfig,
 	)
 
 	return localBesu, nil
@@ -1263,6 +1270,10 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 	if err != nil {
 		return fmt.Errorf("failed to decrypt key: %w", err)
 	}
+	var networkConfig networktypes.BesuNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &networkConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
 
 	// Create LocalBesu instance
 	localBesu := besu.NewLocalBesu(
@@ -1270,6 +1281,7 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 			ID:             dbNode.Slug,
 			GenesisFile:    network.GenesisBlockB64.String,
 			NetworkID:      besuDeployConfig.NetworkID,
+			ChainID:        networkConfig.ChainID,
 			P2PPort:        fmt.Sprintf("%d", besuDeployConfig.P2PPort),
 			RPCPort:        fmt.Sprintf("%d", besuDeployConfig.RPCPort),
 			ListenAddress:  besuDeployConfig.P2PHost,
@@ -1285,6 +1297,7 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 		s.logger,
 		s.configService,
 		s.settingsService,
+		networkConfig,
 	)
 
 	// Start the node
@@ -1650,8 +1663,8 @@ const (
 	maxPortAttempts = 100 // Maximum attempts to find available ports
 )
 
-// GetNodesDefaults returns default values for multiple nodes with guaranteed non-overlapping ports
-func (s *NodeService) GetNodesDefaults(params NodesDefaultsParams) (*NodesDefaultsResult, error) {
+// GetFabricNodesDefaults returns default values for multiple nodes with guaranteed non-overlapping ports
+func (s *NodeService) GetFabricNodesDefaults(params NodesDefaultsParams) (*NodesDefaultsResult, error) {
 	// Validate node counts
 	if params.PeerCount > 15 {
 		return nil, fmt.Errorf("peer count exceeds maximum supported nodes (15)")
@@ -2057,28 +2070,69 @@ func GetBesuPorts(baseP2PPort, baseRPCPort uint) (p2pPort uint, rpcPort uint, er
 	return p2pPort, rpcPort, nil
 }
 
-// GetBesuNodeDefaults returns the default configuration for a Besu node
-func (s *NodeService) GetBesuNodeDefaults() (*BesuNodeDefaults, error) {
-	// Try to get available ports starting from default Besu ports
-	p2pPort, rpcPort, err := GetBesuPorts(30303, 8545)
-	if err != nil {
-		// If we can't get the preferred ports, try from a higher range
-		p2pPort, rpcPort, err = GetBesuPorts(40303, 18545)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find available ports: %w", err)
-		}
+// GetBesuNodeDefaults returns the default configuration for Besu nodes
+func (s *NodeService) GetBesuNodeDefaults(besuNodes int) ([]BesuNodeDefaults, error) {
+	// Validate node count
+	if besuNodes <= 0 {
+		besuNodes = 1
 	}
-	externalIP := "127.0.0.1"
+	if besuNodes > 15 {
+		return nil, fmt.Errorf("besu node count exceeds maximum supported nodes (15)")
+	}
+
+	// Get external IP for p2p communication
+	externalIP, err := s.GetExternalIP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get external IP: %w", err)
+	}
+
+	// Use localhost for internal IP
 	internalIP := "127.0.0.1"
 
-	return &BesuNodeDefaults{
-		P2PAddress: fmt.Sprintf("%s:%d", externalIP, p2pPort),
-		RPCAddress: fmt.Sprintf("%s:%d", externalIP, rpcPort),
-		NetworkID:  1337, // Default private network ID
-		Mode:       ModeService,
-		ExternalIP: externalIP,
-		InternalIP: internalIP,
-	}, nil
+	// Base ports for Besu nodes with sufficient spacing
+	const (
+		baseP2PPort = 30303 // Starting P2P port
+		baseRPCPort = 8545  // Starting RPC port
+		portOffset  = 100   // Each node gets a 100 port range
+	)
+
+	// Create array to hold all node defaults
+	nodeDefaults := make([]BesuNodeDefaults, besuNodes)
+
+	// Generate defaults for each node
+	for i := 0; i < besuNodes; i++ {
+		// Try to get ports for each node
+		p2pPort, rpcPort, err := GetBesuPorts(
+			uint(baseP2PPort+(i*portOffset)),
+			uint(baseRPCPort+(i*portOffset)),
+		)
+		if err != nil {
+			// If we can't get the preferred ports, try from a higher range
+			p2pPort, rpcPort, err = GetBesuPorts(
+				uint(40303+(i*portOffset)),
+				uint(18545+(i*portOffset)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find available ports for node %d: %w", i+1, err)
+			}
+		}
+
+		// Create node defaults with unique ports
+		nodeDefaults[i] = BesuNodeDefaults{
+			P2PHost:    externalIP, // Use external IP for p2p host
+			P2PPort:    p2pPort,
+			RPCHost:    "0.0.0.0", // Allow RPC from any interface
+			RPCPort:    rpcPort,
+			ExternalIP: externalIP,
+			InternalIP: internalIP,
+			Mode:       ModeService,
+			Env: map[string]string{
+				"JAVA_OPTS": "-Xmx4g",
+			},
+		}
+	}
+
+	return nodeDefaults, nil
 }
 
 // Add a method to get full node details when needed
@@ -2644,6 +2698,216 @@ func (s *NodeService) SynchronizePeerConfig(ctx context.Context, nodeID int64) e
 	// Synchronize configuration
 	if err := localPeer.SynchronizeConfig(peerDeployConfig); err != nil {
 		return fmt.Errorf("failed to synchronize peer config: %w", err)
+	}
+
+	return nil
+}
+
+// GetExternalIP returns the external IP address of the node
+func (s *NodeService) GetExternalIP() (string, error) {
+	// Try to get external IP from environment variable first
+	if externalIP := os.Getenv("EXTERNAL_IP"); externalIP != "" {
+		return externalIP, nil
+	}
+
+	// Get local network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("failed to get network interfaces: %w", err)
+	}
+
+	// Look for a suitable non-loopback interface with an IPv4 address
+	for _, iface := range interfaces {
+		// Skip loopback, down interfaces, and interfaces without addresses
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			// Check if this is an IP network address
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			// Skip loopback and IPv6 addresses
+			ip := ipNet.IP.To4()
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+
+			// Skip link-local addresses
+			if ip[0] == 169 && ip[1] == 254 {
+				continue
+			}
+
+			// Found a suitable IP address
+			return ip.String(), nil
+		}
+	}
+
+	// Fallback to localhost if no suitable interface is found
+	return "127.0.0.1", nil
+}
+
+// UpdateBesuNodeOpts contains the options for updating a Besu node
+type UpdateBesuNodeRequest struct {
+	NetworkID  uint              `json:"networkId" validate:"required"`
+	P2PHost    string            `json:"p2pHost" validate:"required"`
+	P2PPort    uint              `json:"p2pPort" validate:"required"`
+	RPCHost    string            `json:"rpcHost" validate:"required"`
+	RPCPort    uint              `json:"rpcPort" validate:"required"`
+	Bootnodes  []string          `json:"bootnodes,omitempty"`
+	ExternalIP string            `json:"externalIp,omitempty"`
+	InternalIP string            `json:"internalIp,omitempty"`
+	Env        map[string]string `json:"env,omitempty"`
+}
+
+// UpdateBesuNode updates an existing Besu node configuration
+func (s *NodeService) UpdateBesuNode(ctx context.Context, nodeID int64, req UpdateBesuNodeRequest) (*NodeResponse, error) {
+	// Get existing node
+	node, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeBesuFullnode {
+		return nil, errors.NewValidationError("node is not a Besu node", nil)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load besu config: %w", err)
+	}
+
+	besuConfig, ok := nodeConfig.(*types.BesuNodeConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid besu config type")
+	}
+
+	// Load deployment config
+	deployBesuConfig := &types.BesuNodeDeploymentConfig{}
+	if node.DeploymentConfig.Valid {
+		deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+		}
+		var ok bool
+		deployBesuConfig, ok = deploymentConfig.(*types.BesuNodeDeploymentConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid besu deployment config type")
+		}
+	}
+
+	// Update configuration fields
+	besuConfig.NetworkID = int64(req.NetworkID)
+	besuConfig.P2PPort = req.P2PPort
+	besuConfig.RPCPort = req.RPCPort
+	besuConfig.P2PHost = req.P2PHost
+	besuConfig.RPCHost = req.RPCHost
+	if req.Bootnodes != nil {
+		besuConfig.BootNodes = req.Bootnodes
+	}
+
+	if req.ExternalIP != "" {
+		besuConfig.ExternalIP = req.ExternalIP
+		deployBesuConfig.ExternalIP = req.ExternalIP
+	}
+	if req.InternalIP != "" {
+		besuConfig.InternalIP = req.InternalIP
+		deployBesuConfig.InternalIP = req.InternalIP
+	}
+
+	// Update environment variables
+	if req.Env != nil {
+		besuConfig.Env = req.Env
+		deployBesuConfig.Env = req.Env
+	}
+
+	// Get the key to update the enodeURL
+	key, err := s.keymanagementService.GetKey(ctx, int(besuConfig.KeyID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	// Update enodeURL based on the public key, external IP and P2P port
+	if key.PublicKey != "" {
+		publicKey := key.PublicKey[2:]
+		deployBesuConfig.EnodeURL = fmt.Sprintf("enode://%s@%s:%d", publicKey, besuConfig.ExternalIP, besuConfig.P2PPort)
+	}
+
+	// Store updated node config
+	configBytes, err := utils.StoreNodeConfig(besuConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store node config: %w", err)
+	}
+
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+		ID: nodeID,
+		NodeConfig: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Update deployment config
+	deploymentConfigBytes, err := json.Marshal(deployBesuConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
+		ID: nodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update deployment config: %w", err)
+	}
+
+	// Return updated node
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// validateBesuConfig validates the Besu node configuration
+func (s *NodeService) validateBesuConfig(config *types.BesuNodeConfig) error {
+
+	if config.P2PPort == 0 {
+		return fmt.Errorf("p2p port is required")
+	}
+	if config.RPCPort == 0 {
+		return fmt.Errorf("rpc port is required")
+	}
+	if config.NetworkID == 0 {
+		return fmt.Errorf("network ID is required")
+	}
+	if config.P2PHost == "" {
+		return fmt.Errorf("p2p host is required")
+	}
+	if config.RPCHost == "" {
+		return fmt.Errorf("rpc host is required")
+	}
+	if config.ExternalIP == "" {
+		return fmt.Errorf("external IP is required")
+	}
+	if config.InternalIP == "" {
+		return fmt.Errorf("internal IP is required")
 	}
 
 	return nil

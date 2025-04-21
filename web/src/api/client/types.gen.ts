@@ -181,12 +181,17 @@ export type HttpBesuNetworkResponse = {
     config?: Array<number>;
     createdAt?: string;
     description?: string;
-    genesisConfig?: Array<number>;
+    genesisConfig?: string;
     id?: number;
     name?: string;
     platform?: string;
     status?: string;
     updatedAt?: string;
+};
+
+export type HttpBesuNodeDefaultsResponse = {
+    defaults?: Array<ServiceBesuNodeDefaults>;
+    nodeCount?: number;
 };
 
 export type HttpBlockListResponse = {
@@ -569,6 +574,7 @@ export type HttpNodeResponse = {
     besuNode?: ServiceBesuNodeProperties;
     createdAt?: string;
     endpoint?: string;
+    errorMessage?: string;
     fabricOrderer?: ServiceFabricOrdererProperties;
     fabricPeer?: ServiceFabricPeerProperties;
     id?: number;
@@ -690,15 +696,17 @@ export type HttpUpdateBatchTimeoutPayload = {
 };
 
 export type HttpUpdateBesuNodeRequest = {
+    bootnodes?: Array<string>;
     env?: {
         [key: string]: string;
     };
-    networkConfig?: {
-        [key: string]: string;
-    };
-    p2pPort?: number;
-    rpcPort?: number;
-    wsPort?: number;
+    externalIp?: string;
+    internalIp?: string;
+    networkId: number;
+    p2pHost: string;
+    p2pPort: number;
+    rpcHost: string;
+    rpcPort: number;
 };
 
 export type HttpUpdateConsenterPayload = {
@@ -921,15 +929,20 @@ export type ResponseResponse = {
 };
 
 export type ServiceBesuNodeDefaults = {
-    externalIP?: string;
-    internalIP?: string;
+    environmentVariables?: {
+        [key: string]: string;
+    };
+    externalIp?: string;
+    internalIp?: string;
     mode?: ServiceMode;
-    networkId?: number;
-    p2pAddress?: string;
-    rpcAddress?: string;
+    p2pHost?: string;
+    p2pPort?: number;
+    rpcHost?: string;
+    rpcPort?: number;
 };
 
 export type ServiceBesuNodeProperties = {
+    bootNodes?: Array<string>;
     enodeUrl?: string;
     externalIp?: string;
     internalIp?: string;
@@ -1029,6 +1042,7 @@ export type ServiceNode = {
      */
     deploymentConfig?: unknown;
     endpoint?: string;
+    errorMessage?: string;
     id?: number;
     mspId?: string;
     name?: string;
@@ -3664,7 +3678,12 @@ export type PostNodesResponse = PostNodesResponses[keyof PostNodesResponses];
 export type GetNodesDefaultsBesuNodeData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Number of Besu nodes
+         */
+        besuNodes?: number;
+    };
     url: '/nodes/defaults/besu-node';
 };
 
@@ -3681,7 +3700,7 @@ export type GetNodesDefaultsBesuNodeResponses = {
     /**
      * OK
      */
-    200: ServiceBesuNodeDefaults;
+    200: Array<HttpBesuNodeDefaultsResponse>;
 };
 
 export type GetNodesDefaultsBesuNodeResponse = GetNodesDefaultsBesuNodeResponses[keyof GetNodesDefaultsBesuNodeResponses];

@@ -52,6 +52,10 @@ function isFabricNode(node: HttpNodeResponse): node is HttpNodeResponse & { depl
 	return node.platform === 'FABRIC' && (node.fabricPeer !== undefined || node.fabricOrderer !== undefined)
 }
 
+function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
+	return node.platform === 'BESU' && (node.besuNode !== undefined)
+}
+
 function getNodeActions(status: string) {
 	switch (status.toLowerCase()) {
 		case 'running':
@@ -351,6 +355,12 @@ export default function NodeDetailPage() {
 					)}
 					{isFabricNode(node) && (
 						<Button onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)} variant="outline" size="sm">
+							<Pencil className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					)}
+					{isBesuNode(node) && (
+						<Button onClick={() => navigate(`/nodes/besu/edit/${node.id}`)} variant="outline" size="sm">
 							<Pencil className="mr-2 h-4 w-4" />
 							Edit
 						</Button>

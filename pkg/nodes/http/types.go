@@ -215,9 +215,18 @@ type UpdateFabricOrdererRequest struct {
 
 // UpdateBesuNodeRequest represents the configuration for updating a Besu node
 type UpdateBesuNodeRequest struct {
-	P2PPort       *int              `json:"p2pPort,omitempty"`
-	RpcPort       *int              `json:"rpcPort,omitempty"`
-	WsPort        *int              `json:"wsPort,omitempty"`
-	NetworkConfig map[string]string `json:"networkConfig,omitempty"`
-	Env           map[string]string `json:"env,omitempty"`
+	NetworkID  uint              `json:"networkId" validate:"required"`
+	P2PHost    string            `json:"p2pHost" validate:"required"`
+	P2PPort    uint              `json:"p2pPort" validate:"required"`
+	RPCHost    string            `json:"rpcHost" validate:"required"`
+	RPCPort    uint              `json:"rpcPort" validate:"required"`
+	Bootnodes  []string          `json:"bootnodes,omitempty"`
+	ExternalIP string            `json:"externalIp,omitempty"`
+	InternalIP string            `json:"internalIp,omitempty"`
+	Env        map[string]string `json:"env,omitempty"`
+}
+
+type BesuNodeDefaultsResponse struct {
+	NodeCount int                        `json:"nodeCount"`
+	Defaults  []service.BesuNodeDefaults `json:"defaults"`
 }

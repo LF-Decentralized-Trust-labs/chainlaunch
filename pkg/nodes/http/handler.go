@@ -50,7 +50,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/platform/{platform}", response.Middleware(h.ListNodesByPlatform))
 		r.Get("/defaults/fabric-peer", response.Middleware(h.GetFabricPeerDefaults))
 		r.Get("/defaults/fabric-orderer", response.Middleware(h.GetFabricOrdererDefaults))
-		r.Get("/defaults/fabric", response.Middleware(h.GetNodesDefaults))
+		r.Get("/defaults/fabric", response.Middleware(h.GetFabricNodesDefaults))
 		r.Get("/defaults/besu-node", response.Middleware(h.GetBesuNodeDefaults))
 		r.Get("/{id}", response.Middleware(h.GetNode))
 		r.Post("/{id}/start", response.Middleware(h.StartNode))
@@ -394,7 +394,7 @@ func (h *NodeHandler) GetFabricOrdererDefaults(w http.ResponseWriter, r *http.Re
 	return response.WriteJSON(w, http.StatusOK, defaults)
 }
 
-// GetNodesDefaults godoc
+// GetFabricNodesDefaults godoc
 // @Summary Get default values for multiple Fabric nodes
 // @Description Get default configuration values for multiple Fabric nodes
 // @Tags Nodes
@@ -406,7 +406,7 @@ func (h *NodeHandler) GetFabricOrdererDefaults(w http.ResponseWriter, r *http.Re
 // @Failure 400 {object} response.ErrorResponse "Validation error"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /nodes/defaults/fabric [get]
-func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) error {
+func (h *NodeHandler) GetFabricNodesDefaults(w http.ResponseWriter, r *http.Request) error {
 	// Parse query parameters
 	peerCount := 1
 	if countStr := r.URL.Query().Get("peerCount"); countStr != "" {
@@ -434,7 +434,7 @@ func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) e
 		})
 	}
 
-	result, err := h.service.GetNodesDefaults(service.NodesDefaultsParams{
+	result, err := h.service.GetFabricNodesDefaults(service.NodesDefaultsParams{
 		PeerCount:    peerCount,
 		OrdererCount: ordererCount,
 		Mode:         mode,
@@ -451,15 +451,30 @@ func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) e
 // @Description Get default configuration values for a Besu node
 // @Tags Nodes
 // @Produce json
-// @Success 200 {object} service.BesuNodeDefaults
+// @Param besuNodes query int false "Number of Besu nodes" default(1) minimum(0)
+// @Success 200 {array} BesuNodeDefaultsResponse
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /nodes/defaults/besu-node [get]
 func (h *NodeHandler) GetBesuNodeDefaults(w http.ResponseWriter, r *http.Request) error {
-	defaults, err := h.service.GetBesuNodeDefaults()
+	// Parse besuNodes parameter
+	besuNodes := 1
+	if countStr := r.URL.Query().Get("besuNodes"); countStr != "" {
+		if count, err := strconv.Atoi(countStr); err == nil && count >= 0 {
+			besuNodes = count
+		}
+	}
+
+	defaults, err := h.service.GetBesuNodeDefaults(besuNodes)
 	if err != nil {
 		return errors.NewInternalError("failed to get Besu node defaults", err, nil)
 	}
-	return response.WriteJSON(w, http.StatusOK, defaults)
+
+	res := BesuNodeDefaultsResponse{
+		NodeCount: besuNodes,
+		Defaults:  defaults,
+	}
+
+	return response.WriteJSON(w, http.StatusOK, res)
 }
 
 // TailLogs godoc
@@ -775,17 +790,49 @@ func (h *NodeHandler) UpdateNode(w http.ResponseWriter, r *http.Request) error {
 			return errors.NewValidationError("fabricOrderer configuration is required for Fabric orderer nodes", nil)
 		}
 		return h.updateFabricOrderer(w, r, nodeID, req.FabricOrderer)
-	// TODO: Fix later
-	// case types.NodeTypeBesuFullnode:
-	// 	if req.BesuNode == nil {
-	// 		return errors.NewValidationError("besuNode configuration is required for Besu nodes", nil)
-	// 	}
-	// 	return h.updateBesuNode(w, r, nodeID, req.BesuNode)
+	case types.NodeTypeBesuFullnode:
+		if req.BesuNode == nil {
+			return errors.NewValidationError("besuNode configuration is required for Besu nodes", nil)
+		}
+		return h.updateBesuNode(w, r, nodeID, req.BesuNode)
 	default:
 		return errors.NewValidationError("unsupported node type", map[string]interface{}{
 			"nodeType": node.NodeType,
 		})
 	}
+}
+
+// updateBesuNode handles updating a Besu node
+func (h *NodeHandler) updateBesuNode(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateBesuNodeRequest) error {
+	// Convert HTTP layer request to service layer request
+	serviceReq := service.UpdateBesuNodeRequest{
+		NetworkID:  req.NetworkID,
+		P2PHost:    req.P2PHost,
+		P2PPort:    req.P2PPort,
+		RPCHost:    req.RPCHost,
+		RPCPort:    req.RPCPort,
+		Bootnodes:  req.Bootnodes,
+		ExternalIP: req.ExternalIP,
+		InternalIP: req.InternalIP,
+		Env:        req.Env,
+	}
+
+	// Call service layer to update the Besu node
+	updatedNode, err := h.service.UpdateBesuNode(r.Context(), nodeID, serviceReq)
+	if err != nil {
+		if errors.IsType(err, errors.ValidationError) {
+			return errors.NewValidationError("invalid besu node configuration", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to update besu node", err, nil)
+	}
+
+	// Return the updated node as response
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
 }
 
 // updateFabricPeer handles updating a Fabric peer node

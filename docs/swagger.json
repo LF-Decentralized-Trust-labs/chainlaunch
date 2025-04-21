@@ -3192,11 +3192,24 @@
                     "Nodes"
                 ],
                 "summary": "Get default values for Besu node",
+                "parameters": [
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Number of Besu nodes",
+                        "name": "besuNodes",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/service.BesuNodeDefaults"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/http.BesuNodeDefaultsResponse"
+                            }
                         }
                     },
                     "500": {
@@ -5239,10 +5252,7 @@
                     "type": "string"
                 },
                 "genesisConfig": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
@@ -5258,6 +5268,20 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "http.BesuNodeDefaultsResponse": {
+            "type": "object",
+            "properties": {
+                "defaults": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.BesuNodeDefaults"
+                    }
+                },
+                "nodeCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -5963,6 +5987,9 @@
                 "endpoint": {
                     "type": "string"
                 },
+                "errorMessage": {
+                    "type": "string"
+                },
                 "fabricOrderer": {
                     "$ref": "#/definitions/service.FabricOrdererProperties"
                 },
@@ -6320,26 +6347,45 @@
         },
         "http.UpdateBesuNodeRequest": {
             "type": "object",
+            "required": [
+                "networkId",
+                "p2pHost",
+                "p2pPort",
+                "rpcHost",
+                "rpcPort"
+            ],
             "properties": {
+                "bootnodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "env": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
                 },
-                "networkConfig": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                "externalIp": {
+                    "type": "string"
+                },
+                "internalIp": {
+                    "type": "string"
+                },
+                "networkId": {
+                    "type": "integer"
+                },
+                "p2pHost": {
+                    "type": "string"
                 },
                 "p2pPort": {
                     "type": "integer"
                 },
-                "rpcPort": {
-                    "type": "integer"
+                "rpcHost": {
+                    "type": "string"
                 },
-                "wsPort": {
+                "rpcPort": {
                     "type": "integer"
                 }
             }
@@ -7035,29 +7081,44 @@
         "service.BesuNodeDefaults": {
             "type": "object",
             "properties": {
-                "externalIP": {
+                "environmentVariables": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "externalIp": {
                     "type": "string"
                 },
-                "internalIP": {
+                "internalIp": {
                     "type": "string"
                 },
                 "mode": {
                     "$ref": "#/definitions/service.Mode"
                 },
-                "networkId": {
+                "p2pHost": {
+                    "type": "string"
+                },
+                "p2pPort": {
                     "type": "integer"
                 },
-                "p2pAddress": {
+                "rpcHost": {
                     "type": "string"
                 },
-                "rpcAddress": {
-                    "type": "string"
+                "rpcPort": {
+                    "type": "integer"
                 }
             }
         },
         "service.BesuNodeProperties": {
             "type": "object",
             "properties": {
+                "bootNodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "enodeUrl": {
                     "type": "string"
                 },
@@ -7297,6 +7358,9 @@
                     "description": "Node deployment configuration interface that can be one of: FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig"
                 },
                 "endpoint": {
+                    "type": "string"
+                },
+                "errorMessage": {
                     "type": "string"
                 },
                 "id": {

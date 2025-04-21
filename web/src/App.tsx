@@ -47,6 +47,7 @@ import { BlocksOverview } from '@/components/networks/blocks-overview'
 import { BlockDetails } from '@/components/networks/block-details'
 import ApiDocumentationPage from './pages/api-documentation'
 import BulkCreateBesuNetworkPage from './pages/networks/besu/bulk-create'
+import EditBesuNodePage from './pages/nodes/besu/edit'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -95,6 +96,7 @@ const App = () => {
 														<Route path="fabric/organizations" element={<OrganizationsPage />} />
 														<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
 														<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
+														<Route path="nodes/besu/edit/:id" element={<EditBesuNodePage />} />
 														<Route path="nodes/:id" element={<NodeDetailPage />} />
 														<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
 														<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />

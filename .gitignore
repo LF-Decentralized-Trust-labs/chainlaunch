@@ -10,3 +10,4 @@ certs
 .env
 test-instance
 *.db
+decode_extradata

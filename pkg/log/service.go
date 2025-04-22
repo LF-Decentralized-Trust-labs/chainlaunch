@@ -15,6 +15,8 @@ const (
 	memoryMapThreshold = 100 * 1024 * 1024
 	// Size of chunks for reading large files (1MB)
 	chunkSize = 1024 * 1024
+	// Maximum number of lines that can be tailed
+	maxTailLines = 10000
 )
 
 // LogService handles operations related to log files
@@ -344,6 +346,11 @@ func (s *LogService) filterLogChunked(filePath string, options FilterOptions) ([
 func (s *LogService) TailLog(filePath string, n int) ([]LogEntry, error) {
 	if n < 1 {
 		return nil, fmt.Errorf("number of lines must be >= 1")
+	}
+
+	// Add maximum limit check
+	if n > maxTailLines {
+		return nil, fmt.Errorf("requested number of lines exceeds maximum limit of %d", maxTailLines)
 	}
 
 	file, err := os.Open(filePath)

@@ -197,8 +197,8 @@ func (h *LogHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lines, err := strconv.Atoi(r.URL.Query().Get("lines"))
-	if err != nil || lines < 1 {
-		h.sendError(w, http.StatusBadRequest, "invalid number of lines")
+	if err != nil || lines < 1 || lines > maxTailLines {
+		h.sendError(w, http.StatusBadRequest, fmt.Sprintf("invalid number of lines (must be between 1 and %d)", maxTailLines))
 		return
 	}
 

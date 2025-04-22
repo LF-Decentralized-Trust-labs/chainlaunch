@@ -7,35 +7,43 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"bytes"
 
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/chainlaunch/chainlaunch/pkg/certutils"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/channel"
 	orgservicefabric "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	fabricorg "github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	"github.com/hyperledger/fabric-config/configtx"
+	"github.com/hyperledger/fabric-config/configtx/membership"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
+	ordererapi "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"google.golang.org/grpc"
+
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab/resource"
-	"github.com/hyperledger/fabric/protoutil"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 )
 
 // ConfigUpdateOperationType represents the type of configuration update operation
@@ -134,10 +142,6 @@ func (op *AddOrgOperation) Modify(ctx context.Context, c *configtx.ConfigTx) err
 	mspID := op.MSPID
 
 	// Create a new organization in the application group
-	appOrg := c.Application().Organization(mspID)
-	if appOrg == nil {
-		return fmt.Errorf("failed to create application organization")
-	}
 
 	var rootCerts []*x509.Certificate
 	for _, rootCertStr := range op.RootCerts {
@@ -156,13 +160,56 @@ func (op *AddOrgOperation) Modify(ctx context.Context, c *configtx.ConfigTx) err
 		}
 		tlsRootCerts = append(tlsRootCerts, tlsRootCert)
 	}
+	signCACert := rootCerts[0]
 
 	// Set MSP configuration
-	err := appOrg.SetMSP(configtx.MSP{
-		Name:         mspID,
-		RootCerts:    rootCerts,
-		TLSRootCerts: tlsRootCerts,
-		Admins:       []*x509.Certificate{},
+	err := c.Application().SetOrganization(configtx.Organization{
+		Name: mspID,
+		MSP: configtx.MSP{
+			Name:         mspID,
+			RootCerts:    rootCerts,
+			TLSRootCerts: tlsRootCerts,
+			Admins:       []*x509.Certificate{},
+			NodeOUs: membership.NodeOUs{
+				Enable: true,
+				ClientOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "client",
+				},
+				PeerOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "peer",
+				},
+				AdminOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "admin",
+				},
+				OrdererOUIdentifier: membership.OUIdentifier{
+					Certificate:                  signCACert,
+					OrganizationalUnitIdentifier: "orderer",
+				},
+			},
+		},
+		AnchorPeers:      []configtx.Address{},
+		OrdererEndpoints: []string{},
+		Policies: map[string]configtx.Policy{
+			"Admins": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.admin')", mspID),
+			},
+			"Readers": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+			"Writers": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+			"Endorsement": {
+				Type: "Signature",
+				Rule: fmt.Sprintf("OR('%s.member')", mspID),
+			},
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set MSP configuration: %w", err)
@@ -602,6 +649,73 @@ func CreateConfigModifier(operation ConfigUpdateOperation) (ConfigModifier, erro
 	return modifier, nil
 }
 
+// UpdateChannelConfig updates the channel configuration with the provided config update envelope and signatures
+func (d *FabricDeployer) UpdateChannelConfig(ctx context.Context, networkID int64, configUpdateEnvelope []byte, signingOrgIDs []string, ordererAddress string, ordererTLSCert string) (string, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Unmarshal the config update envelope
+	envelope := &cb.Envelope{}
+	if err := proto.Unmarshal(configUpdateEnvelope, envelope); err != nil {
+		return "", fmt.Errorf("failed to unmarshal config update envelope: %w", err)
+	}
+
+	// Collect signatures from the specified organizations
+	for _, orgID := range signingOrgIDs {
+		// Get organization details and MSP
+		orgService := org.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, orgID, d.db)
+
+		// Sign the config update
+		envelope, err = orgService.CreateConfigSignature(ctx, network.Name, envelope)
+		if err != nil {
+			return "", fmt.Errorf("failed to sign config update for org %s: %w", orgID, err)
+		}
+	}
+
+	ordererConn, err := d.createOrdererConnection(ordererAddress, ordererTLSCert)
+	if err != nil {
+		return "", fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	defer ordererConn.Close()
+	ordererClient, err := ordererapi.NewAtomicBroadcastClient(ordererConn).Broadcast(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to create orderer client: %w", err)
+	}
+	err = ordererClient.Send(envelope)
+	if err != nil {
+		return "", fmt.Errorf("failed to send envelope: %w", err)
+	}
+	response, err := ordererClient.Recv()
+	if err != nil {
+		return "", fmt.Errorf("failed to receive response: %w", err)
+	}
+	return response.String(), nil
+
+}
+
+// CreateOrdererConnection establishes a gRPC connection to an orderer
+func (d *FabricDeployer) createOrdererConnection(ordererURL string, ordererTLSCACert string) (*grpc.ClientConn, error) {
+	d.logger.Info("Creating orderer connection",
+		"ordererURL", ordererURL)
+
+	// Create a network node with the orderer details
+	networkNode := network.Node{
+		Addr:          ordererURL,
+		TLSCACertByte: []byte(ordererTLSCACert),
+	}
+
+	// Establish connection to the orderer
+	ordererConn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial orderer connection: %w", err)
+	}
+
+	return ordererConn, nil
+}
+
 // PrepareConfigUpdate prepares a config update for the given operations
 func (d *FabricDeployer) PrepareConfigUpdate(ctx context.Context, networkID int64, operations []ConfigUpdateOperation) (*ConfigUpdateProposal, error) {
 	// Get network details
@@ -622,7 +736,7 @@ func (d *FabricDeployer) PrepareConfigUpdate(ctx context.Context, networkID int6
 		return nil, fmt.Errorf("failed to unmarshal config block: %w", err)
 	}
 
-	config, err := resource.ExtractConfigFromBlock(block)
+	config, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -802,7 +916,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nodes by organization ID: %w", err)
 	}
-	listCreateNetworkNodes := []db.CreateNetworkNodeParams{}
+	listCreateNetworkNodes := []*db.CreateNetworkNodeParams{}
 
 	// Handle internal peer organizations
 	for _, org := range fabricConfig.PeerOrganizations {
@@ -840,7 +954,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		for _, node := range orgNodes {
 
 			peerNodes = append(peerNodes, node)
-			listCreateNetworkNodes = append(listCreateNetworkNodes, db.CreateNetworkNodeParams{
+			listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 				NetworkID: networkID,
 				NodeID:    node.ID,
 				Status:    "pending",
@@ -913,7 +1027,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 			}
 			if node.NodeType == nodetypes.NodeTypeFabricOrderer {
 				ordererNodes = append(ordererNodes, node)
-				listCreateNetworkNodes = append(listCreateNetworkNodes, db.CreateNetworkNodeParams{
+				listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 					NetworkID: networkID,
 					NodeID:    node.ID,
 					Status:    "pending",
@@ -994,7 +1108,7 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 	}
 
 	// Update network with genesis block
-	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), db.UpdateNetworkGenesisBlockParams{
+	_, err = d.db.UpdateNetworkGenesisBlock(context.Background(), &db.UpdateNetworkGenesisBlockParams{
 		ID: networkID,
 		GenesisBlockB64: sql.NullString{
 			String: channel.ConfigData, // Store base64 encoded genesis block
@@ -1062,7 +1176,7 @@ func (d *FabricDeployer) JoinNode(networkId int64, genesisBlock []byte, nodeID i
 	}
 
 	// Update network node status to "joined"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "joined",
@@ -1227,7 +1341,7 @@ func (d *FabricDeployer) RemoveNode(networkID int64, nodeID int64) error {
 	}
 
 	// Update network node status to "removed"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "removed",
@@ -1284,7 +1398,7 @@ func (d *FabricDeployer) UnjoinNode(networkID int64, nodeID int64) error {
 	}
 
 	// Update network node status to "unjoined"
-	_, err = d.db.UpdateNetworkNodeStatus(ctx, db.UpdateNetworkNodeStatusParams{
+	_, err = d.db.UpdateNetworkNodeStatus(ctx, &db.UpdateNetworkNodeStatusParams{
 		NetworkID: network.ID,
 		NodeID:    nodeID,
 		Status:    "unjoined",
@@ -1294,6 +1408,126 @@ func (d *FabricDeployer) UnjoinNode(networkID int64, nodeID int64) error {
 	}
 
 	return nil
+}
+
+type UpdateOrganizationCRLInput struct {
+	OrganizationID int64 `json:"organizationId" validate:"required"`
+}
+
+func (d *FabricDeployer) UpdateOrganizationCRL(ctx context.Context, networkID int64, input UpdateOrganizationCRLInput) (string, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get organization details
+	org, err := d.db.GetFabricOrganizationByID(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get the CRL from organization service
+	crl, err := d.orgService.GetCRL(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get CRL: %w", err)
+	}
+
+	// Get a peer from the organization to submit the update
+	nodes, err := d.nodes.GetFabricNodesByOrganization(ctx, input.OrganizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization nodes: %w", err)
+	}
+
+	var peer *nodeservice.NodeResponse
+	for _, node := range nodes {
+		if node.NodeType == nodetypes.NodeTypeFabricPeer {
+			peer = &node
+			break
+		}
+	}
+	if peer == nil {
+		return "", fmt.Errorf("no peer found for organization %d", input.OrganizationID)
+	}
+
+	// Get an orderer node from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var orderer *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) {
+			orderer = node
+			break
+		}
+	}
+	if orderer == nil {
+		return "", fmt.Errorf("no orderer found in network %d", networkID)
+	}
+
+	// Get orderer TLS CA cert
+	ordererConfig := &nodetypes.FabricOrdererDeploymentConfig{}
+	if err := json.Unmarshal([]byte(orderer.DeploymentConfig.String), ordererConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal orderer config: %w", err)
+	}
+
+	ordererTLSKey, err := d.keyMgmt.GetKey(ctx, int(ordererConfig.TLSKeyID))
+	if err != nil {
+		return "", fmt.Errorf("failed to get orderer TLS key: %w", err)
+	}
+	if ordererTLSKey.Certificate == nil {
+		return "", fmt.Errorf("orderer TLS certificate not found")
+	}
+	ordererURL := ordererConfig.GetAddress()
+	ordererCert := *ordererTLSKey.Certificate
+
+	p, err := d.nodes.GetFabricPeer(ctx, peer.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get fabric peer: %w", err)
+	}
+	channelConfig, err := p.GetChannelConfig(ctx, network.Name, ordererURL, ordererCert)
+	if err != nil {
+		return "", fmt.Errorf("failed to get channel config: %w", err)
+	}
+
+	// Get channel name from network config
+	var fabricConfig types.FabricNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &fabricConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
+
+	// Generate channel update
+	channelUpdate, err := d.channelService.SetCRL(&channel.SetCRLInput{
+		CurrentConfig: channelConfig.ChannelGroup,
+		ChannelName:   fabricConfig.ChannelName,
+		MSPID:         org.MspID,
+		CRL:           crl,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create anchor peer update: %w", err)
+	}
+
+	// Get peer instance
+	fabricPeer, err := d.nodes.GetFabricPeer(ctx, peer.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get fabric peer: %w", err)
+	}
+
+	// Save channel config
+	resp, err := fabricPeer.SaveChannelConfig(ctx,
+		fabricConfig.ChannelName,
+		ordererURL,
+		*ordererTLSKey.Certificate,
+		channelUpdate,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to save channel config: %w", err)
+	}
+
+	return resp.TransactionID, nil
+
 }
 
 type CreateAnchorPeerUpdateInput struct {
@@ -1342,7 +1576,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 	var orderer *db.GetNetworkNodesRow
 	for _, node := range networkNodes {
 		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) {
-			orderer = &node
+			orderer = node
 			break
 		}
 	}
@@ -1363,7 +1597,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 	if ordererTLSKey.Certificate == nil {
 		return "", fmt.Errorf("orderer TLS certificate not found")
 	}
-	ordererURL := ordererConfig.GetURL()
+	ordererURL := ordererConfig.GetAddress()
 	ordererCert := *ordererTLSKey.Certificate
 
 	p, err := d.nodes.GetFabricPeer(ctx, peer.ID)
@@ -1412,7 +1646,7 @@ func (d *FabricDeployer) SetAnchorPeers(ctx context.Context, networkID int64, or
 		fabricConfig.ChannelName,
 		ordererURL,
 		*ordererTLSKey.Certificate,
-		[]byte(channelUpdate),
+		channelUpdate,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to save channel config: %w", err)
@@ -1659,69 +1893,106 @@ func (d *FabricDeployer) FetchCurrentChannelConfig(ctx context.Context, networkI
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
 	}
-	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID)
+	fabricOrgItem := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, fabricOrg.MspID, d.db)
 
-	// First try to get orderer from active nodes
-	var ordererURL, ordererTLSCert string
+	// Get all available orderers - first from active nodes
+	var orderersList []struct {
+		address string
+		tlsCert string
+	}
+
+	// First try to get orderers from active nodes
 	for _, node := range networkNodes {
 		if node.NodeType.String == string(nodetypes.NodeTypeFabricOrderer) && node.Status == "joined" {
 			ordererNode, err := d.nodes.GetNodeByID(ctx, node.NodeID)
 			if err != nil {
+				d.logger.Warn("Failed to get orderer node", "nodeID", node.NodeID, "error", err)
 				continue
 			}
 			ordererConfig := ordererNode.FabricOrderer
-			ordererURL = fmt.Sprintf("grpcs://%s", ordererConfig.ExternalEndpoint)
-
 			// Get orderer TLS cert
 			ordererTLSKey, err := d.keyMgmt.GetKey(ctx, int(ordererConfig.TLSKeyID))
 			if err != nil || ordererTLSKey.Certificate == nil {
+				d.logger.Warn("Failed to get orderer TLS cert", "nodeID", node.NodeID, "error", err)
 				continue
 			}
-			ordererTLSCert = *ordererTLSKey.Certificate
-			break
+			orderersList = append(orderersList, struct {
+				address string
+				tlsCert string
+			}{
+				address: ordererConfig.ExternalEndpoint,
+				tlsCert: *ordererTLSKey.Certificate,
+			})
 		}
 	}
 
-	// If no active orderer found, try to get from genesis block
-	if ordererURL == "" {
+	// If no active orderers found, try to get from genesis block
+	if len(orderersList) == 0 {
 		orderers, err := d.GetOrderersFromGenesisBlock(ctx, networkID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get orderers from genesis block: %w", err)
 		}
-		if len(orderers) > 0 {
-			ordererURL = orderers[0].URL
-			ordererTLSCert = orderers[0].TLSCert
-		} else {
-			return nil, fmt.Errorf("no orderers found in network or genesis block")
+		for _, orderer := range orderers {
+			// Remove the grpcs:// prefix if present
+			address := orderer.URL
+			if strings.HasPrefix(address, "grpcs://") {
+				address = strings.TrimPrefix(address, "grpcs://")
+			}
+			orderersList = append(orderersList, struct {
+				address string
+				tlsCert string
+			}{
+				address: address,
+				tlsCert: orderer.TLSCert,
+			})
 		}
 	}
 
-	// Fetch channel config from peer
-	channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, ordererURL, ordererTLSCert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get channel config from peer: %w", err)
+	if len(orderersList) == 0 {
+		return nil, fmt.Errorf("no orderers found in network or genesis block")
 	}
 
-	// Marshal the config block
-	configBytes, err := proto.Marshal(channelConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config block: %w", err)
+	// Try each orderer until one succeeds
+	var lastErr error
+	for _, orderer := range orderersList {
+		d.logger.Info("Attempting to fetch channel config from orderer", "address", orderer.address)
+
+		// Fetch channel config from orderer
+		channelConfig, err := fabricOrgItem.GetConfigBlockWithNetworkConfig(ctx, network.Name, orderer.address, orderer.tlsCert)
+		if err != nil {
+			d.logger.Warn("Failed to get channel config from orderer", "address", orderer.address, "error", err)
+			lastErr = err
+			continue
+		}
+
+		// Marshal the config block
+		configBytes, err := proto.Marshal(channelConfig)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to marshal config block: %w", err)
+			continue
+		}
+
+		// Update the current config block in the database
+		configBase64 := base64.StdEncoding.EncodeToString(configBytes)
+		err = d.db.UpdateNetworkCurrentConfigBlock(ctx, &db.UpdateNetworkCurrentConfigBlockParams{
+			ID: networkID,
+			CurrentConfigBlockB64: sql.NullString{
+				String: configBase64,
+				Valid:  true,
+			},
+		})
+		if err != nil {
+			lastErr = fmt.Errorf("failed to update network current config block: %w", err)
+			continue
+		}
+
+		// Successfully fetched and stored config
+		d.logger.Info("Successfully fetched channel config from orderer", "address", orderer.address)
+		return configBytes, nil
 	}
 
-	// Update the current config block in the database
-	configBase64 := base64.StdEncoding.EncodeToString(configBytes)
-	err = d.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
-		ID: networkID,
-		CurrentConfigBlockB64: sql.NullString{
-			String: configBase64,
-			Valid:  true,
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to update network current config block: %w", err)
-	}
-
-	return configBytes, nil
+	// If we get here, all orderers failed
+	return nil, fmt.Errorf("failed to fetch channel config from any orderer: %w", lastErr)
 }
 
 // GetOrdererInfoFromConfig extracts orderer information from a channel config
@@ -1880,7 +2151,7 @@ func (d *FabricDeployer) GetOrderersFromConfigBlock(ctx context.Context, blockBy
 		return nil, fmt.Errorf("failed to unmarshal block: %w", err)
 	}
 
-	cmnConfig, err := resource.ExtractConfigFromBlock(block)
+	cmnConfig, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -1934,7 +2205,7 @@ func (d *FabricDeployer) GetOrderersFromGenesisBlock(ctx context.Context, networ
 		return nil, fmt.Errorf("failed to unmarshal genesis block: %w", err)
 	}
 
-	cmnConfig, err := resource.ExtractConfigFromBlock(block)
+	cmnConfig, err := ExtractConfigFromBlock(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract config from block: %w", err)
 	}
@@ -1979,7 +2250,7 @@ func (d *FabricDeployer) ImportNetworkWithOrg(ctx context.Context, channelID str
 	if err != nil {
 		return "", fmt.Errorf("failed to get organization: %w", err)
 	}
-	orgService := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, org.MspID)
+	orgService := fabricorg.NewOrganizationService(d.orgService, d.keyMgmt, d.logger, org.MspID, d.db)
 
 	// Validate TLS certificate
 	block, _ := pem.Decode(ordererTLSCert)
@@ -2016,7 +2287,7 @@ func (d *FabricDeployer) ImportNetworkWithOrg(ctx context.Context, channelID str
 	}
 
 	// Create network in database
-	_, err = d.db.CreateNetworkFull(ctx, db.CreateNetworkFullParams{
+	_, err = d.db.CreateNetworkFull(ctx, &db.CreateNetworkFullParams{
 		Name:        channelID,
 		Platform:    "fabric",
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -2078,7 +2349,7 @@ func (d *FabricDeployer) ImportNetwork(ctx context.Context, genesisFile []byte, 
 	networkID := uuid.New().String()
 
 	// Create network in database
-	_, err := d.db.CreateNetworkFull(ctx, db.CreateNetworkFullParams{
+	_, err := d.db.CreateNetworkFull(ctx, &db.CreateNetworkFullParams{
 		Name:        channelName,
 		Platform:    "fabric",
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -2113,4 +2384,370 @@ func CreateConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate)
 		return nil, err
 	}
 	return envelopeData, nil
+}
+
+// ExtractConfigFromBlock extracts channel configuration from block
+func ExtractConfigFromBlock(block *cb.Block) (*cb.Config, error) {
+	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, errors.New("invalid block")
+	}
+	blockPayload := block.Data.Data[0]
+
+	envelope := &cb.Envelope{}
+	if err := proto.Unmarshal(blockPayload, envelope); err != nil {
+		return nil, err
+	}
+	payload := &cb.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return nil, err
+	}
+
+	cfgEnv := &cb.ConfigEnvelope{}
+	if err := proto.Unmarshal(payload.Data, cfgEnv); err != nil {
+		return nil, err
+	}
+	return cfgEnv.Config, nil
+}
+
+type ChainInfo struct {
+	Height            uint64
+	CurrentBlockHash  string
+	PreviousBlockHash string
+}
+
+func (d *FabricDeployer) GetChainInfo(ctx context.Context, networkID int64) (*ChainInfo, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	chainInfo, err := peer.GetChannelInfoOnPeer(ctx, network.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain info: %w", err)
+	}
+
+	return &ChainInfo{
+		Height:            uint64(chainInfo.Height),
+		CurrentBlockHash:  fmt.Sprintf("%x", chainInfo.CurrentBlockHash),
+		PreviousBlockHash: fmt.Sprintf("%x", chainInfo.PreviousBlockHash),
+	}, nil
+}
+func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, 0, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get channel info to get total blocks
+	channelInfo, err := peer.GetChannelBlockInfo(ctx, network.Name)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get channel info: %w", err)
+	}
+
+	total := int64(channelInfo.Height)
+	// Calculate start and end blocks based on reverse flag
+	var startBlock, endBlock int64
+
+	// Check if offset is greater than channel height
+	if int64(offset) >= int64(channelInfo.Height) {
+		return []Block{}, total, nil // Return empty slice if offset exceeds height
+	}
+
+	if reverse {
+		// If reverse is true, we start from the newest blocks
+		endBlock = int64(channelInfo.Height) - 1 - int64(offset)
+		if endBlock < 0 {
+			endBlock = 0
+		}
+		// Calculate endBlock based on startBlock and limit
+		startBlock = endBlock - int64(limit)
+		if startBlock > endBlock { // Handle underflow
+			startBlock = 0
+		}
+		if startBlock < 0 {
+			startBlock = 0
+		}
+
+		// Example: if height is 31, limit is 10, offset is 0
+		// endBlock = 30, startBlock = 21
+	} else {
+		// Normal order (oldest first)
+		startBlock = int64(offset)
+		endBlock = int64(offset + limit - 1)
+		if endBlock >= int64(channelInfo.Height) {
+			endBlock = int64(channelInfo.Height) - 1
+		}
+	}
+
+	// Get blocks in range
+	blocks, err := peer.GetBlocksInRange(ctx, network.Name, uint64(startBlock), uint64(endBlock))
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get blocks: %w", err)
+	}
+
+	// Convert blocks to response type
+	result := make([]Block, len(blocks))
+	for i, block := range blocks {
+		blck, err := d.MapBlock(block)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to map block: %w", err)
+		}
+		result[i] = *blck
+	}
+
+	return result, total, nil
+}
+
+// GetBlocks retrieves blocks from a specific network
+func (d *FabricDeployer) MapBlock(block *cb.Block) (*Block, error) {
+	timestamp := time.Now()
+	for _, txData := range block.Data.Data {
+		env := &cb.Envelope{}
+		err := proto.Unmarshal(txData, env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal envelope: %w", err)
+		}
+		payload := &cb.Payload{}
+		err = proto.Unmarshal(env.Payload, payload)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
+		}
+		chdr := &cb.ChannelHeader{}
+		err = proto.Unmarshal(payload.Header.ChannelHeader, chdr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal channel header: %w", err)
+		}
+		txDate, err := ptypes.Timestamp(chdr.Timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+		}
+		timestamp = txDate
+		break
+	}
+	buffer := &bytes.Buffer{}
+	err := protolator.DeepMarshalJSON(buffer, block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block data: %w", err)
+	}
+	blockDataJson := buffer.Bytes()
+	return &Block{
+		Number:       block.Header.Number,
+		Hash:         fmt.Sprintf("%x", block.Header.DataHash),
+		PreviousHash: fmt.Sprintf("%x", block.Header.PreviousHash),
+		Timestamp:    timestamp,
+		TxCount:      len(block.Data.Data),
+		Data:         blockDataJson,
+	}, nil
+}
+
+type BlockWithTransactions struct {
+	Block        Block
+	Transactions []Transaction
+}
+
+// GetBlockTransactions retrieves all transactions from a specific block
+func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*BlockWithTransactions, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return nil, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get transactions from block
+	block, err := peer.GetBlock(ctx, network.Name, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block: %w", err)
+	}
+	envelopes, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block transactions: %w", err)
+	}
+
+	// Convert envelopes to transactions
+	transactions := make([]Transaction, len(envelopes))
+	for i, env := range envelopes {
+		payload := &cb.Payload{}
+		if err := proto.Unmarshal(env.Payload, payload); err != nil {
+			continue
+		}
+
+		chdr := &cb.ChannelHeader{}
+		if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
+			continue
+		}
+
+		shdr := &cb.SignatureHeader{}
+		if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
+			continue
+		}
+
+		transactions[i] = Transaction{
+			ID:        chdr.TxId,
+			BlockNum:  blockNum,
+			Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
+			Type:      cb.HeaderType_name[int32(chdr.Type)],
+			Creator:   string(shdr.Creator),
+			Status:    "success",
+		}
+	}
+	blck, err := d.MapBlock(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map block: %w", err)
+	}
+	blockWithTransactions := &BlockWithTransactions{
+		Block:        *blck,
+		Transactions: transactions,
+	}
+	return blockWithTransactions, nil
+}
+
+// GetTransaction retrieves a specific transaction by its ID
+func (d *FabricDeployer) GetTransaction(ctx context.Context, networkID int64, txID string) (Transaction, error) {
+	// Get network details
+	network, err := d.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get a peer from the network
+	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var peerNode *db.GetNetworkNodesRow
+	for _, node := range networkNodes {
+		if node.Role == "peer" && node.Status == "joined" {
+			peerNode = node
+			break
+		}
+	}
+
+	if peerNode == nil {
+		return Transaction{}, fmt.Errorf("no active peer found in network")
+	}
+
+	// Get peer instance
+	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Get channel info
+	channelInfo, err := peer.GetChannelBlockInfo(ctx, network.Name)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get channel info: %w", err)
+	}
+
+	// Search for transaction in blocks
+	for blockNum := uint64(0); blockNum < channelInfo.Height; blockNum++ {
+		transactions, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
+		if err != nil {
+			continue
+		}
+
+		for _, tx := range transactions {
+			payload := &cb.Payload{}
+			if err := proto.Unmarshal(tx.Payload, payload); err != nil {
+				continue
+			}
+
+			chdr := &cb.ChannelHeader{}
+			if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
+				continue
+			}
+
+			if chdr.TxId == txID {
+				shdr := &cb.SignatureHeader{}
+				if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
+					continue
+				}
+
+				return Transaction{
+					ID:        chdr.TxId,
+					BlockNum:  blockNum,
+					Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
+					Type:      cb.HeaderType_name[int32(chdr.Type)],
+					Creator:   string(shdr.Creator),
+					Status:    "success",
+				}, nil
+			}
+		}
+	}
+
+	return Transaction{}, fmt.Errorf("transaction not found")
 }

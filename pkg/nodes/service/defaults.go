@@ -25,12 +25,14 @@ type NodeDefaults struct {
 
 // BesuNodeDefaults represents default values for a Besu node
 type BesuNodeDefaults struct {
-	P2PAddress string `json:"p2pAddress"`
-	RPCAddress string `json:"rpcAddress"`
-	NetworkID  uint64 `json:"networkId"`
-	Mode       Mode   `json:"mode"`
-	ExternalIP string `json:"externalIP"`
-	InternalIP string `json:"internalIP"`
+	P2PHost    string            `json:"p2pHost"`
+	P2PPort    uint              `json:"p2pPort"`
+	RPCHost    string            `json:"rpcHost"`
+	RPCPort    uint              `json:"rpcPort"`
+	ExternalIP string            `json:"externalIp"`
+	InternalIP string            `json:"internalIp"`
+	Mode       Mode              `json:"mode"`
+	Env        map[string]string `json:"environmentVariables"`
 }
 
 // NodesDefaultsParams represents parameters for getting multiple nodes defaults

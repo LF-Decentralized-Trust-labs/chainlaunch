@@ -1,28 +1,31 @@
-import { HttpNodeResponse, ResponseErrorResponse } from '@/api/client'
+import { HttpNodeResponse } from '@/api/client'
 import {
 	deleteNodesByIdMutation,
 	getNodesByIdEventsOptions,
 	getNodesByIdOptions,
+	postNodesByIdCertificatesRenewMutation,
 	postNodesByIdRestartMutation,
 	postNodesByIdStartMutation,
 	postNodesByIdStopMutation,
 } from '@/api/client/@tanstack/react-query.gen'
 import { BesuNodeConfig } from '@/components/nodes/BesuNodeConfig'
+import { FabricNodeChannels } from '@/components/nodes/FabricNodeChannels'
 import { FabricOrdererConfig } from '@/components/nodes/FabricOrdererConfig'
 import { FabricPeerConfig } from '@/components/nodes/FabricPeerConfig'
+import { LogViewer } from '@/components/nodes/LogViewer'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CertificateViewer } from '@/components/ui/certificate-viewer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns/format'
-import { AlertCircle, CheckCircle2, Clock, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, KeyRound, Pencil, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 interface DeploymentConfig {
@@ -46,11 +49,11 @@ interface DeploymentConfig {
 }
 
 function isFabricNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
-	return node.platform === 'FABRIC' && node.fabricPeer !== undefined && node.fabricOrderer !== undefined
+	return node.platform === 'FABRIC' && (node.fabricPeer !== undefined || node.fabricOrderer !== undefined)
 }
 
-function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse {
-	return node.platform === 'BESU' && node.besuNode !== undefined
+function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
+	return node.platform === 'BESU' && (node.besuNode !== undefined)
 }
 
 function getNodeActions(status: string) {
@@ -123,9 +126,20 @@ function getEventStatusColor(status: string) {
 export default function NodeDetailPage() {
 	const { id } = useParams<{ id: string }>()
 	const navigate = useNavigate()
+	const [searchParams, setSearchParams] = useSearchParams()
 	const [logs, setLogs] = useState<string>('')
 	const logsRef = useRef<HTMLTextAreaElement>(null)
 	const abortControllerRef = useRef<AbortController | null>(null)
+	const [showRenewCertDialog, setShowRenewCertDialog] = useState(false)
+
+	// Get the active tab from URL or default to 'logs'
+	const activeTab = searchParams.get('tab') || 'logs'
+
+	// Update URL when tab changes
+	const handleTabChange = (value: string) => {
+		searchParams.set('tab', value)
+		setSearchParams(searchParams)
+	}
 
 	const {
 		data: node,
@@ -145,7 +159,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to start node: ${error.message}`)
+			toast.error(`Failed to start node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -156,7 +170,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to stop node: ${error.message}`)
+			toast.error(`Failed to stop node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -167,7 +181,7 @@ export default function NodeDetailPage() {
 			refetch()
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to restart node: ${error.message}`)
+			toast.error(`Failed to restart node: ${(error as any).error.message}`)
 		},
 	})
 
@@ -178,7 +192,18 @@ export default function NodeDetailPage() {
 			navigate('/nodes')
 		},
 		onError: (error: any) => {
-			toast.error(`Failed to delete node: ${error.message}`)
+			toast.error(`Failed to delete node: ${(error as any).error.message}`)
+		},
+	})
+
+	const renewCertificates = useMutation({
+		...postNodesByIdCertificatesRenewMutation(),
+		onSuccess: () => {
+			toast.success('Certificates renewed successfully')
+			refetch()
+		},
+		onError: (error: any) => {
+			toast.error(`Failed to renew certificates: ${(error as any).error.message}`)
 		},
 	})
 
@@ -208,7 +233,22 @@ export default function NodeDetailPage() {
 				case 'delete':
 					await deleteNode.mutateAsync({ path: { id: node.id! } })
 					break
+				case 'renew-certificates':
+					setShowRenewCertDialog(true)
+					break
 			}
+		} catch (error) {
+			// Error handling is done in the mutation callbacks
+		}
+	}
+
+	const handleRenewCertificates = async () => {
+		if (!node) return
+		try {
+			await renewCertificates.mutateAsync({ path: { id: node.id! } })
+			refetchEvents()
+			refetch()
+			setShowRenewCertDialog(false)
 		} catch (error) {
 			// Error handling is done in the mutation callbacks
 		}
@@ -282,9 +322,11 @@ export default function NodeDetailPage() {
 	}
 
 	if (error) {
-		return <div>Error loading node: {(error as ResponseErrorResponse).error.message}</div>
+		return <div>Error loading node: {(error as any).error.message}</div>
 	}
-
+	if (!node) {
+		return <div>Node not found</div>
+	}
 	return (
 		<div className="flex-1 space-y-6 p-8">
 			<div className="flex items-center justify-between">
@@ -305,6 +347,24 @@ export default function NodeDetailPage() {
 							{label}
 						</Button>
 					))}
+					{isFabricNode(node) && (
+						<Button onClick={() => handleAction('renew-certificates')} variant="outline" size="sm" disabled={renewCertificates.isPending}>
+							<KeyRound className="mr-2 h-4 w-4" />
+							Renew Certificates
+						</Button>
+					)}
+					{isFabricNode(node) && (
+						<Button onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)} variant="outline" size="sm">
+							<Pencil className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					)}
+					{isBesuNode(node) && (
+						<Button onClick={() => navigate(`/nodes/besu/edit/${node.id}`)} variant="outline" size="sm">
+							<Pencil className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					)}
 				</div>
 			</div>
 
@@ -345,11 +405,12 @@ export default function NodeDetailPage() {
 				</>
 			</div>
 
-			<Tabs defaultValue="logs" className="space-y-4">
+			<Tabs defaultValue={activeTab} className="space-y-4" onValueChange={handleTabChange}>
 				<TabsList>
 					<TabsTrigger value="logs">Logs</TabsTrigger>
 					<TabsTrigger value="crypto">Crypto Material</TabsTrigger>
 					<TabsTrigger value="events">Events</TabsTrigger>
+					{isFabricNode(node) && <TabsTrigger value="channels">Channels</TabsTrigger>}
 				</TabsList>
 
 				<TabsContent value="logs" className="space-y-4">
@@ -359,17 +420,7 @@ export default function NodeDetailPage() {
 							<CardDescription>Real-time node logs</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<Textarea
-								ref={logsRef}
-								value={logs}
-								readOnly
-								className="font-mono text-sm h-[400px] bg-muted"
-								style={{
-									whiteSpace: 'pre',
-									overflowWrap: 'normal',
-									overflowX: 'auto',
-								}}
-							/>
+							<LogViewer logs={logs} onScroll={() => {}} />
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -443,7 +494,24 @@ export default function NodeDetailPage() {
 						</CardContent>
 					</Card>
 				</TabsContent>
+
+				<TabsContent value="channels">{isFabricNode(node) && <FabricNodeChannels nodeId={node.id!} />}</TabsContent>
 			</Tabs>
+
+			<AlertDialog open={showRenewCertDialog} onOpenChange={setShowRenewCertDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Renew Certificates</AlertDialogTitle>
+						<AlertDialogDescription>Are you sure you want to renew the certificates for this node? This will generate new TLS and signing certificates.</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={handleRenewCertificates} disabled={renewCertificates.isPending}>
+							Renew Certificates
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	)
 }

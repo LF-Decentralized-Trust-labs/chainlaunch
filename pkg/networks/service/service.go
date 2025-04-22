@@ -177,7 +177,7 @@ func (s *NetworkService) CreateNetwork(ctx context.Context, name, description st
 	// Generate a random network ID
 	networkID := fmt.Sprintf("net_%s_%s", name, uuid.New().String())
 	// Create network in database
-	network, err := s.db.CreateNetwork(ctx, db.CreateNetworkParams{
+	network, err := s.db.CreateNetwork(ctx, &db.CreateNetworkParams{
 		Name:        name,
 		Platform:    string(baseConfig.Type),
 		Description: sql.NullString{String: description, Valid: description != ""},
@@ -412,7 +412,7 @@ func (s *NetworkService) DeleteNetwork(ctx context.Context, networkID int64) err
 }
 
 // Helper function to map db.Network to service.Network
-func (s *NetworkService) mapDBNetworkToServiceNetwork(n db.Network) *Network {
+func (s *NetworkService) mapDBNetworkToServiceNetwork(n *db.Network) *Network {
 	var config, deploymentConfig, exposedPorts json.RawMessage
 	if n.Config.Valid {
 		config = json.RawMessage(n.Config.String)
@@ -461,7 +461,7 @@ func (s *NetworkService) mapDBNetworkToServiceNetwork(n db.Network) *Network {
 
 // UpdateNetworkStatus updates the status of a network
 func (s *NetworkService) UpdateNetworkStatus(ctx context.Context, networkID int64, status NetworkStatus) error {
-	err := s.db.UpdateNetworkStatus(ctx, db.UpdateNetworkStatusParams{
+	err := s.db.UpdateNetworkStatus(ctx, &db.UpdateNetworkStatusParams{
 		ID:     networkID,
 		Status: string(status),
 	})
@@ -567,7 +567,7 @@ func (s *NetworkService) AddNodeToNetwork(ctx context.Context, networkID, nodeID
 	}
 
 	// Check if node is already in network
-	exists, err := s.db.CheckNetworkNodeExists(ctx, db.CheckNetworkNodeExistsParams{
+	exists, err := s.db.CheckNetworkNodeExists(ctx, &db.CheckNetworkNodeExistsParams{
 		NetworkID: networkID,
 		NodeID:    nodeID,
 	})
@@ -579,7 +579,7 @@ func (s *NetworkService) AddNodeToNetwork(ctx context.Context, networkID, nodeID
 	}
 
 	// Create network node entry
-	_, err = s.db.CreateNetworkNode(ctx, db.CreateNetworkNodeParams{
+	_, err = s.db.CreateNetworkNode(ctx, &db.CreateNetworkNodeParams{
 		NetworkID: networkID,
 		NodeID:    nodeID,
 		Status:    "pending",
@@ -684,7 +684,7 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 		return "", fmt.Errorf("failed to get network nodes: %w", err)
 	}
 
-	var ordererURL, ordererTLSCert string
+	var ordererAddress, ordererTLSCert string
 
 	// Look for orderer in our registry
 	for _, node := range networkNodes {
@@ -693,14 +693,14 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 			if !ok {
 				continue
 			}
-			ordererURL = fmt.Sprintf("grpcs://%s", ordererConfig.ExternalEndpoint)
+			ordererAddress = ordererConfig.ExternalEndpoint
 			ordererTLSCert = ordererConfig.TLSCACert
 			break
 		}
 	}
 
 	// If no orderer found in registry, try to get from current config block
-	if ordererURL == "" {
+	if ordererAddress == "" {
 		// Get current config block
 		configBlock, err := fabricDeployer.GetCurrentChannelConfig(networkID)
 		if err != nil {
@@ -715,16 +715,16 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 		if len(ordererInfo) == 0 {
 			return "", fmt.Errorf("no orderer found in config block")
 		}
-		ordererURL = ordererInfo[0].URL
+		ordererAddress = ordererInfo[0].URL
 		ordererTLSCert = ordererInfo[0].TLSCert
 	}
 
-	if ordererURL == "" {
+	if ordererAddress == "" {
 		return "", fmt.Errorf("no orderer found in network or config block")
 	}
 
 	// Set anchor peers using deployer with the found orderer info
-	txID, err := fabricDeployer.SetAnchorPeersWithOrderer(ctx, networkID, organizationID, deployerAnchorPeers, ordererURL, ordererTLSCert)
+	txID, err := fabricDeployer.SetAnchorPeersWithOrderer(ctx, networkID, organizationID, deployerAnchorPeers, ordererAddress, ordererTLSCert)
 	if err != nil {
 		return "", err
 	}
@@ -768,7 +768,7 @@ func (s *NetworkService) ReloadNetworkBlock(ctx context.Context, networkID int64
 	}
 	configBlockB64 := base64.StdEncoding.EncodeToString(configBlock)
 
-	err = s.db.UpdateNetworkCurrentConfigBlock(ctx, db.UpdateNetworkCurrentConfigBlockParams{
+	err = s.db.UpdateNetworkCurrentConfigBlock(ctx, &db.UpdateNetworkCurrentConfigBlockParams{
 		ID:                    networkID,
 		CurrentConfigBlockB64: sql.NullString{String: configBlockB64, Valid: true},
 	})
@@ -915,4 +915,275 @@ func (s *NetworkService) importBesuNetwork(ctx context.Context, params ImportNet
 		NetworkID: networkID,
 		Message:   "Besu network imported successfully",
 	}, nil
+}
+
+// UpdateFabricNetwork prepares a config update proposal for a Fabric network
+func (s *NetworkService) UpdateFabricNetwork(ctx context.Context, networkID int64, operations []fabric.ConfigUpdateOperation) (*fabric.ConfigUpdateProposal, error) {
+	// Get deployer for the network
+	deployer, err := s.deployerFactory.GetDeployer(string(BlockchainTypeFabric))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	// Assert that it's a Fabric deployer
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return nil, fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	// Prepare the config update
+	proposal, err := fabricDeployer.PrepareConfigUpdate(ctx, networkID, operations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare config update: %w", err)
+	}
+
+	// Get organizations managed by us that can sign the config update
+	orgs, err := s.db.ListFabricOrganizations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network organizations: %w", err)
+	}
+	var signingOrgIDs []string
+	for _, org := range orgs {
+		signingOrgIDs = append(signingOrgIDs, org.MspID)
+	}
+
+	ordererAddress, ordererTLSCert, err := s.getOrdererAddressAndCertForNetwork(ctx, networkID, fabricDeployer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orderer address and TLS certificate: %w", err)
+	}
+
+	res, err := fabricDeployer.UpdateChannelConfig(ctx, networkID, proposal.ConfigUpdateEnvelope, signingOrgIDs, ordererAddress, ordererTLSCert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel config: %w", err)
+	}
+	s.logger.Info("Channel config updated", "txID", res)
+	return proposal, nil
+}
+
+func (s *NetworkService) getOrdererAddressAndCertForNetwork(ctx context.Context, networkID int64, fabricDeployer *fabric.FabricDeployer) (string, string, error) {
+
+	// Try to get orderer info from network nodes first
+	networkNodes, err := s.GetNetworkNodes(ctx, networkID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get network nodes: %w", err)
+	}
+
+	var ordererAddress, ordererTLSCert string
+
+	// Look for orderer in our registry
+	for _, node := range networkNodes {
+		if node.Node.NodeType == nodetypes.NodeTypeFabricOrderer {
+			ordererConfig, ok := node.Node.DeploymentConfig.(*nodetypes.FabricOrdererDeploymentConfig)
+			if !ok {
+				continue
+			}
+			ordererAddress = ordererConfig.ExternalEndpoint
+			ordererTLSCert = ordererConfig.TLSCACert
+			break
+		}
+	}
+
+	// If no orderer found in registry, try to get from current config block
+	if ordererAddress == "" {
+		// Get current config block
+		configBlock, err := fabricDeployer.GetCurrentChannelConfig(networkID)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get current config block: %w", err)
+		}
+
+		// Extract orderer info from config block
+		ordererInfo, err := fabricDeployer.GetOrderersFromConfigBlock(ctx, configBlock)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get orderer info from config: %w", err)
+		}
+		if len(ordererInfo) == 0 {
+			return "", "", fmt.Errorf("no orderer found in config block")
+		}
+		ordererAddress = ordererInfo[0].URL
+		ordererTLSCert = ordererInfo[0].TLSCert
+	}
+
+	if ordererAddress == "" {
+		return "", "", fmt.Errorf("no orderer found in network or config block")
+	}
+
+	return ordererAddress, ordererTLSCert, nil
+}
+
+func (s *NetworkService) GetChainInfo(ctx context.Context, networkID int64) (*ChainInfo, error) {
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+	chainInfo, err := fabricDeployer.GetChainInfo(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain info: %w", err)
+	}
+	return &ChainInfo{
+		Height:            chainInfo.Height,
+		CurrentBlockHash:  chainInfo.CurrentBlockHash,
+		PreviousBlockHash: chainInfo.PreviousBlockHash,
+	}, nil
+}
+
+// GetBlocks retrieves a paginated list of blocks from the network
+func (s *NetworkService) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get blocks
+	fabricBlocks, total, err := fabricDeployer.GetBlocks(ctx, networkID, limit, offset, reverse)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get blocks: %w", err)
+	}
+
+	// Map fabric.Block to service.Block
+	blocks := make([]Block, len(fabricBlocks))
+	for i, fb := range fabricBlocks {
+		blocks[i], err = s.mapBlockToServiceBlock(fb)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to map block to service block: %w", err)
+		}
+	}
+
+	return blocks, total, nil
+}
+
+func (s *NetworkService) mapBlockToServiceBlock(fb fabric.Block) (Block, error) {
+	return Block{
+		Number:       fb.Number,
+		Hash:         fb.Hash,
+		PreviousHash: fb.PreviousHash,
+		Timestamp:    fb.Timestamp,
+		TxCount:      fb.TxCount,
+		Data:         fb.Data,
+	}, nil
+}
+
+type BlockWithTransactions struct {
+	Block        Block
+	Transactions []Transaction
+}
+
+// GetBlockTransactions retrieves all transactions from a specific block
+func (s *NetworkService) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*BlockWithTransactions, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get block transactions
+	fabricTransactions, err := fabricDeployer.GetBlockTransactions(ctx, networkID, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block transactions: %w", err)
+	}
+
+	// Map fabric.Transaction to service.Transaction
+	transactions := make([]Transaction, len(fabricTransactions.Transactions))
+	for i, ft := range fabricTransactions.Transactions {
+		transactions[i] = Transaction{
+			TxID:        ft.ID,
+			BlockNumber: ft.BlockNum,
+			Timestamp:   ft.Timestamp,
+			Type:        ft.Type,
+			Creator:     ft.Creator,
+		}
+	}
+	block, err := s.mapBlockToServiceBlock(fabricTransactions.Block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map block to service block: %w", err)
+	}
+	blockWithTransactions := &BlockWithTransactions{
+		Block:        block,
+		Transactions: transactions,
+	}
+	return blockWithTransactions, nil
+}
+
+// GetTransaction retrieves a specific transaction by its ID
+func (s *NetworkService) GetTransaction(ctx context.Context, networkID int64, txID string) (Transaction, error) {
+	// Get the fabric deployer for this network
+	fabricDeployer, err := s.getFabricDeployerForNetwork(ctx, networkID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get fabric deployer: %w", err)
+	}
+
+	// Use the fabric deployer to get transaction
+	ft, err := fabricDeployer.GetTransaction(ctx, networkID, txID)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("failed to get transaction: %w", err)
+	}
+
+	// Map fabric.Transaction to service.Transaction
+	transaction := Transaction{
+		TxID:        ft.ID,
+		BlockNumber: ft.BlockNum,
+		Timestamp:   ft.Timestamp,
+		Type:        ft.Type,
+		Creator:     ft.Creator,
+	}
+
+	return transaction, nil
+}
+
+// getFabricDeployerForNetwork creates and returns a fabric deployer for the specified network
+func (s *NetworkService) getFabricDeployerForNetwork(ctx context.Context, networkID int64) (*fabric.FabricDeployer, error) {
+	// Get network details to verify it exists and is a Fabric network
+	network, err := s.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network: %w", err)
+	}
+	deployer, err := s.deployerFactory.GetDeployer(network.Platform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return nil, fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	return fabricDeployer, nil
+}
+
+// UpdateOrganizationCRL updates the CRL for an organization in the network
+func (s *NetworkService) UpdateOrganizationCRL(ctx context.Context, networkID, organizationID int64) (string, error) {
+	// Get network details
+	network, err := s.db.GetNetwork(ctx, networkID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get deployer
+	deployer, err := s.deployerFactory.GetDeployer(network.Platform)
+	if err != nil {
+		return "", fmt.Errorf("failed to get deployer: %w", err)
+	}
+
+	fabricDeployer, ok := deployer.(*fabric.FabricDeployer)
+	if !ok {
+		return "", fmt.Errorf("network %d is not a Fabric network", networkID)
+	}
+
+	// Update the CRL in the network
+	txID, err := fabricDeployer.UpdateOrganizationCRL(ctx, networkID, fabric.UpdateOrganizationCRLInput{
+		OrganizationID: organizationID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to update CRL: %w", err)
+	}
+
+	logrus.Info("Reloading network block after updating CRL, waiting 3 seconds")
+	time.Sleep(3 * time.Second)
+
+	// Reload network block
+	if err := s.ReloadNetworkBlock(ctx, networkID); err != nil {
+		logrus.Errorf("Failed to reload network block after updating CRL: %v", err)
+	}
+
+	return txID, nil
 }

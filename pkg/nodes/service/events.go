@@ -52,7 +52,7 @@ func (s *NodeEventService) CreateEvent(ctx context.Context, nodeID int64, eventT
 		return fmt.Errorf("failed to marshal event data: %w", err)
 	}
 
-	_, err = s.db.CreateNodeEvent(ctx, db.CreateNodeEventParams{
+	_, err = s.db.CreateNodeEvent(ctx, &db.CreateNodeEventParams{
 		NodeID:      nodeID,
 		EventType:   string(eventType),
 		Data:        sql.NullString{String: string(dataJSON), Valid: true},
@@ -69,7 +69,7 @@ func (s *NodeEventService) CreateEvent(ctx context.Context, nodeID int64, eventT
 // GetEvents retrieves a paginated list of node events
 func (s *NodeEventService) GetEvents(ctx context.Context, nodeID int64, page, limit int) ([]NodeEvent, error) {
 	offset := (page - 1) * limit
-	dbEvents, err := s.db.ListNodeEvents(ctx, db.ListNodeEventsParams{
+	dbEvents, err := s.db.ListNodeEvents(ctx, &db.ListNodeEventsParams{
 		NodeID: nodeID,
 		Limit:  int64(limit),
 		Offset: int64(offset),
@@ -91,7 +91,7 @@ func (s *NodeEventService) GetLatestEvent(ctx context.Context, nodeID int64) (*N
 		return nil, fmt.Errorf("failed to get latest node event: %w", err)
 	}
 
-	events := s.mapDBEventsToNodeEvents([]db.NodeEvent{dbEvent})
+	events := s.mapDBEventsToNodeEvents([]*db.NodeEvent{dbEvent})
 	if len(events) == 0 {
 		return nil, nil
 	}
@@ -101,7 +101,7 @@ func (s *NodeEventService) GetLatestEvent(ctx context.Context, nodeID int64) (*N
 // GetEventsByType retrieves events of a specific type for a node
 func (s *NodeEventService) GetEventsByType(ctx context.Context, nodeID int64, eventType NodeEventType, page, limit int) ([]NodeEvent, error) {
 	offset := (page - 1) * limit
-	dbEvents, err := s.db.ListNodeEventsByType(ctx, db.ListNodeEventsByTypeParams{
+	dbEvents, err := s.db.ListNodeEventsByType(ctx, &db.ListNodeEventsByTypeParams{
 		NodeID:    nodeID,
 		EventType: string(eventType),
 		Limit:     int64(limit),
@@ -115,7 +115,7 @@ func (s *NodeEventService) GetEventsByType(ctx context.Context, nodeID int64, ev
 }
 
 // mapDBEventsToNodeEvents converts database events to service layer events
-func (s *NodeEventService) mapDBEventsToNodeEvents(dbEvents []db.NodeEvent) []NodeEvent {
+func (s *NodeEventService) mapDBEventsToNodeEvents(dbEvents []*db.NodeEvent) []NodeEvent {
 	events := make([]NodeEvent, len(dbEvents))
 	for i, dbEvent := range dbEvents {
 		// var data interface{}

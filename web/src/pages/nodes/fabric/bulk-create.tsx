@@ -1,7 +1,6 @@
 import { getNodesDefaultsFabric } from '@/api/client'
 import { getNodesDefaultsFabricOptions, getNodesOptions, getOrganizationsOptions, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
 import { HttpCreateNodeRequest, TypesFabricOrdererConfig, TypesFabricPeerConfig } from '@/api/client/types.gen'
-// CreateFabricOrdererDto, CreateFabricPeerDto, CreateNodeDto
 import { FabricNodeForm, FabricNodeFormValues } from '@/components/nodes/fabric-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Steps } from '@/components/ui/steps'
-import { slugify } from '@/lib/utils'
+import { slugify } from '@/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, CheckCircle2, Server } from 'lucide-react'
@@ -139,7 +138,7 @@ export default function BulkCreateNodesPage() {
 				name,
 				fabricProperties: {
 					nodeType: 'FABRIC_PEER',
-					version: '2.5.12',
+					version: '3.1.0',
 					mode: 'service',
 					organizationId: selectedOrg?.id!,
 					listenAddress: peer.listenAddress || '',
@@ -159,7 +158,7 @@ export default function BulkCreateNodesPage() {
 				fabricProperties: {
 					nodeType: 'FABRIC_ORDERER',
 					mode: 'service',
-					version: '2.5.12',
+					version: '3.1.0',
 					organizationId: selectedOrg?.id!,
 					listenAddress: orderer.listenAddress || '',
 					operationsListenAddress: orderer.operationsListenAddress || '',
@@ -218,6 +217,8 @@ export default function BulkCreateNodesPage() {
 						chaincodeAddress: config.fabricProperties.chaincodeAddress || '',
 						eventsAddress: config.fabricProperties.eventsAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
+						addressOverrides: config.fabricProperties.addressOverrides,
 					} as TypesFabricPeerConfig
 				} else {
 					fabricOrderer = {
@@ -231,6 +232,7 @@ export default function BulkCreateNodesPage() {
 						name: config.name,
 						adminAddress: config.fabricProperties.adminAddress || '',
 						mspId: selectedOrg?.mspId!,
+						version: config.fabricProperties.version,
 					} as TypesFabricOrdererConfig
 				}
 
@@ -256,7 +258,7 @@ export default function BulkCreateNodesPage() {
 			navigate('/nodes')
 		} catch (error: any) {
 			toast.error('Failed to create nodes', {
-				description: error.message,
+				description: error.error.message,
 			})
 		}
 	}
@@ -380,6 +382,12 @@ export default function BulkCreateNodesPage() {
 												onSubmit={(values) => {
 													const newConfigs = [...nodeConfigs]
 													newConfigs[index] = { ...values, name: config.name }
+													setNodeConfigs(newConfigs)
+												}}
+												onChange={(values) => {
+													const newConfigs = [...nodeConfigs]
+													newConfigs[index] = { ...values, name: config.name }
+													console.log('values', values, 'onChange')
 													setNodeConfigs(newConfigs)
 												}}
 												organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}

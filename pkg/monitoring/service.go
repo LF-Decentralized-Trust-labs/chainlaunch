@@ -2,12 +2,19 @@ package monitoring
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/certutils"
+	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	nodes "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/chainlaunch/chainlaunch/pkg/notifications"
 )
 
@@ -32,6 +39,7 @@ type Service interface {
 
 // service implements the Service interface
 type service struct {
+	logger           *logger.Logger
 	config           *Config
 	nodes            map[int64]*Node
 	nodesMutex       sync.RWMutex
@@ -41,15 +49,17 @@ type service struct {
 	workerWaitGroup  sync.WaitGroup
 	lastCheckResults map[int64]*NodeCheck
 	resultsMutex     sync.RWMutex
+	nodeService      *nodes.NodeService
 }
 
 // NewService creates a new monitoring service
-func NewService(config *Config, notificationSvc notifications.Service) Service {
+func NewService(logger *logger.Logger, config *Config, notificationSvc notifications.Service, nodeService *nodes.NodeService) Service {
 	if config == nil {
 		config = DefaultConfig()
 	}
 
 	return &service{
+		logger:           logger,
 		config:           config,
 		nodes:            make(map[int64]*Node),
 		notificationSvc:  notificationSvc,
@@ -58,6 +68,7 @@ func NewService(config *Config, notificationSvc notifications.Service) Service {
 		httpClient: &http.Client{
 			Timeout: config.DefaultTimeout,
 		},
+		nodeService: nodeService,
 	}
 }
 
@@ -172,6 +183,7 @@ func (s *service) worker(ctx context.Context, workerID int) {
 
 // checkNodes performs the actual node checks
 func (s *service) checkNodes(ctx context.Context) {
+
 	now := time.Now()
 
 	// Get a copy of the nodes to check
@@ -194,19 +206,88 @@ func (s *service) checkNodes(ctx context.Context) {
 func (s *service) checkNode(ctx context.Context, node *Node) {
 	start := time.Now()
 
-	// Create a context with the node's timeout
-	checkCtx, cancel := context.WithTimeout(ctx, node.Timeout)
-	defer cancel()
-
-	// Create a request to check the node
-	req, err := http.NewRequestWithContext(checkCtx, http.MethodGet, node.URL, nil)
+	// Parse the URL to get host and port
+	u, err := url.Parse(node.URL)
 	if err != nil {
 		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
 		return
 	}
 
+	// Extract host and port
+	host := u.Host
+	if !strings.Contains(host, ":") {
+		// Default to port 443 for HTTPS
+		host = host + ":443"
+	}
+
+	// Try to establish TCP connection
+	dialer := &net.Dialer{
+		Timeout: node.Timeout,
+	}
+	nodeResponse, err := s.nodeService.GetNode(ctx, node.ID)
+	if err != nil {
+		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+		return
+	}
+	var x509Cert *x509.Certificate
+	if nodeResponse.FabricPeer != nil {
+		tlsCertStr := nodeResponse.FabricPeer.TLSCert
+		if tlsCertStr != "" {
+			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
+			if err != nil {
+				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+				return
+			}
+		}
+	} else if nodeResponse.FabricOrderer != nil {
+		tlsCertStr := nodeResponse.FabricOrderer.TLSCert
+		if tlsCertStr != "" {
+			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
+			if err != nil {
+				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+				return
+			}
+		}
+	}
+	var tlsCert tls.Certificate
+	if x509Cert != nil {
+		tlsCert = tls.Certificate{
+			Certificate: [][]byte{x509Cert.Raw},
+			PrivateKey:  nil,
+		}
+	}
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+	}
+	// Try TLS connection
+	conn, err := tls.DialWithDialer(dialer, "tcp", host, tlsConfig)
+	if err != nil {
+		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+		return
+	}
+	defer conn.Close()
+
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, "GET", node.URL, nil)
+	if err != nil {
+		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
+		return
+	}
+
+	// Create a client with the TLS connection
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return conn, nil
+		},
+	}
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   node.Timeout,
+	}
+
 	// Perform the request
-	resp, err := s.httpClient.Do(req)
+	resp, err := client.Do(req)
 	responseTime := time.Since(start)
 
 	if err != nil {
@@ -290,30 +371,6 @@ func (s *service) handleNodeCheckResult(node *Node, status NodeStatus, responseT
 	}
 }
 
-// formatDuration formats a duration into a human-readable string
-func formatDuration(d time.Duration) string {
-	days := int(d.Hours() / 24)
-	hours := int(d.Hours()) % 24
-	minutes := int(d.Minutes()) % 60
-	seconds := int(d.Seconds()) % 60
-
-	parts := []string{}
-	if days > 0 {
-		parts = append(parts, fmt.Sprintf("%dd", days))
-	}
-	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%dh", hours))
-	}
-	if minutes > 0 {
-		parts = append(parts, fmt.Sprintf("%dm", minutes))
-	}
-	if seconds > 0 || len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf("%ds", seconds))
-	}
-
-	return strings.Join(parts, " ")
-}
-
 // sendNodeDownNotification sends a notification that a node is down
 func (s *service) sendNodeDownNotification(ctx context.Context, node *Node, err error) {
 	data := notifications.NodeDowntimeData{
@@ -328,7 +385,7 @@ func (s *service) sendNodeDownNotification(ctx context.Context, node *Node, err 
 	// Send the notification
 	if err := s.notificationSvc.SendNodeDowntimeNotification(ctx, data); err != nil {
 		// Just log the error; we don't want to create a notification loop
-		fmt.Printf("Failed to send node downtime notification: %v\n", err)
+		s.logger.Errorf("Failed to send node downtime notification: %v", err)
 	}
 }
 
@@ -347,6 +404,6 @@ func (s *service) sendNodeRecoveryNotification(ctx context.Context, node *Node, 
 	// Send the notification
 	if err := s.notificationSvc.SendNodeRecoveryNotification(ctx, data); err != nil {
 		// Just log the error; we don't want to create a notification loop
-		fmt.Printf("Failed to send node recovery notification: %v\n", err)
+		s.logger.Errorf("Failed to send node recovery notification: %v", err)
 	}
 }

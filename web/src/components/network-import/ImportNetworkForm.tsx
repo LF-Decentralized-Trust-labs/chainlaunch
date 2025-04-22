@@ -60,7 +60,7 @@ type FormValues = z.infer<typeof formSchema>
 export function ImportNetworkForm() {
 	const [error, setError] = useState<string | null>(null)
 	const navigate = useNavigate()
-	const [fabricImportMethod, setFabricImportMethod] = useState<'genesis' | 'organization'>('genesis')
+	const [fabricImportMethod, setFabricImportMethod] = useState<'genesis' | 'organization'>('organization')
 
 	const { data: organizations } = useQuery({
 		...getOrganizationsOptions(),
@@ -87,6 +87,13 @@ export function ImportNetworkForm() {
 			toast.success('Network imported successfully')
 			navigate('/networks')
 		},
+		onError: (error: Error) => {
+			const errorMessage = error.message || 'Failed to import Fabric network'
+			setError(errorMessage)
+			toast.error('Failed to import network', {
+				description: errorMessage,
+			})
+		},
 	})
 
 	const importBesuNetwork = useMutation({
@@ -109,7 +116,7 @@ export function ImportNetworkForm() {
 		defaultValues: {
 			networkType: 'fabric',
 			fabricImport: {
-				importMethod: 'genesis',
+				importMethod: 'organization',
 			},
 		},
 	})
@@ -126,6 +133,7 @@ export function ImportNetworkForm() {
 		setError(null)
 
 		if (data.networkType === 'fabric') {
+			console.log('data.fabricImport', data.fabricImport)
 			if (data.fabricImport.importMethod === 'genesis') {
 				if (!data.fabricImport.genesisBlock) {
 					setError('Genesis block is required')
@@ -194,7 +202,7 @@ export function ImportNetworkForm() {
 		}
 	}
 
-	const isLoading = importFabricNetwork.isPending || importBesuNetwork.isPending
+	const isLoading = importFabricNetwork.isPending || importBesuNetwork.isPending || importFabricNetworkByOrg.isPending
 
 	return (
 		<Card className="w-full max-w-2xl">
@@ -241,22 +249,22 @@ export function ImportNetworkForm() {
 								<div className="space-y-2">
 									<FormLabel>Import Method</FormLabel>
 									<RadioGroup
-										defaultValue="genesis"
+										defaultValue="organization"
 										value={fabricImportMethod}
 										onValueChange={(value) => handleImportMethodChange(value as 'genesis' | 'organization')}
 										className="flex flex-col space-y-1"
 									>
 										<FormItem className="flex items-center space-x-3 space-y-0">
 											<FormControl>
-												<RadioGroupItem value="genesis" />
-											</FormControl>
-											<FormLabel className="font-normal">Import using genesis block</FormLabel>
-										</FormItem>
-										<FormItem className="flex items-center space-x-3 space-y-0">
-											<FormControl>
 												<RadioGroupItem value="organization" />
 											</FormControl>
 											<FormLabel className="font-normal">Import using organization, orderer URL and TLS certificate</FormLabel>
+										</FormItem>
+										<FormItem className="flex items-center space-x-3 space-y-0">
+											<FormControl>
+												<RadioGroupItem value="genesis" />
+											</FormControl>
+											<FormLabel className="font-normal">Import using genesis block</FormLabel>
 										</FormItem>
 									</RadioGroup>
 								</div>

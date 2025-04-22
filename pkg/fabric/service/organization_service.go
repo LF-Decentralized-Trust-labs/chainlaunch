@@ -2,17 +2,26 @@ package service
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"database/sql"
+	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 )
 
 // OrganizationDTO represents the service layer data structure
@@ -48,19 +57,28 @@ type UpdateOrganizationParams struct {
 	Description *string
 }
 
+// RevokedCertificateDTO represents a revoked certificate
+type RevokedCertificateDTO struct {
+	SerialNumber   string    `json:"serialNumber"`
+	RevocationTime time.Time `json:"revocationTime"`
+	Reason         int64     `json:"reason"`
+}
+
 type OrganizationService struct {
 	queries       *db.Queries
 	keyManagement *keymanagement.KeyManagementService
+	configService *config.ConfigService
 }
 
-func NewOrganizationService(queries *db.Queries, keyManagement *keymanagement.KeyManagementService) *OrganizationService {
+func NewOrganizationService(queries *db.Queries, keyManagement *keymanagement.KeyManagementService, configService *config.ConfigService) *OrganizationService {
 	return &OrganizationService{
 		queries:       queries,
 		keyManagement: keyManagement,
+		configService: configService,
 	}
 }
 
-func mapDBOrganizationToServiceOrganization(org db.GetFabricOrganizationByMspIDRow) *OrganizationDTO {
+func mapDBOrganizationToServiceOrganization(org *db.GetFabricOrganizationByMspIDRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -87,7 +105,7 @@ func mapDBOrganizationToServiceOrganization(org db.GetFabricOrganizationByMspIDR
 }
 
 // Convert database model to DTO for single organization
-func toOrganizationDTO(org db.GetFabricOrganizationWithKeysRow) *OrganizationDTO {
+func toOrganizationDTO(org *db.GetFabricOrganizationWithKeysRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -114,7 +132,7 @@ func toOrganizationDTO(org db.GetFabricOrganizationWithKeysRow) *OrganizationDTO
 }
 
 // Convert database model to DTO for list of organizations
-func toOrganizationListDTO(org db.ListFabricOrganizationsWithKeysRow) *OrganizationDTO {
+func toOrganizationListDTO(org *db.ListFabricOrganizationsWithKeysRow) *OrganizationDTO {
 	providerName := ""
 	if org.ProviderName.Valid {
 		providerName = org.ProviderName.String
@@ -296,7 +314,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	}
 
 	// Create organization
-	org, err := s.queries.CreateFabricOrganization(ctx, db.CreateFabricOrganizationParams{
+	org, err := s.queries.CreateFabricOrganization(ctx, &db.CreateFabricOrganizationParams{
 		MspID:           params.MspID,
 		Description:     sql.NullString{String: params.Description, Valid: params.Description != ""},
 		ProviderID:      sql.NullInt64{Int64: params.ProviderID, Valid: true},
@@ -364,7 +382,7 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, id int64, 
 	}
 
 	// Update organization
-	_, err = s.queries.UpdateFabricOrganization(ctx, db.UpdateFabricOrganizationParams{
+	_, err = s.queries.UpdateFabricOrganization(ctx, &db.UpdateFabricOrganizationParams{
 		ID:          id,
 		Description: org.Description,
 	})
@@ -403,12 +421,8 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id int64) 
 	// Delete the organization directory
 	// Convert MspID to lowercase for the directory name
 	mspIDLower := strings.ToLower(org.MspID)
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
-	}
 
-	orgDir := filepath.Join(homeDir, ".chainlaunch", "orgs", mspIDLower)
+	orgDir := filepath.Join(s.configService.GetDataPath(), "orgs", mspIDLower)
 	err = os.RemoveAll(orgDir)
 	if err != nil {
 		// Log the error but don't fail the operation
@@ -430,4 +444,208 @@ func (s *OrganizationService) ListOrganizations(ctx context.Context) ([]Organiza
 		dtos[i] = *toOrganizationListDTO(org)
 	}
 	return dtos, nil
+}
+
+// GetCRL returns the current CRL for the organization in PEM format
+func (s *OrganizationService) GetCRL(ctx context.Context, orgID int64) ([]byte, error) {
+	// Get organization details
+	org, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("organization not found")
+		}
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get all revoked certificates for this organization
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get revoked certificates: %w", err)
+	}
+
+	// Get the admin signing key for signing the CRL
+	adminSignKey, err := s.keyManagement.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+
+	// Parse the certificate
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyManagement.GetDecryptedPrivateKey(int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	// Parse the private key
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Cast private key to crypto.Signer
+	signer, ok := priv.(crypto.Signer)
+	if !ok {
+		return nil, fmt.Errorf("private key does not implement crypto.Signer")
+	}
+
+	// Create CRL
+	now := time.Now()
+	crl := &x509.RevocationList{
+		Number:     big.NewInt(1),
+		ThisUpdate: now,
+		NextUpdate: now.AddDate(0, 0, 7), // Valid for 7 days
+	}
+
+	// Add all revoked certificates
+	for _, rc := range revokedCerts {
+		serialNumber, ok := new(big.Int).SetString(rc.SerialNumber, 16)
+		if !ok {
+			return nil, fmt.Errorf("invalid serial number format: %s", rc.SerialNumber)
+		}
+
+		revokedCert := pkix.RevokedCertificate{
+			SerialNumber:   serialNumber,
+			RevocationTime: rc.RevocationTime,
+			Extensions: []pkix.Extension{
+				{
+					Id:    asn1.ObjectIdentifier{2, 5, 29, 21}, // CRLReason OID
+					Value: []byte{byte(rc.Reason)},
+				},
+			},
+		}
+		crl.RevokedCertificates = append(crl.RevokedCertificates, revokedCert)
+	}
+
+	// Create the CRL
+	crlBytes, err := x509.CreateRevocationList(rand.Reader, crl, cert, signer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CRL: %w", err)
+	}
+
+	// Encode the CRL in PEM format
+	pemBlock := &pem.Block{
+		Type:  "X509 CRL",
+		Bytes: crlBytes,
+	}
+
+	return pem.EncodeToMemory(pemBlock), nil
+}
+
+// GetRevokedCertificates returns all revoked certificates for an organization
+func (s *OrganizationService) GetRevokedCertificates(ctx context.Context, orgID int64) ([]RevokedCertificateDTO, error) {
+	// Get organization details to verify it exists
+	_, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("organization not found")
+		}
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get all revoked certificates for this organization
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get revoked certificates: %w", err)
+	}
+
+	// Convert to DTOs
+	dtos := make([]RevokedCertificateDTO, len(revokedCerts))
+	for i, cert := range revokedCerts {
+		dtos[i] = RevokedCertificateDTO{
+			SerialNumber:   cert.SerialNumber,
+			RevocationTime: cert.RevocationTime,
+			Reason:         cert.Reason,
+		}
+	}
+
+	return dtos, nil
+}
+
+// RevokeCertificate adds a certificate to the organization's CRL
+func (s *OrganizationService) RevokeCertificate(ctx context.Context, orgID int64, serialNumber *big.Int, reason int) error {
+	// Get organization details
+	org, err := s.queries.GetFabricOrganizationWithKeys(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("organization not found")
+		}
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Check if certificate is already revoked
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to check revoked certificates: %w", err)
+	}
+
+	serialNumberHex := serialNumber.Text(16)
+	for _, cert := range revokedCerts {
+		if cert.SerialNumber == serialNumberHex {
+			return fmt.Errorf("certificate with serial number %s is already revoked", serialNumberHex)
+		}
+	}
+
+	// Check if CRL is initialized (has last update time)
+	if !org.CrlLastUpdate.Valid {
+		// Initialize CRL timestamps
+		now := time.Now()
+		err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+			ID:            orgID,
+			CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+			CrlKeyID:      org.SignKeyID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize CRL: %w", err)
+		}
+	}
+
+	// Add the certificate to the database
+	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
+		FabricOrganizationID: orgID,
+		SerialNumber:         serialNumberHex, // Store as hex string
+		RevocationTime:       time.Now(),
+		Reason:               int64(reason),
+		IssuerCertificateID: sql.NullInt64{
+			Int64: org.SignKeyID.Int64,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add revoked certificate: %w", err)
+	}
+
+	// Update the CRL timestamps
+	now := time.Now()
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+		ID:            orgID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.AdminSignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update CRL timestamps: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRevokedCertificate removes a certificate from the organization's revocation list
+func (s *OrganizationService) DeleteRevokedCertificate(ctx context.Context, orgID int64, serialNumber string) error {
+	err := s.queries.DeleteRevokedCertificate(ctx, &db.DeleteRevokedCertificateParams{
+		FabricOrganizationID: orgID,
+		SerialNumber:         serialNumber,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

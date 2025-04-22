@@ -1,191 +1,42 @@
 package org
 
 import (
-	"bytes"
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"database/sql"
+	"encoding/asn1"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"math/big"
 	"strings"
-	"text/template"
+	"time"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
+	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/msp"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite/bccsp/sw"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fab"
-	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
-	mspimpl "github.com/hyperledger/fabric-sdk-go/pkg/msp"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 )
-
-const tmplGoConfig = `
-name: hlf-network
-version: 1.0.0
-client:
-  organization: "{{ .Organization }}"
-{{- if not .Organizations }}
-organizations: {}
-{{- else }}
-organizations:
-  {{ range $org := .Organizations }}
-  {{ $org.MSPID }}:
-    mspid: {{ $org.MSPID }}
-    cryptoPath: /tmp/cryptopath
-{{ if not $org.Users }}
-    users: {}
-{{- else }}
-    users:
-      {{- range $user := $org.Users }}
-      {{ $user.Name }}:
-        cert:
-          pem: |
-{{ $user.Cert | indent 12 }}
-        key:
-          pem: |
-{{ $user.Key | indent 12 }}
-{{- end }}
-{{- end }}
-{{- if not $org.CertAuths }}
-    certificateAuthorities: []
-{{- else }}
-    certificateAuthorities: 
-      {{- range $ca := $org.CertAuths }}
-      - {{ $ca.Name }}
- 	  {{- end }}
-{{- end }}
-{{- if not $org.Peers }}
-    peers: []
-{{- else }}
-    peers:
-      {{- range $peer := $org.Peers }}
-      - {{ $peer }}
- 	  {{- end }}
-{{- end }}
-{{- if not $org.Orderers }}
-    orderers: []
-{{- else }}
-    orderers:
-      {{- range $orderer := $org.Orderers }}
-      - {{ $orderer }}
- 	  {{- end }}
-
-    {{- end }}
-{{- end }}
-{{- end }}
-
-{{- if not .Orderers }}
-{{- else }}
-orderers:
-{{- range $orderer := .Orderers }}
-  {{$orderer.Name}}:
-    url: {{ $orderer.URL }}
-    grpcOptions:
-      allow-insecure: false
-    tlsCACerts:
-      pem: |
-{{ $orderer.TLSCACert | indent 8 }}
-{{- end }}
-{{- end }}
-
-{{- if not .Peers }}
-{{- else }}
-peers:
-  {{- range $peer := .Peers }}
-  {{$peer.Name}}:
-    url: {{ $peer.URL }}
-    tlsCACerts:
-      pem: |
-{{ $peer.TLSCACert | indent 8 }}
-{{- end }}
-{{- end }}
-
-{{- if not .CertAuths }}
-{{- else }}
-certificateAuthorities:
-{{- range $ca := .CertAuths }}
-  {{ $ca.Name }}:
-    url: https://{{ $ca.URL }}
-{{if $ca.EnrollID }}
-    registrar:
-        enrollId: {{ $ca.EnrollID }}
-        enrollSecret: "{{ $ca.EnrollSecret }}"
-{{ end }}
-    caName: {{ $ca.CAName }}
-    tlsCACerts:
-      pem: 
-       - |
-{{ $ca.TLSCert | indent 12 }}
-
-{{- end }}
-{{- end }}
-
-channels:
-  _default:
-{{- if not .Orderers }}
-    orderers: []
-{{- else }}
-    orderers:
-{{- range $orderer := .Orderers }}
-      - {{$orderer.Name}}
-{{- end }}
-{{- end }}
-{{- if not .Peers }}
-    peers: {}
-{{- else }}
-    peers:
-{{- range $peer := .Peers }}
-       {{$peer.Name}}:
-        discover: true
-        endorsingPeer: true
-        chaincodeQuery: true
-        ledgerQuery: true
-        eventSource: true
-{{- end }}
-{{- end }}
-
-`
-
-type OrgUser struct {
-	Name string
-	Cert string
-	Key  string
-}
-type Org struct {
-	MSPID     string
-	CertAuths []string
-	Peers     []string
-	Orderers  []string
-	Users     []OrgUser
-}
-type Peer struct {
-	Name      string
-	URL       string
-	TLSCACert string
-}
-type CA struct {
-	Name         string
-	URL          string
-	TLSCert      string
-	EnrollID     string
-	EnrollSecret string
-}
-
-type Orderer struct {
-	URL       string
-	Name      string
-	TLSCACert string
-}
 
 type FabricOrg struct {
 	orgService     *service.OrganizationService
 	keyMgmtService *keymanagement.KeyManagementService
 	logger         *logger.Logger
 	mspID          string
+	queries        *db.Queries
 }
 
 func NewOrganizationService(
@@ -193,117 +44,33 @@ func NewOrganizationService(
 	keyMgmtService *keymanagement.KeyManagementService,
 	logger *logger.Logger,
 	mspID string,
+	queries *db.Queries,
 ) *FabricOrg {
 	return &FabricOrg{
 		orgService:     orgService,
 		keyMgmtService: keyMgmtService,
 		logger:         logger,
 		mspID:          mspID,
+		queries:        queries,
 	}
-}
-
-// GenerateNetworkConfig generates a network configuration for connecting to Fabric network
-func (s *FabricOrg) GenerateNetworkConfig(ctx context.Context, channelID, ordererURL, ordererTLSCert string) (string, error) {
-	s.logger.Info("Generating network config",
-		"mspID", s.mspID,
-		"channel", channelID,
-		"ordererUrl", ordererURL)
-
-	// Get organization details
-	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get organization: %w", err)
-	}
-
-	// Get signing key
-	var privateKeyPEM string
-	if !org.AdminSignKeyID.Valid {
-		return "", fmt.Errorf("organization has no admin sign key")
-	}
-	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
-	if err != nil {
-		return "", fmt.Errorf("failed to get admin sign key: %w", err)
-	}
-	if adminSignKey.Certificate == nil {
-		return "", fmt.Errorf("admin sign key has no certificate")
-	}
-	// Get private key from key management service
-	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
-	if err != nil {
-		return "", fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	// Create template data
-	orgs := []*Org{}
-	var peers []*Peer
-	var certAuths []*CA
-	var ordererNodes []*Orderer
-
-	// Add organization with user
-	fabricOrg := &Org{
-		MSPID:     org.MspID,
-		CertAuths: []string{},
-		Peers:     []string{},
-		Orderers:  []string{},
-	}
-
-	// Add admin user if signing certificate is available
-	if org.SignKeyID.Valid && org.SignCertificate != "" {
-		adminUser := OrgUser{
-			Name: "Admin",
-			Cert: *adminSignKey.Certificate,
-			Key:  privateKeyPEM,
-		}
-		fabricOrg.Users = []OrgUser{adminUser}
-	}
-
-	orgs = append(orgs, fabricOrg)
-	if ordererURL != "" && ordererTLSCert != "" {
-		fabricOrg.Orderers = []string{"orderer0"}
-		// Add orderer
-		orderer := &Orderer{
-			URL:       ordererURL,
-			Name:      "orderer0",
-			TLSCACert: ordererTLSCert,
-		}
-		ordererNodes = append(ordererNodes, orderer)
-	}
-
-	// Parse template
-	tmpl, err := template.New("networkConfig").Funcs(template.FuncMap{
-		"indent": func(spaces int, v string) string {
-			pad := strings.Repeat(" ", spaces)
-			return pad + strings.Replace(v, "\n", "\n"+pad, -1)
-		},
-	}).Parse(tmplGoConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse network config template: %w", err)
-	}
-
-	// Execute template
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, map[string]interface{}{
-		"Peers":         peers,
-		"Orderers":      ordererNodes,
-		"Organizations": orgs,
-		"CertAuths":     certAuths,
-		"Organization":  s.mspID,
-		"Internal":      false,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to execute network config template: %w", err)
-	}
-
-	return buf.String(), nil
 }
 
 // GetConfigBlockWithNetworkConfig retrieves a config block using a generated network config
-func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channelID, ordererURL, ordererTLSCert string) (*common.Block, error) {
+func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channelID, ordererURL, ordererTLSCert string) (*cb.Block, error) {
 	s.logger.Info("Fetching channel config with network config",
 		"mspID", s.mspID,
 		"channel", channelID,
-		"ordererUrl", ordererURL)
-
+		"ordererUrl", ordererURL,
+	)
+	ordererNode := network.Node{
+		Addr:          ordererURL,
+		TLSCACertByte: []byte(ordererTLSCert),
+	}
+	ordererConn, err := network.DialConnection(ordererNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial orderer: %w", err)
+	}
+	defer ordererConn.Close()
 	// Get organization details
 	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
 	if err != nil {
@@ -311,42 +78,181 @@ func (s *FabricOrg) GetConfigBlockWithNetworkConfig(ctx context.Context, channel
 	}
 
 	// Get signing key
+	var privateKeyPEM string
+	if !org.AdminSignKeyID.Valid {
+		return nil, fmt.Errorf("organization has no admin sign key")
+	}
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+	if adminSignKey.Certificate == nil {
+		return nil, fmt.Errorf("admin sign key has no certificate")
+	}
+	// Get private key from key management service
+	privateKeyPEM, err = s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	ordererMSP, err := identity.NewPrivateKeySigningIdentity(s.mspID, cert, priv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer msp: %w", err)
+	}
+	// Parse the orderer TLS certificate
+	ordererTLSCertParsed, err := tls.X509KeyPair([]byte(*adminSignKey.Certificate), []byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse orderer TLS certificate: %w", err)
+	}
+
+	ordererBlock, err := channel.GetConfigBlockFromOrderer(ctx, ordererConn, ordererMSP, channelID, ordererTLSCertParsed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config block from orderer: %w", err)
+	}
+
+	return ordererBlock, nil
+}
+
+// getAdminIdentity retrieves the admin identity for the organization
+func (s *FabricOrg) getAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
 	if !org.AdminSignKeyID.Valid {
 		return nil, fmt.Errorf("organization has no signing key")
 	}
-	// Generate network config
-	networkConfig, err := s.GenerateNetworkConfig(ctx, channelID, ordererURL, ordererTLSCert)
+
+	// Get admin signing key
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+	if adminSignKey.Certificate == nil {
+		return nil, fmt.Errorf("admin sign key has no certificate")
 	}
 
-	// Initialize SDK with network config
-	configBackend := config.FromRaw([]byte(networkConfig), "yaml")
-	sdk, err := fabsdk.New(configBackend)
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create sdk: %w", err)
-	}
-	defer sdk.Close()
-
-	// Create SDK context
-	sdkContext := sdk.Context(
-		fabsdk.WithOrg(s.mspID),
-		fabsdk.WithUser("Admin"),
-	)
-
-	// Create resource management client
-	resClient, err := resmgmt.New(sdkContext)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
+		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	// Fetch channel configuration
-	configBlock, err := resClient.QueryConfigBlockFromOrderer(channelID)
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
 	if err != nil {
-		return nil, fmt.Errorf("failed to query channel config: %w", err)
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
 	}
 
-	return configBlock, nil
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	signingIdentity, err := identity.NewPrivateKeySigningIdentity(s.mspID, cert, priv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signing identity: %w", err)
+	}
+
+	return signingIdentity, nil
+}
+
+// getOrdererMSP creates a signing identity for interacting with the orderer
+func (s *FabricOrg) getOrdererMSP(ctx context.Context) (identity.SigningIdentity, error) {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.AdminSignKeyID.Valid {
+		return nil, fmt.Errorf("organization has no signing key")
+	}
+
+	// Get admin signing key
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+	if adminSignKey.Certificate == nil {
+		return nil, fmt.Errorf("admin sign key has no certificate")
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	ordererMSP, err := identity.NewPrivateKeySigningIdentity(s.mspID, cert, priv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer msp: %w", err)
+	}
+
+	return ordererMSP, nil
+}
+
+// getOrdererConnection establishes a gRPC connection to the orderer
+func (s *FabricOrg) getOrdererConnection(ctx context.Context, ordererURL string, ordererTLSCert string) (*grpc.ClientConn, error) {
+
+	// Create orderer connection
+	ordererConn, err := network.DialConnection(network.Node{
+		Addr:          strings.TrimPrefix(ordererURL, "grpcs://"),
+		TLSCACertByte: []byte(ordererTLSCert),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+
+	return ordererConn, nil
+}
+
+// getOrdererTLSKeyPair creates a TLS key pair for secure communication with the orderer
+func (s *FabricOrg) getOrdererTLSKeyPair(ctx context.Context, ordererTLSCert string) (tls.Certificate, error) {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.AdminSignKeyID.Valid {
+		return tls.Certificate{}, fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	// Parse the orderer TLS certificate
+	ordererTLSCertParsed, err := tls.X509KeyPair([]byte(ordererTLSCert), []byte(privateKeyPEM))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("failed to parse orderer TLS certificate: %w", err)
+	}
+
+	return ordererTLSCertParsed, nil
 }
 
 // GetGenesisBlock fetches the genesis block for a channel from the orderer
@@ -356,80 +262,38 @@ func (s *FabricOrg) GetGenesisBlock(ctx context.Context, channelID string, order
 		"channel", channelID,
 		"ordererUrl", ordererURL)
 
-	// Get organization details
-	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	ordererConn, err := s.getOrdererConnection(ctx, ordererURL, string(ordererTLSCert))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get organization: %w", err)
+		return nil, fmt.Errorf("failed to get orderer connection: %w", err)
+	}
+	defer ordererConn.Close()
+
+	ordererMSP, err := s.getOrdererMSP(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orderer msp: %w", err)
 	}
 
-	// Get signing key
-	if !org.AdminSignKeyID.Valid {
-		return nil, fmt.Errorf("organization has no signing key")
+	// Create TLS certificate from orderer TLS cert
+	ordererTLSKeyPair := tls.Certificate{
+		Certificate: [][]byte{ordererTLSCert},
 	}
-
-	// Generate network config
-	networkConfig, err := s.GenerateNetworkConfig(ctx, channelID, ordererURL, string(ordererTLSCert))
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
+		return nil, fmt.Errorf("failed to create orderer TLS certificate: %w", err)
 	}
-
-	// Initialize SDK with network config
-	configBackend := config.FromRaw([]byte(networkConfig), "yaml")
-	sdk, err := fabsdk.New(configBackend)
+	genesisBlock, err := channel.GetGenesisBlock(ctx, ordererConn, ordererMSP, channelID, ordererTLSKeyPair)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create sdk: %w", err)
-	}
-	defer sdk.Close()
-	resmClient, err := resmgmt.New(sdk.Context(
-		fabsdk.WithOrg(s.mspID),
-		fabsdk.WithUser("Admin"),
-	))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
-	}
-	genesisBlock, err := resmClient.GenesisBlock(channelID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query genesis block: %w", err)
+		return nil, fmt.Errorf("failed to get genesis block: %w", err)
 	}
 	genesisBlockBytes, err := proto.Marshal(genesisBlock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal genesis block: %w", err)
 	}
+
 	return genesisBlockBytes, nil
 }
 
-// createSigningIdentity creates a signing identity from the organization's admin credentials
-func (s *FabricOrg) createSigningIdentity(sdk *fabsdk.FabricSDK, privateKeyPEM string, certPEM string) (msp.SigningIdentity, error) {
-	sdkConfig, err := sdk.Config()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get SDK config: %w", err)
-	}
-
-	cryptoConfig := cryptosuite.ConfigFromBackend(sdkConfig)
-	cryptoSuite, err := sw.GetSuiteByConfig(cryptoConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get crypto suite: %w", err)
-	}
-
-	userStore := mspimpl.NewMemoryUserStore()
-	endpointConfig, err := fab.ConfigFromBackend(sdkConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get endpoint config: %w", err)
-	}
-
-	identityManager, err := mspimpl.NewIdentityManager(s.mspID, userStore, cryptoSuite, endpointConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create identity manager: %w", err)
-	}
-
-	return identityManager.CreateSigningIdentity(
-		msp.WithPrivateKey([]byte(privateKeyPEM)),
-		msp.WithCert([]byte(certPEM)),
-	)
-}
-
 // CreateConfigSignature creates a signature for a config update using the organization's admin credentials
-func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string, configUpdateBytes []byte) (*common.ConfigSignature, error) {
+func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string, configUpdateBytes *cb.Envelope) (*cb.Envelope, error) {
 	s.logger.Info("Creating config signature",
 		"mspID", s.mspID,
 		"channel", channelID)
@@ -454,49 +318,251 @@ func (s *FabricOrg) CreateConfigSignature(ctx context.Context, channelID string,
 		return nil, fmt.Errorf("admin sign key has no certificate")
 	}
 
-	// Get private key
-	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	// Generate network config for SDK initialization
-	networkConfig, err := s.GenerateNetworkConfig(ctx, channelID, "", "") // Empty orderer details as they're not needed for signing
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate network config: %w", err)
-	}
-
-	// Initialize SDK
-	configBackend := config.FromRaw([]byte(networkConfig), "yaml")
-	sdk, err := fabsdk.New(configBackend)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sdk: %w", err)
-	}
-	defer sdk.Close()
-
 	// Create signing identity
-	signingIdentity, err := s.createSigningIdentity(sdk, privateKeyPEM, *adminSignKey.Certificate)
+	signingIdentity, err := s.getAdminIdentity(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signing identity: %w", err)
 	}
 
-	// Create SDK context with signing identity
-	sdkContext := sdk.Context(
-		fabsdk.WithIdentity(signingIdentity),
-		fabsdk.WithOrg(s.mspID),
-	)
-
-	// Create resource management client
-	resClient, err := resmgmt.New(sdkContext)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resmgmt client: %w", err)
-	}
-
 	// Create config signature from the config update bytes
-	signature, err := resClient.CreateConfigSignatureFromReader(signingIdentity, bytes.NewReader(configUpdateBytes))
+	signature, err := SignConfigTx(channelID, configUpdateBytes, signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config signature: %w", err)
 	}
-
 	return signature, nil
+}
+
+const (
+	msgVersion = int32(0)
+	epoch      = 0
+)
+
+func SignConfigTx(channelID string, envConfigUpdate *cb.Envelope, signer identity.SigningIdentity) (*cb.Envelope, error) {
+	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
+	if err != nil {
+		return nil, errors.New("bad payload")
+	}
+
+	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+		return nil, errors.New("bad header")
+	}
+
+	ch, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, errors.New("could not unmarshall channel header")
+	}
+
+	if ch.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+		return nil, errors.New("bad type")
+	}
+
+	if ch.ChannelId == "" {
+		return nil, errors.New("empty channel id")
+	}
+
+	configUpdateEnv, err := protoutil.UnmarshalConfigUpdateEnvelope(payload.Data)
+	if err != nil {
+		return nil, errors.New("bad config update env")
+	}
+
+	sigHeader, err := protoutil.NewSignatureHeader(signer)
+	if err != nil {
+		return nil, err
+	}
+
+	configSig := &cb.ConfigSignature{
+		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
+	}
+
+	configSig.Signature, err = signer.Sign(Concatenate(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	if err != nil {
+		return nil, err
+	}
+
+	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
+
+	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, msgVersion, epoch)
+}
+
+func Concatenate[T any](slices ...[]T) []T {
+	size := 0
+	for _, slice := range slices {
+		size += len(slice)
+	}
+
+	result := make([]T, size)
+	i := 0
+	for _, slice := range slices {
+		copy(result[i:], slice)
+		i += len(slice)
+	}
+
+	return result
+}
+
+// RevokeCertificate adds a certificate to the CRL
+func (s *FabricOrg) RevokeCertificate(ctx context.Context, serialNumber *big.Int, revocationReason int) error {
+	s.logger.Info("Revoking certificate",
+		"mspID", s.mspID,
+		"serialNumber", serialNumber.String(),
+		"reason", revocationReason)
+
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Add the certificate to the database
+	err = s.queries.AddRevokedCertificate(ctx, &db.AddRevokedCertificateParams{
+		FabricOrganizationID: org.ID,
+		SerialNumber:         serialNumber.Text(16), // Store as hex string
+		RevocationTime:       time.Now(),
+		Reason:               int64(revocationReason),
+		IssuerCertificateID: sql.NullInt64{
+			Int64: org.SignKeyID.Int64,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add revoked certificate to database: %w", err)
+	}
+
+	// Update the CRL timestamps in the organization
+	now := time.Now()
+
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+		ID:            org.ID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.AdminSignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update organization CRL info: %w", err)
+	}
+
+	s.logger.Info("Successfully revoked certificate",
+		"mspID", s.mspID,
+		"serialNumber", serialNumber.String())
+
+	return nil
+}
+
+// GetCRL returns the current CRL as PEM encoded bytes
+func (s *FabricOrg) GetCRL(ctx context.Context) ([]byte, error) {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get all revoked certificates for this organization
+	revokedCerts, err := s.queries.GetRevokedCertificates(ctx, org.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get revoked certificates: %w", err)
+	}
+
+	// Get the admin signing key for signing the CRL
+	adminSignKey, err := s.keyMgmtService.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin sign key: %w", err)
+	}
+
+	// Parse the certificate
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignKey.Certificate))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := s.keyMgmtService.GetDecryptedPrivateKey(int(org.SignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	// Parse the private key
+	priv, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Cast private key to crypto.Signer
+	signer, ok := priv.(crypto.Signer)
+	if !ok {
+		return nil, fmt.Errorf("private key does not implement crypto.Signer")
+	}
+
+	// Create CRL
+	now := time.Now()
+	crl := &x509.RevocationList{
+		Number:     big.NewInt(1),
+		ThisUpdate: now,
+		NextUpdate: now.AddDate(0, 0, 7), // Valid for 7 days
+	}
+
+	// Add all revoked certificates
+	for _, rc := range revokedCerts {
+		serialNumber, ok := new(big.Int).SetString(rc.SerialNumber, 16)
+		if !ok {
+			return nil, fmt.Errorf("invalid serial number format: %s", rc.SerialNumber)
+		}
+
+		revokedCert := pkix.RevokedCertificate{
+			SerialNumber:   serialNumber,
+			RevocationTime: rc.RevocationTime,
+			Extensions: []pkix.Extension{
+				{
+					Id:    asn1.ObjectIdentifier{2, 5, 29, 21}, // CRLReason OID
+					Value: []byte{byte(rc.Reason)},
+				},
+			},
+		}
+		crl.RevokedCertificates = append(crl.RevokedCertificates, revokedCert)
+	}
+
+	// Create the CRL
+	crlBytes, err := x509.CreateRevocationList(rand.Reader, crl, cert, signer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CRL: %w", err)
+	}
+
+	// Encode the CRL in PEM format
+	pemBlock := &pem.Block{
+		Type:  "X509 CRL",
+		Bytes: crlBytes,
+	}
+
+	return pem.EncodeToMemory(pemBlock), nil
+}
+
+// InitializeCRL creates a new CRL if one doesn't exist
+func (s *FabricOrg) InitializeCRL(ctx context.Context) error {
+	// Get organization details
+	org, err := s.orgService.GetOrganizationByMspID(ctx, s.mspID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if !org.SignKeyID.Valid {
+		return fmt.Errorf("organization has no admin sign key")
+	}
+
+	// Update the CRL timestamps in the organization
+	now := time.Now()
+	err = s.queries.UpdateOrganizationCRL(ctx, &db.UpdateOrganizationCRLParams{
+		ID:            org.ID,
+		CrlLastUpdate: sql.NullTime{Time: now, Valid: true},
+		CrlKeyID:      org.SignKeyID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize organization CRL info: %w", err)
+	}
+
+	s.logger.Info("Successfully initialized CRL",
+		"mspID", s.mspID)
+
+	return nil
 }

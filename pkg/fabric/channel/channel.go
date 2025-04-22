@@ -8,16 +8,17 @@ import (
 	"fmt"
 
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"time"
 
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/membership"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 
+	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ChannelService handles channel operations
@@ -87,8 +88,55 @@ func (s *ChannelService) CreateChannel(input CreateChannelInput) (*CreateChannel
 	}, nil
 }
 
+// SetCRLInput represents the input for setting CRL
+type SetCRLInput struct {
+	CurrentConfig *cb.Config
+	CRL           []byte
+	MSPID         string
+	ChannelName   string
+}
+
+// SetCRL updates the CRL for an organization in a channel
+func (s *ChannelService) SetCRL(input *SetCRLInput) (*cb.Envelope, error) {
+	// Create config manager and update CRL
+	cftxGen := configtx.New(input.CurrentConfig)
+	org, err := cftxGen.Application().Organization(input.MSPID).Configuration()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization configuration: %w", err)
+	}
+
+	crl, err := ParseCRL(input.CRL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CRL: %w", err)
+	}
+	org.MSP.RevocationList = []*pkix.CertificateList{crl}
+	err = cftxGen.Application().SetOrganization(org)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set organization configuration: %w", err)
+	}
+
+	// Compute update
+	configUpdateBytes, err := cftxGen.ComputeMarshaledUpdate(input.ChannelName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %w", err)
+	}
+
+	configUpdate := &cb.ConfigUpdate{}
+	if err := proto.Unmarshal(configUpdateBytes, configUpdate); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config update: %w", err)
+	}
+
+	// Create envelope
+	configEnvelope, err := s.createConfigUpdateEnvelope(input.ChannelName, configUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config update envelope: %w", err)
+	}
+
+	return configEnvelope, nil
+}
+
 // SetAnchorPeers updates the anchor peers for an organization in a channel
-func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, error) {
+func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) (*cb.Envelope, error) {
 	// Create config manager and update anchor peers
 	cftxGen := configtx.New(input.CurrentConfig)
 	app := cftxGen.Application().Organization(input.MSPID)
@@ -104,7 +152,7 @@ func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, err
 			Host: ap.Host,
 			Port: ap.Port,
 		}); err != nil {
-			return nil, fmt.Errorf("failed to remove anchor peer: %w", err)
+			continue
 		}
 	}
 
@@ -130,14 +178,14 @@ func (s *ChannelService) SetAnchorPeers(input *SetAnchorPeersInput) ([]byte, err
 	}
 
 	// Create envelope
-	envelopeBytes, err := s.createConfigUpdateEnvelope(input.ChannelName, configUpdate)
+	configEnvelope, err := s.createConfigUpdateEnvelope(input.ChannelName, configUpdate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config update envelope: %w", err)
 	}
 
-	return envelopeBytes, nil
+	return configEnvelope, nil
 }
-func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate) ([]byte, error) {
+func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpdate *cb.ConfigUpdate) (*cb.Envelope, error) {
 	configUpdate.ChannelId = channelID
 	configUpdateData, err := proto.Marshal(configUpdate)
 	if err != nil {
@@ -149,11 +197,8 @@ func (s *ChannelService) createConfigUpdateEnvelope(channelID string, configUpda
 	if err != nil {
 		return nil, err
 	}
-	envelopeData, err := proto.Marshal(envelope)
-	if err != nil {
-		return nil, err
-	}
-	return envelopeData, nil
+
+	return envelope, nil
 }
 
 // DecodeBlock decodes a base64 encoded block into JSON
@@ -233,6 +278,12 @@ func (s *ChannelService) parseAndCreateChannel(input CreateChannelInput) ([]byte
 						OrganizationalUnitIdentifier: "orderer",
 					},
 				},
+				Admins:                        []*x509.Certificate{},
+				IntermediateCerts:             []*x509.Certificate{},
+				RevocationList:                []*pkix.CertificateList{},
+				OrganizationalUnitIdentifiers: []membership.OUIdentifier{},
+				CryptoConfig:                  membership.CryptoConfig{},
+				TLSIntermediateCerts:          []*x509.Certificate{},
 			},
 			Policies: map[string]configtx.Policy{
 				"Admins": {
@@ -254,6 +305,7 @@ func (s *ChannelService) parseAndCreateChannel(input CreateChannelInput) ([]byte
 			},
 			AnchorPeers:      anchorPeers,
 			OrdererEndpoints: org.OrdererEndpoints,
+			ModPolicy:        "",
 		}
 
 		peerOrgs = append(peerOrgs, peerOrg)
@@ -297,6 +349,12 @@ func (s *ChannelService) parseAndCreateChannel(input CreateChannelInput) ([]byte
 						OrganizationalUnitIdentifier: "peer",
 					},
 				},
+				Admins:                        []*x509.Certificate{},
+				IntermediateCerts:             []*x509.Certificate{},
+				RevocationList:                []*pkix.CertificateList{},
+				OrganizationalUnitIdentifiers: []membership.OUIdentifier{},
+				CryptoConfig:                  membership.CryptoConfig{},
+				TLSIntermediateCerts:          []*x509.Certificate{},
 			},
 			Policies: map[string]configtx.Policy{
 				"Admins": {
@@ -311,8 +369,13 @@ func (s *ChannelService) parseAndCreateChannel(input CreateChannelInput) ([]byte
 					Type: "Signature",
 					Rule: fmt.Sprintf("OR('%s.member')", org.Name),
 				},
+				"Endorsement": {
+					Type: "Signature",
+					Rule: fmt.Sprintf("OR('%s.member')", org.Name),
+				},
 			},
 			OrdererEndpoints: org.OrdererEndpoints,
+			ModPolicy:        "",
 		}
 
 		ordererOrgs = append(ordererOrgs, ordererOrg)
@@ -526,4 +589,18 @@ func defaultACLs() map[string]string {
 		//  ACL policy for sending filtered block events
 		"event/FilteredBlock": "/Channel/Application/Readers",
 	}
+}
+
+func ParseCRL(crlBytes []byte) (*pkix.CertificateList, error) {
+	block, _ := pem.Decode(crlBytes)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing CRL")
+	}
+
+	crl, err := x509.ParseCRL(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CRL: %v", err)
+	}
+
+	return crl, nil
 }

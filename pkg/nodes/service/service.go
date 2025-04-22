@@ -12,17 +12,21 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	networktypes "github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/besu"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/orderer"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/peer"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 )
 
 // NodeService handles business logic for node management
@@ -32,6 +36,8 @@ type NodeService struct {
 	keymanagementService *keymanagement.KeyManagementService
 	orgService           *fabricservice.OrganizationService
 	eventService         *NodeEventService
+	configService        *config.ConfigService
+	settingsService      *settingsservice.SettingsService
 }
 
 // CreateNodeRequest represents the service-layer request to create a node
@@ -51,6 +57,8 @@ func NewNodeService(
 	keymanagementService *keymanagement.KeyManagementService,
 	orgService *fabricservice.OrganizationService,
 	eventService *NodeEventService,
+	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *NodeService {
 	return &NodeService{
 		db:                   db,
@@ -58,6 +66,8 @@ func NewNodeService(
 		keymanagementService: keymanagementService,
 		orgService:           orgService,
 		eventService:         eventService,
+		configService:        configService,
+		settingsService:      settingsService,
 	}
 }
 
@@ -127,45 +137,39 @@ func (s *NodeService) validateAddress(address string) error {
 
 // validateFabricPeerAddresses validates all addresses used by a Fabric peer
 func (s *NodeService) validateFabricPeerAddresses(config *types.FabricPeerConfig) error {
-	// Validate listen address
-	if err := s.validateAddress(config.ListenAddress); err != nil {
-		return fmt.Errorf("invalid listen address: %w", err)
-	}
-
-	// Validate chaincode address
-	if err := s.validateAddress(config.ChaincodeAddress); err != nil {
-		return fmt.Errorf("invalid chaincode address: %w", err)
-	}
-
-	// Validate events address
-	if err := s.validateAddress(config.EventsAddress); err != nil {
-		return fmt.Errorf("invalid events address: %w", err)
-	}
-
-	// Validate operations listen address
-	if err := s.validateAddress(config.OperationsListenAddress); err != nil {
-		return fmt.Errorf("invalid operations listen address: %w", err)
-	}
-
-	// Check for port conflicts between addresses
-	addresses := map[string]string{
+	// Get current addresses to compare against
+	currentAddresses := map[string]string{
 		"listen":     config.ListenAddress,
 		"chaincode":  config.ChaincodeAddress,
 		"events":     config.EventsAddress,
 		"operations": config.OperationsListenAddress,
 	}
 
+	// Check for port conflicts between addresses
 	usedPorts := make(map[string]string)
-	for addrType, addr := range addresses {
+	for addrType, addr := range currentAddresses {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return fmt.Errorf("invalid %s address format: %w", addrType, err)
 		}
 
 		if existingType, exists := usedPorts[port]; exists {
+			// If the port is already used by the same address type, it's okay
+			if existingType == addrType {
+				continue
+			}
 			return fmt.Errorf("port conflict: %s and %s addresses use the same port %s", existingType, addrType, port)
 		}
 		usedPorts[port] = addrType
+
+		// Only validate port availability if it's not already in use by this peer
+		if err := s.validateAddress(addr); err != nil {
+			// Check if the error is due to the port being in use by this peer
+			if strings.Contains(err.Error(), "address already in use") {
+				continue
+			}
+			return fmt.Errorf("invalid %s address: %w", addrType, err)
+		}
 	}
 
 	return nil
@@ -237,7 +241,7 @@ func (s *NodeService) generateSlug(name string) string {
 // GetAllNodes retrieves all nodes without pagination
 func (s *NodeService) GetAllNodes(ctx context.Context) (*PaginatedNodes, error) {
 	// Get all nodes from the database
-	dbNodes, err := s.db.ListNodes(ctx, db.ListNodesParams{
+	dbNodes, err := s.db.ListNodes(ctx, &db.ListNodesParams{
 		Limit:  1000, // Use a high limit to get all nodes
 		Offset: 0,
 	})
@@ -329,7 +333,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	}
 
 	// Create node in database
-	node, err := s.db.CreateNode(ctx, db.CreateNodeParams{
+	node, err := s.db.CreateNode(ctx, &db.CreateNodeParams{
 		Name:       req.Name,
 		Slug:       slug,
 		Platform:   string(req.BlockchainPlatform),
@@ -346,7 +350,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	deploymentConfig, err := s.initializeNode(ctx, node, req)
 	if err != nil {
 		// Update node status to failed if initialization fails
-		s.updateNodeStatus(ctx, node.ID, types.NodeStatusError)
+		s.updateNodeStatusWithError(ctx, node.ID, types.NodeStatusError, fmt.Sprintf("Failed to initialize node: %v", err))
 		return nil, fmt.Errorf("failed to initialize node: %w", err)
 	}
 
@@ -357,7 +361,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 	}
 
 	// Update node with deployment config
-	node, err = s.db.UpdateNodeDeploymentConfig(ctx, db.UpdateNodeDeploymentConfigParams{
+	node, err = s.db.UpdateNodeDeploymentConfig(ctx, &db.UpdateNodeDeploymentConfigParams{
 		ID:               node.ID,
 		DeploymentConfig: sql.NullString{String: string(deploymentConfigJSON), Valid: true},
 	})
@@ -442,7 +446,7 @@ func (s *NodeService) createNodeConfig(req CreateNodeRequest) (types.NodeConfig,
 }
 
 // initializeNode initializes a node and returns its deployment config
-func (s *NodeService) initializeNode(ctx context.Context, dbNode db.Node, req CreateNodeRequest) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeNode(ctx context.Context, dbNode *db.Node, req CreateNodeRequest) (types.NodeDeploymentConfig, error) {
 	switch types.BlockchainPlatform(dbNode.Platform) {
 	case types.PlatformFabric:
 		if req.FabricPeer != nil {
@@ -471,7 +475,7 @@ func (s *NodeService) initializeNode(ctx context.Context, dbNode db.Node, req Cr
 }
 
 // getPeerFromConfig creates a peer instance from the given configuration and database node
-func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.OrganizationDTO, config *types.FabricPeerConfig) *peer.LocalPeer {
+func (s *NodeService) getPeerFromConfig(dbNode *db.Node, org *fabricservice.OrganizationDTO, config *types.FabricPeerConfig) *peer.LocalPeer {
 	return peer.NewLocalPeer(
 		org.MspID,
 		s.db,
@@ -485,6 +489,7 @@ func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.Organ
 			DomainNames:             config.DomainNames,
 			Env:                     config.Env,
 			Version:                 config.Version,
+			AddressOverrides:        config.AddressOverrides,
 		},
 		config.Mode,
 		org,
@@ -493,11 +498,13 @@ func (s *NodeService) getPeerFromConfig(dbNode db.Node, org *fabricservice.Organ
 		s.keymanagementService,
 		dbNode.ID,
 		s.logger,
+		s.configService,
+		s.settingsService,
 	)
 }
 
 // initializeFabricPeer initializes a Fabric peer node
-func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode db.Node, req *types.FabricPeerConfig) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode *db.Node, req *types.FabricPeerConfig) (types.NodeDeploymentConfig, error) {
 	org, err := s.orgService.GetOrganization(ctx, req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
@@ -515,7 +522,7 @@ func (s *NodeService) initializeFabricPeer(ctx context.Context, dbNode db.Node, 
 }
 
 // getOrdererFromConfig creates a LocalOrderer instance from configuration
-func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.OrganizationDTO, config *types.FabricOrdererConfig) *orderer.LocalOrderer {
+func (s *NodeService) getOrdererFromConfig(dbNode *db.Node, org *fabricservice.OrganizationDTO, config *types.FabricOrdererConfig) *orderer.LocalOrderer {
 	return orderer.NewLocalOrderer(
 		org.MspID,
 		s.db,
@@ -523,11 +530,12 @@ func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.Or
 			ID:                      dbNode.Name,
 			ListenAddress:           config.ListenAddress,
 			OperationsListenAddress: config.OperationsListenAddress,
-			AdminAddress:            config.AdminAddress,
+			AdminListenAddress:      config.AdminAddress,
 			ExternalEndpoint:        config.ExternalEndpoint,
 			DomainNames:             config.DomainNames,
 			Env:                     config.Env,
 			Version:                 config.Version,
+			AddressOverrides:        config.AddressOverrides,
 		},
 		config.Mode,
 		org,
@@ -536,11 +544,13 @@ func (s *NodeService) getOrdererFromConfig(dbNode db.Node, org *fabricservice.Or
 		s.keymanagementService,
 		dbNode.ID,
 		s.logger,
+		s.configService,
+		s.settingsService,
 	)
 }
 
 // initializeFabricOrderer initializes a Fabric orderer node
-func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode db.Node, req *types.FabricOrdererConfig) (*types.FabricOrdererDeploymentConfig, error) {
+func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode *db.Node, req *types.FabricOrdererConfig) (*types.FabricOrdererDeploymentConfig, error) {
 	org, err := s.orgService.GetOrganization(ctx, req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
@@ -564,7 +574,7 @@ func (s *NodeService) initializeFabricOrderer(ctx context.Context, dbNode db.Nod
 }
 
 // initializeBesuNode initializes a Besu node
-func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, config *types.BesuNodeConfig) (types.NodeDeploymentConfig, error) {
+func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode *db.Node, config *types.BesuNodeConfig) (types.NodeDeploymentConfig, error) {
 	// Validate key exists
 	key, err := s.keymanagementService.GetKey(ctx, int(config.KeyID))
 	if err != nil {
@@ -602,7 +612,7 @@ func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, co
 
 	// Update node endpoint
 	endpoint := fmt.Sprintf("%s:%d", config.P2PHost, config.P2PPort)
-	_, err = s.db.UpdateNodeEndpoint(ctx, db.UpdateNodeEndpointParams{
+	_, err = s.db.UpdateNodeEndpoint(ctx, &db.UpdateNodeEndpointParams{
 		ID: dbNode.ID,
 		Endpoint: sql.NullString{
 			String: endpoint,
@@ -616,7 +626,7 @@ func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode db.Node, co
 	// Update node public endpoint if external IP is set
 	if config.ExternalIP != "" {
 		publicEndpoint := fmt.Sprintf("%s:%d", config.ExternalIP, config.P2PPort)
-		_, err = s.db.UpdateNodePublicEndpoint(ctx, db.UpdateNodePublicEndpointParams{
+		_, err = s.db.UpdateNodePublicEndpoint(ctx, &db.UpdateNodePublicEndpointParams{
 			ID: dbNode.ID,
 			PublicEndpoint: sql.NullString{
 				String: publicEndpoint,
@@ -649,35 +659,25 @@ func (s *NodeService) validatePort(host string, port int) error {
 
 // updateNodeStatus updates the status of a node in the database
 func (s *NodeService) updateNodeStatus(ctx context.Context, nodeID int64, status types.NodeStatus) error {
-	_, err := s.db.UpdateNodeStatus(ctx, db.UpdateNodeStatusParams{
+	_, err := s.db.UpdateNodeStatus(ctx, &db.UpdateNodeStatusParams{
 		ID:     nodeID,
 		Status: string(status),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
 	}
-	dataBytes, err := json.Marshal(map[string]string{"status": string(status)})
-	if err != nil {
-		return fmt.Errorf("failed to marshal node status: %w", err)
-	}
-	// Add node status change to event history
-	_, err = s.db.CreateNodeEvent(ctx, db.CreateNodeEventParams{
-		NodeID:      nodeID,
-		EventType:   string(status),
-		Data:        sql.NullString{String: string(dataBytes), Valid: true},
-		Description: "status changed",
-		Status:      string(status),
+	return nil
+}
+
+func (s *NodeService) updateNodeStatusWithError(ctx context.Context, nodeID int64, status types.NodeStatus, errorMessage string) error {
+	_, err := s.db.UpdateNodeStatusWithError(ctx, &db.UpdateNodeStatusWithErrorParams{
+		ID:           nodeID,
+		Status:       string(status),
+		ErrorMessage: sql.NullString{String: errorMessage, Valid: true},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create node event: %w", err)
+		return fmt.Errorf("failed to update node status with error: %w", err)
 	}
-
-	// Log the status change
-	s.logger.Info("Node status updated",
-		"nodeID", nodeID,
-		"status", status,
-	)
-
 	return nil
 }
 
@@ -698,7 +698,7 @@ func (s *NodeService) GetNode(ctx context.Context, id int64) (*NodeResponse, err
 
 // ListNodes retrieves a paginated list of nodes
 func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainPlatform, page, limit int) (*PaginatedNodes, error) {
-	var dbNodes []db.Node
+	var dbNodes []*db.Node
 	var err error
 	var total int64
 
@@ -706,7 +706,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 
 	if platform != nil {
 		// Get nodes filtered by platform
-		dbNodes, err = s.db.ListNodesByPlatform(ctx, db.ListNodesByPlatformParams{
+		dbNodes, err = s.db.ListNodesByPlatform(ctx, &db.ListNodesByPlatformParams{
 			Platform: string(*platform),
 			Limit:    int64(limit),
 			Offset:   int64(offset),
@@ -717,7 +717,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 		total, err = s.db.CountNodesByPlatform(ctx, string(*platform))
 	} else {
 		// Get all nodes
-		dbNodes, err = s.db.ListNodes(ctx, db.ListNodesParams{
+		dbNodes, err = s.db.ListNodes(ctx, &db.ListNodesParams{
 			Limit:  int64(limit),
 			Offset: int64(offset),
 		})
@@ -747,7 +747,7 @@ func (s *NodeService) ListNodes(ctx context.Context, platform *types.BlockchainP
 }
 
 // Update mapDBNodeToServiceNode to include deployment config and MSPID
-func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeResponse) {
+func (s *NodeService) mapDBNodeToServiceNode(dbNode *db.Node) (*Node, *NodeResponse) {
 	ctx := context.Background()
 	var nodeConfig types.NodeConfig
 	var deploymentConfig types.NodeDeploymentConfig
@@ -783,18 +783,20 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeRespon
 		DeploymentConfig:   deploymentConfig,
 		CreatedAt:          dbNode.CreatedAt,
 		UpdatedAt:          dbNode.UpdatedAt.Time,
+		ErrorMessage:       dbNode.ErrorMessage.String,
 	}
 
 	// Create node response
 	nodeResponse := &NodeResponse{
-		ID:        dbNode.ID,
-		Name:      dbNode.Name,
-		Platform:  dbNode.Platform,
-		Status:    dbNode.Status,
-		NodeType:  types.NodeType(dbNode.NodeType.String),
-		Endpoint:  dbNode.Endpoint.String,
-		CreatedAt: dbNode.CreatedAt,
-		UpdatedAt: dbNode.UpdatedAt.Time,
+		ID:           dbNode.ID,
+		Name:         dbNode.Name,
+		Platform:     dbNode.Platform,
+		Status:       dbNode.Status,
+		NodeType:     types.NodeType(dbNode.NodeType.String),
+		ErrorMessage: dbNode.ErrorMessage.String,
+		Endpoint:     dbNode.Endpoint.String,
+		CreatedAt:    dbNode.CreatedAt,
+		UpdatedAt:    dbNode.UpdatedAt.Time,
 	}
 
 	// Add type-specific properties
@@ -811,22 +813,25 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeRespon
 				OperationsAddress: config.OperationsListenAddress,
 				ListenAddress:     config.ListenAddress,
 				DomainNames:       config.DomainNames,
+				Version:           config.Version,
 			}
 			// Enrich with deployment config if available
 			if peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig); ok {
-				nodeResponse.FabricPeer.ExternalEndpoint = peerDeployConfig.ExternalEndpoint
-				nodeResponse.FabricPeer.ListenAddress = peerDeployConfig.ListenAddress
-				nodeResponse.FabricPeer.ChaincodeAddress = peerDeployConfig.ChaincodeAddress
-				nodeResponse.FabricPeer.EventsAddress = peerDeployConfig.EventsAddress
-				nodeResponse.FabricPeer.OperationsAddress = peerDeployConfig.OperationsListenAddress
+				nodeResponse.FabricPeer.ExternalEndpoint = config.ExternalEndpoint
+				nodeResponse.FabricPeer.ListenAddress = config.ListenAddress
+				nodeResponse.FabricPeer.ChaincodeAddress = config.ChaincodeAddress
+				nodeResponse.FabricPeer.EventsAddress = config.EventsAddress
+				nodeResponse.FabricPeer.OperationsAddress = config.OperationsListenAddress
 				nodeResponse.FabricPeer.TLSKeyID = peerDeployConfig.TLSKeyID
 				nodeResponse.FabricPeer.SignKeyID = peerDeployConfig.SignKeyID
-				nodeResponse.FabricPeer.Mode = peerDeployConfig.Mode
+				nodeResponse.FabricPeer.Mode = config.Mode
 			}
 			// Add certificate information
-			peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+			peerConfig, _ := nodeConfig.(*types.FabricPeerConfig)
+
 			peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
 			if ok && peerConfig != nil {
+				nodeResponse.FabricPeer.AddressOverrides = peerDeployConfig.AddressOverrides
 				// Get certificates from key service
 				signKey, err := s.keymanagementService.GetKey(ctx, int(peerDeployConfig.SignKeyID))
 				if err == nil && signKey.Certificate != nil {
@@ -869,16 +874,17 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeRespon
 				OperationsAddress: config.OperationsListenAddress,
 				ListenAddress:     config.ListenAddress,
 				DomainNames:       config.DomainNames,
+				Version:           config.Version,
 			}
 			// Enrich with deployment config if available
 			if ordererDeployConfig, ok := deploymentConfig.(*types.FabricOrdererDeploymentConfig); ok {
-				nodeResponse.FabricOrderer.ExternalEndpoint = ordererDeployConfig.ExternalEndpoint
-				nodeResponse.FabricOrderer.ListenAddress = ordererDeployConfig.ListenAddress
-				nodeResponse.FabricOrderer.AdminAddress = ordererDeployConfig.AdminAddress
-				nodeResponse.FabricOrderer.OperationsAddress = ordererDeployConfig.OperationsListenAddress
+				nodeResponse.FabricOrderer.ExternalEndpoint = config.ExternalEndpoint
+				nodeResponse.FabricOrderer.ListenAddress = config.ListenAddress
+				nodeResponse.FabricOrderer.AdminAddress = config.AdminAddress
+				nodeResponse.FabricOrderer.OperationsAddress = config.OperationsListenAddress
 				nodeResponse.FabricOrderer.TLSKeyID = ordererDeployConfig.TLSKeyID
 				nodeResponse.FabricOrderer.SignKeyID = ordererDeployConfig.SignKeyID
-				nodeResponse.FabricOrderer.Mode = ordererDeployConfig.Mode
+				nodeResponse.FabricOrderer.Mode = config.Mode
 			}
 			// Add certificate information
 			ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
@@ -913,23 +919,23 @@ func (s *NodeService) mapDBNodeToServiceNode(dbNode db.Node) (*Node, *NodeRespon
 					}
 				}
 			}
-		}
-	}
-
-	if deploymentConfig != nil {
-		switch config := deploymentConfig.(type) {
-		case *types.BesuNodeDeploymentConfig:
+		case *types.BesuNodeConfig:
 			nodeResponse.BesuNode = &BesuNodeProperties{
 				NetworkID:  config.NetworkID,
 				P2PPort:    config.P2PPort,
 				RPCPort:    config.RPCPort,
 				ExternalIP: config.ExternalIP,
 				InternalIP: config.InternalIP,
-				EnodeURL:   config.EnodeURL,
 				P2PHost:    config.P2PHost,
 				RPCHost:    config.RPCHost,
 				KeyID:      config.KeyID,
 				Mode:       config.Mode,
+				BootNodes:  config.BootNodes,
+			}
+			deployConfig, ok := deploymentConfig.(*types.BesuNodeDeploymentConfig)
+			if ok {
+				nodeResponse.BesuNode.KeyID = deployConfig.KeyID
+				nodeResponse.BesuNode.EnodeURL = deployConfig.EnodeURL
 			}
 		}
 	}
@@ -978,7 +984,7 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 	if stopErr != nil {
 		s.logger.Error("Failed to stop node", "error", stopErr)
 		// Update status to error if stop failed
-		if err := s.updateNodeStatus(ctx, id, types.NodeStatusError); err != nil {
+		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to stop node: %v", stopErr)); err != nil {
 			s.logger.Error("Failed to update node status after stop error", "error", err)
 		}
 		return nil, fmt.Errorf("failed to stop node: %w", stopErr)
@@ -994,7 +1000,7 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 }
 
 // startNode starts a node based on its type and configuration
-func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startNode(ctx context.Context, dbNode *db.Node) error {
 	// Update status to starting
 	if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusStarting); err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
@@ -1013,8 +1019,9 @@ func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
 	}
 
 	if startErr != nil {
+		s.logger.Error("Failed to start node", "error", startErr)
 		// Update status to error if start failed
-		if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusError); err != nil {
+		if err := s.updateNodeStatusWithError(ctx, dbNode.ID, types.NodeStatusError, fmt.Sprintf("Failed to start node: %v", startErr)); err != nil {
 			s.logger.Error("Failed to update node status after start error", "error", err)
 		}
 		return fmt.Errorf("failed to start node: %w", startErr)
@@ -1029,7 +1036,7 @@ func (s *NodeService) startNode(ctx context.Context, dbNode db.Node) error {
 }
 
 // startFabricPeer starts a Fabric peer node
-func (s *NodeService) startFabricPeer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startFabricPeer(ctx context.Context, dbNode *db.Node) error {
 
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1064,7 +1071,7 @@ func (s *NodeService) startFabricPeer(ctx context.Context, dbNode db.Node) error
 }
 
 // stopFabricPeer stops a Fabric peer node
-func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode *db.Node) error {
 	deploymentConfig, err := utils.DeserializeDeploymentConfig(dbNode.NodeConfig.String)
 	if err != nil {
 		return fmt.Errorf("failed to deserialize deployment config: %w", err)
@@ -1096,7 +1103,7 @@ func (s *NodeService) stopFabricPeer(ctx context.Context, dbNode db.Node) error 
 }
 
 // startFabricOrderer starts a Fabric orderer node
-func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode *db.Node) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to deserialize node config: %w", err)
@@ -1122,7 +1129,7 @@ func (s *NodeService) startFabricOrderer(ctx context.Context, dbNode db.Node) er
 }
 
 // stopFabricOrderer stops a Fabric orderer node
-func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode *db.Node) error {
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to deserialize node config: %w", err)
@@ -1147,7 +1154,7 @@ func (s *NodeService) stopFabricOrderer(ctx context.Context, dbNode db.Node) err
 	return nil
 }
 
-func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode db.Node, config *types.BesuNodeConfig, deployConfig *types.BesuNodeDeploymentConfig) (*besu.LocalBesu, error) {
+func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, config *types.BesuNodeConfig, deployConfig *types.BesuNodeDeploymentConfig) (*besu.LocalBesu, error) {
 	network, err := s.db.GetNetwork(ctx, deployConfig.NetworkID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network: %w", err)
@@ -1160,6 +1167,11 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode db.Node, con
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt key: %w", err)
 	}
+	var networkConfig networktypes.BesuNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &networkConfig); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
+
 	localBesu := besu.NewLocalBesu(
 		besu.StartBesuOpts{
 			ID:             dbNode.Slug,
@@ -1171,20 +1183,25 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode db.Node, con
 			MinerAddress:   key.EthereumAddress,
 			ConsensusType:  "qbft", // TODO: get consensus type from network
 			BootNodes:      config.BootNodes,
-			Version:        "25.2.0", // TODO: get version from network
+			Version:        "25.4.1", // TODO: get version from network
 			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
 			Env:            config.Env,
+			P2PHost:        config.P2PHost,
+			RPCHost:        config.RPCHost,
 		},
 		string(config.Mode),
 		dbNode.ID,
 		s.logger,
+		s.configService,
+		s.settingsService,
+		networkConfig,
 	)
 
 	return localBesu, nil
 }
 
 // stopBesuNode stops a Besu node
-func (s *NodeService) stopBesuNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) stopBesuNode(ctx context.Context, dbNode *db.Node) error {
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1221,7 +1238,7 @@ func (s *NodeService) stopBesuNode(ctx context.Context, dbNode db.Node) error {
 }
 
 // startBesuNode starts a Besu node
-func (s *NodeService) startBesuNode(ctx context.Context, dbNode db.Node) error {
+func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error {
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
@@ -1255,6 +1272,10 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode db.Node) error {
 	if err != nil {
 		return fmt.Errorf("failed to decrypt key: %w", err)
 	}
+	var networkConfig networktypes.BesuNetworkConfig
+	if err := json.Unmarshal([]byte(network.Config.String), &networkConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal network config: %w", err)
+	}
 
 	// Create LocalBesu instance
 	localBesu := besu.NewLocalBesu(
@@ -1262,19 +1283,25 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode db.Node) error {
 			ID:             dbNode.Slug,
 			GenesisFile:    network.GenesisBlockB64.String,
 			NetworkID:      besuDeployConfig.NetworkID,
+			ChainID:        networkConfig.ChainID,
 			P2PPort:        fmt.Sprintf("%d", besuDeployConfig.P2PPort),
 			RPCPort:        fmt.Sprintf("%d", besuDeployConfig.RPCPort),
 			ListenAddress:  besuDeployConfig.P2PHost,
 			MinerAddress:   key.EthereumAddress,
 			ConsensusType:  "qbft", // TODO: get consensus type from network
 			BootNodes:      besuNodeConfig.BootNodes,
-			Version:        "25.2.0", // TODO: get version from network
+			Version:        "25.4.1", // TODO: get version from network
 			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
 			Env:            besuNodeConfig.Env,
+			P2PHost:        besuNodeConfig.P2PHost,
+			RPCHost:        besuNodeConfig.RPCHost,
 		},
 		string(besuNodeConfig.Mode),
 		dbNode.ID,
 		s.logger,
+		s.configService,
+		s.settingsService,
+		networkConfig,
 	)
 
 	// Start the node
@@ -1341,18 +1368,12 @@ func (s *NodeService) DeleteNode(ctx context.Context, id int64) error {
 }
 
 // cleanupPeerResources cleans up resources specific to a Fabric peer node
-func (s *NodeService) cleanupPeerResources(ctx context.Context, node db.Node) error {
-	// Get the home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-
+func (s *NodeService) cleanupPeerResources(ctx context.Context, node *db.Node) error {
 	// Clean up peer-specific directories
 	dirsToClean := []string{
-		filepath.Join(homeDir, ".chainlaunch", "nodes", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "peers", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "fabric", "peers", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "nodes", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "peers", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "fabric", "peers", node.Slug),
 	}
 
 	for _, dir := range dirsToClean {
@@ -1372,18 +1393,13 @@ func (s *NodeService) cleanupPeerResources(ctx context.Context, node db.Node) er
 }
 
 // cleanupOrdererResources cleans up resources specific to a Fabric orderer node
-func (s *NodeService) cleanupOrdererResources(ctx context.Context, node db.Node) error {
-	// Get the home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
+func (s *NodeService) cleanupOrdererResources(ctx context.Context, node *db.Node) error {
 
 	// Clean up orderer-specific directories
 	dirsToClean := []string{
-		filepath.Join(homeDir, ".chainlaunch", "nodes", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "orderers", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "fabric", "orderers", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "nodes", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "orderers", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "fabric", "orderers", node.Slug),
 	}
 
 	for _, dir := range dirsToClean {
@@ -1403,12 +1419,7 @@ func (s *NodeService) cleanupOrdererResources(ctx context.Context, node db.Node)
 }
 
 // cleanupBesuResources cleans up resources specific to a Besu node
-func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) error {
-	// Get the home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
+func (s *NodeService) cleanupBesuResources(ctx context.Context, node *db.Node) error {
 
 	// Load node configuration
 	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
@@ -1453,9 +1464,9 @@ func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) er
 
 	// Clean up Besu-specific directories
 	dirsToClean := []string{
-		filepath.Join(homeDir, ".chainlaunch", "nodes", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "besu", node.Slug),
-		filepath.Join(homeDir, ".chainlaunch", "besu", "nodes", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "nodes", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "besu", node.Slug),
+		filepath.Join(s.configService.GetDataPath(), "besu", "nodes", node.Slug),
 	}
 
 	for _, dir := range dirsToClean {
@@ -1486,8 +1497,12 @@ func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) er
 
 	case "darwin":
 		// Remove launchd plist file
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
 		if localBesu != nil {
-			plistFile := filepath.Join(homeDir, "Library/LaunchAgents", fmt.Sprintf("ai.chainlaunch.besu.%s.plist", node.Slug))
+			plistFile := filepath.Join(homeDir, "Library/LaunchAgents", fmt.Sprintf("dev.chainlaunch.besu.%s.plist", node.Slug))
 			if err := os.Remove(plistFile); err != nil {
 				if !os.IsNotExist(err) {
 					s.logger.Warn("Failed to remove launchd plist file", "error", err)
@@ -1497,7 +1512,7 @@ func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) er
 	}
 
 	// Clean up any data directories
-	dataDir := filepath.Join(homeDir, ".chainlaunch", "data", "besu", node.Slug)
+	dataDir := filepath.Join(s.configService.GetDataPath(), "data", "besu", node.Slug)
 	if err := os.RemoveAll(dataDir); err != nil {
 		if !os.IsNotExist(err) {
 			s.logger.Warn("Failed to remove Besu data directory",
@@ -1513,7 +1528,7 @@ func (s *NodeService) cleanupBesuResources(ctx context.Context, node db.Node) er
 }
 
 // Update cleanupNodeResources to use the new function
-func (s *NodeService) cleanupNodeResources(ctx context.Context, node db.Node) error {
+func (s *NodeService) cleanupNodeResources(ctx context.Context, node *db.Node) error {
 	// Get the home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -1538,7 +1553,7 @@ func (s *NodeService) cleanupNodeResources(ctx context.Context, node db.Node) er
 
 	case "darwin":
 		// Remove launchd plist file
-		plistFile := filepath.Join(homeDir, "Library/LaunchAgents", fmt.Sprintf("ai.chainlaunch.%s.plist", deploymentConfig.GetServiceName()))
+		plistFile := filepath.Join(homeDir, "Library/LaunchAgents", fmt.Sprintf("dev.chainlaunch.%s.plist", deploymentConfig.GetServiceName()))
 		if err := os.Remove(plistFile); err != nil {
 			if !os.IsNotExist(err) {
 				s.logger.Warn("Failed to remove launchd plist file", "error", err)
@@ -1652,8 +1667,8 @@ const (
 	maxPortAttempts = 100 // Maximum attempts to find available ports
 )
 
-// GetNodesDefaults returns default values for multiple nodes with guaranteed non-overlapping ports
-func (s *NodeService) GetNodesDefaults(params NodesDefaultsParams) (*NodesDefaultsResult, error) {
+// GetFabricNodesDefaults returns default values for multiple nodes with guaranteed non-overlapping ports
+func (s *NodeService) GetFabricNodesDefaults(params NodesDefaultsParams) (*NodesDefaultsResult, error) {
 	// Validate node counts
 	if params.PeerCount > 15 {
 		return nil, fmt.Errorf("peer count exceeds maximum supported nodes (15)")
@@ -1734,6 +1749,81 @@ func (s *NodeService) GetNodesDefaults(params NodesDefaultsParams) (*NodesDefaul
 	}
 
 	return result, nil
+}
+
+func (s *NodeService) GetNodeLogPath(ctx context.Context, node *NodeResponse) (string, error) {
+	dbNode, err := s.db.GetNode(ctx, node.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(dbNode.DeploymentConfig.String)
+	if err != nil {
+		return "", fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	switch types.NodeType(dbNode.NodeType.String) {
+	case types.NodeTypeFabricPeer:
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		peerNodeConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to FabricPeerConfig")
+		}
+		s.logger.Debug("Peer config", "config", peerNodeConfig, "deploymentConfig", deploymentConfig)
+		// Get organization
+		org, err := s.orgService.GetOrganization(ctx, peerNodeConfig.OrganizationID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get organization: %w", err)
+		}
+
+		// Create peer instance
+		localPeer := s.getPeerFromConfig(dbNode, org, peerNodeConfig)
+
+		// Tail logs from peer
+		return localPeer.GetStdOutPath(), nil
+	case types.NodeTypeFabricOrderer:
+		// Convert to FabricOrdererDeploymentConfig
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		ordererNodeConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to FabricOrdererConfig")
+		}
+		s.logger.Info("Orderer config", "config", ordererNodeConfig, "deploymentConfig", deploymentConfig)
+		// Get organization
+		org, err := s.orgService.GetOrganization(ctx, ordererNodeConfig.OrganizationID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get organization: %w", err)
+		}
+		// Create orderer instance
+		localOrderer := s.getOrdererFromConfig(dbNode, org, ordererNodeConfig)
+		// Tail logs from orderer
+		return localOrderer.GetStdOutPath(), nil
+	case types.NodeTypeBesuFullnode:
+		nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+		if err != nil {
+			return "", fmt.Errorf("failed to deserialize node config: %w", err)
+		}
+		besuNodeConfig, ok := nodeConfig.(*types.BesuNodeConfig)
+		if !ok {
+			return "", fmt.Errorf("failed to assert node config to BesuNodeConfig")
+		}
+		besuDeployConfig := deploymentConfig.ToBesuNodeConfig()
+
+		localBesu, err := s.getBesuFromConfig(ctx, dbNode, besuNodeConfig, besuDeployConfig)
+		if err != nil {
+			return "", fmt.Errorf("failed to get besu from config: %w", err)
+		}
+		return localBesu.GetStdOutPath(), nil
+	default:
+		return "", fmt.Errorf("unsupported node type for log tailing: %s", dbNode.NodeType.String)
+	}
 }
 
 // TailLogs returns a channel that receives log lines from the specified node
@@ -1984,28 +2074,69 @@ func GetBesuPorts(baseP2PPort, baseRPCPort uint) (p2pPort uint, rpcPort uint, er
 	return p2pPort, rpcPort, nil
 }
 
-// GetBesuNodeDefaults returns the default configuration for a Besu node
-func (s *NodeService) GetBesuNodeDefaults() (*BesuNodeDefaults, error) {
-	// Try to get available ports starting from default Besu ports
-	p2pPort, rpcPort, err := GetBesuPorts(30303, 8545)
-	if err != nil {
-		// If we can't get the preferred ports, try from a higher range
-		p2pPort, rpcPort, err = GetBesuPorts(40303, 18545)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find available ports: %w", err)
-		}
+// GetBesuNodeDefaults returns the default configuration for Besu nodes
+func (s *NodeService) GetBesuNodeDefaults(besuNodes int) ([]BesuNodeDefaults, error) {
+	// Validate node count
+	if besuNodes <= 0 {
+		besuNodes = 1
 	}
-	externalIP := "127.0.0.1"
+	if besuNodes > 15 {
+		return nil, fmt.Errorf("besu node count exceeds maximum supported nodes (15)")
+	}
+
+	// Get external IP for p2p communication
+	externalIP, err := s.GetExternalIP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get external IP: %w", err)
+	}
+
+	// Use localhost for internal IP
 	internalIP := "127.0.0.1"
 
-	return &BesuNodeDefaults{
-		P2PAddress: fmt.Sprintf("%s:%d", externalIP, p2pPort),
-		RPCAddress: fmt.Sprintf("%s:%d", externalIP, rpcPort),
-		NetworkID:  1337, // Default private network ID
-		Mode:       ModeService,
-		ExternalIP: externalIP,
-		InternalIP: internalIP,
-	}, nil
+	// Base ports for Besu nodes with sufficient spacing
+	const (
+		baseP2PPort = 30303 // Starting P2P port
+		baseRPCPort = 8545  // Starting RPC port
+		portOffset  = 100   // Each node gets a 100 port range
+	)
+
+	// Create array to hold all node defaults
+	nodeDefaults := make([]BesuNodeDefaults, besuNodes)
+
+	// Generate defaults for each node
+	for i := 0; i < besuNodes; i++ {
+		// Try to get ports for each node
+		p2pPort, rpcPort, err := GetBesuPorts(
+			uint(baseP2PPort+(i*portOffset)),
+			uint(baseRPCPort+(i*portOffset)),
+		)
+		if err != nil {
+			// If we can't get the preferred ports, try from a higher range
+			p2pPort, rpcPort, err = GetBesuPorts(
+				uint(40303+(i*portOffset)),
+				uint(18545+(i*portOffset)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find available ports for node %d: %w", i+1, err)
+			}
+		}
+
+		// Create node defaults with unique ports
+		nodeDefaults[i] = BesuNodeDefaults{
+			P2PHost:    externalIP, // Use external IP for p2p host
+			P2PPort:    p2pPort,
+			RPCHost:    "0.0.0.0", // Allow RPC from any interface
+			RPCPort:    rpcPort,
+			ExternalIP: externalIP,
+			InternalIP: internalIP,
+			Mode:       ModeService,
+			Env: map[string]string{
+				"JAVA_OPTS": "-Xmx4g",
+			},
+		}
+	}
+
+	return nodeDefaults, nil
 }
 
 // Add a method to get full node details when needed
@@ -2022,4 +2153,771 @@ func (s *NodeService) GetNodeWithConfig(ctx context.Context, id int64) (*Node, e
 // Update the fabric deployer to use this method
 func (s *NodeService) GetNodeForDeployment(ctx context.Context, id int64) (*Node, error) {
 	return s.GetNodeWithConfig(ctx, id)
+}
+
+// Channel represents a Fabric channel
+type Channel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetNodeChannels retrieves the list of channels for a Fabric node
+func (s *NodeService) GetNodeChannels(ctx context.Context, id int64) ([]Channel, error) {
+	// Get the node first
+	node, err := s.db.GetNode(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	nodeType := types.NodeType(node.NodeType.String)
+	if nodeType != types.NodeTypeFabricPeer && nodeType != types.NodeTypeFabricOrderer {
+		return nil, errors.NewValidationError("node is not a Fabric node", nil)
+	}
+
+	switch nodeType {
+	case types.NodeTypeFabricPeer:
+		// Get peer instance
+		peer, err := s.GetFabricPeer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer: %w", err)
+		}
+		peerChannels, err := peer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get peer channels: %w", err)
+		}
+		channels := make([]Channel, len(peerChannels))
+		for i, channel := range peerChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+
+	case types.NodeTypeFabricOrderer:
+		// Get orderer instance
+		orderer, err := s.GetFabricOrderer(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer: %w", err)
+		}
+		ordererChannels, err := orderer.GetChannels(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get orderer channels: %w", err)
+		}
+		channels := make([]Channel, len(ordererChannels))
+		for i, channel := range ordererChannels {
+			channels[i] = Channel{
+				Name:      channel.Name,
+				BlockNum:  channel.BlockNum,
+				CreatedAt: channel.CreatedAt,
+			}
+		}
+		return channels, nil
+	}
+
+	return nil, fmt.Errorf("unsupported node type: %s", nodeType)
+}
+
+// RenewCertificates renews the certificates for a node
+func (s *NodeService) RenewCertificates(ctx context.Context, id int64) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Update status to indicate certificate renewal is in progress
+	if err := s.updateNodeStatus(ctx, id, types.NodeStatusUpdating); err != nil {
+		return nil, fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	var renewErr error
+	switch types.NodeType(node.NodeType.String) {
+	case types.NodeTypeFabricPeer:
+		renewErr = s.renewPeerCertificates(ctx, node, deploymentConfig)
+	case types.NodeTypeFabricOrderer:
+		renewErr = s.renewOrdererCertificates(ctx, node, deploymentConfig)
+	default:
+		renewErr = fmt.Errorf("certificate renewal not supported for node type: %s", node.NodeType.String)
+	}
+
+	if renewErr != nil {
+		// Update status to error if renewal failed
+		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to renew certificates: %v", renewErr)); err != nil {
+			s.logger.Error("Failed to update node status after renewal error", "error", err)
+		}
+		return nil, fmt.Errorf("failed to renew certificates: %w", renewErr)
+	}
+
+	// Update status to running after successful renewal
+	if err := s.updateNodeStatus(ctx, id, types.NodeStatusRunning); err != nil {
+		return nil, fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Get updated node
+	updatedNode, err := s.GetNode(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated node: %w", err)
+	}
+
+	return updatedNode, nil
+}
+
+// renewPeerCertificates handles certificate renewal for a Fabric peer
+func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer config type")
+	}
+
+	peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer deployment config type")
+	}
+
+	org, err := s.orgService.GetOrganization(ctx, peerConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	localPeer := s.getPeerFromConfig(dbNode, org, peerConfig)
+	err = localPeer.RenewCertificates(peerDeployConfig)
+	if err != nil {
+		return fmt.Errorf("failed to renew peer certificates: %w", err)
+	}
+
+	return nil
+}
+
+// renewOrdererCertificates handles certificate renewal for a Fabric orderer
+func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+	if !ok {
+		return fmt.Errorf("invalid orderer config type")
+	}
+
+	ordererDeployConfig, ok := deploymentConfig.(*types.FabricOrdererDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid orderer deployment config type")
+	}
+
+	org, err := s.orgService.GetOrganization(ctx, ordererConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	localOrderer := s.getOrdererFromConfig(dbNode, org, ordererConfig)
+	err = localOrderer.RenewCertificates(ordererDeployConfig)
+	if err != nil {
+		return fmt.Errorf("failed to renew orderer certificates: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateNodeEnvironment updates the environment variables for a node
+func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, req *types.UpdateNodeEnvRequest) (*types.UpdateNodeEnvResponse, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get the node's current configuration
+	switch dbNode.NodeType.String {
+	case string(types.NodeTypeFabricPeer):
+		var peerConfig types.FabricPeerConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &peerConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal peer config: %w", err)
+		}
+		peerConfig.Env = req.Env
+		newConfig, err := json.Marshal(peerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated peer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+			ID:         nodeID,
+			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+	case string(types.NodeTypeFabricOrderer):
+		var ordererConfig types.FabricOrdererConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &ordererConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal orderer config: %w", err)
+		}
+		ordererConfig.Env = req.Env
+		newConfig, err := json.Marshal(ordererConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated orderer config: %w", err)
+		}
+		if _, err := s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+			ID:         nodeID,
+			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node config: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+
+	// Return the updated environment variables and indicate that a restart is required
+	return &types.UpdateNodeEnvResponse{
+		Env:             req.Env,
+		RequiresRestart: true,
+	}, nil
+}
+
+// GetNodeEnvironment retrieves the current environment variables for a node
+func (s *NodeService) GetNodeEnvironment(ctx context.Context, nodeID int64) (map[string]string, error) {
+	// Get the node from the database
+	dbNode, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Get the node's current configuration
+	switch dbNode.NodeType.String {
+	case string(types.NodeTypeFabricPeer):
+		var peerConfig types.FabricPeerConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &peerConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal peer config: %w", err)
+		}
+		return peerConfig.Env, nil
+
+	case string(types.NodeTypeFabricOrderer):
+		var ordererConfig types.FabricOrdererConfig
+		if err := json.Unmarshal([]byte(dbNode.Config.String), &ordererConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal orderer config: %w", err)
+		}
+		return ordererConfig.Env, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+}
+
+// UpdateFabricPeer updates a Fabric peer node configuration
+func (s *NodeService) UpdateFabricPeer(ctx context.Context, opts UpdateFabricPeerOpts) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, opts.NodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("peer node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get peer node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricPeer {
+		return nil, fmt.Errorf("node %d is not a Fabric peer", opts.NodeID)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load peer config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid peer config type")
+	}
+
+	deployConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+	deployPeerConfig, ok := deployConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid deployment config type")
+	}
+
+	// Update configuration fields if provided
+	if opts.ExternalEndpoint != "" && opts.ExternalEndpoint != peerConfig.ExternalEndpoint {
+		peerConfig.ExternalEndpoint = opts.ExternalEndpoint
+	}
+	if opts.ListenAddress != "" && opts.ListenAddress != peerConfig.ListenAddress {
+		if err := s.validateAddress(opts.ListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid listen address: %w", err)
+		}
+		peerConfig.ListenAddress = opts.ListenAddress
+	}
+	if opts.EventsAddress != "" && opts.EventsAddress != peerConfig.EventsAddress {
+		if err := s.validateAddress(opts.EventsAddress); err != nil {
+			return nil, fmt.Errorf("invalid events address: %w", err)
+		}
+		peerConfig.EventsAddress = opts.EventsAddress
+	}
+	if opts.OperationsListenAddress != "" && opts.OperationsListenAddress != peerConfig.OperationsListenAddress {
+		if err := s.validateAddress(opts.OperationsListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid operations listen address: %w", err)
+		}
+		peerConfig.OperationsListenAddress = opts.OperationsListenAddress
+	}
+	if opts.ChaincodeAddress != "" && opts.ChaincodeAddress != peerConfig.ChaincodeAddress {
+		if err := s.validateAddress(opts.ChaincodeAddress); err != nil {
+			return nil, fmt.Errorf("invalid chaincode address: %w", err)
+		}
+		peerConfig.ChaincodeAddress = opts.ChaincodeAddress
+	}
+	if opts.DomainNames != nil {
+		peerConfig.DomainNames = opts.DomainNames
+	}
+	if opts.Env != nil {
+		peerConfig.Env = opts.Env
+	}
+	if opts.AddressOverrides != nil {
+		peerConfig.AddressOverrides = opts.AddressOverrides
+		deployPeerConfig.AddressOverrides = opts.AddressOverrides
+	}
+	if opts.Version != "" {
+		peerConfig.Version = opts.Version
+		deployPeerConfig.Version = opts.Version
+	}
+
+	// Validate all addresses together for port conflicts
+	if err := s.validateFabricPeerAddresses(peerConfig); err != nil {
+		return nil, err
+	}
+
+	configBytes, err := utils.StoreNodeConfig(nodeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store node config: %w", err)
+	}
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+		ID: opts.NodeID,
+		NodeConfig: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Update the deployment config in the database
+	deploymentConfigBytes, err := json.Marshal(deployPeerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
+		ID: opts.NodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
+
+	// Synchronize the peer config
+	if err := s.SynchronizePeerConfig(ctx, opts.NodeID); err != nil {
+		return nil, fmt.Errorf("failed to synchronize peer config: %w", err)
+	}
+
+	// Return updated node response
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// UpdateFabricOrderer updates a Fabric orderer node configuration
+func (s *NodeService) UpdateFabricOrderer(ctx context.Context, opts UpdateFabricOrdererOpts) (*NodeResponse, error) {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, opts.NodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("orderer node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get orderer node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricOrderer {
+		return nil, fmt.Errorf("node %d is not a Fabric orderer", opts.NodeID)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load orderer config: %w", err)
+	}
+
+	ordererConfig, ok := nodeConfig.(*types.FabricOrdererConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid orderer config type")
+	}
+
+	// Load deployment config
+	deployOrdererConfig := &types.FabricOrdererDeploymentConfig{}
+	if node.DeploymentConfig.Valid {
+		deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+		}
+		var ok bool
+		deployOrdererConfig, ok = deploymentConfig.(*types.FabricOrdererDeploymentConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid orderer deployment config type")
+		}
+	}
+
+	// Update configuration fields if provided
+	if opts.ExternalEndpoint != "" && opts.ExternalEndpoint != ordererConfig.ExternalEndpoint {
+		ordererConfig.ExternalEndpoint = opts.ExternalEndpoint
+	}
+	if opts.ListenAddress != "" && opts.ListenAddress != ordererConfig.ListenAddress {
+		if err := s.validateAddress(opts.ListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid listen address: %w", err)
+		}
+		ordererConfig.ListenAddress = opts.ListenAddress
+	}
+	if opts.AdminAddress != "" && opts.AdminAddress != ordererConfig.AdminAddress {
+		if err := s.validateAddress(opts.AdminAddress); err != nil {
+			return nil, fmt.Errorf("invalid admin address: %w", err)
+		}
+		ordererConfig.AdminAddress = opts.AdminAddress
+	}
+	if opts.OperationsListenAddress != "" && opts.OperationsListenAddress != ordererConfig.OperationsListenAddress {
+		if err := s.validateAddress(opts.OperationsListenAddress); err != nil {
+			return nil, fmt.Errorf("invalid operations listen address: %w", err)
+		}
+		ordererConfig.OperationsListenAddress = opts.OperationsListenAddress
+	}
+	if opts.DomainNames != nil {
+		ordererConfig.DomainNames = opts.DomainNames
+	}
+	if opts.Env != nil {
+		ordererConfig.Env = opts.Env
+	}
+	if opts.Version != "" {
+		ordererConfig.Version = opts.Version
+		deployOrdererConfig.Version = opts.Version
+	}
+
+	configBytes, err := utils.StoreNodeConfig(nodeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store node config: %w", err)
+	}
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+		ID: opts.NodeID,
+		NodeConfig: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Update the deployment config in the database
+	deploymentConfigBytes, err := json.Marshal(deployOrdererConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
+		ID: opts.NodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
+
+	// Return updated node response
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// SynchronizePeerConfig synchronizes the peer's configuration files and service
+func (s *NodeService) SynchronizePeerConfig(ctx context.Context, nodeID int64) error {
+	// Get the node from database
+	node, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeFabricPeer {
+		return fmt.Errorf("node %d is not a Fabric peer", nodeID)
+	}
+
+	// Load node config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return fmt.Errorf("failed to load node config: %w", err)
+	}
+
+	peerConfig, ok := nodeConfig.(*types.FabricPeerConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer config type")
+	}
+
+	// Get organization
+	org, err := s.orgService.GetOrganization(ctx, peerConfig.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get local peer instance
+	localPeer := s.getPeerFromConfig(node, org, peerConfig)
+
+	// Get deployment config
+	deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize deployment config: %w", err)
+	}
+
+	peerDeployConfig, ok := deploymentConfig.(*types.FabricPeerDeploymentConfig)
+	if !ok {
+		return fmt.Errorf("invalid peer deployment config type")
+	}
+
+	// Synchronize configuration
+	if err := localPeer.SynchronizeConfig(peerDeployConfig); err != nil {
+		return fmt.Errorf("failed to synchronize peer config: %w", err)
+	}
+
+	return nil
+}
+
+// GetExternalIP returns the external IP address of the node
+func (s *NodeService) GetExternalIP() (string, error) {
+	// Try to get external IP from environment variable first
+	if externalIP := os.Getenv("EXTERNAL_IP"); externalIP != "" {
+		return externalIP, nil
+	}
+
+	// Get local network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("failed to get network interfaces: %w", err)
+	}
+
+	// Look for a suitable non-loopback interface with an IPv4 address
+	for _, iface := range interfaces {
+		// Skip loopback, down interfaces, and interfaces without addresses
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			// Check if this is an IP network address
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			// Skip loopback and IPv6 addresses
+			ip := ipNet.IP.To4()
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+
+			// Skip link-local addresses
+			if ip[0] == 169 && ip[1] == 254 {
+				continue
+			}
+
+			// Found a suitable IP address
+			return ip.String(), nil
+		}
+	}
+
+	// Fallback to localhost if no suitable interface is found
+	return "127.0.0.1", nil
+}
+
+// UpdateBesuNodeOpts contains the options for updating a Besu node
+type UpdateBesuNodeRequest struct {
+	NetworkID  uint              `json:"networkId" validate:"required"`
+	P2PHost    string            `json:"p2pHost" validate:"required"`
+	P2PPort    uint              `json:"p2pPort" validate:"required"`
+	RPCHost    string            `json:"rpcHost" validate:"required"`
+	RPCPort    uint              `json:"rpcPort" validate:"required"`
+	Bootnodes  []string          `json:"bootnodes,omitempty"`
+	ExternalIP string            `json:"externalIp,omitempty"`
+	InternalIP string            `json:"internalIp,omitempty"`
+	Env        map[string]string `json:"env,omitempty"`
+}
+
+// UpdateBesuNode updates an existing Besu node configuration
+func (s *NodeService) UpdateBesuNode(ctx context.Context, nodeID int64, req UpdateBesuNodeRequest) (*NodeResponse, error) {
+	// Get existing node
+	node, err := s.db.GetNode(ctx, nodeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.NewNotFoundError("node not found", nil)
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// Verify node type
+	if types.NodeType(node.NodeType.String) != types.NodeTypeBesuFullnode {
+		return nil, errors.NewValidationError("node is not a Besu node", nil)
+	}
+
+	// Load current config
+	nodeConfig, err := utils.LoadNodeConfig([]byte(node.NodeConfig.String))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load besu config: %w", err)
+	}
+
+	besuConfig, ok := nodeConfig.(*types.BesuNodeConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid besu config type")
+	}
+
+	// Load deployment config
+	deployBesuConfig := &types.BesuNodeDeploymentConfig{}
+	if node.DeploymentConfig.Valid {
+		deploymentConfig, err := utils.DeserializeDeploymentConfig(node.DeploymentConfig.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+		}
+		var ok bool
+		deployBesuConfig, ok = deploymentConfig.(*types.BesuNodeDeploymentConfig)
+		if !ok {
+			return nil, fmt.Errorf("invalid besu deployment config type")
+		}
+	}
+
+	// Update configuration fields
+	besuConfig.NetworkID = int64(req.NetworkID)
+	besuConfig.P2PPort = req.P2PPort
+	besuConfig.RPCPort = req.RPCPort
+	besuConfig.P2PHost = req.P2PHost
+	besuConfig.RPCHost = req.RPCHost
+	deployBesuConfig.NetworkID = int64(req.NetworkID)
+	deployBesuConfig.P2PPort = req.P2PPort
+	deployBesuConfig.RPCPort = req.RPCPort
+	deployBesuConfig.P2PHost = req.P2PHost
+	deployBesuConfig.RPCHost = req.RPCHost
+	if req.Bootnodes != nil {
+		besuConfig.BootNodes = req.Bootnodes
+	}
+
+	if req.ExternalIP != "" {
+		besuConfig.ExternalIP = req.ExternalIP
+		deployBesuConfig.ExternalIP = req.ExternalIP
+	}
+	if req.InternalIP != "" {
+		besuConfig.InternalIP = req.InternalIP
+		deployBesuConfig.InternalIP = req.InternalIP
+	}
+
+	// Update environment variables
+	if req.Env != nil {
+		besuConfig.Env = req.Env
+		deployBesuConfig.Env = req.Env
+	}
+
+	// Get the key to update the enodeURL
+	key, err := s.keymanagementService.GetKey(ctx, int(besuConfig.KeyID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	// Update enodeURL based on the public key, external IP and P2P port
+	if key.PublicKey != "" {
+		publicKey := key.PublicKey[2:]
+		deployBesuConfig.EnodeURL = fmt.Sprintf("enode://%s@%s:%d", publicKey, besuConfig.ExternalIP, besuConfig.P2PPort)
+	}
+
+	// Store updated node config
+	configBytes, err := utils.StoreNodeConfig(besuConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store node config: %w", err)
+	}
+
+	node, err = s.db.UpdateNodeConfig(ctx, &db.UpdateNodeConfigParams{
+		ID: nodeID,
+		NodeConfig: sql.NullString{
+			String: string(configBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node config: %w", err)
+	}
+
+	// Update deployment config
+	deploymentConfigBytes, err := json.Marshal(deployBesuConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal deployment config: %w", err)
+	}
+
+	node, err = s.db.UpdateDeploymentConfig(ctx, &db.UpdateDeploymentConfigParams{
+		ID: nodeID,
+		DeploymentConfig: sql.NullString{
+			String: string(deploymentConfigBytes),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update deployment config: %w", err)
+	}
+
+	// Return updated node
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
+	return nodeResponse, nil
+}
+
+// validateBesuConfig validates the Besu node configuration
+func (s *NodeService) validateBesuConfig(config *types.BesuNodeConfig) error {
+
+	if config.P2PPort == 0 {
+		return fmt.Errorf("p2p port is required")
+	}
+	if config.RPCPort == 0 {
+		return fmt.Errorf("rpc port is required")
+	}
+	if config.NetworkID == 0 {
+		return fmt.Errorf("network ID is required")
+	}
+	if config.P2PHost == "" {
+		return fmt.Errorf("p2p host is required")
+	}
+	if config.RPCHost == "" {
+		return fmt.Errorf("rpc host is required")
+	}
+	if config.ExternalIP == "" {
+		return fmt.Errorf("external IP is required")
+	}
+	if config.InternalIP == "" {
+		return fmt.Errorf("internal IP is required")
+	}
+
+	return nil
 }

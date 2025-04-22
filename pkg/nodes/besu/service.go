@@ -18,7 +18,7 @@ func (b *LocalBesu) getServiceName() string {
 
 // getLaunchdServiceName returns the launchd service name
 func (b *LocalBesu) getLaunchdServiceName() string {
-	return fmt.Sprintf("ai.chainlaunch.besu.%s",
+	return fmt.Sprintf("dev.chainlaunch.besu.%s",
 		strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-"))
 }
 
@@ -34,9 +34,8 @@ func (b *LocalBesu) getLaunchdPlistPath() string {
 }
 
 // startService starts the besu as a system service
-func (b *LocalBesu) startService(cmd string, env map[string]string, dirPath string) (*StartServiceResponse, error) {
+func (b *LocalBesu) startService(cmd string, env map[string]string, dirPath, configDir string) (*StartServiceResponse, error) {
 	// Write genesis file to config directory
-	configDir := filepath.Join(dirPath, "config")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
@@ -86,50 +85,12 @@ func (b *LocalBesu) startService(cmd string, env map[string]string, dirPath stri
 	}
 }
 
-// buildBesuCommand builds the command arguments for Besu
-func (b *LocalBesu) buildBesuCommand(dataPath, configPath string) []string {
-	cmd := []string{
-		"besu",
-		fmt.Sprintf("--data-path=%s", dataPath),
-		fmt.Sprintf("--genesis-file=%s", filepath.Join(configPath, "genesis.json")),
-		fmt.Sprintf("--network-id=%d", b.opts.NetworkID),
-		"--rpc-http-enabled",
-		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
-		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
-		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3",
-		"--host-allowlist=*",
-		"--miner-enabled",
-		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
-		"--min-gas-price=1000000000",
-		"--sync-mode=FULL",
-		"--rpc-http-cors-origins=all",
-		fmt.Sprintf("--node-private-key-file=%s", filepath.Join(configPath, "key")),
-		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
-		"--rpc-http-host=0.0.0.0",
-		"--discovery-enabled=true",
-		"--p2p-enabled=true",
-	}
-
-	// Add bootnodes if specified
-	if len(b.opts.BootNodes) > 0 {
-		cmd = append(cmd, fmt.Sprintf("--bootnodes=%s", strings.Join(b.opts.BootNodes, ",")))
-	}
-
-	return cmd
-}
-
 // createSystemdService creates a systemd service file
 func (b *LocalBesu) createSystemdService(cmd string, env map[string]string, dirPath, genesisPath, keyPath string) error {
 	var envStrings []string
 	for k, v := range env {
 		envStrings = append(envStrings, fmt.Sprintf("Environment=\"%s=%s\"", k, v))
 	}
-
-	// Build command using the common builder
-	cmdArgs := b.buildBesuCommand(
-		filepath.Join(dirPath, "data"),
-		filepath.Join(dirPath, "config"),
-	)
 
 	tmpl := template.Must(template.New("systemd").Parse(`
 [Unit]
@@ -158,7 +119,7 @@ WantedBy=multi-user.target
 	}{
 		ID:      b.opts.ID,
 		DirPath: dirPath,
-		Cmd:     strings.Join(cmdArgs, " "),
+		Cmd:     cmd,
 		EnvVars: envStrings,
 	}
 
@@ -182,10 +143,6 @@ func (b *LocalBesu) createLaunchdService(cmd string, env map[string]string, dirP
 	}
 
 	// Build command using the common builder
-	cmdArgs := b.buildBesuCommand(
-		filepath.Join(dirPath, "data"),
-		filepath.Join(dirPath, "config"),
-	)
 
 	tmpl := template.Must(template.New("launchd").Parse(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -220,7 +177,7 @@ func (b *LocalBesu) createLaunchdService(cmd string, env map[string]string, dirP
 		EnvVars     []string
 	}{
 		ServiceName: b.getLaunchdServiceName(),
-		Cmd:         strings.Join(cmdArgs, " "),
+		Cmd:         cmd,
 		LogPath:     filepath.Join(dirPath, b.getServiceName()+".log"),
 		EnvVars:     envStrings,
 	}
@@ -249,6 +206,10 @@ func (b *LocalBesu) startSystemdService() error {
 		return err
 	}
 	return b.execSystemctl("restart", b.getServiceName())
+}
+
+func (b *LocalBesu) GetStdOutPath() string {
+	return filepath.Join(b.configService.GetDataPath(), "besu", strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-"), b.getServiceName()+".log")
 }
 
 // startLaunchdService starts the launchd service
@@ -314,10 +275,24 @@ func (b *LocalBesu) stopLaunchdService() error {
 
 // execSystemctl executes a systemctl command
 func (b *LocalBesu) execSystemctl(command string, args ...string) error {
-	cmdArgs := append([]string{"systemctl", command}, args...)
-	cmd := exec.Command("sudo", cmdArgs...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("systemctl %s failed: %w", command, err)
+	cmdArgs := append([]string{command}, args...)
+
+	// Check if sudo is available
+	sudoPath, err := exec.LookPath("sudo")
+	if err == nil {
+		// sudo is available, use it
+		cmdArgs = append([]string{"systemctl"}, cmdArgs...)
+		cmd := exec.Command(sudoPath, cmdArgs...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("systemctl %s failed: %w", command, err)
+		}
+	} else {
+		// sudo is not available, run directly
+		cmd := exec.Command("systemctl", cmdArgs...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("systemctl %s failed: %w", command, err)
+		}
 	}
+
 	return nil
 }

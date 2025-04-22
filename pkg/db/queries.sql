@@ -207,7 +207,8 @@ SET name = ?,
     provider_id = ?,
     user_id = ?,
     ethereum_address = ?,
-    updated_at = CURRENT_TIMESTAMP
+    updated_at = CURRENT_TIMESTAMP,
+    signing_key_id = ?
 WHERE id = ?
 RETURNING *;
 
@@ -267,9 +268,33 @@ WHERE id = ?
 RETURNING *;
 
 
+-- name: UpdateNodeConfig :one
+UPDATE nodes
+SET node_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdateDeploymentConfig :one
+UPDATE nodes
+SET deployment_config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+
+-- name: UpdateNodeStatusWithError :one
+UPDATE nodes
+SET status = ?,
+    error_message = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
 -- name: UpdateNodeStatus :one
 UPDATE nodes
 SET status = ?,
+    error_message = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 RETURNING *;
@@ -485,12 +510,13 @@ FROM keys k
 JOIN key_providers kp ON k.provider_id = kp.id
 WHERE k.ethereum_address = ?;
 
--- name: GetKeysByAlgorithm :many
-SELECT * FROM keys WHERE algorithm = ?;
-
--- name: GetKeysByProviderAndCurve :many
-SELECT * FROM keys WHERE provider_id = ? AND curve = ?;
-
+-- name: GetKeysByFilter :many
+SELECT k.*, kp.name as provider_name, kp.type as provider_type
+FROM keys k
+JOIN key_providers kp ON k.provider_id = kp.id
+WHERE (@algorithm_filter = '' OR k.algorithm = @algorithm) 
+  AND (@provider_id_filter = 0 OR k.provider_id = @provider_id)
+  AND (@curve_filter = '' OR k.curve = @curve);
 
 -- name: UpdateNodeEndpoint :one
 UPDATE nodes
@@ -870,3 +896,67 @@ WHERE is_default = true
     (:notification_type = 'S3_CONNECTION_ISSUE' AND notify_s3_connection_issue = true)
   )
 LIMIT 1;
+
+-- name: AddRevokedCertificate :exec
+INSERT INTO fabric_revoked_certificates (
+    fabric_organization_id,
+    serial_number,
+    revocation_time,
+    reason,
+    issuer_certificate_id
+) VALUES (?, ?, ?, ?, ?);
+
+-- name: GetRevokedCertificates :many
+SELECT * FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?
+ORDER BY revocation_time DESC;
+
+-- name: GetRevokedCertificate :one
+SELECT * FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?;
+
+-- name: UpdateOrganizationCRL :exec
+UPDATE fabric_organizations
+SET crl_last_update = ?,
+    crl_key_id = ?
+WHERE id = ?;
+
+-- name: GetOrganizationCRLInfo :one
+SELECT crl_key_id, crl_last_update
+FROM fabric_organizations
+WHERE id = ?;
+
+-- name: CreateSetting :one
+INSERT INTO settings (
+    config
+) VALUES (
+    ?
+)
+RETURNING *;
+
+-- name: GetSetting :one
+SELECT * FROM settings
+WHERE id = ? LIMIT 1;
+
+-- name: ListSettings :many
+SELECT * FROM settings
+ORDER BY created_at DESC;
+
+-- name: UpdateSetting :one
+UPDATE settings
+SET config = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteSetting :exec
+DELETE FROM settings
+WHERE id = ?; 
+
+-- name: DeleteRevokedCertificate :exec
+DELETE FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ? AND serial_number = ?;
+
+-- name: GetRevokedCertificateCount :one
+SELECT COUNT(*) FROM fabric_revoked_certificates
+WHERE fabric_organization_id = ?;

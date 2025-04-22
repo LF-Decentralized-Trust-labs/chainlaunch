@@ -38,7 +38,7 @@ func (h *NotificationHandler) RegisterRoutes(r chi.Router) {
 
 // @Summary Create a notification provider
 // @Description Create a new notification provider with the specified configuration
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Param request body CreateProviderRequest true "Provider creation request"
@@ -80,7 +80,7 @@ func (h *NotificationHandler) CreateProvider(w http.ResponseWriter, r *http.Requ
 
 // @Summary List notification providers
 // @Description Get a list of all notification providers
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Success 200 {array} ProviderResponse
@@ -99,7 +99,7 @@ func (h *NotificationHandler) ListProviders(w http.ResponseWriter, r *http.Reque
 
 // @Summary Get a notification provider
 // @Description Get detailed information about a specific notification provider
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"
@@ -127,7 +127,7 @@ func (h *NotificationHandler) GetProvider(w http.ResponseWriter, r *http.Request
 
 // @Summary Update a notification provider
 // @Description Update an existing notification provider with new configuration
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"
@@ -177,7 +177,7 @@ func (h *NotificationHandler) UpdateProvider(w http.ResponseWriter, r *http.Requ
 
 // @Summary Delete a notification provider
 // @Description Delete a notification provider
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"
@@ -203,7 +203,7 @@ func (h *NotificationHandler) DeleteProvider(w http.ResponseWriter, r *http.Requ
 
 // @Summary Test a notification provider
 // @Description Test a notification provider
-// @Tags notifications
+// @Tags Notifications
 // @Accept json
 // @Produce json
 // @Param id path int true "Provider ID"

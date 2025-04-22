@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
@@ -15,16 +14,13 @@ import (
 
 // AuthService handles authentication operations
 type AuthService struct {
-	db       *db.Queries
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	db *db.Queries
 }
 
 // NewAuthService creates a new authentication service
 func NewAuthService(db *db.Queries) *AuthService {
 	return &AuthService{
-		db:       db,
-		sessions: make(map[string]*Session),
+		db: db,
 	}
 }
 
@@ -62,7 +58,7 @@ func (s *AuthService) InitializeDefaultUser() (string, error) {
 	}
 
 	// Create admin user
-	_, err = s.db.CreateUser(context.Background(), db.CreateUserParams{
+	_, err = s.db.CreateUser(context.Background(), &db.CreateUserParams{
 		Username: "admin",
 		Password: string(hashedPassword),
 	})
@@ -105,7 +101,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Se
 
 	// Create session in database
 	expiresAt := time.Now().Add(24 * time.Hour) // Sessions expire after 24 hours
-	dbSession, err := s.db.CreateSession(ctx, db.CreateSessionParams{
+	dbSession, err := s.db.CreateSession(ctx, &db.CreateSessionParams{
 		SessionID: id,
 		UserID:    user.ID,
 		Token:     token,
@@ -197,7 +193,7 @@ func (s *AuthService) CreateUser(ctx context.Context, username, password string)
 	}
 
 	// Create user
-	_, err = s.db.CreateUser(ctx, db.CreateUserParams{
+	_, err = s.db.CreateUser(ctx, &db.CreateUserParams{
 		Username: username,
 		Password: string(hashedPassword),
 	})
@@ -230,7 +226,7 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*User, error) {
 
 // UpdateUser updates a user's details
 func (s *AuthService) UpdateUser(ctx context.Context, id int64, username, password string) error {
-	params := db.UpdateUserParams{
+	params := &db.UpdateUserParams{
 		ID:       id,
 		Username: username,
 	}
@@ -275,4 +271,48 @@ func (s *AuthService) GetUserByID(ctx context.Context, id int64) (*User, error) 
 		CreatedAt:   dbUser.CreatedAt,
 		LastLoginAt: dbUser.LastLoginAt.Time,
 	}, nil
+}
+
+// UpdateUserPassword updates a user's password
+func (s *AuthService) UpdateUserPassword(ctx context.Context, username, newPassword string) error {
+	// Get user from database
+	user, err := s.db.GetUserByUsername(ctx, username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("user not found")
+		}
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Check if new password matches current password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword)); err == nil {
+		// Passwords match, no need to update
+		return nil
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update user's password
+	params := &db.UpdateUserParams{
+		ID:       user.ID,
+		Username: user.Username,
+		Column2:  string(hashedPassword),
+		Password: string(hashedPassword),
+	}
+
+	_, err = s.db.UpdateUser(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to update user password: %w", err)
+	}
+
+	// Delete all existing sessions for this user for security
+	if err := s.db.DeleteUserSessions(ctx, user.ID); err != nil {
+		return fmt.Errorf("failed to delete user sessions: %w", err)
+	}
+
+	return nil
 }

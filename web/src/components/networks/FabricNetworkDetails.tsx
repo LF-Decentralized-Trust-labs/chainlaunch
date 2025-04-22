@@ -7,7 +7,9 @@ import {
 	getOrganizationsOptions,
 	postNetworksFabricByIdAnchorPeersMutation,
 	postNetworksFabricByIdOrderersByOrdererIdJoinMutation,
+	postNetworksFabricByIdOrganizationCrlMutation,
 	postNetworksFabricByIdPeersByPeerIdJoinMutation,
+	postNetworksFabricByIdUpdateConfigMutation,
 } from '@/api/client/@tanstack/react-query.gen'
 import { BesuIcon } from '@/components/icons/besu-icon'
 import { FabricIcon } from '@/components/icons/fabric-icon'
@@ -25,7 +27,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, Anchor, ArrowLeft, Check, Code, Copy, Network, Plus, Settings } from 'lucide-react'
+import { Activity, AlertTriangle, Anchor, ArrowLeft, Check, Code, Copy, Network, Plus, Settings, Blocks, ShieldAlert, ArrowUpToLine, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -34,6 +36,24 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import rehypeRaw from 'rehype-raw'
 import { toast } from 'sonner'
 import { AddMultipleNodesDialog } from './add-multiple-nodes-dialog'
+import { ChannelUpdateForm } from '../nodes/ChannelUpdateForm'
+import { BlockExplorer } from './block-explorer'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import {
+	getOrganizationsByIdRevokedCertificatesOptions,
+	postOrganizationsByIdCrlRevokeSerialMutation,
+	postOrganizationsByIdCrlRevokePemMutation,
+	deleteOrganizationsByIdCrlRevokeSerialMutation,
+} from '@/api/client/@tanstack/react-query.gen'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Trash2 } from 'lucide-react'
 
 interface FabricNetworkDetailsProps {
 	network: HttpNetworkResponse
@@ -178,6 +198,332 @@ function CopyButton({ text }: { text: string }) {
 		<button onClick={copy} className="absolute right-2 top-2 p-2 hover:bg-muted-foreground/20 rounded-md transition-colors">
 			{copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
 		</button>
+	)
+}
+
+function CRLManagement({ network, organizations }: { network: HttpNetworkResponse; organizations: any[] }) {
+	const [selectedOrg, setSelectedOrg] = useState<number | null>(null)
+	const {
+		data: crl,
+		refetch,
+		isLoading: isCrlLoading,
+	} = useQuery({
+		...getOrganizationsByIdRevokedCertificatesOptions({
+			path: { id: selectedOrg! },
+		}),
+		enabled: !!selectedOrg,
+	})
+
+	// Form for serial number
+	const serialForm = useForm<{ serialNumber: string }>({
+		resolver: zodResolver(
+			z.object({
+				serialNumber: z.string().min(1, 'Serial number is required'),
+			})
+		),
+	})
+
+	// Form for PEM
+	const pemForm = useForm<{ pem: string }>({
+		resolver: zodResolver(
+			z.object({
+				pem: z.string().min(1, 'PEM certificate is required'),
+			})
+		),
+	})
+
+	// Mutation for adding by serial number
+	const addBySerialMutation = useMutation({
+		...postOrganizationsByIdCrlRevokeSerialMutation(),
+		onSuccess: () => {
+			toast.success('Certificate revoked successfully')
+			refetch()
+			serialForm.reset()
+			setSerialDialogOpen(false)
+		},
+		onError: (error: any) => {
+			if (error instanceof Error) {
+				toast.error(`Failed to revoke certificate: ${error.message}`)
+			} else if (error.error?.message) {
+				toast.error(`Failed to revoke certificate: ${error.error.message}`)
+			} else {
+				toast.error('An unknown error occurred')
+			}
+		},
+	})
+
+	// Mutation for adding by PEM
+	const addByPemMutation = useMutation({
+		...postOrganizationsByIdCrlRevokePemMutation(),
+		onSuccess: () => {
+			toast.success('Certificate revoked successfully')
+			refetch()
+			pemForm.reset()
+			setPemDialogOpen(false)
+		},
+		onError: (error: any) => {
+			if (error instanceof Error) {
+				toast.error(`Failed to revoke certificate: ${error.message}`)
+			} else if (error.error?.message) {
+				toast.error(`Failed to revoke certificate: ${error.error.message}`)
+			} else {
+				toast.error('An unknown error occurred')
+			}
+		},
+	})
+
+	// Mutation for removing from CRL
+	const unrevokeMutation = useMutation({
+		...deleteOrganizationsByIdCrlRevokeSerialMutation(),
+		onSuccess: () => {
+			toast.success('Certificate unrevoked successfully')
+			refetch()
+			setCertificateToDelete(null)
+		},
+		onError: (error: any) => {
+			if (error instanceof Error) {
+				toast.error(`Failed to unrevoke certificate: ${error.message}`)
+			} else if (error.error?.message) {
+				toast.error(`Failed to unrevoke certificate: ${error.error.message}`)
+			} else {
+				toast.error('An unknown error occurred')
+			}
+		},
+	})
+
+	// Mutation for applying CRL to channel
+	const applyCRLMutation = useMutation({
+		...postNetworksFabricByIdOrganizationCrlMutation(),
+		onSuccess: () => {
+			toast.success('CRL applied to channel successfully')
+		},
+		onError: (error: any) => {
+			if (error instanceof Error) {
+				toast.error(`Failed to apply CRL to channel: ${error.message}`)
+			} else if (error.error?.message) {
+				toast.error(`Failed to apply CRL to channel: ${error.error.message}`)
+			} else {
+				toast.error('An unknown error occurred')
+			}
+		},
+	})
+
+	const handleApplyCRL = () => {
+		if (!selectedOrg || !network.id) return
+
+		const selectedOrgData = organizations.find((org) => org.id === selectedOrg)
+		if (!selectedOrgData) return
+
+		applyCRLMutation.mutate({
+			path: { id: network.id },
+			body: {
+				organizationId: selectedOrgData.id,
+			},
+		})
+	}
+
+	const [serialDialogOpen, setSerialDialogOpen] = useState(false)
+	const [pemDialogOpen, setPemDialogOpen] = useState(false)
+	const [certificateToDelete, setCertificateToDelete] = useState<string | null>(null)
+
+	if (!organizations || organizations.length === 0) {
+		return (
+			<Card className="p-6">
+				<div className="flex items-center gap-4 mb-6">
+					<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+						<ShieldAlert className="h-6 w-6 text-primary" />
+					</div>
+					<div>
+						<h2 className="text-lg font-semibold">Certificate Revocation List</h2>
+						<p className="text-sm text-muted-foreground">No organizations found</p>
+					</div>
+				</div>
+				<Alert>
+					<AlertTriangle className="h-4 w-4" />
+					<AlertDescription>You need at least one organization to manage certificate revocations.</AlertDescription>
+				</Alert>
+			</Card>
+		)
+	}
+
+	return (
+		<Card className="p-6">
+			<div className="flex items-center gap-4 mb-6">
+				<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+					<ShieldAlert className="h-6 w-6 text-primary" />
+				</div>
+				<div>
+					<h2 className="text-lg font-semibold">Certificate Revocation List</h2>
+					<p className="text-sm text-muted-foreground">Manage revoked certificates for your organizations</p>
+				</div>
+			</div>
+
+			<div className="space-y-6">
+				<Select value={selectedOrg?.toString()} onValueChange={(value) => setSelectedOrg(parseInt(value))}>
+					<SelectTrigger>
+						<SelectValue placeholder="Select an organization" />
+					</SelectTrigger>
+					<SelectContent>
+						{organizations.map((org) => (
+							<SelectItem key={org.id} value={org.id.toString()}>
+								{org.mspId}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+
+				{selectedOrg && (
+					<>
+						<div className="flex gap-4">
+							<Dialog open={serialDialogOpen} onOpenChange={setSerialDialogOpen}>
+								<DialogTrigger asChild>
+									<Button>Revoke by Serial Number</Button>
+								</DialogTrigger>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Revoke Certificate by Serial Number</DialogTitle>
+										<DialogDescription>Enter the serial number of the certificate to revoke</DialogDescription>
+									</DialogHeader>
+									<Form {...serialForm}>
+										<form
+											onSubmit={serialForm.handleSubmit((data) =>
+												addBySerialMutation.mutate({
+													path: { id: selectedOrg },
+													body: { serialNumber: data.serialNumber },
+												})
+											)}
+										>
+											<FormField
+												control={serialForm.control}
+												name="serialNumber"
+												render={({ field }) => (
+													<FormItem>
+														<FormLabel>Serial Number</FormLabel>
+														<FormControl>
+															<Input {...field} />
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
+											/>
+											<DialogFooter className="mt-4">
+												<Button type="submit" disabled={addBySerialMutation.isPending}>
+													Revoke Certificate
+												</Button>
+											</DialogFooter>
+										</form>
+									</Form>
+								</DialogContent>
+							</Dialog>
+
+							<Dialog open={pemDialogOpen} onOpenChange={setPemDialogOpen}>
+								<DialogTrigger asChild>
+									<Button>Revoke by PEM</Button>
+								</DialogTrigger>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Revoke Certificate by PEM</DialogTitle>
+										<DialogDescription>Paste the PEM certificate to revoke</DialogDescription>
+									</DialogHeader>
+									<Form {...pemForm}>
+										<form
+											onSubmit={pemForm.handleSubmit((data) =>
+												addByPemMutation.mutate({
+													path: { id: selectedOrg },
+													body: { certificate: data.pem },
+												})
+											)}
+										>
+											<FormField
+												control={pemForm.control}
+												name="pem"
+												render={({ field }) => (
+													<FormItem>
+														<FormLabel>PEM Certificate</FormLabel>
+														<FormControl>
+															<Textarea {...field} rows={8} />
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
+											/>
+											<DialogFooter className="mt-4">
+												<Button type="submit" disabled={addByPemMutation.isPending}>
+													Revoke Certificate
+												</Button>
+											</DialogFooter>
+										</form>
+									</Form>
+								</DialogContent>
+							</Dialog>
+
+							<Button variant="outline" onClick={handleApplyCRL} disabled={!crl || applyCRLMutation.isPending}>
+								{applyCRLMutation.isPending ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Applying to Channel...
+									</>
+								) : (
+									<>
+										<ArrowUpToLine className="mr-2 h-4 w-4" />
+										Apply to Channel
+									</>
+								)}
+							</Button>
+						</div>
+
+						<div className="bg-muted rounded-lg p-4">
+							<h3 className="text-sm font-medium mb-2">Revoked Certificates</h3>
+							{isCrlLoading ? (
+								<Skeleton className="h-32 w-full" />
+							) : crl && crl.length > 0 ? (
+								<div className="space-y-2">
+									{crl.map((cert) => (
+										<div key={cert.serialNumber} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted-foreground/5">
+											<div>
+												<span className="font-mono">{cert.serialNumber}</span>
+												<span className="text-muted-foreground ml-2">
+													<TimeAgo date={cert.revocationTime!} />
+												</span>
+											</div>
+											<Button variant="destructive" size="icon" onClick={() => setCertificateToDelete(cert.serialNumber!)}>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</div>
+									))}
+								</div>
+							) : (
+								<p className="text-sm text-muted-foreground">No certificates have been revoked</p>
+							)}
+						</div>
+
+						<AlertDialog open={!!certificateToDelete} onOpenChange={(open) => !open && setCertificateToDelete(null)}>
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>Unrevoke Certificate</AlertDialogTitle>
+									<AlertDialogDescription>Are you sure you want to unrevoke this certificate? This will remove it from the CRL.</AlertDialogDescription>
+								</AlertDialogHeader>
+								<AlertDialogFooter>
+									<AlertDialogCancel>Cancel</AlertDialogCancel>
+									<AlertDialogAction
+										onClick={() => {
+											if (certificateToDelete) {
+												unrevokeMutation.mutate({
+													path: { id: selectedOrg },
+													body: { serialNumber: certificateToDelete },
+												})
+											}
+										}}
+									>
+										Unrevoke
+									</AlertDialogAction>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
+					</>
+				)}
+			</div>
+		</Card>
 	)
 }
 
@@ -607,7 +953,14 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 						}
 						channelUpdate={
 							<div className="space-y-6">
-								<p>Coming Soon</p>
+								<ChannelUpdateForm
+									network={network}
+									channelConfig={channelConfig}
+									onSuccess={() => {
+										refetchCurrentChannelConfig()
+										refetchNetworkNodes()
+									}}
+								/>
 							</div>
 						}
 						proposals={
@@ -616,6 +969,26 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 							</div>
 						}
 						share={<p>Pro Only</p>}
+						explorer={
+							<div className="space-y-4">
+								<div className="flex items-center gap-4 mb-6">
+									<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+										<Blocks className="h-6 w-6 text-primary" />
+									</div>
+									<div>
+										<h2 className="text-lg font-semibold">Block Explorer</h2>
+										<p className="text-sm text-muted-foreground">Explore blocks, transactions, and chaincode data</p>
+									</div>
+								</div>
+
+								<BlockExplorer networkId={network.id!} />
+							</div>
+						}
+						crl={
+							<div className="space-y-4">
+								<CRLManagement network={network} organizations={fabricOrgs || []} />
+							</div>
+						}
 					/>
 				</Card>
 			</div>

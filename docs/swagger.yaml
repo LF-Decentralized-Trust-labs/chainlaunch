@@ -44,60 +44,6 @@ definitions:
           @Example "admin"
         type: string
     type: object
-  crypto_x509.ExtKeyUsage:
-    enum:
-    - 0
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    - 7
-    - 8
-    - 9
-    - 10
-    - 11
-    - 12
-    - 13
-    type: integer
-    x-enum-varnames:
-    - ExtKeyUsageAny
-    - ExtKeyUsageServerAuth
-    - ExtKeyUsageClientAuth
-    - ExtKeyUsageCodeSigning
-    - ExtKeyUsageEmailProtection
-    - ExtKeyUsageIPSECEndSystem
-    - ExtKeyUsageIPSECTunnel
-    - ExtKeyUsageIPSECUser
-    - ExtKeyUsageTimeStamping
-    - ExtKeyUsageOCSPSigning
-    - ExtKeyUsageMicrosoftServerGatedCrypto
-    - ExtKeyUsageNetscapeServerGatedCrypto
-    - ExtKeyUsageMicrosoftCommercialCodeSigning
-    - ExtKeyUsageMicrosoftKernelCodeSigning
-  crypto_x509.KeyUsage:
-    enum:
-    - 1
-    - 2
-    - 4
-    - 8
-    - 16
-    - 32
-    - 64
-    - 128
-    - 256
-    type: integer
-    x-enum-varnames:
-    - KeyUsageDigitalSignature
-    - KeyUsageContentCommitment
-    - KeyUsageKeyEncipherment
-    - KeyUsageDataEncipherment
-    - KeyUsageKeyAgreement
-    - KeyUsageCertSign
-    - KeyUsageCRLSign
-    - KeyUsageEncipherOnly
-    - KeyUsageDecipherOnly
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
     properties:
       code:
@@ -126,6 +72,12 @@ definitions:
     - mspId
     - name
     type: object
+  handler.DeleteRevokedCertificateRequest:
+    properties:
+      serialNumber:
+        description: Hex string of the serial number
+        type: string
+    type: object
   handler.OrganizationResponse:
     properties:
       createdAt:
@@ -149,6 +101,31 @@ definitions:
       tlsPublicKey:
         type: string
       updatedAt:
+        type: string
+    type: object
+  handler.RevokeCertificateByPEMRequest:
+    properties:
+      certificate:
+        description: PEM encoded certificate
+        type: string
+      revocationReason:
+        type: integer
+    type: object
+  handler.RevokeCertificateBySerialRequest:
+    properties:
+      revocationReason:
+        type: integer
+      serialNumber:
+        description: Hex string of the serial number
+        type: string
+    type: object
+  handler.RevokedCertificateResponse:
+    properties:
+      reason:
+        type: integer
+      revocationTime:
+        type: string
+      serialNumber:
         type: string
     type: object
   handler.UpdateOrganizationRequest:
@@ -301,9 +278,7 @@ definitions:
       description:
         type: string
       genesisConfig:
-        items:
-          type: integer
-        type: array
+        type: string
       id:
         type: integer
       name:
@@ -315,12 +290,130 @@ definitions:
       updatedAt:
         type: string
     type: object
+  http.BesuNodeDefaultsResponse:
+    properties:
+      defaults:
+        items:
+          $ref: '#/definitions/service.BesuNodeDefaults'
+        type: array
+      nodeCount:
+        type: integer
+    type: object
+  http.BlockListResponse:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/service.Block'
+        type: array
+      total:
+        type: integer
+    type: object
+  http.BlockTransactionsResponse:
+    properties:
+      block:
+        $ref: '#/definitions/service.Block'
+      transactions:
+        items:
+          $ref: '#/definitions/service.Transaction'
+        type: array
+    type: object
+  http.ChainInfoResponse:
+    properties:
+      currentBlockHash:
+        type: string
+      height:
+        type: integer
+      previousBlockHash:
+        type: string
+    type: object
   http.ChannelConfigResponse:
     properties:
       config:
         additionalProperties: true
         type: object
       name:
+        type: string
+    type: object
+  http.ChannelResponse:
+    properties:
+      blockNum:
+        type: integer
+      createdAt:
+        type: string
+      name:
+        type: string
+    type: object
+  http.ConfigUpdateOperationRequest:
+    description: A single configuration update operation
+    properties:
+      payload:
+        description: |-
+          Payload contains the operation-specific data
+          The structure depends on the operation type:
+          - add_org: AddOrgPayload
+          - remove_org: RemoveOrgPayload
+          - update_org_msp: UpdateOrgMSPPayload
+          - set_anchor_peers: SetAnchorPeersPayload
+          - add_consenter: AddConsenterPayload
+          - remove_consenter: RemoveConsenterPayload
+          - update_consenter: UpdateConsenterPayload
+          - update_etcd_raft_options: UpdateEtcdRaftOptionsPayload
+          - update_batch_size: UpdateBatchSizePayload
+          - update_batch_timeout: UpdateBatchTimeoutPayload
+          @Description The payload for the configuration update operation
+          @Description Can be one of:
+          @Description - AddOrgPayload when type is "add_org"
+          @Description - RemoveOrgPayload when type is "remove_org"
+          @Description - UpdateOrgMSPPayload when type is "update_org_msp"
+          @Description - SetAnchorPeersPayload when type is "set_anchor_peers"
+          @Description - AddConsenterPayload when type is "add_consenter"
+          @Description - RemoveConsenterPayload when type is "remove_consenter"
+          @Description - UpdateConsenterPayload when type is "update_consenter"
+          @Description - UpdateEtcdRaftOptionsPayload when type is "update_etcd_raft_options"
+          @Description - UpdateBatchSizePayload when type is "update_batch_size"
+          @Description - UpdateBatchTimeoutPayload when type is "update_batch_timeout"
+        items:
+          type: integer
+        type: array
+      type:
+        description: |-
+          Type is the type of configuration update operation
+          enum: add_org,remove_org,update_org_msp,set_anchor_peers,add_consenter,remove_consenter,update_consenter,update_etcd_raft_options,update_batch_size,update_batch_timeout
+        enum:
+        - add_org
+        - remove_org
+        - update_org_msp
+        - set_anchor_peers
+        - add_consenter
+        - remove_consenter
+        - update_consenter
+        - update_etcd_raft_options
+        - update_batch_size
+        - update_batch_timeout
+        type: string
+    required:
+    - payload
+    - type
+    type: object
+  http.ConfigUpdateResponse:
+    properties:
+      channel_name:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
+      network_id:
+        type: integer
+      operations:
+        items:
+          $ref: '#/definitions/http.ConfigUpdateOperationRequest'
+        type: array
+      preview_json:
+        type: string
+      status:
         type: string
     type: object
   http.ConsenterConfig:
@@ -729,6 +822,15 @@ definitions:
       updatedAt:
         type: string
     type: object
+  http.NodeChannelsResponse:
+    properties:
+      channels:
+        items:
+          $ref: '#/definitions/http.ChannelResponse'
+        type: array
+      nodeId:
+        type: integer
+    type: object
   http.NodeEventResponse:
     properties:
       created_at:
@@ -748,6 +850,8 @@ definitions:
       createdAt:
         type: string
       endpoint:
+        type: string
+      errorMessage:
         type: string
       fabricOrderer:
         $ref: '#/definitions/service.FabricOrdererProperties'
@@ -911,6 +1015,11 @@ definitions:
       testedAt:
         type: string
     type: object
+  http.TransactionResponse:
+    properties:
+      transaction:
+        $ref: '#/definitions/service.Transaction'
+    type: object
   http.UpdateBackupScheduleRequest:
     properties:
       cronExpression:
@@ -983,6 +1092,37 @@ definitions:
     required:
     - timeout
     type: object
+  http.UpdateBesuNodeRequest:
+    properties:
+      bootnodes:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      externalIp:
+        type: string
+      internalIp:
+        type: string
+      networkId:
+        type: integer
+      p2pHost:
+        type: string
+      p2pPort:
+        type: integer
+      rpcHost:
+        type: string
+      rpcPort:
+        type: integer
+    required:
+    - networkId
+    - p2pHost
+    - p2pPort
+    - rpcHost
+    - rpcPort
+    type: object
   http.UpdateConsenterPayload:
     properties:
       client_tls_cert:
@@ -1032,6 +1172,80 @@ definitions:
     - snapshot_interval_size
     - tick_interval
     type: object
+  http.UpdateFabricNetworkRequest:
+    properties:
+      operations:
+        items:
+          $ref: '#/definitions/http.ConfigUpdateOperationRequest'
+        minItems: 1
+        type: array
+    required:
+    - operations
+    type: object
+  http.UpdateFabricOrdererRequest:
+    properties:
+      adminAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      operationsListenAddress:
+        type: string
+      version:
+        type: string
+    type: object
+  http.UpdateFabricPeerRequest:
+    properties:
+      addressOverrides:
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
+      chaincodeAddress:
+        type: string
+      domainNames:
+        items:
+          type: string
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      eventsAddress:
+        type: string
+      externalEndpoint:
+        type: string
+      listenAddress:
+        type: string
+      operationsListenAddress:
+        type: string
+      version:
+        type: string
+    type: object
+  http.UpdateNodeRequest:
+    properties:
+      besuNode:
+        $ref: '#/definitions/http.UpdateBesuNodeRequest'
+      blockchainPlatform:
+        $ref: '#/definitions/types.BlockchainPlatform'
+      fabricOrderer:
+        $ref: '#/definitions/http.UpdateFabricOrdererRequest'
+      fabricPeer:
+        allOf:
+        - $ref: '#/definitions/http.UpdateFabricPeerRequest'
+        description: Platform-specific configurations
+      name:
+        description: Common fields
+        type: string
+    type: object
   http.UpdateOrgMSPPayload:
     properties:
       msp_id:
@@ -1050,6 +1264,18 @@ definitions:
     - msp_id
     - root_certs
     - tls_root_certs
+    type: object
+  http.UpdateOrganizationCRLRequest:
+    properties:
+      organizationId:
+        type: integer
+    required:
+    - organizationId
+    type: object
+  http.UpdateOrganizationCRLResponse:
+    properties:
+      transactionId:
+        type: string
     type: object
   http.UpdateProviderRequest:
     properties:
@@ -1096,7 +1322,7 @@ definitions:
         type: array
       extKeyUsage:
         items:
-          $ref: '#/definitions/crypto_x509.ExtKeyUsage'
+          $ref: '#/definitions/x509.ExtKeyUsage'
         type: array
       ipAddresses:
         items:
@@ -1107,7 +1333,7 @@ definitions:
       isCA:
         type: boolean
       keyUsage:
-        $ref: '#/definitions/crypto_x509.KeyUsage'
+        $ref: '#/definitions/x509.KeyUsage'
       locality:
         items:
           type: string
@@ -1313,6 +1539,8 @@ definitions:
         type: string
       sha256Fingerprint:
         type: string
+      signingKeyID:
+        type: integer
       status:
         type: string
     type: object
@@ -1372,21 +1600,31 @@ definitions:
     type: object
   service.BesuNodeDefaults:
     properties:
-      externalIP:
+      environmentVariables:
+        additionalProperties:
+          type: string
+        type: object
+      externalIp:
         type: string
-      internalIP:
+      internalIp:
         type: string
       mode:
         $ref: '#/definitions/service.Mode'
-      networkId:
+      p2pHost:
+        type: string
+      p2pPort:
         type: integer
-      p2pAddress:
+      rpcHost:
         type: string
-      rpcAddress:
-        type: string
+      rpcPort:
+        type: integer
     type: object
   service.BesuNodeProperties:
     properties:
+      bootNodes:
+        items:
+          type: string
+        type: array
       enodeUrl:
         type: string
       externalIp:
@@ -1408,6 +1646,30 @@ definitions:
         type: string
       rpcPort:
         type: integer
+      version:
+        type: string
+    type: object
+  service.Block:
+    properties:
+      data:
+        items:
+          type: integer
+        type: array
+      hash:
+        type: string
+      number:
+        type: integer
+      previous_hash:
+        type: string
+      timestamp:
+        type: string
+      tx_count:
+        type: integer
+    type: object
+  service.CreateSettingParams:
+    properties:
+      config:
+        $ref: '#/definitions/service.SettingConfig'
     type: object
   service.FabricOrdererProperties:
     properties:
@@ -1443,9 +1705,15 @@ definitions:
         type: string
       tlsKeyId:
         type: integer
+      version:
+        type: string
     type: object
   service.FabricPeerProperties:
     properties:
+      addressOverrides:
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       chaincodeAddress:
         type: string
       domainNames:
@@ -1480,6 +1748,8 @@ definitions:
         type: string
       tlsKeyId:
         type: integer
+      version:
+        type: string
     type: object
   service.Mode:
     enum:
@@ -1516,6 +1786,8 @@ definitions:
         description: 'Node deployment configuration interface that can be one of:
           FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig'
       endpoint:
+        type: string
+      errorMessage:
         type: string
       id:
         type: integer
@@ -1576,6 +1848,52 @@ definitions:
           $ref: '#/definitions/service.NodeDefaults'
         type: array
     type: object
+  service.Setting:
+    properties:
+      config:
+        $ref: '#/definitions/service.SettingConfig'
+      created_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  service.SettingConfig:
+    properties:
+      besuTemplateCMD:
+        type: string
+      ordererTemplateCMD:
+        type: string
+      peerTemplateCMD:
+        type: string
+    type: object
+  service.Transaction:
+    properties:
+      block_number:
+        type: integer
+      creator:
+        type: string
+      payload:
+        items:
+          type: integer
+        type: array
+      timestamp:
+        type: string
+      tx_id:
+        type: string
+      type:
+        type: string
+    type: object
+  types.AddressOverride:
+    properties:
+      from:
+        type: string
+      tlsCACert:
+        type: string
+      to:
+        type: string
+    type: object
   types.BesuNodeConfig:
     properties:
       bootNodes:
@@ -1631,6 +1949,11 @@ definitions:
     - PlatformBesu
   types.FabricOrdererConfig:
     properties:
+      addressOverrides:
+        description: '@Description Address overrides for the orderer'
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       adminAddress:
         type: string
       domainNames:
@@ -1673,6 +1996,11 @@ definitions:
   types.FabricPeerConfig:
     description: Configuration for creating a new Fabric peer node
     properties:
+      addressOverrides:
+        description: '@Description Address overrides for the peer'
+        items:
+          $ref: '#/definitions/types.AddressOverride'
+        type: array
       chaincodeAddress:
         description: '@Description Chaincode listen address'
         example: 0.0.0.0:7052
@@ -1715,6 +2043,11 @@ definitions:
         description: '@Description Operations listen address'
         example: 0.0.0.0:9443
         type: string
+      ordererAddressOverrides:
+        description: '@Description Orderer address overrides for the peer'
+        items:
+          $ref: '#/definitions/types.OrdererAddressOverride'
+        type: array
       organizationId:
         description: '@Description Organization ID that owns this peer'
         example: 1
@@ -1740,6 +2073,7 @@ definitions:
     - STOPPED
     - STOPPING
     - STARTING
+    - UPDATING
     - ERROR
     type: string
     x-enum-varnames:
@@ -1748,6 +2082,7 @@ definitions:
     - NodeStatusStopped
     - NodeStatusStopping
     - NodeStatusStarting
+    - NodeStatusUpdating
     - NodeStatusError
   types.NodeType:
     enum:
@@ -1759,6 +2094,22 @@ definitions:
     - NodeTypeFabricPeer
     - NodeTypeFabricOrderer
     - NodeTypeBesuFullnode
+  types.OrdererAddressOverride:
+    properties:
+      from:
+        description: '@Description Original orderer address'
+        type: string
+      tlsCACert:
+        description: '@Description TLS CA certificate in PEM format'
+        type: string
+      to:
+        description: '@Description New orderer address to use'
+        type: string
+    required:
+    - from
+    - tlsCACert
+    - to
+    type: object
   url.URL:
     properties:
       forceQuery:
@@ -1797,12 +2148,66 @@ definitions:
     type: object
   url.Userinfo:
     type: object
+  x509.ExtKeyUsage:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    type: integer
+    x-enum-varnames:
+    - ExtKeyUsageAny
+    - ExtKeyUsageServerAuth
+    - ExtKeyUsageClientAuth
+    - ExtKeyUsageCodeSigning
+    - ExtKeyUsageEmailProtection
+    - ExtKeyUsageIPSECEndSystem
+    - ExtKeyUsageIPSECTunnel
+    - ExtKeyUsageIPSECUser
+    - ExtKeyUsageTimeStamping
+    - ExtKeyUsageOCSPSigning
+    - ExtKeyUsageMicrosoftServerGatedCrypto
+    - ExtKeyUsageNetscapeServerGatedCrypto
+    - ExtKeyUsageMicrosoftCommercialCodeSigning
+    - ExtKeyUsageMicrosoftKernelCodeSigning
+  x509.KeyUsage:
+    enum:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+    - 32
+    - 64
+    - 128
+    - 256
+    type: integer
+    x-enum-varnames:
+    - KeyUsageDigitalSignature
+    - KeyUsageContentCommitment
+    - KeyUsageKeyEncipherment
+    - KeyUsageDataEncipherment
+    - KeyUsageKeyAgreement
+    - KeyUsageCertSign
+    - KeyUsageCRLSign
+    - KeyUsageEncipherOnly
+    - KeyUsageDecipherOnly
 host: localhost:8100
 info:
   contact:
-    email: support@chainlaunch.com
+    email: support@chainlaunch.dev
     name: API Support
-    url: http://www.chainlaunch.com/support
+    url: http://chainlaunch.dev/support
   description: ChainLaunch API provides services for managing blockchain networks
     and cryptographic keys
   license:
@@ -1905,7 +2310,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: List all backups
       tags:
-      - backups
+      - Backups
     post:
       consumes:
       - application/json
@@ -1934,7 +2339,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Create a new backup
       tags:
-      - backups
+      - Backups
   /backups/{id}:
     delete:
       consumes:
@@ -1965,7 +2370,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Delete a backup
       tags:
-      - backups
+      - Backups
     get:
       consumes:
       - application/json
@@ -1997,7 +2402,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Get a backup by ID
       tags:
-      - backups
+      - Backups
   /backups/schedules:
     get:
       consumes:
@@ -2018,7 +2423,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: List all backup schedules
       tags:
-      - backup-schedules
+      - Backup Schedules
     post:
       consumes:
       - application/json
@@ -2047,7 +2452,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Create a new backup schedule
       tags:
-      - backup-schedules
+      - Backup Schedules
   /backups/schedules/{id}:
     delete:
       consumes:
@@ -2078,7 +2483,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Delete a backup schedule
       tags:
-      - backup-schedules
+      - Backup Schedules
     get:
       consumes:
       - application/json
@@ -2110,7 +2515,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Get a backup schedule by ID
       tags:
-      - backup-schedules
+      - Backup Schedules
     put:
       consumes:
       - application/json
@@ -2148,7 +2553,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Update a backup schedule
       tags:
-      - backup-schedules
+      - Backup Schedules
   /backups/schedules/{id}/disable:
     put:
       consumes:
@@ -2181,7 +2586,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Disable a backup schedule
       tags:
-      - backup-schedules
+      - Backup Schedules
   /backups/schedules/{id}/enable:
     put:
       consumes:
@@ -2214,7 +2619,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Enable a backup schedule
       tags:
-      - backup-schedules
+      - Backup Schedules
   /backups/targets:
     get:
       consumes:
@@ -2235,7 +2640,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: List all backup targets
       tags:
-      - backup-targets
+      - Backup Targets
     post:
       consumes:
       - application/json
@@ -2264,7 +2669,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Create a new backup target
       tags:
-      - backup-targets
+      - Backup Targets
   /backups/targets/{id}:
     delete:
       consumes:
@@ -2295,7 +2700,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Delete a backup target
       tags:
-      - backup-targets
+      - Backup Targets
     get:
       consumes:
       - application/json
@@ -2327,7 +2732,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Get a backup target by ID
       tags:
-      - backup-targets
+      - Backup Targets
     put:
       consumes:
       - application/json
@@ -2365,7 +2770,7 @@ paths:
             $ref: '#/definitions/response.Response'
       summary: Update a backup target
       tags:
-      - backup-targets
+      - Backup Targets
   /dummy:
     post:
       consumes:
@@ -2423,7 +2828,7 @@ paths:
             $ref: '#/definitions/http.UpdateBatchTimeoutPayload'
       summary: Submit config update proposal
       tags:
-      - fabric-networks
+      - Fabric Networks
   /key-providers:
     get:
       consumes:
@@ -2446,7 +2851,7 @@ paths:
             type: object
       summary: List all key providers
       tags:
-      - providers
+      - Providers
     post:
       consumes:
       - application/json
@@ -2479,7 +2884,7 @@ paths:
             type: object
       summary: Create a new key provider
       tags:
-      - providers
+      - Providers
   /key-providers/{id}:
     delete:
       consumes:
@@ -2522,7 +2927,7 @@ paths:
             type: object
       summary: Delete a provider
       tags:
-      - providers
+      - Providers
     get:
       consumes:
       - application/json
@@ -2560,7 +2965,7 @@ paths:
             type: object
       summary: Get a specific provider
       tags:
-      - providers
+      - Providers
   /keys:
     get:
       consumes:
@@ -2592,7 +2997,7 @@ paths:
             type: object
       summary: Get paginated keys
       tags:
-      - keys
+      - Keys
     post:
       consumes:
       - application/json
@@ -2627,7 +3032,7 @@ paths:
       - ApiKeyAuth: []
       summary: Create a new key
       tags:
-      - keys
+      - Keys
   /keys/{id}:
     delete:
       consumes:
@@ -2664,7 +3069,7 @@ paths:
             type: object
       summary: Delete a key
       tags:
-      - keys
+      - Keys
     get:
       consumes:
       - application/json
@@ -2702,7 +3107,7 @@ paths:
             type: object
       summary: Get a specific key by ID
       tags:
-      - keys
+      - Keys
   /keys/{keyID}/sign:
     post:
       consumes:
@@ -2747,7 +3152,7 @@ paths:
             type: object
       summary: Sign a certificate
       tags:
-      - keys
+      - Keys
   /keys/all:
     get:
       consumes:
@@ -2770,7 +3175,7 @@ paths:
             type: object
       summary: Get all keys
       tags:
-      - keys
+      - Keys
   /keys/filter:
     get:
       consumes:
@@ -2816,7 +3221,7 @@ paths:
             type: object
       summary: Filter keys by algorithm and curve
       tags:
-      - keys
+      - Keys
   /networks/besu:
     get:
       description: Get a paginated list of Besu networks
@@ -2846,7 +3251,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: List Besu networks
       tags:
-      - besu-networks
+      - Besu Networks
     post:
       consumes:
       - application/json
@@ -2861,8 +3266,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/http.BesuNetworkResponse'
         "400":
@@ -2875,7 +3280,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Create a new Besu network
       tags:
-      - besu-networks
+      - Besu Networks
   /networks/besu/{id}:
     delete:
       description: Delete an existing Besu network and all its resources
@@ -2904,7 +3309,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Delete a Besu network
       tags:
-      - besu-networks
+      - Besu Networks
     get:
       description: Get details of a specific Besu network
       parameters:
@@ -2934,7 +3339,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get a Besu network by ID
       tags:
-      - besu-networks
+      - Besu Networks
   /networks/besu/import:
     post:
       consumes:
@@ -2964,7 +3369,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Import a Besu network
       tags:
-      - besu-networks
+      - Besu Networks
   /networks/fabric:
     get:
       description: Get a paginated list of Fabric networks
@@ -2994,7 +3399,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: List Fabric networks
       tags:
-      - fabric-networks
+      - Fabric Networks
     post:
       consumes:
       - application/json
@@ -3023,7 +3428,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Create a new Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}:
     delete:
       description: Delete an existing Fabric network and all its resources
@@ -3052,7 +3457,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Delete a Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
     get:
       description: Get details of a specific Fabric network
       parameters:
@@ -3082,7 +3487,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get a Fabric network by ID
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/anchor-peers:
     post:
       consumes:
@@ -3117,7 +3522,86 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Set anchor peers for an organization
       tags:
-      - fabric-networks
+      - Fabric Networks
+  /networks/fabric/{id}/blocks:
+    get:
+      description: Get a paginated list of blocks from a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Number of blocks to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of blocks to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - description: 'Get blocks in reverse order (default: false)'
+        in: query
+        name: reverse
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BlockListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get list of blocks from Fabric network
+      tags:
+      - Fabric Networks
+  /networks/fabric/{id}/blocks/{blockNum}:
+    get:
+      description: Get all transactions from a specific block in a Fabric network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Block Number
+        in: path
+        name: blockNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BlockTransactionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get transactions from a specific block
+      tags:
+      - Fabric Networks
   /networks/fabric/{id}/channel-config:
     get:
       description: Retrieve the channel configuration for a Fabric network
@@ -3144,7 +3628,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get Fabric network channel configuration
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/current-channel-config:
     get:
       description: Retrieve the current channel configuration for a Fabric network
@@ -3171,7 +3655,41 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get Fabric network current channel configuration
       tags:
-      - fabric-networks
+      - Fabric Networks
+  /networks/fabric/{id}/info:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve detailed information about the Fabric blockchain including
+        height and block hashes
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ChainInfoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get Fabric chain information
+      tags:
+      - Fabric Networks
   /networks/fabric/{id}/nodes:
     get:
       description: Get all nodes associated with a network
@@ -3202,7 +3720,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get network nodes
       tags:
-      - fabric-networks
+      - Fabric Networks
     post:
       consumes:
       - application/json
@@ -3236,7 +3754,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Add node to network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/orderers/{ordererId}:
     delete:
       consumes:
@@ -3270,7 +3788,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Remove orderer from Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/orderers/{ordererId}/join:
     post:
       consumes:
@@ -3304,7 +3822,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Join orderer to Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/orderers/{ordererId}/unjoin:
     post:
       consumes:
@@ -3338,7 +3856,47 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Unjoin orderer from Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
+  /networks/fabric/{id}/organization-crl:
+    post:
+      consumes:
+      - application/json
+      description: Update the Certificate Revocation List (CRL) for an organization
+        in the network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization CRL update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateOrganizationCRLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UpdateOrganizationCRLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Update organization CRL
+      tags:
+      - Fabric Networks
   /networks/fabric/{id}/organizations/{orgId}/config:
     get:
       description: Get the network configuration as YAML
@@ -3374,7 +3932,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get network configuration
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/peers/{peerId}:
     delete:
       consumes:
@@ -3408,7 +3966,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Remove peer from Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/peers/{peerId}/join:
     post:
       consumes:
@@ -3442,7 +4000,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Join peer to Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/peers/{peerId}/unjoin:
     post:
       consumes:
@@ -3476,7 +4034,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Unjoin peer from Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/{id}/reload-block:
     post:
       consumes:
@@ -3517,7 +4075,91 @@ paths:
             type: object
       summary: Reload network config block
       tags:
-      - fabric-networks
+      - Fabric Networks
+  /networks/fabric/{id}/transactions/{txId}:
+    get:
+      description: Get detailed information about a specific transaction in a Fabric
+        network
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Transaction ID
+        in: path
+        name: txId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Get transaction details by transaction ID
+      tags:
+      - Fabric Networks
+  /networks/fabric/{id}/update-config:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Prepare a config update proposal for a Fabric network using the provided operations.
+        The following operation types are supported:
+        - add_org: Add a new organization to the channel
+        - remove_org: Remove an organization from the channel
+        - update_org_msp: Update an organization's MSP configuration
+        - set_anchor_peers: Set anchor peers for an organization
+        - add_consenter: Add a new consenter to the orderer
+        - remove_consenter: Remove a consenter from the orderer
+        - update_consenter: Update a consenter in the orderer
+        - update_etcd_raft_options: Update etcd raft options for the orderer
+        - update_batch_size: Update batch size for the orderer
+        - update_batch_timeout: Update batch timeout for the orderer
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Config update operations
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateFabricNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ConfigUpdateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
+      summary: Prepare a config update for a Fabric network
+      tags:
+      - Fabric Networks
   /networks/fabric/by-name/{name}:
     get:
       description: Get details of a specific Fabric network using its slug
@@ -3548,7 +4190,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Get a Fabric network by slug
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/import:
     post:
       consumes:
@@ -3578,7 +4220,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Import a Fabric network
       tags:
-      - fabric-networks
+      - Fabric Networks
   /networks/fabric/import-with-org:
     post:
       consumes:
@@ -3608,7 +4250,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse'
       summary: Import a Fabric network with organization
       tags:
-      - fabric-networks
+      - Fabric Networks
   /nodes:
     get:
       consumes:
@@ -3646,7 +4288,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: List all nodes
       tags:
-      - nodes
+      - Nodes
     post:
       consumes:
       - application/json
@@ -3675,7 +4317,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Create a new node
       tags:
-      - nodes
+      - Nodes
   /nodes/{id}:
     delete:
       consumes:
@@ -3706,7 +4348,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Delete a node
       tags:
-      - nodes
+      - Nodes
     get:
       consumes:
       - application/json
@@ -3738,7 +4380,111 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get a node
       tags:
-      - nodes
+      - Nodes
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing node's configuration based on its type
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update node request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateNodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Update a node
+      tags:
+      - Nodes
+  /nodes/{id}/certificates/renew:
+    post:
+      consumes:
+      - application/json
+      description: Renews the TLS and signing certificates for a Fabric node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Renew node certificates
+      tags:
+      - Nodes
+  /nodes/{id}/channels:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all channels for a specific Fabric node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.NodeChannelsResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get channels for a Fabric node
+      tags:
+      - Nodes
   /nodes/{id}/events:
     get:
       consumes:
@@ -3781,7 +4527,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get node events
       tags:
-      - nodes
+      - Nodes
   /nodes/{id}/logs:
     get:
       consumes:
@@ -3824,7 +4570,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Tail node logs
       tags:
-      - nodes
+      - Nodes
   /nodes/{id}/restart:
     post:
       consumes:
@@ -3857,7 +4603,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Restart a node
       tags:
-      - nodes
+      - Nodes
   /nodes/{id}/start:
     post:
       consumes:
@@ -3890,7 +4636,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Start a node
       tags:
-      - nodes
+      - Nodes
   /nodes/{id}/stop:
     post:
       consumes:
@@ -3923,24 +4669,33 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Stop a node
       tags:
-      - nodes
+      - Nodes
   /nodes/defaults/besu-node:
     get:
       description: Get default configuration values for a Besu node
+      parameters:
+      - default: 1
+        description: Number of Besu nodes
+        in: query
+        minimum: 0
+        name: besuNodes
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/service.BesuNodeDefaults'
+            items:
+              $ref: '#/definitions/http.BesuNodeDefaultsResponse'
+            type: array
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get default values for Besu node
       tags:
-      - nodes
+      - Nodes
   /nodes/defaults/fabric:
     get:
       description: Get default configuration values for multiple Fabric nodes
@@ -3982,7 +4737,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get default values for multiple Fabric nodes
       tags:
-      - nodes
+      - Nodes
   /nodes/defaults/fabric-orderer:
     get:
       description: Get default configuration values for a Fabric orderer node
@@ -3999,7 +4754,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get default values for Fabric orderer node
       tags:
-      - nodes
+      - Nodes
   /nodes/defaults/fabric-peer:
     get:
       description: Get default configuration values for a Fabric peer node
@@ -4016,7 +4771,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get default values for Fabric peer node
       tags:
-      - nodes
+      - Nodes
   /nodes/platform/{platform}:
     get:
       consumes:
@@ -4058,7 +4813,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       summary: List nodes by platform
       tags:
-      - nodes
+      - Nodes
   /notifications/providers:
     get:
       consumes:
@@ -4079,7 +4834,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: List notification providers
       tags:
-      - notifications
+      - Notifications
     post:
       consumes:
       - application/json
@@ -4108,7 +4863,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: Create a notification provider
       tags:
-      - notifications
+      - Notifications
   /notifications/providers/{id}:
     delete:
       consumes:
@@ -4139,7 +4894,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: Delete a notification provider
       tags:
-      - notifications
+      - Notifications
     get:
       consumes:
       - application/json
@@ -4171,7 +4926,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: Get a notification provider
       tags:
-      - notifications
+      - Notifications
     put:
       consumes:
       - application/json
@@ -4209,7 +4964,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: Update a notification provider
       tags:
-      - notifications
+      - Notifications
   /notifications/providers/{id}/test:
     post:
       consumes:
@@ -4244,7 +4999,7 @@ paths:
             $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse'
       summary: Test a notification provider
       tags:
-      - notifications
+      - Notifications
   /organizations:
     get:
       consumes:
@@ -4267,7 +5022,7 @@ paths:
             type: object
       summary: List all Fabric organizations
       tags:
-      - organizations
+      - Organizations
     post:
       consumes:
       - application/json
@@ -4300,7 +5055,7 @@ paths:
             type: object
       summary: Create a new Fabric organization
       tags:
-      - organizations
+      - Organizations
   /organizations/{id}:
     delete:
       consumes:
@@ -4331,7 +5086,7 @@ paths:
             type: object
       summary: Delete a Fabric organization
       tags:
-      - organizations
+      - Organizations
     get:
       consumes:
       - application/json
@@ -4363,7 +5118,7 @@ paths:
             type: object
       summary: Get a Fabric organization
       tags:
-      - organizations
+      - Organizations
     put:
       consumes:
       - application/json
@@ -4407,7 +5162,205 @@ paths:
             type: object
       summary: Update a Fabric organization
       tags:
-      - organizations
+      - Organizations
+  /organizations/{id}/crl:
+    get:
+      consumes:
+      - application/json
+      description: Get the current Certificate Revocation List for the organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/x-pem-file
+      responses:
+        "200":
+          description: PEM encoded CRL
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get organization's CRL
+      tags:
+      - Organizations
+  /organizations/{id}/crl/revoke/pem:
+    post:
+      consumes:
+      - application/json
+      description: Add a certificate to the organization's CRL using its PEM encoded
+        data
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RevokeCertificateByPEMRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revoke a certificate using PEM data
+      tags:
+      - Organizations
+  /organizations/{id}/crl/revoke/serial:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a certificate from the organization's CRL using its serial
+        number
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate deletion request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DeleteRevokedCertificateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a revoked certificate using its serial number
+      tags:
+      - Organizations
+    post:
+      consumes:
+      - application/json
+      description: Add a certificate to the organization's CRL using its serial number
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Certificate revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RevokeCertificateBySerialRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revoke a certificate using its serial number
+      tags:
+      - Organizations
+  /organizations/{id}/revoked-certificates:
+    get:
+      consumes:
+      - application/json
+      description: Get all revoked certificates for the organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handler.RevokedCertificateResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get organization's revoked certificates
+      tags:
+      - Organizations
   /organizations/by-mspid/{mspid}:
     get:
       consumes:
@@ -4440,7 +5393,41 @@ paths:
             type: object
       summary: Get a Fabric organization by MSP ID
       tags:
-      - organizations
+      - Organizations
+  /settings:
+    get:
+      description: Get the default setting's details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Setting'
+      summary: Get the default setting
+      tags:
+      - Settings
+    post:
+      consumes:
+      - application/json
+      description: Create or update the default setting with the provided configuration
+      parameters:
+      - description: Setting configuration
+        in: body
+        name: setting
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateSettingParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Setting'
+      summary: Create or update the default setting
+      tags:
+      - Settings
 schemes:
 - http
 - https
@@ -4457,7 +5444,5 @@ tags:
   name: Keys
 - description: Key provider management operations
   name: Providers
-- description: Blockchain network management operations
-  name: Networks
 - description: Network node management operations
   name: Nodes

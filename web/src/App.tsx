@@ -12,8 +12,11 @@ import { AuthProvider } from './contexts/AuthContext'
 import { BreadcrumbProvider } from './contexts/BreadcrumbContext'
 import './globals.css'
 
+import SharedNetworksPage from '@/pages/networks/fabric/shared'
+import ImportNetworkPage from '@/pages/networks/import'
 import CreateBesuNodePage from '@/pages/nodes/besu/create'
 import CreateFabricNodePage from '@/pages/nodes/fabric/create'
+import EditFabricNodePage from '@/pages/nodes/fabric/edit'
 import NodesLogsPage from '@/pages/nodes/logs'
 import { Toaster } from './components/ui/sonner'
 import CertificateTemplatesPage from './pages/identity/certificates'
@@ -40,8 +43,11 @@ import KeyManagementPage from './pages/settings/keys'
 import KeyDetailPage from './pages/settings/keys/[id]'
 import NetworkConfigPage from './pages/settings/network'
 import SmartContractsPage from './pages/smart-contracts'
-import SharedNetworksPage from '@/pages/networks/fabric/shared'
-import ImportNetworkPage from '@/pages/networks/import'
+import { BlocksOverview } from '@/components/networks/blocks-overview'
+import { BlockDetails } from '@/components/networks/block-details'
+import ApiDocumentationPage from './pages/api-documentation'
+import BulkCreateBesuNetworkPage from './pages/networks/besu/bulk-create'
+import EditBesuNodePage from './pages/nodes/besu/edit'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -67,7 +73,7 @@ const App = () => {
 										<AppSidebar />
 										<SidebarInset>
 											<Header />
-											<div className="p-4">
+											<div className="p-0">
 												<Routes>
 													<Route path="/">
 														<Route path="/" element={<Navigate to="/nodes" replace />} />
@@ -89,17 +95,23 @@ const App = () => {
 														<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
 														<Route path="fabric/organizations" element={<OrganizationsPage />} />
 														<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
+														<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
+														<Route path="nodes/besu/edit/:id" element={<EditBesuNodePage />} />
 														<Route path="nodes/:id" element={<NodeDetailPage />} />
 														<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
 														<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />
 														<Route path="networks/:id/besu" element={<BesuNetworkDetailPage />} />
 														<Route path="networks/:id/fabric" element={<FabricNetworkDetailPage />} />
+														<Route path="networks/:id/blocks" element={<BlocksOverview />} />
+														<Route path="networks/:id/blocks/:blockNumber" element={<BlockDetails />} />
 														<Route path="organizations/:id" element={<OrganizationDetailPage />} />
 														<Route path="settings/keys/:id" element={<KeyDetailPage />} />
 														<Route path="nodes/fabric/bulk" element={<BulkCreateNodesPage />} />
 														<Route path="nodes/logs" element={<NodesLogsPage />} />
 														<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
 														<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
+														<Route path="docs" element={<ApiDocumentationPage />} />
+														<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

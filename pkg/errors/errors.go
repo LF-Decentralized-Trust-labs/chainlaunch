@@ -2,6 +2,8 @@ package errors
 
 import (
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 type ErrorType string
@@ -85,7 +87,7 @@ func NewConflictError(msg string, details map[string]interface{}) *AppError {
 func NewInternalError(msg string, err error, details map[string]interface{}) *AppError {
 	return &AppError{
 		Type:    InternalError,
-		Message: msg,
+		Message: errors.Wrap(err, msg).Error(),
 		Details: details,
 		Err:     err,
 	}

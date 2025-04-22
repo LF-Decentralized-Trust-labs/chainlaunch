@@ -184,7 +184,15 @@ CREATE TABLE IF NOT EXISTS proposal_submission_notifications (
   tx_id TEXT NOT NULL,
   submitted_by TEXT NOT NULL,
   submitted_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (proposal_id) REFERENCES governance_proposals(proposal_id) ON DELETE CASCADE,
   FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE CASCADE
-); 
+);
+
+-- Settings table for storing JSON configurations
+CREATE TABLE settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config JSON NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

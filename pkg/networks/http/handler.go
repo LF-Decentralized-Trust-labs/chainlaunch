@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
@@ -57,6 +58,12 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/by-name/{name}", h.FabricNetworkGetByName)
 		r.Post("/import", h.ImportFabricNetwork)
 		r.Post("/import-with-org", h.ImportFabricNetworkWithOrg)
+		r.Post("/{id}/update-config", h.FabricUpdateChannelConfig)
+		r.Get("/{id}/blocks", h.FabricGetBlocks)
+		r.Get("/{id}/blocks/{blockNum}", h.FabricGetBlock)
+		r.Get("/{id}/info", h.GetChainInfo)
+		r.Get("/{id}/transactions/{txId}", h.FabricGetTransaction)
+		r.Post("/{id}/organization-crl", h.UpdateOrganizationCRL)
 	})
 
 	// New Besu routes
@@ -67,11 +74,12 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}", h.BesuNetworkGet)
 		r.Delete("/{id}", h.BesuNetworkDelete)
 	})
+
 }
 
 // @Summary List Fabric networks
 // @Description Get a paginated list of Fabric networks
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param limit query int false "Number of items to return (default: 10)"
 // @Param offset query int false "Number of items to skip (default: 0)"
@@ -127,7 +135,7 @@ func (h *Handler) FabricNetworkList(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Create a new Fabric network
 // @Description Create a new Hyperledger Fabric network with the specified configuration
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body CreateFabricNetworkRequest true "Network creation request"
@@ -222,7 +230,7 @@ func (h *Handler) FabricNetworkCreate(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Join peer to Fabric network
 // @Description Join a peer node to an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -259,7 +267,7 @@ func (h *Handler) FabricNetworkJoinPeer(w http.ResponseWriter, r *http.Request) 
 
 // @Summary Join orderer to Fabric network
 // @Description Join an orderer node to an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -296,7 +304,7 @@ func (h *Handler) FabricNetworkJoinOrderer(w http.ResponseWriter, r *http.Reques
 
 // @Summary Remove peer from Fabric network
 // @Description Remove a peer node from an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -332,7 +340,7 @@ func (h *Handler) FabricNetworkRemovePeer(w http.ResponseWriter, r *http.Request
 
 // @Summary Remove orderer from Fabric network
 // @Description Remove an orderer node from an existing Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -368,7 +376,7 @@ func (h *Handler) FabricNetworkRemoveOrderer(w http.ResponseWriter, r *http.Requ
 
 // @Summary Get Fabric network channel configuration
 // @Description Retrieve the channel configuration for a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} ChannelConfigResponse
@@ -401,7 +409,7 @@ func (h *Handler) FabricNetworkGetChannelConfig(w http.ResponseWriter, r *http.R
 
 // @Summary Get Fabric network current channel configuration
 // @Description Retrieve the current channel configuration for a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} ChannelConfigResponse
@@ -434,7 +442,7 @@ func (h *Handler) FabricNetworkGetCurrentChannelConfig(w http.ResponseWriter, r 
 
 // @Summary Delete a Fabric network
 // @Description Delete an existing Fabric network and all its resources
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 204 "No Content"
@@ -459,7 +467,7 @@ func (h *Handler) FabricNetworkDelete(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get a Fabric network by ID
 // @Description Get details of a specific Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} NetworkResponse
@@ -498,7 +506,7 @@ func (h *Handler) FabricNetworkGet(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get network nodes
 // @Description Get all nodes associated with a network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} GetNetworkNodesResponse
@@ -531,7 +539,7 @@ func (h *Handler) FabricNetworkGetNodes(w http.ResponseWriter, r *http.Request) 
 
 // @Summary Add node to network
 // @Description Add a node (peer or orderer) to an existing network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -573,7 +581,7 @@ func (h *Handler) FabricNetworkAddNode(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Unjoin peer from Fabric network
 // @Description Remove a peer node from a channel but keep it in the network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -609,7 +617,7 @@ func (h *Handler) FabricNetworkUnjoinPeer(w http.ResponseWriter, r *http.Request
 
 // @Summary Unjoin orderer from Fabric network
 // @Description Remove an orderer node from a channel but keep it in the network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -645,7 +653,7 @@ func (h *Handler) FabricNetworkUnjoinOrderer(w http.ResponseWriter, r *http.Requ
 
 // @Summary Set anchor peers for an organization
 // @Description Set the anchor peers for an organization in a Fabric network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -693,7 +701,7 @@ func (h *Handler) FabricNetworkSetAnchorPeers(w http.ResponseWriter, r *http.Req
 
 // @Summary Get network configuration
 // @Description Get the network configuration as YAML
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce text/yaml
 // @Param id path int true "Network ID"
 // @Param orgId path int true "Organization ID"
@@ -733,7 +741,7 @@ func (h *Handler) FabricNetworkGetOrganizationConfig(w http.ResponseWriter, r *h
 
 // @Summary Get a Fabric network by slug
 // @Description Get details of a specific Fabric network using its slug
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Produce json
 // @Param slug path string true "Network Slug"
 // @Success 200 {object} NetworkResponse
@@ -806,7 +814,7 @@ func writeError(w http.ResponseWriter, code int, error string, message string) {
 
 // @Summary List Besu networks
 // @Description Get a paginated list of Besu networks
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param limit query int false "Number of items to return (default: 10)"
 // @Param offset query int false "Number of items to skip (default: 0)"
@@ -860,11 +868,11 @@ func (h *Handler) BesuNetworkList(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Create a new Besu network
 // @Description Create a new Besu network with the specified configuration
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Accept json
 // @Produce json
 // @Param request body CreateBesuNetworkRequest true "Network creation request"
-// @Success 201 {object} BesuNetworkResponse
+// @Success 200 {object} BesuNetworkResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /networks/besu [post]
@@ -879,7 +887,7 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "validation_failed", err.Error())
 		return
 	}
-	// writeError(w, http.StatusInternalServerError, "not_implemented", "Creating Besu network is not implemented yet")
+
 	// Create the Besu network config
 	besuConfig := types.BesuNetworkConfig{
 		ChainID:                req.Config.ChainID,
@@ -916,12 +924,20 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Return network response
 	resp := mapBesuNetworkToResponse(*network)
-	writeJSON(w, http.StatusCreated, resp)
+
+	// Ensure proper JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		// If encoding fails, log the error and return a generic error
+		writeError(w, http.StatusInternalServerError, "response_encoding_failed", "Failed to encode response")
+		return
+	}
 }
 
 // @Summary Get a Besu network by ID
 // @Description Get details of a specific Besu network
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 200 {object} BesuNetworkResponse
@@ -952,7 +968,7 @@ func (h *Handler) BesuNetworkGet(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Delete a Besu network
 // @Description Delete an existing Besu network and all its resources
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Produce json
 // @Param id path int true "Network ID"
 // @Success 204 "No Content"
@@ -988,10 +1004,8 @@ func mapBesuNetworkToResponse(n service.Network) BesuNetworkResponse {
 		if err := json.Unmarshal(n.Config, &config); err == nil {
 			chainID = config.ChainID
 		}
-	}
-	var genesisConfig json.RawMessage
-	if n.GenesisBlock != "" {
-		genesisConfig = json.RawMessage(n.GenesisBlock)
+	} else {
+		chainID = 0
 	}
 	return BesuNetworkResponse{
 		ID:            n.ID,
@@ -1002,14 +1016,14 @@ func mapBesuNetworkToResponse(n service.Network) BesuNetworkResponse {
 		CreatedAt:     n.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     updatedAt,
 		Config:        n.Config,
-		GenesisConfig: genesisConfig,
+		GenesisConfig: n.GenesisBlock,
 		Platform:      n.Platform,
 	}
 }
 
 // @Summary Reload network config block
 // @Description Reloads the current config block for a network
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1052,7 +1066,7 @@ func (h *Handler) ReloadNetworkBlock(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Import a Fabric network
 // @Description Import an existing Fabric network using its genesis block
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportFabricNetworkRequest true "Import network request"
@@ -1099,7 +1113,7 @@ func (h *Handler) ImportFabricNetwork(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Import a Fabric network with organization
 // @Description Import an existing Fabric network using organization details
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportFabricNetworkWithOrgRequest true "Import network with org request"
@@ -1148,7 +1162,7 @@ func (h *Handler) ImportFabricNetworkWithOrg(w http.ResponseWriter, r *http.Requ
 
 // @Summary Import a Besu network
 // @Description Import an existing Besu network using its genesis file
-// @Tags besu-networks
+// @Tags Besu Networks
 // @Accept json
 // @Produce json
 // @Param request body ImportBesuNetworkRequest true "Import network request"
@@ -1387,14 +1401,14 @@ type UpdateBatchTimeoutPayload struct {
 	Timeout string `json:"timeout" validate:"required"` // e.g., "2s"
 }
 
-// PrepareConfigUpdateRequest represents a request to prepare a config update
-type PrepareConfigUpdateRequest struct {
+// UpdateFabricNetworkRequest represents a request to update a Fabric network
+type UpdateFabricNetworkRequest struct {
 	Operations []ConfigUpdateOperationRequest `json:"operations" validate:"required,min=1,dive"`
 }
 
 // @Summary Submit config update proposal
 // @Description Submit a signed config update proposal for execution
-// @Tags fabric-networks
+// @Tags Fabric Networks
 // @Accept json
 // @Produce json
 // @Param id path int true "Network ID"
@@ -1412,4 +1426,452 @@ type PrepareConfigUpdateRequest struct {
 // @Router /dummy [post]
 func (h *Handler) DummyHandler(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusBadRequest, "dummy_error", "Dummy error")
+}
+
+// @Summary Prepare a config update for a Fabric network
+// @Description Prepare a config update proposal for a Fabric network using the provided operations.
+// @Description The following operation types are supported:
+// @Description - add_org: Add a new organization to the channel
+// @Description - remove_org: Remove an organization from the channel
+// @Description - update_org_msp: Update an organization's MSP configuration
+// @Description - set_anchor_peers: Set anchor peers for an organization
+// @Description - add_consenter: Add a new consenter to the orderer
+// @Description - remove_consenter: Remove a consenter from the orderer
+// @Description - update_consenter: Update a consenter in the orderer
+// @Description - update_etcd_raft_options: Update etcd raft options for the orderer
+// @Description - update_batch_size: Update batch size for the orderer
+// @Description - update_batch_timeout: Update batch timeout for the orderer
+// @Tags Fabric Networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param request body UpdateFabricNetworkRequest true "Config update operations"
+// @Success 200 {object} ConfigUpdateResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/update-config [post]
+func (h *Handler) FabricUpdateChannelConfig(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse request body
+	var req UpdateFabricNetworkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	// Validate each operation's payload
+	for i, op := range req.Operations {
+		switch op.Type {
+		case "add_org":
+			var payload AddOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_org":
+			var payload RemoveOrgPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_org_msp":
+			var payload UpdateOrgMSPPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "set_anchor_peers":
+			var payload SetAnchorPeersPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "add_consenter":
+			var payload AddConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "remove_consenter":
+			var payload RemoveConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_consenter":
+			var payload UpdateConsenterPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_etcd_raft_options":
+			var payload UpdateEtcdRaftOptionsPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_size":
+			var payload UpdateBatchSizePayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+		case "update_batch_timeout":
+			var payload UpdateBatchTimeoutPayload
+			if err := json.Unmarshal(op.Payload, &payload); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid_payload", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			if err := h.validate.Struct(payload); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid payload for operation %d: %s", i, err.Error()))
+				return
+			}
+			// Validate that the timeout is a valid duration
+			if _, err := time.ParseDuration(payload.Timeout); err != nil {
+				writeError(w, http.StatusBadRequest, "validation_error", fmt.Sprintf("Invalid timeout for operation %d: %s", i, err.Error()))
+				return
+			}
+		default:
+			writeError(w, http.StatusBadRequest, "invalid_operation_type", fmt.Sprintf("Unsupported operation type: %s", op.Type))
+			return
+		}
+	}
+
+	// Convert operations to fabric.ConfigUpdateOperation
+	operations := make([]fabric.ConfigUpdateOperation, len(req.Operations))
+	for i, op := range req.Operations {
+		operations[i] = fabric.ConfigUpdateOperation{
+			Type:    fabric.ConfigUpdateOperationType(op.Type),
+			Payload: op.Payload,
+		}
+	}
+
+	// Call service to prepare config update
+	proposal, err := h.networkService.UpdateFabricNetwork(r.Context(), networkID, operations)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "prepare_config_update_failed", err.Error())
+		return
+	}
+
+	// Create response
+	resp := ConfigUpdateResponse{
+		ID:          proposal.ID,
+		NetworkID:   proposal.NetworkID,
+		ChannelName: proposal.ChannelName,
+		Status:      proposal.Status,
+		CreatedAt:   proposal.CreatedAt,
+		CreatedBy:   proposal.CreatedBy,
+		Operations:  req.Operations,
+	}
+
+	// Return response
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ConfigUpdateResponse represents the response from preparing a config update
+type ConfigUpdateResponse struct {
+	ID          string                         `json:"id"`
+	NetworkID   int64                          `json:"network_id"`
+	ChannelName string                         `json:"channel_name"`
+	Status      string                         `json:"status"`
+	CreatedAt   time.Time                      `json:"created_at"`
+	CreatedBy   string                         `json:"created_by"`
+	Operations  []ConfigUpdateOperationRequest `json:"operations"`
+	PreviewJSON string                         `json:"preview_json,omitempty"`
+}
+
+// @Summary Get list of blocks from Fabric network
+// @Description Get a paginated list of blocks from a Fabric network
+// @Tags Fabric Networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param limit query int false "Number of blocks to return (default: 10)"
+// @Param offset query int false "Number of blocks to skip (default: 0)"
+// @Param reverse query bool false "Get blocks in reverse order (default: false)"
+// @Success 200 {object} BlockListResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks [get]
+func (h *Handler) FabricGetBlocks(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse pagination parameters
+	limit := int32(10) // Default limit
+	offset := int32(0) // Default offset
+	reverse := false   // Default order
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		limitInt, err := strconv.ParseInt(limitStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_limit", "Invalid limit parameter")
+			return
+		}
+		limit = int32(limitInt)
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		offsetInt, err := strconv.ParseInt(offsetStr, 10, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_offset", "Invalid offset parameter")
+			return
+		}
+		offset = int32(offsetInt)
+	}
+
+	if reverseStr := r.URL.Query().Get("reverse"); reverseStr != "" {
+		reverseBool, err := strconv.ParseBool(reverseStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_reverse", "Invalid reverse parameter")
+			return
+		}
+		reverse = reverseBool
+	}
+
+	blocks, total, err := h.networkService.GetBlocks(r.Context(), networkID, limit, offset, reverse)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "get_blocks_failed", err.Error())
+		return
+	}
+
+	resp := BlockListResponse{
+		Blocks: blocks,
+		Total:  total,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transactions from a specific block
+// @Description Get all transactions from a specific block in a Fabric network
+// @Tags Fabric Networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param blockNum path int true "Block Number"
+// @Success 200 {object} BlockTransactionsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/blocks/{blockNum} [get]
+func (h *Handler) FabricGetBlock(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	blockNum, err := strconv.ParseUint(chi.URLParam(r, "blockNum"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_block_number", "Invalid block number")
+		return
+	}
+
+	blck, err := h.networkService.GetBlockTransactions(r.Context(), networkID, blockNum)
+	if err != nil {
+		if err.Error() == "block not found" {
+			writeError(w, http.StatusNotFound, "block_not_found", "Block not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transactions_failed", err.Error())
+		return
+	}
+
+	resp := BlockTransactionsResponse{
+		Block:        &blck.Block,
+		Transactions: blck.Transactions,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get transaction details by transaction ID
+// @Description Get detailed information about a specific transaction in a Fabric network
+// @Tags Fabric Networks
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param txId path string true "Transaction ID"
+// @Success 200 {object} TransactionResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/transactions/{txId} [get]
+func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	txID := chi.URLParam(r, "txId")
+	if txID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_transaction_id", "Invalid transaction ID")
+		return
+	}
+
+	transaction, err := h.networkService.GetTransaction(r.Context(), networkID, txID)
+	if err != nil {
+		if err.Error() == "transaction not found" {
+			writeError(w, http.StatusNotFound, "transaction_not_found", "Transaction not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "get_transaction_failed", err.Error())
+		return
+	}
+
+	resp := TransactionResponse{
+		Transaction: transaction,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// UpdateOrganizationCRLRequest represents the request to update an organization's CRL
+type UpdateOrganizationCRLRequest struct {
+	OrganizationID int64 `json:"organizationId" validate:"required"`
+}
+
+// UpdateOrganizationCRLResponse represents the response from updating an organization's CRL
+type UpdateOrganizationCRLResponse struct {
+	TransactionID string `json:"transactionId"`
+}
+
+// @Summary Update organization CRL
+// @Description Update the Certificate Revocation List (CRL) for an organization in the network
+// @Tags Fabric Networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Param request body UpdateOrganizationCRLRequest true "Organization CRL update request"
+// @Success 200 {object} UpdateOrganizationCRLResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/organization-crl [post]
+func (h *Handler) UpdateOrganizationCRL(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Parse request body
+	var req UpdateOrganizationCRLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_failed", err.Error())
+		return
+	}
+
+	// Update CRL using network service
+	txID, err := h.networkService.UpdateOrganizationCRL(r.Context(), networkID, req.OrganizationID)
+	if err != nil {
+		if err.Error() == "organization not found" {
+			writeError(w, http.StatusNotFound, "org_not_found", "Organization not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "update_crl_failed", err.Error())
+		return
+	}
+
+	// Return response
+	resp := UpdateOrganizationCRLResponse{
+		TransactionID: txID,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get Fabric chain information
+// @Description Retrieve detailed information about the Fabric blockchain including height and block hashes
+// @Tags Fabric Networks
+// @Accept json
+// @Produce json
+// @Param id path int true "Network ID"
+// @Success 200 {object} ChainInfoResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /networks/fabric/{id}/info [get]
+func (h *Handler) GetChainInfo(w http.ResponseWriter, r *http.Request) {
+	// Parse network ID from URL
+	networkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_network_id", "Invalid network ID")
+		return
+	}
+
+	// Get chain info from service layer
+	chainInfo, err := h.networkService.GetChainInfo(r.Context(), networkID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "get_chain_info_failed", err.Error())
+		return
+	}
+
+	// Return response
+	resp := ChainInfoResponse{
+		Height:            chainInfo.Height,
+		CurrentBlockHash:  chainInfo.CurrentBlockHash,
+		PreviousBlockHash: chainInfo.PreviousBlockHash,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+type ChainInfoResponse struct {
+	Height            uint64 `json:"height"`
+	CurrentBlockHash  string `json:"currentBlockHash"`
+	PreviousBlockHash string `json:"previousBlockHash"`
 }

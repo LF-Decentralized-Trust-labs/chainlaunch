@@ -138,3 +138,20 @@ type ImportBesuNetworkRequest struct {
 	Description string `json:"description"`
 	ChainID     int64  `json:"chainId" validate:"required"`
 }
+
+// BlockListResponse represents the response for listing blocks
+type BlockListResponse struct {
+	Blocks []networksservice.Block `json:"blocks"`
+	Total  int64                   `json:"total"`
+}
+
+// BlockTransactionsResponse represents the response for listing transactions in a block
+type BlockTransactionsResponse struct {
+	Block        *networksservice.Block        `json:"block"`
+	Transactions []networksservice.Transaction `json:"transactions"`
+}
+
+// TransactionResponse represents the response for getting a single transaction
+type TransactionResponse struct {
+	Transaction networksservice.Transaction `json:"transaction"`
+}

@@ -10,17 +10,23 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
 
 // LocalBesu represents a local Besu node
 type LocalBesu struct {
-	opts   StartBesuOpts
-	mode   string
-	nodeID int64
-	logger *logger.Logger
+	opts            StartBesuOpts
+	mode            string
+	nodeID          int64
+	NetworkConfig   types.BesuNetworkConfig
+	logger          *logger.Logger
+	configService   *config.ConfigService
+	settingsService *settingsservice.SettingsService
 }
 
 // NewLocalBesu creates a new LocalBesu instance
@@ -29,12 +35,18 @@ func NewLocalBesu(
 	mode string,
 	nodeID int64,
 	logger *logger.Logger,
+	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
+	networkConfig types.BesuNetworkConfig,
 ) *LocalBesu {
 	return &LocalBesu{
-		opts:   opts,
-		mode:   mode,
-		nodeID: nodeID,
-		logger: logger,
+		opts:            opts,
+		mode:            mode,
+		nodeID:          nodeID,
+		logger:          logger,
+		configService:   configService,
+		settingsService: settingsService,
+		NetworkConfig:   networkConfig,
 	}
 }
 
@@ -43,16 +55,13 @@ func (b *LocalBesu) Start() (interface{}, error) {
 	b.logger.Info("Starting Besu node", "opts", b.opts)
 
 	// Create necessary directories
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
+	chainlaunchDir := b.configService.GetDataPath()
 
 	slugifiedID := strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch/besu", slugifiedID)
+	dirPath := filepath.Join(chainlaunchDir, "besu", slugifiedID)
 	dataDir := filepath.Join(dirPath, "data")
 	configDir := filepath.Join(dirPath, "config")
-	binDir := filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version)
+	binDir := filepath.Join(chainlaunchDir, "bin/besu", b.opts.Version)
 
 	// Create directories
 	for _, dir := range []string{dataDir, configDir, binDir} {
@@ -78,12 +87,12 @@ func (b *LocalBesu) Start() (interface{}, error) {
 	}
 
 	// Build command and environment
-	cmd := b.buildCommand(dataDir, genesisPath)
+	cmd := b.buildCommand(dataDir, genesisPath, configDir)
 	env := b.buildEnvironment()
 
 	switch b.mode {
 	case "service":
-		return b.startService(cmd, env, dirPath)
+		return b.startService(cmd, env, dirPath, configDir)
 	case "docker":
 		return b.startDocker(env, dataDir, configDir)
 	default:
@@ -135,7 +144,7 @@ func (b *LocalBesu) checkPrerequisites() error {
 }
 
 // buildCommand builds the command to start Besu
-func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
+func (b *LocalBesu) buildCommand(dataDir string, genesisPath string, configDir string) string {
 	var besuBinary string
 	if runtime.GOOS == "darwin" {
 		if runtime.GOARCH == "arm64" {
@@ -144,30 +153,31 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string) string {
 			besuBinary = "/usr/local/opt/besu/bin/besu"
 		}
 	} else {
-		homeDir, _ := os.UserHomeDir()
-		besuBinary = filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version, "besu")
+		besuBinary = filepath.Join(b.configService.GetDataPath(), "bin/besu", b.opts.Version, "besu")
 	}
+
+	keyPath := filepath.Join(configDir, "key")
 
 	cmd := []string{
 		besuBinary,
-		"--data-path=" + dataDir,
-		"--genesis-file=" + genesisPath,
-		fmt.Sprintf("--network-id=%d", b.opts.NetworkID),
+		fmt.Sprintf("--data-path=%s", dataDir),
+		fmt.Sprintf("--genesis-file=%s", genesisPath),
 		"--rpc-http-enabled",
-		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
-		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
-		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3",
-		"--host-allowlist=*",
-		"--miner-enabled",
-		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
-		"--min-gas-price=1000000000",
-		"--sync-mode=FULL",
+		"--rpc-http-api=ETH,NET,QBFT",
 		"--rpc-http-cors-origins=all",
-		fmt.Sprintf("--node-private-key-file=%s", b.opts.NodePrivateKey),
-		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
 		"--rpc-http-host=0.0.0.0",
-		"--discovery-enabled=true",
+		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
+		"--min-gas-price=1000000000",
+		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
+		"--host-allowlist=*",
+		fmt.Sprintf("--node-private-key-file=%s", keyPath),
+
 		"--p2p-enabled=true",
+		fmt.Sprintf("--p2p-host=%s", b.opts.P2PHost),
+		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
+		"--nat-method=NONE",
+		"--discovery-enabled=true",
+		"--profile=ENTERPRISE",
 	}
 
 	// Add bootnodes if specified
@@ -371,8 +381,7 @@ func (b *LocalBesu) installBesuMacOS() error {
 	}
 
 	// Create symlink to our bin directory
-	homeDir, _ := os.UserHomeDir()
-	binDir := filepath.Join(homeDir, ".chainlaunch/bin/besu", b.opts.Version)
+	binDir := filepath.Join(b.configService.GetDataPath(), "bin/besu", b.opts.Version)
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return fmt.Errorf("failed to create bin directory: %w", err)
 	}
@@ -390,18 +399,17 @@ func (b *LocalBesu) installBesuMacOS() error {
 	return nil
 }
 
+func (b *LocalBesu) getLogPath() string {
+	return b.GetStdOutPath()
+}
+
 // TailLogs tails the logs of the besu service
 func (b *LocalBesu) TailLogs(ctx context.Context, tail int, follow bool) (<-chan string, error) {
 	logChan := make(chan string, 100)
 
 	// Get log file path based on ID
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		close(logChan)
-		return logChan, fmt.Errorf("failed to get home directory: %w", err)
-	}
 	slugifiedID := strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-")
-	logPath := filepath.Join(homeDir, ".chainlaunch/besu", slugifiedID, b.getServiceName()+".log")
+	logPath := filepath.Join(b.configService.GetDataPath(), "besu", slugifiedID, b.getServiceName()+".log")
 
 	// Check if log file exists
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {

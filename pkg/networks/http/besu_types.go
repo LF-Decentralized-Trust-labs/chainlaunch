@@ -59,7 +59,7 @@ type BesuNetworkResponse struct {
 	CreatedAt     string          `json:"createdAt"`
 	UpdatedAt     string          `json:"updatedAt,omitempty"`
 	Config        json.RawMessage `json:"config,omitempty"`
-	GenesisConfig json.RawMessage `json:"genesisConfig,omitempty"`
+	GenesisConfig string          `json:"genesisConfig,omitempty"`
 }
 
 // ListBesuNetworksResponse represents the response for listing Besu networks

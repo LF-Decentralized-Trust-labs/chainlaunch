@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/notifications"
@@ -38,6 +39,7 @@ type BackupService struct {
 	mu                  sync.Mutex
 	stopCh              chan struct{}
 	databasePath        string
+	configService       *config.ConfigService
 }
 
 // NewBackupService creates a new backup service
@@ -105,7 +107,7 @@ func (s *BackupService) CreateBackupTarget(ctx context.Context, params CreateBac
 		return nil, fmt.Errorf("failed to generate restic password: %w", err)
 	}
 
-	target, err := s.queries.CreateBackupTarget(ctx, db.CreateBackupTargetParams{
+	target, err := s.queries.CreateBackupTarget(ctx, &db.CreateBackupTargetParams{
 		Name:           params.Name,
 		Type:           string(params.Type),
 		BucketName:     sql.NullString{String: params.BucketName, Valid: params.BucketName != ""},
@@ -138,7 +140,7 @@ func (s *BackupService) CreateBackupTarget(ctx context.Context, params CreateBac
 
 // CreateBackupSchedule creates a new backup schedule
 func (s *BackupService) CreateBackupSchedule(ctx context.Context, params CreateBackupScheduleParams) (*BackupScheduleDTO, error) {
-	schedule, err := s.queries.CreateBackupSchedule(ctx, db.CreateBackupScheduleParams{
+	schedule, err := s.queries.CreateBackupSchedule(ctx, &db.CreateBackupScheduleParams{
 		Name:           params.Name,
 		Description:    sql.NullString{String: params.Description, Valid: params.Description != ""},
 		CronExpression: params.CronExpression,
@@ -172,7 +174,7 @@ func (s *BackupService) CreateBackupSchedule(ctx context.Context, params CreateB
 // CreateBackup creates a new backup
 func (s *BackupService) CreateBackup(ctx context.Context, params CreateBackupParams) (*BackupDTO, error) {
 
-	backup, err := s.queries.CreateBackup(ctx, db.CreateBackupParams{
+	backup, err := s.queries.CreateBackup(ctx, &db.CreateBackupParams{
 		ScheduleID: sql.NullInt64{Int64: *params.ScheduleID, Valid: params.ScheduleID != nil},
 		TargetID:   params.TargetID,
 		Status:     string(BackupStatusPending),
@@ -205,7 +207,7 @@ func (s *BackupService) TriggerBackup(ctx context.Context, sourceID int64, targe
 }
 
 // getResticRepoURL constructs the repository URL based on the target configuration
-func (s *BackupService) getResticRepoURL(target db.BackupTarget) (string, error) {
+func (s *BackupService) getResticRepoURL(target *db.BackupTarget) (string, error) {
 	if !target.BucketName.Valid || !target.BucketPath.Valid {
 		return "", fmt.Errorf("invalid bucket configuration")
 	}
@@ -279,7 +281,7 @@ func (s *BackupService) getBackupSize(env []string) (int64, error) {
 }
 
 // Update performS3Backup to include S3 connection issue notifications
-func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, target db.BackupTarget) error {
+func (s *BackupService) performS3Backup(ctx context.Context, backup *db.Backup, target *db.BackupTarget) error {
 	if !target.Endpoint.Valid || target.Endpoint.String == "" {
 		return fmt.Errorf("backup configuration error: endpoint is required")
 	}
@@ -323,14 +325,8 @@ func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, t
 		return fmt.Errorf("failed to initialize restic repository: %w", err)
 	}
 
-	// Get home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("system error: failed to get home directory: %w", err)
-	}
-
 	// Construct .chainlaunch path
-	chainlaunchPath := filepath.Join(homeDir, ".chainlaunch")
+	chainlaunchPath := s.configService.GetDataPath()
 
 	// Check if directory exists
 	if _, err := os.Stat(chainlaunchPath); os.IsNotExist(err) {
@@ -460,7 +456,7 @@ func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, t
 		return fmt.Errorf("failed to get backup size: %w", err)
 	}
 	// Update backup size
-	_, err = s.queries.UpdateBackupSize(ctx, db.UpdateBackupSizeParams{
+	_, err = s.queries.UpdateBackupSize(ctx, &db.UpdateBackupSizeParams{
 		ID:        backup.ID,
 		SizeBytes: sql.NullInt64{Int64: backupSize, Valid: true},
 	})
@@ -469,7 +465,7 @@ func (s *BackupService) performS3Backup(ctx context.Context, backup db.Backup, t
 }
 
 // notifyS3ConnectionIssue sends a notification for S3 connection issues
-func (s *BackupService) notifyS3ConnectionIssue(ctx context.Context, target db.BackupTarget, errorMessage string) {
+func (s *BackupService) notifyS3ConnectionIssue(ctx context.Context, target *db.BackupTarget, errorMessage string) {
 	// Skip notification if notification service is not available
 	if s.notificationService == nil {
 		s.logger.Info("Notification service not available, skipping S3 connection issue notification")
@@ -497,7 +493,7 @@ func (s *BackupService) notifyS3ConnectionIssue(ctx context.Context, target db.B
 
 // markBackupFailed marks a backup as failed with an error message
 func (s *BackupService) markBackupFailed(ctx context.Context, backupID int64, errorMessage string) {
-	s.queries.UpdateBackupFailed(ctx, db.UpdateBackupFailedParams{
+	s.queries.UpdateBackupFailed(ctx, &db.UpdateBackupFailedParams{
 		ID:           backupID,
 		Status:       string(BackupStatusFailed),
 		ErrorMessage: sql.NullString{String: errorMessage, Valid: true},
@@ -506,7 +502,7 @@ func (s *BackupService) markBackupFailed(ctx context.Context, backupID int64, er
 }
 
 // scheduleBackup adds a backup schedule to the cron scheduler
-func (s *BackupService) scheduleBackup(schedule db.BackupSchedule) {
+func (s *BackupService) scheduleBackup(schedule *db.BackupSchedule) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -532,9 +528,9 @@ func (s *BackupService) scheduleBackup(schedule db.BackupSchedule) {
 }
 
 // createScheduledBackup creates a backup from a schedule
-func (s *BackupService) createScheduledBackup(ctx context.Context, schedule db.BackupSchedule) {
+func (s *BackupService) createScheduledBackup(ctx context.Context, schedule *db.BackupSchedule) {
 	// Create backup entry
-	backup, err := s.queries.CreateBackup(ctx, db.CreateBackupParams{
+	backup, err := s.queries.CreateBackup(ctx, &db.CreateBackupParams{
 		ScheduleID: sql.NullInt64{Int64: schedule.ID, Valid: true},
 		TargetID:   schedule.TargetID,
 		Status:     string(BackupStatusPending),
@@ -545,7 +541,7 @@ func (s *BackupService) createScheduledBackup(ctx context.Context, schedule db.B
 	}
 
 	// Update schedule's last run time
-	s.queries.UpdateBackupScheduleLastRun(ctx, db.UpdateBackupScheduleLastRunParams{
+	s.queries.UpdateBackupScheduleLastRun(ctx, &db.UpdateBackupScheduleLastRunParams{
 		ID:        schedule.ID,
 		LastRunAt: sql.NullTime{Time: time.Now(), Valid: true},
 	})
@@ -555,11 +551,11 @@ func (s *BackupService) createScheduledBackup(ctx context.Context, schedule db.B
 }
 
 // performBackup executes the actual backup process
-func (s *BackupService) performBackup(backup db.Backup) {
+func (s *BackupService) performBackup(backup *db.Backup) {
 	ctx := context.Background()
 
 	// Update status to in progress
-	_, err := s.queries.UpdateBackupStatus(ctx, db.UpdateBackupStatusParams{
+	_, err := s.queries.UpdateBackupStatus(ctx, &db.UpdateBackupStatusParams{
 		ID:     backup.ID,
 		Status: string(BackupStatusInProgress),
 	})
@@ -600,7 +596,7 @@ func (s *BackupService) performBackup(backup db.Backup) {
 	}
 
 	// Mark backup as completed
-	updatedBackup, err := s.queries.UpdateBackupCompleted(ctx, db.UpdateBackupCompletedParams{
+	updatedBackup, err := s.queries.UpdateBackupCompleted(ctx, &db.UpdateBackupCompletedParams{
 		ID:          backup.ID,
 		Status:      string(BackupStatusCompleted),
 		CompletedAt: sql.NullTime{Time: time.Now(), Valid: true},
@@ -781,7 +777,7 @@ func (s *BackupService) DeleteBackupSchedule(ctx context.Context, id int64) erro
 
 // ListBackups returns all backups
 func (s *BackupService) ListBackups(ctx context.Context) ([]*BackupDTO, error) {
-	backups, err := s.queries.ListBackups(ctx, db.ListBackupsParams{
+	backups, err := s.queries.ListBackups(ctx, &db.ListBackupsParams{
 		Limit:  100,
 		Offset: 0,
 	})
@@ -861,7 +857,7 @@ func (s *BackupService) DeleteBackup(ctx context.Context, id int64) error {
 }
 
 // deleteBackupFile deletes the actual backup file from storage
-func (s *BackupService) deleteBackupFile(ctx context.Context, backup db.Backup, target db.BackupTarget) error {
+func (s *BackupService) deleteBackupFile(ctx context.Context, backup *db.Backup, target *db.BackupTarget) error {
 	switch BackupTargetType(target.Type) {
 	case BackupTargetTypeS3:
 		return s.deleteS3BackupFile(ctx, backup, target)
@@ -871,7 +867,7 @@ func (s *BackupService) deleteBackupFile(ctx context.Context, backup db.Backup, 
 }
 
 // deleteS3BackupFile deletes a backup file from S3 using restic
-func (s *BackupService) deleteS3BackupFile(ctx context.Context, backup db.Backup, target db.BackupTarget) error {
+func (s *BackupService) deleteS3BackupFile(ctx context.Context, backup *db.Backup, target *db.BackupTarget) error {
 	// Set up restic environment variables
 	env := []string{
 		fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", target.AccessKeyID.String),
@@ -976,7 +972,7 @@ func (s *BackupService) UpdateBackupTarget(ctx context.Context, params UpdateBac
 	}
 
 	// Update the target
-	target, err := s.queries.UpdateBackupTarget(ctx, db.UpdateBackupTargetParams{
+	target, err := s.queries.UpdateBackupTarget(ctx, &db.UpdateBackupTargetParams{
 		ID:          params.ID,
 		Name:        params.Name,
 		Type:        string(params.Type),
@@ -1022,7 +1018,7 @@ func (s *BackupService) UpdateBackupSchedule(ctx context.Context, params UpdateB
 	}
 
 	// Update the schedule
-	schedule, err := s.queries.UpdateBackupSchedule(ctx, db.UpdateBackupScheduleParams{
+	schedule, err := s.queries.UpdateBackupSchedule(ctx, &db.UpdateBackupScheduleParams{
 		ID:             params.ID,
 		Name:           params.Name,
 		Description:    sql.NullString{String: params.Description, Valid: params.Description != ""},
@@ -1082,7 +1078,7 @@ func (s *BackupService) UpdateBackupSchedule(ctx context.Context, params UpdateB
 }
 
 // notifyBackupSuccess sends a notification about a successful backup
-func (s *BackupService) notifyBackupSuccess(ctx context.Context, backup db.Backup) {
+func (s *BackupService) notifyBackupSuccess(ctx context.Context, backup *db.Backup) {
 	// Skip notification if notification service is not available
 	if s.notificationService == nil {
 		s.logger.Info("Notification service not available, skipping backup success notification")
@@ -1151,7 +1147,7 @@ func (s *BackupService) notifyBackupSuccess(ctx context.Context, backup db.Backu
 }
 
 // notifyBackupFailure sends a notification about a failed backup
-func (s *BackupService) notifyBackupFailure(ctx context.Context, backup db.Backup, errorMessage string) {
+func (s *BackupService) notifyBackupFailure(ctx context.Context, backup *db.Backup, errorMessage string) {
 	// Skip notification if notification service is not available
 	if s.notificationService == nil {
 		s.logger.Info("Notification service not available, skipping backup failure notification")

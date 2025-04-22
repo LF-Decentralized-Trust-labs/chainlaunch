@@ -5,6 +5,23 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Node Custom",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}",
+			"args": [
+				"serve",
+				"--data=test-instance",
+				"--db=test.db"
+			],
+			"env": {
+				"CHAINLAUNCH_USER": "admin",
+				"CHAINLAUNCH_PASSWORD": "admin123",
+				"JAVA_HOME": "/opt/homebrew/opt/openjdk@21"
+			}
+		},
+		{
 			"name": "Node 1",
 			"type": "go",
 			"request": "launch",
@@ -13,13 +30,12 @@
 			"args": [
 				"serve",
 				"--port=8100",
-				"--dev=false",
 				"--db=./data/chainlaunch.db",
 			],
 			"env": {
 				"CHAINLAUNCH_USER": "admin",
 				"CHAINLAUNCH_PASSWORD": "admin",
-				"JAVA_HOME": "/opt/homebrew/Cellar/openjdk/23.0.2"
+				"JAVA_HOME": "/opt/homebrew/opt/openjdk@21"
 			}
 		},
 		{
@@ -36,7 +52,7 @@
 			"env": {
 				"CHAINLAUNCH_USER": "admin",
 				"CHAINLAUNCH_PASSWORD": "admin",
-				"JAVA_HOME": "/opt/homebrew/Cellar/openjdk/23.0.2"
+				"JAVA_HOME": "/opt/homebrew/opt/openjdk@21"
 			}
 		}
 	],

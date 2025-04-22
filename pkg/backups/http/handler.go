@@ -55,7 +55,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // CreateBackupTarget godoc
 // @Summary Create a new backup target
 // @Description Create a new backup target with the specified configuration
-// @Tags backup-targets
+// @Tags Backup Targets
 // @Accept json
 // @Produce json
 // @Param request body CreateBackupTargetRequest true "Backup target creation request"
@@ -111,7 +111,7 @@ func (h *Handler) CreateBackupTarget(w http.ResponseWriter, r *http.Request) err
 // ListBackupTargets godoc
 // @Summary List all backup targets
 // @Description Get a list of all backup targets
-// @Tags backup-targets
+// @Tags Backup Targets
 // @Accept json
 // @Produce json
 // @Success 200 {array} BackupTargetResponse
@@ -134,7 +134,7 @@ func (h *Handler) ListBackupTargets(w http.ResponseWriter, r *http.Request) erro
 // GetBackupTarget godoc
 // @Summary Get a backup target by ID
 // @Description Get detailed information about a specific backup target
-// @Tags backup-targets
+// @Tags Backup Targets
 // @Accept json
 // @Produce json
 // @Param id path int true "Backup Target ID"
@@ -170,7 +170,7 @@ func (h *Handler) GetBackupTarget(w http.ResponseWriter, r *http.Request) error 
 // DeleteBackupTarget godoc
 // @Summary Delete a backup target
 // @Description Delete a backup target and all associated backups
-// @Tags backup-targets
+// @Tags Backup Targets
 // @Accept json
 // @Produce json
 // @Param id path int true "Backup Target ID"
@@ -205,7 +205,7 @@ func (h *Handler) DeleteBackupTarget(w http.ResponseWriter, r *http.Request) err
 // CreateBackupSchedule godoc
 // @Summary Create a new backup schedule
 // @Description Create a new backup schedule with the specified configuration
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param request body CreateBackupScheduleRequest true "Backup schedule creation request"
@@ -258,7 +258,7 @@ func (h *Handler) CreateBackupSchedule(w http.ResponseWriter, r *http.Request) e
 // ListBackupSchedules godoc
 // @Summary List all backup schedules
 // @Description Get a list of all backup schedules
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Success 200 {array} BackupScheduleResponse
@@ -281,7 +281,7 @@ func (h *Handler) ListBackupSchedules(w http.ResponseWriter, r *http.Request) er
 // GetBackupSchedule godoc
 // @Summary Get a backup schedule by ID
 // @Description Get detailed information about a specific backup schedule
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param id path int true "Schedule ID"
@@ -317,7 +317,7 @@ func (h *Handler) GetBackupSchedule(w http.ResponseWriter, r *http.Request) erro
 // EnableBackupSchedule godoc
 // @Summary Enable a backup schedule
 // @Description Enable a backup schedule to start running
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param id path int true "Schedule ID"
@@ -353,7 +353,7 @@ func (h *Handler) EnableBackupSchedule(w http.ResponseWriter, r *http.Request) e
 // DisableBackupSchedule godoc
 // @Summary Disable a backup schedule
 // @Description Disable a backup schedule to stop it from running
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param id path int true "Schedule ID"
@@ -389,7 +389,7 @@ func (h *Handler) DisableBackupSchedule(w http.ResponseWriter, r *http.Request) 
 // DeleteBackupSchedule godoc
 // @Summary Delete a backup schedule
 // @Description Delete a backup schedule and stop its execution
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param id path int true "Schedule ID"
@@ -424,7 +424,7 @@ func (h *Handler) DeleteBackupSchedule(w http.ResponseWriter, r *http.Request) e
 // ListBackups godoc
 // @Summary List all backups
 // @Description Get a list of all backups
-// @Tags backups
+// @Tags Backups
 // @Accept json
 // @Produce json
 // @Success 200 {array} BackupResponse
@@ -447,7 +447,7 @@ func (h *Handler) ListBackups(w http.ResponseWriter, r *http.Request) error {
 // CreateBackup godoc
 // @Summary Create a new backup
 // @Description Create a new backup with the specified configuration
-// @Tags backups
+// @Tags Backups
 // @Accept json
 // @Produce json
 // @Param request body CreateBackupRequest true "Backup creation request"
@@ -505,7 +505,7 @@ func (h *Handler) CreateBackup(w http.ResponseWriter, r *http.Request) error {
 // GetBackup godoc
 // @Summary Get a backup by ID
 // @Description Get detailed information about a specific backup
-// @Tags backups
+// @Tags Backups
 // @Accept json
 // @Produce json
 // @Param id path int true "Backup ID"
@@ -541,7 +541,7 @@ func (h *Handler) GetBackup(w http.ResponseWriter, r *http.Request) error {
 // DeleteBackup godoc
 // @Summary Delete a backup
 // @Description Delete a backup and its associated files
-// @Tags backups
+// @Tags Backups
 // @Accept json
 // @Produce json
 // @Param id path int true "Backup ID"
@@ -576,7 +576,7 @@ func (h *Handler) DeleteBackup(w http.ResponseWriter, r *http.Request) error {
 // UpdateBackupTarget godoc
 // @Summary Update a backup target
 // @Description Update an existing backup target with new configuration
-// @Tags backup-targets
+// @Tags Backup Targets
 // @Accept json
 // @Produce json
 // @Param id path int true "Backup Target ID"
@@ -644,7 +644,7 @@ func (h *Handler) UpdateBackupTarget(w http.ResponseWriter, r *http.Request) err
 // UpdateBackupSchedule godoc
 // @Summary Update a backup schedule
 // @Description Update an existing backup schedule with new configuration
-// @Tags backup-schedules
+// @Tags Backup Schedules
 // @Accept json
 // @Produce json
 // @Param id path int true "Schedule ID"

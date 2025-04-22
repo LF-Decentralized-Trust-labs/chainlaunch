@@ -13,6 +13,7 @@ type Node struct {
 	BlockchainPlatform types.BlockchainPlatform   `json:"platform"`
 	NodeType           types.NodeType             `json:"nodeType"`
 	Status             types.NodeStatus           `json:"status"`
+	ErrorMessage       string                     `json:"errorMessage"`
 	Endpoint           string                     `json:"endpoint"`
 	PublicEndpoint     string                     `json:"publicEndpoint"`
 	NodeConfig         types.NodeConfig           `json:"nodeConfig"`
@@ -31,16 +32,17 @@ type PaginatedNodes struct {
 	HasNextPage bool
 }
 
-// NodeResponse represents a node with type-specific properties
+// NodeResponse represents the response for node configuration
 type NodeResponse struct {
-	ID        int64          `json:"id"`
-	Name      string         `json:"name"`
-	Platform  string         `json:"platform"`
-	Status    string         `json:"status"`
-	NodeType  types.NodeType `json:"nodeType"`
-	Endpoint  string         `json:"endpoint"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Platform     string         `json:"platform"`
+	Status       string         `json:"status"`
+	ErrorMessage string         `json:"errorMessage"`
+	NodeType     types.NodeType `json:"nodeType"`
+	Endpoint     string         `json:"endpoint"`
+	CreatedAt    time.Time      `json:"createdAt"`
+	UpdatedAt    time.Time      `json:"updatedAt"`
 
 	// Type-specific fields
 	FabricPeer    *FabricPeerProperties    `json:"fabricPeer,omitempty"`
@@ -67,6 +69,9 @@ type FabricPeerProperties struct {
 	TLSCert    string `json:"tlsCert,omitempty"`
 	SignCACert string `json:"signCaCert,omitempty"`
 	TLSCACert  string `json:"tlsCaCert,omitempty"`
+
+	AddressOverrides []types.AddressOverride `json:"addressOverrides,omitempty"`
+	Version          string                  `json:"version"`
 }
 
 // FabricOrdererProperties represents the properties specific to a Fabric orderer node
@@ -87,6 +92,7 @@ type FabricOrdererProperties struct {
 	TLSCert    string `json:"tlsCert,omitempty"`
 	SignCACert string `json:"signCaCert,omitempty"`
 	TLSCACert  string `json:"tlsCaCert,omitempty"`
+	Version    string `json:"version"`
 }
 
 // BesuNodeProperties represents the properties specific to a Besu node
@@ -98,8 +104,10 @@ type BesuNodeProperties struct {
 	InternalIP string `json:"internalIp"`
 	EnodeURL   string `json:"enodeUrl"`
 	// Add deployment config fields
-	P2PHost string `json:"p2pHost"`
-	RPCHost string `json:"rpcHost"`
-	KeyID   int64  `json:"keyId"`
-	Mode    string `json:"mode"`
+	P2PHost   string   `json:"p2pHost"`
+	RPCHost   string   `json:"rpcHost"`
+	KeyID     int64    `json:"keyId"`
+	Mode      string   `json:"mode"`
+	Version   string   `json:"version"`
+	BootNodes []string `json:"bootNodes"`
 }

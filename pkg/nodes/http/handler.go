@@ -50,7 +50,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/platform/{platform}", response.Middleware(h.ListNodesByPlatform))
 		r.Get("/defaults/fabric-peer", response.Middleware(h.GetFabricPeerDefaults))
 		r.Get("/defaults/fabric-orderer", response.Middleware(h.GetFabricOrdererDefaults))
-		r.Get("/defaults/fabric", response.Middleware(h.GetNodesDefaults))
+		r.Get("/defaults/fabric", response.Middleware(h.GetFabricNodesDefaults))
 		r.Get("/defaults/besu-node", response.Middleware(h.GetBesuNodeDefaults))
 		r.Get("/{id}", response.Middleware(h.GetNode))
 		r.Post("/{id}/start", response.Middleware(h.StartNode))
@@ -59,13 +59,16 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Delete("/{id}", response.Middleware(h.DeleteNode))
 		r.Get("/{id}/logs", h.TailLogs)
 		r.Get("/{id}/events", response.Middleware(h.GetNodeEvents))
+		r.Get("/{id}/channels", response.Middleware(h.GetNodeChannels))
+		r.Post("/{id}/certificates/renew", response.Middleware(h.RenewCertificates))
+		r.Put("/{id}", response.Middleware(h.UpdateNode))
 	})
 }
 
 // CreateNode godoc
 // @Summary Create a new node
 // @Description Create a new node with the specified configuration
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param request body CreateNodeRequest true "Node creation request"
@@ -115,7 +118,7 @@ func (h *NodeHandler) CreateNode(w http.ResponseWriter, r *http.Request) error {
 // GetNode godoc
 // @Summary Get a node
 // @Description Get a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -146,7 +149,7 @@ func (h *NodeHandler) GetNode(w http.ResponseWriter, r *http.Request) error {
 // ListNodes godoc
 // @Summary List all nodes
 // @Description Get a paginated list of nodes with optional platform filter
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param platform query string false "Filter by blockchain platform"
@@ -193,7 +196,7 @@ func (h *NodeHandler) ListNodes(w http.ResponseWriter, r *http.Request) error {
 // ListNodesByPlatform godoc
 // @Summary List nodes by platform
 // @Description Get a paginated list of nodes filtered by blockchain platform
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param platform path string true "Blockchain platform (FABRIC/BESU)" Enums(FABRIC,BESU)
@@ -238,7 +241,7 @@ func (h *NodeHandler) ListNodesByPlatform(w http.ResponseWriter, r *http.Request
 // StartNode godoc
 // @Summary Start a node
 // @Description Start a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -269,7 +272,7 @@ func (h *NodeHandler) StartNode(w http.ResponseWriter, r *http.Request) error {
 // StopNode godoc
 // @Summary Stop a node
 // @Description Stop a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -300,7 +303,7 @@ func (h *NodeHandler) StopNode(w http.ResponseWriter, r *http.Request) error {
 // RestartNode godoc
 // @Summary Restart a node
 // @Description Restart a node by ID (stops and starts the node)
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -338,7 +341,7 @@ func (h *NodeHandler) RestartNode(w http.ResponseWriter, r *http.Request) error 
 // DeleteNode godoc
 // @Summary Delete a node
 // @Description Delete a node by ID
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -368,7 +371,7 @@ func (h *NodeHandler) DeleteNode(w http.ResponseWriter, r *http.Request) error {
 // GetFabricPeerDefaults godoc
 // @Summary Get default values for Fabric peer node
 // @Description Get default configuration values for a Fabric peer node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Success 200 {object} service.NodeDefaults
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
@@ -381,7 +384,7 @@ func (h *NodeHandler) GetFabricPeerDefaults(w http.ResponseWriter, r *http.Reque
 // GetFabricOrdererDefaults godoc
 // @Summary Get default values for Fabric orderer node
 // @Description Get default configuration values for a Fabric orderer node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Success 200 {object} service.NodeDefaults
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
@@ -391,10 +394,10 @@ func (h *NodeHandler) GetFabricOrdererDefaults(w http.ResponseWriter, r *http.Re
 	return response.WriteJSON(w, http.StatusOK, defaults)
 }
 
-// GetNodesDefaults godoc
+// GetFabricNodesDefaults godoc
 // @Summary Get default values for multiple Fabric nodes
 // @Description Get default configuration values for multiple Fabric nodes
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
 // @Param peerCount query int false "Number of peer nodes" default(1) minimum(0)
 // @Param ordererCount query int false "Number of orderer nodes" default(1) minimum(0)
@@ -403,7 +406,7 @@ func (h *NodeHandler) GetFabricOrdererDefaults(w http.ResponseWriter, r *http.Re
 // @Failure 400 {object} response.ErrorResponse "Validation error"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /nodes/defaults/fabric [get]
-func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) error {
+func (h *NodeHandler) GetFabricNodesDefaults(w http.ResponseWriter, r *http.Request) error {
 	// Parse query parameters
 	peerCount := 1
 	if countStr := r.URL.Query().Get("peerCount"); countStr != "" {
@@ -431,7 +434,7 @@ func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) e
 		})
 	}
 
-	result, err := h.service.GetNodesDefaults(service.NodesDefaultsParams{
+	result, err := h.service.GetFabricNodesDefaults(service.NodesDefaultsParams{
 		PeerCount:    peerCount,
 		OrdererCount: ordererCount,
 		Mode:         mode,
@@ -446,23 +449,38 @@ func (h *NodeHandler) GetNodesDefaults(w http.ResponseWriter, r *http.Request) e
 // GetBesuNodeDefaults godoc
 // @Summary Get default values for Besu node
 // @Description Get default configuration values for a Besu node
-// @Tags nodes
+// @Tags Nodes
 // @Produce json
-// @Success 200 {object} service.BesuNodeDefaults
+// @Param besuNodes query int false "Number of Besu nodes" default(1) minimum(0)
+// @Success 200 {array} BesuNodeDefaultsResponse
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /nodes/defaults/besu-node [get]
 func (h *NodeHandler) GetBesuNodeDefaults(w http.ResponseWriter, r *http.Request) error {
-	defaults, err := h.service.GetBesuNodeDefaults()
+	// Parse besuNodes parameter
+	besuNodes := 1
+	if countStr := r.URL.Query().Get("besuNodes"); countStr != "" {
+		if count, err := strconv.Atoi(countStr); err == nil && count >= 0 {
+			besuNodes = count
+		}
+	}
+
+	defaults, err := h.service.GetBesuNodeDefaults(besuNodes)
 	if err != nil {
 		return errors.NewInternalError("failed to get Besu node defaults", err, nil)
 	}
-	return response.WriteJSON(w, http.StatusOK, defaults)
+
+	res := BesuNodeDefaultsResponse{
+		NodeCount: besuNodes,
+		Defaults:  defaults,
+	}
+
+	return response.WriteJSON(w, http.StatusOK, res)
 }
 
 // TailLogs godoc
 // @Summary Tail node logs
 // @Description Stream logs from a specific node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce text/event-stream
 // @Param id path int true "Node ID"
@@ -540,7 +558,7 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 // GetNodeEvents godoc
 // @Summary Get node events
 // @Description Get a paginated list of events for a specific node
-// @Tags nodes
+// @Tags Nodes
 // @Accept json
 // @Produce json
 // @Param id path int true "Node ID"
@@ -593,99 +611,68 @@ func (h *NodeHandler) GetNodeEvents(w http.ResponseWriter, r *http.Request) erro
 	return response.WriteJSON(w, http.StatusOK, eventsResponse)
 }
 
-// Mapping functions
+// GetNodeChannels godoc
+// @Summary Get channels for a Fabric node
+// @Description Retrieves all channels for a specific Fabric node
+// @Tags Nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Success 200 {object} NodeChannelsResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id}/channels [get]
+func (h *NodeHandler) GetNodeChannels(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 
-func mapHTTPToServiceFabricPeerConfig(config *types.FabricPeerConfig) *types.FabricPeerConfig {
-	if config == nil {
-		return nil
+	channels, err := h.service.GetNodeChannels(r.Context(), id)
+	if err != nil {
+		if err == service.ErrNotFound {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		if err == service.ErrInvalidNodeType {
+			return errors.NewValidationError("node is not a Fabric node", nil)
+		}
+		return errors.NewInternalError("failed to get node channels", err, nil)
 	}
-	return &types.FabricPeerConfig{
-		Name:                    config.Name,
-		OrganizationID:          config.OrganizationID,
-		ExternalEndpoint:        config.ExternalEndpoint,
-		ListenAddress:           config.ListenAddress,
-		EventsAddress:           config.EventsAddress,
-		OperationsListenAddress: config.OperationsListenAddress,
-		ChaincodeAddress:        config.ChaincodeAddress,
-		DomainNames:             config.DomainNames,
-		Env:                     config.Env,
-		MSPID:                   config.MSPID,
+
+	channelsResponse := NodeChannelsResponse{
+		NodeID:   id,
+		Channels: make([]ChannelResponse, len(channels)),
 	}
+
+	for i, channel := range channels {
+		channelsResponse.Channels[i] = toChannelResponse(channel)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, channelsResponse)
 }
 
-func mapHTTPToServiceFabricOrdererConfig(config *types.FabricOrdererConfig) *types.FabricOrdererConfig {
-	if config == nil {
-		return nil
-	}
-	return &types.FabricOrdererConfig{
-		Name:           config.Name,
-		OrganizationID: config.OrganizationID,
-		// Mode:                    "service",
-		ExternalEndpoint:        config.ExternalEndpoint,
-		ListenAddress:           config.ListenAddress,
-		AdminAddress:            config.AdminAddress,
-		OperationsListenAddress: config.OperationsListenAddress,
-		DomainNames:             config.DomainNames,
-		Env:                     config.Env,
-		MSPID:                   config.MSPID,
-	}
+// NodeChannelsResponse represents the response for node channels
+type NodeChannelsResponse struct {
+	NodeID   int64             `json:"nodeId"`
+	Channels []ChannelResponse `json:"channels"`
 }
 
-func mapHTTPToServiceBesuNodeConfig(config *types.BesuNodeConfig) *types.BesuNodeConfig {
-	if config == nil {
-		return nil
-	}
-	return &types.BesuNodeConfig{
-		NetworkID: config.NetworkID,
-		P2PPort:   config.P2PPort,
-		RPCPort:   config.RPCPort,
-		BaseNodeConfig: types.BaseNodeConfig{
-			Type: "besu",
-			Mode: config.Mode,
-		},
-		KeyID:      config.KeyID,
-		P2PHost:    config.P2PHost,
-		RPCHost:    config.RPCHost,
-		InternalIP: config.InternalIP,
-		ExternalIP: config.ExternalIP,
-		Env:        config.Env,
-	}
-}
-func mapServiceToHTTPFabricPeerDeploymentConfig(config *types.FabricPeerDeploymentConfig) *types.FabricPeerDeploymentConfig {
-	if config == nil {
-		return nil
-	}
-	return config
+// ChannelResponse represents a Fabric channel in the response
+type ChannelResponse struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
-func mapServiceToHTTPNodeResponse(node *service.NodeResponse) NodeResponse {
-	return NodeResponse{
-		ID:                 node.ID,
-		Name:               node.Name,
-		BlockchainPlatform: string(node.Platform),
-		NodeType:           string(node.NodeType),
-		Status:             string(node.Status),
-		Endpoint:           node.Endpoint,
-		CreatedAt:          node.CreatedAt,
-		UpdatedAt:          node.UpdatedAt,
-		FabricPeer:         node.FabricPeer,
-		FabricOrderer:      node.FabricOrderer,
-		BesuNode:           node.BesuNode,
-	}
-}
-
-func mapServiceToHTTPPaginatedResponse(nodes *service.PaginatedNodes) PaginatedNodesResponse {
-	items := make([]NodeResponse, len(nodes.Items))
-	for i, node := range nodes.Items {
-		items[i] = mapServiceToHTTPNodeResponse(&node)
-	}
-
-	return PaginatedNodesResponse{
-		Items:       items,
-		Total:       nodes.Total,
-		Page:        nodes.Page,
-		PageCount:   nodes.PageCount,
-		HasNextPage: nodes.HasNextPage,
+// Helper function to convert service channel to response channel
+func toChannelResponse(channel service.Channel) ChannelResponse {
+	return ChannelResponse{
+		Name:      channel.Name,
+		BlockNum:  channel.BlockNum,
+		CreatedAt: channel.CreatedAt,
 	}
 }
 
@@ -705,18 +692,6 @@ func toNodeResponse(node *service.NodeResponse) NodeResponse {
 	}
 }
 
-func isValidEventType(eventType service.NodeEventType) bool {
-	switch eventType {
-	case service.NodeEventStarting,
-		service.NodeEventStarted,
-		service.NodeEventStopping,
-		service.NodeEventStopped,
-		service.NodeEventError:
-		return true
-	}
-	return false
-}
-
 // Helper function to validate platform
 func isValidPlatform(platform types.BlockchainPlatform) bool {
 	switch platform {
@@ -734,4 +709,206 @@ func toNodeEventResponse(event service.NodeEvent) NodeEventResponse {
 		Data:      event.Data,
 		CreatedAt: event.CreatedAt,
 	}
+}
+
+// RenewCertificates godoc
+// @Summary Renew node certificates
+// @Description Renews the TLS and signing certificates for a Fabric node
+// @Tags Nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Success 200 {object} NodeResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id}/certificates/renew [post]
+func (h *NodeHandler) RenewCertificates(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	node, err := h.service.RenewCertificates(r.Context(), id)
+	if err != nil {
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to renew certificates", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(node))
+}
+
+// UpdateNode godoc
+// @Summary Update a node
+// @Description Updates an existing node's configuration based on its type
+// @Tags Nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Param request body UpdateNodeRequest true "Update node request"
+// @Success 200 {object} NodeResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id} [put]
+func (h *NodeHandler) UpdateNode(w http.ResponseWriter, r *http.Request) error {
+	nodeID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	var req UpdateNodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	// Get the node to determine its type
+	node, err := h.service.GetNode(r.Context(), nodeID)
+	if err != nil {
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to get node", err, nil)
+	}
+
+	switch node.NodeType {
+	case types.NodeTypeFabricPeer:
+		if req.FabricPeer == nil {
+			return errors.NewValidationError("fabricPeer configuration is required for Fabric peer nodes", nil)
+		}
+		return h.updateFabricPeer(w, r, nodeID, req.FabricPeer)
+	case types.NodeTypeFabricOrderer:
+		if req.FabricOrderer == nil {
+			return errors.NewValidationError("fabricOrderer configuration is required for Fabric orderer nodes", nil)
+		}
+		return h.updateFabricOrderer(w, r, nodeID, req.FabricOrderer)
+	case types.NodeTypeBesuFullnode:
+		if req.BesuNode == nil {
+			return errors.NewValidationError("besuNode configuration is required for Besu nodes", nil)
+		}
+		return h.updateBesuNode(w, r, nodeID, req.BesuNode)
+	default:
+		return errors.NewValidationError("unsupported node type", map[string]interface{}{
+			"nodeType": node.NodeType,
+		})
+	}
+}
+
+// updateBesuNode handles updating a Besu node
+func (h *NodeHandler) updateBesuNode(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateBesuNodeRequest) error {
+	// Convert HTTP layer request to service layer request
+	serviceReq := service.UpdateBesuNodeRequest{
+		NetworkID:  req.NetworkID,
+		P2PHost:    req.P2PHost,
+		P2PPort:    req.P2PPort,
+		RPCHost:    req.RPCHost,
+		RPCPort:    req.RPCPort,
+		Bootnodes:  req.Bootnodes,
+		ExternalIP: req.ExternalIP,
+		InternalIP: req.InternalIP,
+		Env:        req.Env,
+	}
+
+	// Call service layer to update the Besu node
+	updatedNode, err := h.service.UpdateBesuNode(r.Context(), nodeID, serviceReq)
+	if err != nil {
+		if errors.IsType(err, errors.ValidationError) {
+			return errors.NewValidationError("invalid besu node configuration", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		if errors.IsType(err, errors.NotFoundError) {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		return errors.NewInternalError("failed to update besu node", err, nil)
+	}
+
+	// Return the updated node as response
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
+}
+
+// updateFabricPeer handles updating a Fabric peer node
+func (h *NodeHandler) updateFabricPeer(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateFabricPeerRequest) error {
+	opts := service.UpdateFabricPeerOpts{
+		NodeID: nodeID,
+	}
+
+	if req.ExternalEndpoint != nil {
+		opts.ExternalEndpoint = *req.ExternalEndpoint
+	}
+	if req.ListenAddress != nil {
+		opts.ListenAddress = *req.ListenAddress
+	}
+	if req.EventsAddress != nil {
+		opts.EventsAddress = *req.EventsAddress
+	}
+	if req.OperationsListenAddress != nil {
+		opts.OperationsListenAddress = *req.OperationsListenAddress
+	}
+	if req.ChaincodeAddress != nil {
+		opts.ChaincodeAddress = *req.ChaincodeAddress
+	}
+	if req.DomainNames != nil {
+		opts.DomainNames = req.DomainNames
+	}
+	if req.Env != nil {
+		opts.Env = req.Env
+	}
+	if req.AddressOverrides != nil {
+		opts.AddressOverrides = req.AddressOverrides
+	}
+	if req.Version != nil {
+		opts.Version = *req.Version
+	}
+
+	updatedNode, err := h.service.UpdateFabricPeer(r.Context(), opts)
+	if err != nil {
+		return errors.NewInternalError("failed to update peer", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
+}
+
+// updateFabricOrderer handles updating a Fabric orderer node
+func (h *NodeHandler) updateFabricOrderer(w http.ResponseWriter, r *http.Request, nodeID int64, req *UpdateFabricOrdererRequest) error {
+	opts := service.UpdateFabricOrdererOpts{
+		NodeID: nodeID,
+	}
+
+	if req.ExternalEndpoint != nil {
+		opts.ExternalEndpoint = *req.ExternalEndpoint
+	}
+	if req.ListenAddress != nil {
+		opts.ListenAddress = *req.ListenAddress
+	}
+	if req.AdminAddress != nil {
+		opts.AdminAddress = *req.AdminAddress
+	}
+	if req.OperationsListenAddress != nil {
+		opts.OperationsListenAddress = *req.OperationsListenAddress
+	}
+	if req.DomainNames != nil {
+		opts.DomainNames = req.DomainNames
+	}
+	if req.Env != nil {
+		opts.Env = req.Env
+	}
+	if req.Version != nil {
+		opts.Version = *req.Version
+	}
+
+	updatedNode, err := h.service.UpdateFabricOrderer(r.Context(), opts)
+	if err != nil {
+		return errors.NewInternalError("failed to update orderer", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
 }

@@ -6,11 +6,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,27 +17,35 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/binaries"
+	"github.com/chainlaunch/chainlaunch/pkg/config"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	kmodels "github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/chainlaunch/chainlaunch/pkg/nodes/orderer/osnadmin"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
+	"google.golang.org/grpc"
 )
 
 // LocalOrderer represents a local Fabric orderer node
 type LocalOrderer struct {
-	mspID          string
-	db             *db.Queries
-	opts           StartOrdererOpts
-	mode           string
-	org            *fabricservice.OrganizationDTO
-	organizationID int64
-	orgService     *fabricservice.OrganizationService
-	keyService     *keymanagement.KeyManagementService
-	nodeID         int64
-	logger         *logger.Logger
+	mspID           string
+	db              *db.Queries
+	opts            StartOrdererOpts
+	mode            string
+	org             *fabricservice.OrganizationDTO
+	organizationID  int64
+	orgService      *fabricservice.OrganizationService
+	keyService      *keymanagement.KeyManagementService
+	nodeID          int64
+	logger          *logger.Logger
+	configService   *config.ConfigService
+	settingsService *settingsservice.SettingsService
 }
 
 // NewLocalOrderer creates a new LocalOrderer instance
@@ -55,18 +60,22 @@ func NewLocalOrderer(
 	keyService *keymanagement.KeyManagementService,
 	nodeID int64,
 	logger *logger.Logger,
+	configService *config.ConfigService,
+	settingsService *settingsservice.SettingsService,
 ) *LocalOrderer {
 	return &LocalOrderer{
-		mspID:          mspID,
-		db:             db,
-		opts:           opts,
-		mode:           mode,
-		org:            org,
-		organizationID: organizationID,
-		orgService:     orgService,
-		keyService:     keyService,
-		nodeID:         nodeID,
-		logger:         logger,
+		mspID:           mspID,
+		db:              db,
+		opts:            opts,
+		mode:            mode,
+		org:             org,
+		organizationID:  organizationID,
+		orgService:      orgService,
+		keyService:      keyService,
+		nodeID:          nodeID,
+		logger:          logger,
+		configService:   configService,
+		settingsService: settingsService,
 	}
 }
 
@@ -77,7 +86,7 @@ func (o *LocalOrderer) getServiceName() string {
 
 // getLaunchdServiceName returns the launchd service name
 func (o *LocalOrderer) getLaunchdServiceName() string {
-	return fmt.Sprintf("ai.chainlaunch.orderer.%s.%s",
+	return fmt.Sprintf("dev.chainlaunch.orderer.%s.%s",
 		strings.ToLower(o.org.MspID),
 		strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-"))
 }
@@ -95,20 +104,15 @@ func (o *LocalOrderer) getLaunchdPlistPath() string {
 
 // GetStdOutPath returns the path to the stdout log file
 func (o *LocalOrderer) GetStdOutPath() string {
-	homeDir, _ := os.UserHomeDir()
-	dirPath := filepath.Join(homeDir, ".chainlaunch/orderers",
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers",
 		strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-"))
 	return filepath.Join(dirPath, o.getServiceName()+".log")
 }
 
 // findOrdererBinary finds the orderer binary in PATH
 func (o *LocalOrderer) findOrdererBinary() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
 
-	downloader, err := binaries.NewBinaryDownloader(homeDir)
+	downloader, err := binaries.NewBinaryDownloader(o.configService)
 	if err != nil {
 		return "", fmt.Errorf("failed to create binary downloader: %w", err)
 	}
@@ -120,12 +124,9 @@ func (o *LocalOrderer) findOrdererBinary() (string, error) {
 func (o *LocalOrderer) Start() (interface{}, error) {
 	o.logger.Info("Starting orderer", "opts", o.opts)
 	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
+	chainlaunchDir := o.configService.GetDataPath()
 
-	dirPath := filepath.Join(homeDir, ".chainlaunch/orderers", slugifiedID)
+	dirPath := filepath.Join(chainlaunchDir, "orderers", slugifiedID)
 	mspConfigPath := filepath.Join(dirPath, "config")
 	dataConfigPath := filepath.Join(dirPath, "data")
 
@@ -136,7 +137,7 @@ func (o *LocalOrderer) Start() (interface{}, error) {
 	}
 
 	// Build command and environment
-	cmd := fmt.Sprintf("%s", ordererBinary)
+	cmd := ordererBinary
 	env := o.buildOrdererEnvironment(mspConfigPath)
 
 	o.logger.Debug("Starting orderer",
@@ -202,7 +203,7 @@ func (o *LocalOrderer) buildOrdererEnvironment(mspConfigPath string) map[string]
 	env["ORDERER_GENERAL_TLS_CERTIFICATE"] = filepath.Join(mspConfigPath, "tls.crt")
 	env["ORDERER_GENERAL_TLS_PRIVATEKEY"] = filepath.Join(mspConfigPath, "tls.key")
 	env["ORDERER_GENERAL_TLS_ROOTCAS"] = filepath.Join(mspConfigPath, "tlscacerts/cacert.pem")
-	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminAddress
+	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminListenAddress
 	env["ORDERER_GENERAL_LISTENADDRESS"] = strings.Split(o.opts.ListenAddress, ":")[0]
 	env["ORDERER_OPERATIONS_LISTENADDRESS"] = o.opts.OperationsListenAddress
 	env["ORDERER_GENERAL_LOCALMSPID"] = o.mspID
@@ -219,6 +220,10 @@ func (o *LocalOrderer) buildOrdererEnvironment(mspConfigPath string) map[string]
 	env["ORDERER_OPERATIONS_TLS_ENABLED"] = "false"
 
 	return env
+}
+
+func (o *LocalOrderer) getLogPath() string {
+	return o.GetStdOutPath()
 }
 
 // TailLogs tails the logs of the orderer service
@@ -429,13 +434,9 @@ func (o *LocalOrderer) Init() (interface{}, error) {
 	}
 
 	// Create directory structure
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
 
 	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
-	dirPath := filepath.Join(homeDir, ".chainlaunch", "orderers", slugifiedID)
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers", slugifiedID)
 	dataConfigPath := filepath.Join(dirPath, "data")
 	mspConfigPath := filepath.Join(dirPath, "config")
 
@@ -465,7 +466,7 @@ func (o *LocalOrderer) Init() (interface{}, error) {
 		OrganizationID:          o.organizationID,
 		MSPID:                   o.mspID,
 		ListenAddress:           o.opts.ListenAddress,
-		AdminAddress:            o.opts.AdminAddress,
+		AdminAddress:            o.opts.AdminListenAddress,
 		OperationsListenAddress: o.opts.OperationsListenAddress,
 		ExternalEndpoint:        o.opts.ExternalEndpoint,
 		DomainNames:             o.opts.DomainNames,
@@ -900,7 +901,7 @@ Consensus:
 		ListenAddress:           strings.Split(o.opts.ListenAddress, ":")[0],
 		ListenPort:              strings.Split(o.opts.ListenAddress, ":")[1],
 		OperationsListenAddress: o.opts.OperationsListenAddress,
-		AdminAddress:            o.opts.AdminAddress,
+		AdminAddress:            o.opts.AdminListenAddress,
 		DataPath:                dataConfigPath,
 		MSPID:                   o.mspID,
 	}
@@ -950,27 +951,13 @@ func (o *LocalOrderer) JoinChannel(genesisBlock []byte) error {
 	if !ok {
 		return fmt.Errorf("couldn't append certs")
 	}
-	ordererAdminUrl := fmt.Sprintf("https://%s", strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1))
-	chResponse, err := osnadmin.Join(ordererAdminUrl, genesisBlock, certPool, adminTlsCertX509)
-	if err != nil {
-		return err
-	}
-	if chResponse.StatusCode == 405 {
-		return fmt.Errorf("orderer already joined the channel")
-	}
-	responseData, err := io.ReadAll(chResponse.Body)
-	if err != nil {
-		return err
-	}
-	if chResponse.StatusCode != 201 {
-		return fmt.Errorf("error joining orderer to channel: %d", chResponse.StatusCode)
-	}
+	ordererAdminUrl := fmt.Sprintf("https://%s", strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1))
 
-	var response osnadmin.ChannelInfo
-	err = json.Unmarshal(responseData, &response)
+	channelInfo, err := channel.JoinOrderer(ordererAdminUrl, genesisBlock, certPool, adminTlsCertX509)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to join orderer to channel: %w", err)
 	}
+	o.logger.Info("Successfully joined orderer to channel", "orderer", o.opts.ID, "channel", channelInfo.Name)
 
 	return nil
 }
@@ -1023,19 +1010,313 @@ func (o *LocalOrderer) LeaveChannel(channelID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load client certificate: %w", err)
 	}
-	adminAddress := strings.Replace(o.opts.AdminAddress, "0.0.0.0", "127.0.0.1", 1)
+	adminAddress := strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1)
 	// Call osnadmin Remove API
-	resp, err := osnadmin.Remove(fmt.Sprintf("https://%s", adminAddress), channelID, caCertPool, cert)
+	err = channel.RemoveChannelFromOrderer(fmt.Sprintf("https://%s", adminAddress), channelID, caCertPool, cert)
 	if err != nil {
 		return fmt.Errorf("failed to remove orderer from channel: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to remove orderer from channel: status=%d, body=%s", resp.StatusCode, string(body))
-	}
 
 	o.logger.Info("Successfully removed orderer from channel", "orderer", o.opts.ID, "channel", channelID)
+	return nil
+}
+
+type OrdererChannel struct {
+	Name      string    `json:"name"`
+	BlockNum  int64     `json:"blockNum"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetOrdererAddress returns the orderer's external endpoint
+func (o *LocalOrderer) GetOrdererAddress() string {
+	return o.opts.ExternalEndpoint
+}
+
+// GetTLSRootCACert returns the TLS root CA certificate for the orderer
+func (o *LocalOrderer) GetTLSRootCACert(ctx context.Context) (string, error) {
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get organization: %w", err)
+	}
+	return org.TlsCertificate, nil
+}
+
+// CreateOrdererConnection creates a gRPC connection to an orderer
+func (o *LocalOrderer) CreateOrdererConnection(ctx context.Context, ordererUrl string, ordererTlsCACert string) (*grpc.ClientConn, error) {
+	o.logger.Debug("Creating orderer connection", "url", ordererUrl)
+	networkNode := network.Node{
+		Addr:          ordererUrl,
+		TLSCACertByte: []byte(ordererTlsCACert),
+	}
+	conn, err := network.DialConnection(networkNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orderer connection: %w", err)
+	}
+	return conn, nil
+}
+
+// GetAdminIdentity returns the admin identity for the orderer
+func (o *LocalOrderer) GetAdminIdentity(ctx context.Context) (identity.SigningIdentity, error) {
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get admin signing key
+	adminSignKeyDB, err := o.keyService.GetKey(ctx, int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin signing key: %w", err)
+	}
+	adminSignCert := adminSignKeyDB.Certificate
+	if adminSignCert == nil {
+		return nil, fmt.Errorf("admin signing certificate is nil")
+	}
+
+	// Get private key from key management service
+	privateKeyPEM, err := o.keyService.GetDecryptedPrivateKey(int(org.AdminSignKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
+
+	cert, err := gwidentity.CertificateFromPEM([]byte(*adminSignCert))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate: %w", err)
+	}
+
+	privateKey, err := gwidentity.PrivateKeyFromPEM([]byte(privateKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	id, err := identity.NewPrivateKeySigningIdentity(org.MspID, cert, privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+
+	return id, nil
+}
+
+// GetChannels returns a list of channels the orderer is participating in
+func (o *LocalOrderer) GetChannels(ctx context.Context) ([]OrdererChannel, error) {
+	// Get organization
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	// Get admin TLS credentials
+	adminTlsKeyDB, err := o.keyService.GetKey(ctx, int(org.AdminTlsKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin TLS key: %w", err)
+	}
+	adminTlsCert := adminTlsKeyDB.Certificate
+	if adminTlsCert == nil {
+		return nil, fmt.Errorf("admin TLS certificate is nil")
+	}
+	if *adminTlsCert == "" {
+		return nil, fmt.Errorf("admin TLS certificate is empty")
+	}
+	adminTlsPK, err := o.keyService.GetDecryptedPrivateKey(int(org.AdminTlsKeyID.Int64))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin TLS private key: %w", err)
+	}
+
+	// Create client certificate
+	cert, err := tls.X509KeyPair([]byte(*adminTlsCert), []byte(adminTlsPK))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client certificate: %w", err)
+	}
+
+	// Create CA cert pool
+	certPool := x509.NewCertPool()
+	ok := certPool.AppendCertsFromPEM([]byte(org.TlsCertificate))
+	if !ok {
+		return nil, fmt.Errorf("failed to append TLS root certificate to CA cert pool")
+	}
+
+	// Call osnadmin List API
+	adminAddress := strings.Replace(o.opts.AdminListenAddress, "0.0.0.0", "127.0.0.1", 1)
+	channelList, err := channel.ListChannel(fmt.Sprintf("https://%s", adminAddress), certPool, cert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list channels: %w", err)
+	}
+
+	// Convert to service.Channel format
+	var channels []OrdererChannel
+	for _, ch := range channelList.Channels {
+		blockInfo, err := channel.ListSingleChannel(fmt.Sprintf("https://%s", adminAddress), ch.Name, certPool, cert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block height for channel: %w", err)
+		}
+		channels = append(channels, OrdererChannel{
+			Name:      ch.Name,
+			BlockNum:  int64(blockInfo.Height),
+			CreatedAt: time.Now(), // We don't have the actual creation time
+		})
+	}
+
+	return channels, nil
+}
+
+// RenewCertificates renews the orderer's TLS and signing certificates
+func (o *LocalOrderer) RenewCertificates(ordererDeploymentConfig *types.FabricOrdererDeploymentConfig) error {
+	ctx := context.Background()
+	o.logger.Info("Starting certificate renewal for orderer", "ordererID", o.opts.ID)
+
+	// Stop the orderer before renewing certificates
+	if err := o.Stop(); err != nil {
+		return fmt.Errorf("failed to stop orderer before certificate renewal: %w", err)
+	}
+	o.logger.Info("Successfully stopped orderer before certificate renewal")
+
+	// Get organization details
+	org, err := o.orgService.GetOrganization(ctx, o.organizationID)
+	if err != nil {
+		return fmt.Errorf("failed to get organization: %w", err)
+	}
+
+	if ordererDeploymentConfig.SignKeyID == 0 || ordererDeploymentConfig.TLSKeyID == 0 {
+		return fmt.Errorf("orderer node does not have required key IDs")
+	}
+
+	// Get the CA certificates
+	signCAKey, err := o.keyService.GetKey(ctx, int(org.SignKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get sign CA key: %w", err)
+	}
+
+	tlsCAKey, err := o.keyService.GetKey(ctx, int(org.TlsRootKeyID.Int64))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS CA key: %w", err)
+	}
+
+	// In case the sign key is not signed by the CA, set the signing key ID to the CA key ID
+	signKeyDB, err := o.keyService.GetKey(ctx, int(ordererDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+	if signKeyDB.SigningKeyID == nil || *signKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = o.keyService.SetSigningKeyIDForKey(ctx, int(ordererDeploymentConfig.SignKeyID), int(signCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for sign key: %w", err)
+		}
+	}
+
+	tlsKeyDB, err := o.keyService.GetKey(ctx, int(ordererDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	if tlsKeyDB.SigningKeyID == nil || *tlsKeyDB.SigningKeyID == 0 {
+		// Set the signing key ID to the organization's sign CA key ID
+		err = o.keyService.SetSigningKeyIDForKey(ctx, int(ordererDeploymentConfig.TLSKeyID), int(tlsCAKey.ID))
+		if err != nil {
+			return fmt.Errorf("failed to set signing key ID for TLS key: %w", err)
+		}
+	}
+
+	// Renew signing certificate
+	validFor := kmodels.Duration(time.Hour * 24 * 365) // 1 year validity
+	_, err = o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.SignKeyID), kmodels.CertificateRequest{
+		CommonName:         o.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"orderer"},
+		DNSNames:           []string{o.opts.ID},
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew signing certificate: %w", err)
+	}
+
+	// Renew TLS certificate
+	domainNames := o.opts.DomainNames
+	var ipAddresses []net.IP
+	var domains []string
+
+	// Ensure localhost and 127.0.0.1 are included
+	hasLocalhost := false
+	hasLoopback := false
+	for _, domain := range domainNames {
+		if domain == "localhost" {
+			hasLocalhost = true
+			domains = append(domains, domain)
+			continue
+		}
+		if domain == "127.0.0.1" {
+			hasLoopback = true
+			ipAddresses = append(ipAddresses, net.ParseIP(domain))
+			continue
+		}
+		if ip := net.ParseIP(domain); ip != nil {
+			ipAddresses = append(ipAddresses, ip)
+		} else {
+			domains = append(domains, domain)
+		}
+	}
+	if !hasLocalhost {
+		domains = append(domains, "localhost")
+	}
+	if !hasLoopback {
+		ipAddresses = append(ipAddresses, net.ParseIP("127.0.0.1"))
+	}
+
+	_, err = o.keyService.RenewCertificate(ctx, int(ordererDeploymentConfig.TLSKeyID), kmodels.CertificateRequest{
+		CommonName:         o.opts.ID,
+		Organization:       []string{org.MspID},
+		OrganizationalUnit: []string{"orderer"},
+		DNSNames:           domains,
+		IPAddresses:        ipAddresses,
+		IsCA:               false,
+		ValidFor:           validFor,
+		KeyUsage:           x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to renew TLS certificate: %w", err)
+	}
+
+	// Get the private keys
+	signKey, err := o.keyService.GetDecryptedPrivateKey(int(ordererDeploymentConfig.SignKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get sign private key: %w", err)
+	}
+
+	tlsKey, err := o.keyService.GetDecryptedPrivateKey(int(ordererDeploymentConfig.TLSKeyID))
+	if err != nil {
+		return fmt.Errorf("failed to get TLS private key: %w", err)
+	}
+
+	// Update the certificates in the MSP directory
+	slugifiedID := strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
+	dirPath := filepath.Join(o.configService.GetDataPath(), "orderers", slugifiedID)
+	mspConfigPath := filepath.Join(dirPath, "config")
+
+	err = o.writeCertificatesAndKeys(
+		mspConfigPath,
+		tlsKeyDB,
+		signKeyDB,
+		tlsKey,
+		signKey,
+		signCAKey,
+		tlsCAKey,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to write renewed certificates: %w", err)
+	}
+
+	o.logger.Info("Successfully renewed orderer certificates", "ordererID", o.opts.ID)
+	o.logger.Info("Starting orderer after certificate renewal")
+
+	// Start the orderer with renewed certificates
+	_, err = o.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start orderer after certificate renewal: %w", err)
+	}
+
+	o.logger.Info("Successfully started orderer after certificate renewal")
 	return nil
 }

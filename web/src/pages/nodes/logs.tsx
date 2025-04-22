@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { BesuIcon } from '@/components/icons/besu-icon'
 import { FabricIcon } from '@/components/icons/fabric-icon'
+import { LogViewer } from '@/components/nodes/LogViewer'
 
 interface NodeLogs {
 	nodeId: number
@@ -16,7 +17,7 @@ interface NodeLogs {
 export default function NodesLogsPage() {
 	const [selectedNode, setSelectedNode] = useState<string>()
 	const [nodeLogs, setNodeLogs] = useState<NodeLogs[]>([])
-	const logsRef = useRef<HTMLTextAreaElement>(null)
+	const logsRef = useRef<HTMLPreElement>(null)
 	const abortControllers = useRef<{ [key: string]: AbortController }>({})
 
 	const { data: nodes } = useQuery({
@@ -90,7 +91,7 @@ export default function NodesLogsPage() {
 
 	useEffect(() => {
 		if (nodes?.items && !selectedNode && nodes.items.length > 0) {
-			setSelectedNode(nodes.items[0].id.toString())
+			setSelectedNode(nodes.items[0].id!.toString())
 		}
 	}, [nodes])
 
@@ -109,7 +110,7 @@ export default function NodesLogsPage() {
 		}
 	}, [])
 
-	if (!nodes?.items.length) {
+	if (!nodes?.items || nodes.items.length === 0) {
 		return (
 			<div className="flex-1 p-8">
 				<Card>
@@ -136,9 +137,9 @@ export default function NodesLogsPage() {
 					</SelectTrigger>
 					<SelectContent>
 						{nodes.items.map((node) => (
-							<SelectItem key={node.id} value={node.id.toString()}>
+							<SelectItem key={node.id} value={node.id!.toString()}>
 								<div className="flex items-center gap-2">
-									{node.blockchainPlatform === 'FABRIC' ? <FabricIcon className="h-4 w-4" /> : <BesuIcon className="h-4 w-4" />}
+									{node.fabricPeer || node.fabricOrderer ? <FabricIcon className="h-4 w-4" /> : <BesuIcon className="h-4 w-4" />}
 									{node.name}
 								</div>
 							</SelectItem>
@@ -152,35 +153,25 @@ export default function NodesLogsPage() {
 				<Tabs value={selectedNode} onValueChange={setSelectedNode}>
 					<TabsList className="w-full justify-start">
 						{nodes.items.map((node) => (
-							<TabsTrigger key={node.id} value={node.id.toString()} className="flex items-center gap-2">
-								{node.blockchainPlatform === 'FABRIC' ? <FabricIcon className="h-4 w-4" /> : <BesuIcon className="h-4 w-4" />}
+							<TabsTrigger key={node.id} value={node.id!.toString()} className="flex items-center gap-2">
+								{node.fabricPeer || node.fabricOrderer ? <FabricIcon className="h-4 w-4" /> : <BesuIcon className="h-4 w-4" />}
 								{node.name}
 							</TabsTrigger>
 						))}
 					</TabsList>
 					{nodes.items.map((node) => (
-						<TabsContent key={node.id} value={node.id.toString()}>
+						<TabsContent key={node.id} value={node.id!.toString()}>
 							<Card>
 								<CardHeader>
 									<CardTitle>Logs for {node.name}</CardTitle>
 									<CardDescription>Real-time node logs</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<Textarea
-										ref={logsRef}
-										value={nodeLogs.find((nl) => nl.nodeId === node.id)?.logs || ''}
-										readOnly
-										className="font-mono text-sm h-[600px] bg-muted"
-										style={{
-											whiteSpace: 'pre',
-											overflowWrap: 'normal',
-											overflowX: 'auto',
-										}}
-										onScroll={(e) => {
-											const target = e.target as HTMLTextAreaElement
-											const isScrolledToBottom = target.scrollHeight - target.clientHeight <= target.scrollTop + 150
+									<LogViewer 
+										logs={nodeLogs.find((nl) => nl.nodeId === node.id)?.logs || ''}
+										onScroll={(isScrolledToBottom) => {
 											if (isScrolledToBottom) {
-												scrollToBottom(node.id)
+												scrollToBottom(node.id!)
 											}
 										}}
 									/>
@@ -196,23 +187,13 @@ export default function NodesLogsPage() {
 				{selectedNode && (
 					<Card>
 						<CardHeader>
-							<CardTitle>Logs for {nodes.items.find((n) => n.id.toString() === selectedNode)?.name}</CardTitle>
+							<CardTitle>Logs for {nodes.items.find((n) => n.id!.toString() === selectedNode)?.name}</CardTitle>
 							<CardDescription>Real-time node logs</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<Textarea
-								ref={logsRef}
-								value={nodeLogs.find((nl) => nl.nodeId.toString() === selectedNode)?.logs || ''}
-								readOnly
-								className="font-mono text-sm h-[600px] bg-muted"
-								style={{
-									whiteSpace: 'pre',
-									overflowWrap: 'normal',
-									overflowX: 'auto',
-								}}
-								onScroll={(e) => {
-									const target = e.target as HTMLTextAreaElement
-									const isScrolledToBottom = target.scrollHeight - target.clientHeight <= target.scrollTop + 150
+							<LogViewer 
+								logs={nodeLogs.find((nl) => nl.nodeId.toString() === selectedNode)?.logs || ''}
+								onScroll={(isScrolledToBottom) => {
 									if (isScrolledToBottom) {
 										scrollToBottom(selectedNode!)
 									}

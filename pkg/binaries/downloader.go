@@ -142,16 +142,27 @@ func (d *BinaryDownloader) downloadAndExtractBinaries(version, destDir string) e
 			continue
 		}
 
+		// Check for directory traversal
+		if strings.Contains(header.Name, "..") {
+			return fmt.Errorf("invalid file path in tar: %s", header.Name)
+		}
+
 		// Get the target path
 		targetPath := filepath.Join(destDir, header.Name)
+		cleanTargetPath := filepath.Clean(targetPath)
+
+		// Ensure the target path is within the destination directory
+		if !strings.HasPrefix(cleanTargetPath, filepath.Clean(destDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("invalid file path in tar: %s", header.Name)
+		}
 
 		// Create directory structure
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(cleanTargetPath), 0755); err != nil {
 			return fmt.Errorf("failed to create directory structure: %w", err)
 		}
 
 		// Create file
-		f, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+		f, err := os.OpenFile(cleanTargetPath, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
@@ -165,7 +176,7 @@ func (d *BinaryDownloader) downloadAndExtractBinaries(version, destDir string) e
 
 		// Make binary executable if in bin directory
 		if strings.HasPrefix(header.Name, "bin/") {
-			if err := os.Chmod(targetPath, 0755); err != nil {
+			if err := os.Chmod(cleanTargetPath, 0755); err != nil {
 				return fmt.Errorf("failed to make binary executable: %w", err)
 			}
 		}

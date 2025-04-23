@@ -225,6 +225,16 @@ type NotificationProvider struct {
 	LastTestMessage         sql.NullString `json:"lastTestMessage"`
 }
 
+type Plugin struct {
+	Name       string      `json:"name"`
+	ApiVersion string      `json:"apiVersion"`
+	Kind       string      `json:"kind"`
+	Metadata   interface{} `json:"metadata"`
+	Spec       interface{} `json:"spec"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
+}
+
 type Session struct {
 	ID             int64          `json:"id"`
 	SessionID      string         `json:"sessionId"`

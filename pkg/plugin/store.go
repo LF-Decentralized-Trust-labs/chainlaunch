@@ -2,19 +2,19 @@ package plugin
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"fmt"
 
-	"github.com/davidviejo/projects/kfs/chainlaunch/pkg/db"
+	"github.com/chainlaunch/chainlaunch/pkg/db"
+	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 )
 
 // Store defines the interface for plugin storage operations
 type Store interface {
-	CreatePlugin(ctx context.Context, plugin *Plugin) error
-	GetPlugin(ctx context.Context, name string) (*Plugin, error)
-	ListPlugins(ctx context.Context) ([]*Plugin, error)
+	CreatePlugin(ctx context.Context, plugin *types.Plugin) error
+	GetPlugin(ctx context.Context, name string) (*types.Plugin, error)
+	ListPlugins(ctx context.Context) ([]*types.Plugin, error)
 	DeletePlugin(ctx context.Context, name string) error
+	UpdatePlugin(ctx context.Context, plugin *types.Plugin) error
 }
 
 // SQLStore implements the Store interface using SQL database
@@ -23,75 +23,56 @@ type SQLStore struct {
 }
 
 // NewSQLStore creates a new SQL store
-func NewSQLStore(db *sql.DB) *SQLStore {
+func NewSQLStore(db *db.Queries) *SQLStore {
 	return &SQLStore{
-		queries: db.New(db),
+		queries: db,
 	}
 }
 
 // CreatePlugin creates a new plugin in the database
-func (s *SQLStore) CreatePlugin(ctx context.Context, plugin *Plugin) error {
-	params, err := json.Marshal(plugin.Spec.Parameters)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	_, err = s.queries.CreatePlugin(ctx, db.CreatePluginParams{
-		Name:             plugin.Metadata.Name,
-		APIVersion:       plugin.APIVersion,
-		Kind:             plugin.Kind,
-		ParametersSchema: string(params),
+func (s *SQLStore) CreatePlugin(ctx context.Context, plugin *types.Plugin) error {
+	_, err := s.queries.CreatePlugin(ctx, &db.CreatePluginParams{
+		Name:       plugin.Metadata.Name,
+		ApiVersion: plugin.APIVersion,
+		Kind:       plugin.Kind,
+		Metadata:   plugin.Metadata,
+		Spec:       plugin.Spec,
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create plugin: %w", err)
+	}
+	return nil
 }
 
 // GetPlugin retrieves a plugin by name
-func (s *SQLStore) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
+func (s *SQLStore) GetPlugin(ctx context.Context, name string) (*types.Plugin, error) {
 	dbPlugin, err := s.queries.GetPlugin(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get plugin: %w", err)
 	}
 
-	var params json.RawMessage
-	if err := json.Unmarshal([]byte(dbPlugin.ParametersSchema), &params); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
-	}
-
-	return &Plugin{
-		APIVersion: dbPlugin.APIVersion,
+	return &types.Plugin{
+		APIVersion: dbPlugin.ApiVersion,
 		Kind:       dbPlugin.Kind,
-		Metadata: PluginMetadata{
-			Name: dbPlugin.Name,
-		},
-		Spec: PluginSpec{
-			Parameters: params,
-		},
+		Metadata:   dbPlugin.Metadata.(types.PluginMetadata),
+		Spec:       dbPlugin.Spec.(types.PluginSpec),
 	}, nil
 }
 
 // ListPlugins retrieves all plugins
-func (s *SQLStore) ListPlugins(ctx context.Context) ([]*Plugin, error) {
+func (s *SQLStore) ListPlugins(ctx context.Context) ([]*types.Plugin, error) {
 	dbPlugins, err := s.queries.ListPlugins(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list plugins: %w", err)
 	}
 
-	plugins := make([]*Plugin, len(dbPlugins))
+	plugins := make([]*types.Plugin, len(dbPlugins))
 	for i, dbPlugin := range dbPlugins {
-		var params json.RawMessage
-		if err := json.Unmarshal([]byte(dbPlugin.ParametersSchema), &params); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
-		}
-
-		plugins[i] = &Plugin{
-			APIVersion: dbPlugin.APIVersion,
+		plugins[i] = &types.Plugin{
+			APIVersion: dbPlugin.ApiVersion,
 			Kind:       dbPlugin.Kind,
-			Metadata: PluginMetadata{
-				Name: dbPlugin.Name,
-			},
-			Spec: PluginSpec{
-				Parameters: params,
-			},
+			Metadata:   dbPlugin.Metadata.(types.PluginMetadata),
+			Spec:       dbPlugin.Spec.(types.PluginSpec),
 		}
 	}
 
@@ -100,5 +81,24 @@ func (s *SQLStore) ListPlugins(ctx context.Context) ([]*Plugin, error) {
 
 // DeletePlugin removes a plugin by name
 func (s *SQLStore) DeletePlugin(ctx context.Context, name string) error {
-	return s.queries.DeletePlugin(ctx, name)
+	err := s.queries.DeletePlugin(ctx, name)
+	if err != nil {
+		return fmt.Errorf("failed to delete plugin: %w", err)
+	}
+	return nil
+}
+
+// UpdatePlugin updates an existing plugin
+func (s *SQLStore) UpdatePlugin(ctx context.Context, plugin *types.Plugin) error {
+	_, err := s.queries.UpdatePlugin(ctx, &db.UpdatePluginParams{
+		ApiVersion: plugin.APIVersion,
+		Kind:       plugin.Kind,
+		Metadata:   plugin.Metadata,
+		Spec:       plugin.Spec,
+		Name:       plugin.Metadata.Name,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update plugin: %w", err)
+	}
+	return nil
 }

@@ -2,41 +2,26 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	plugintypes "github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 	"github.com/compose-spec/compose-go/types"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/flags"
+	cmdCompose "github.com/docker/compose/v2/cmd/compose"
 	"github.com/docker/compose/v2/pkg/api"
+
 	"github.com/docker/compose/v2/pkg/compose"
 	"gopkg.in/yaml.v3"
 )
-
-// Plugin represents a plugin definition
-type Plugin struct {
-	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
-	Kind       string         `json:"kind" yaml:"kind"`
-	Metadata   PluginMetadata `json:"metadata" yaml:"metadata"`
-	Spec       PluginSpec     `json:"spec" yaml:"spec"`
-}
-
-// PluginMetadata contains metadata about the plugin
-type PluginMetadata struct {
-	Name string `json:"name" yaml:"name"`
-}
-
-// PluginSpec contains the plugin specification
-type PluginSpec struct {
-	Parameters json.RawMessage `json:"parameters" yaml:"parameters"`
-}
 
 // PluginManager handles plugin operations
 type PluginManager struct {
 	pluginsDir string
 	compose    api.Service
+	dockerCli  *command.DockerCli
 }
 
 // NewPluginManager creates a new plugin manager
@@ -69,17 +54,18 @@ func NewPluginManager(pluginsDir string) (*PluginManager, error) {
 	return &PluginManager{
 		pluginsDir: pluginsDir,
 		compose:    composeService,
+		dockerCli:  dockerCli,
 	}, nil
 }
 
 // LoadPlugin loads a plugin from a file
-func (pm *PluginManager) LoadPlugin(filePath string) (*Plugin, error) {
+func (pm *PluginManager) LoadPlugin(filePath string) (*plugintypes.Plugin, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read plugin file: %w", err)
 	}
 
-	var plugin Plugin
+	var plugin plugintypes.Plugin
 	if err := yaml.Unmarshal(data, &plugin); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal plugin: %w", err)
 	}
@@ -88,7 +74,7 @@ func (pm *PluginManager) LoadPlugin(filePath string) (*Plugin, error) {
 }
 
 // DeployPlugin deploys a plugin using docker-compose
-func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *Plugin, parameters map[string]interface{}) error {
+func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.Plugin, parameters map[string]interface{}) error {
 	// Create a temporary directory for the plugin
 	tempDir, err := os.MkdirTemp("", plugin.Metadata.Name)
 	if err != nil {
@@ -124,14 +110,13 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *Plugin, param
 		return fmt.Errorf("failed to write docker-compose file: %w", err)
 	}
 
-	// Load the project
-	project, err := pm.compose.Up(ctx, composePath)
+	projectOptions := cmdCompose.ProjectOptions{}
+	// Turn projectOptions into a project with default values
+	projectType, _, err := projectOptions.ToProject(ctx, pm.dockerCli, []string{})
 	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
-
-	// Start the services
-	options := api.UpOptions{
+	upOptions := api.UpOptions{
 		Create: api.CreateOptions{
 			RemoveOrphans: true,
 			QuietPull:     true,
@@ -140,9 +125,10 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *Plugin, param
 			Wait: true,
 		},
 	}
-
-	if err := pm.compose.Up(ctx, project, options); err != nil {
-		return fmt.Errorf("failed to start services: %w", err)
+	// Load the project
+	err = pm.compose.Up(ctx, projectType, upOptions)
+	if err != nil {
+		return fmt.Errorf("failed to load project: %w", err)
 	}
 
 	return nil
@@ -151,4 +137,37 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *Plugin, param
 // stringPtr returns a pointer to a string
 func stringPtr(s string) *string {
 	return &s
+}
+
+// SavePlugin saves a plugin to a file
+func (pm *PluginManager) SavePlugin(plugin *plugintypes.Plugin) error {
+	data, err := yaml.Marshal(plugin)
+	if err != nil {
+		return fmt.Errorf("failed to marshal plugin: %w", err)
+	}
+
+	filePath := filepath.Join(pm.pluginsDir, plugin.Metadata.Name+".yaml")
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write plugin file: %w", err)
+	}
+
+	return nil
+}
+
+// ValidatePlugin validates a plugin definition
+func (pm *PluginManager) ValidatePlugin(plugin *plugintypes.Plugin) error {
+	if plugin.APIVersion == "" {
+		return fmt.Errorf("apiVersion is required")
+	}
+	if plugin.Kind == "" {
+		return fmt.Errorf("kind is required")
+	}
+	if plugin.Metadata.Name == "" {
+		return fmt.Errorf("metadata.name is required")
+	}
+	if plugin.Spec.Image == "" {
+		return fmt.Errorf("spec.image is required")
+	}
+
+	return nil
 }

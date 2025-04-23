@@ -963,13 +963,28 @@ WHERE fabric_organization_id = ?;
 
 -- name: CreatePlugin :one
 INSERT INTO plugins (
-    name,
-    api_version,
-    kind,
-    parameters_schema
+  name,
+  api_version,
+  kind,
+  metadata,
+  spec,
+  created_at,
+  updated_at
 ) VALUES (
-    ?, ?, ?, ?
+  ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ) RETURNING *;
+
+-- name: UpdatePlugin :one
+UPDATE plugins
+SET 
+  api_version = ?,
+  kind = ?,
+  metadata = ?,
+  spec = ?,
+  updated_at = CURRENT_TIMESTAMP
+WHERE name = ?
+RETURNING *;
+
 
 -- name: GetPlugin :one
 SELECT * FROM plugins WHERE name = ?;

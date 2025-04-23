@@ -856,6 +856,49 @@ func (q *Queries) CreateNotificationProvider(ctx context.Context, arg *CreateNot
 	return &i, err
 }
 
+const CreatePlugin = `-- name: CreatePlugin :one
+INSERT INTO plugins (
+  name,
+  api_version,
+  kind,
+  metadata,
+  spec,
+  created_at,
+  updated_at
+) VALUES (
+  ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) RETURNING name, api_version, kind, metadata, spec, created_at, updated_at
+`
+
+type CreatePluginParams struct {
+	Name       string      `json:"name"`
+	ApiVersion string      `json:"apiVersion"`
+	Kind       string      `json:"kind"`
+	Metadata   interface{} `json:"metadata"`
+	Spec       interface{} `json:"spec"`
+}
+
+func (q *Queries) CreatePlugin(ctx context.Context, arg *CreatePluginParams) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, CreatePlugin,
+		arg.Name,
+		arg.ApiVersion,
+		arg.Kind,
+		arg.Metadata,
+		arg.Spec,
+	)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const CreateSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     session_id,
@@ -1096,6 +1139,15 @@ type DeleteOldBackupsParams struct {
 
 func (q *Queries) DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsParams) error {
 	_, err := q.db.ExecContext(ctx, DeleteOldBackups, arg.TargetID, arg.CreatedAt)
+	return err
+}
+
+const DeletePlugin = `-- name: DeletePlugin :exec
+DELETE FROM plugins WHERE name = ?
+`
+
+func (q *Queries) DeletePlugin(ctx context.Context, name string) error {
+	_, err := q.db.ExecContext(ctx, DeletePlugin, name)
 	return err
 }
 
@@ -2670,6 +2722,25 @@ func (q *Queries) GetPeerPorts(ctx context.Context) ([]*GetPeerPortsRow, error) 
 	return items, nil
 }
 
+const GetPlugin = `-- name: GetPlugin :one
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at FROM plugins WHERE name = ?
+`
+
+func (q *Queries) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, GetPlugin, name)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const GetProvidersByNotificationType = `-- name: GetProvidersByNotificationType :many
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE (
@@ -3833,6 +3904,41 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]*Notificatio
 	return items, nil
 }
 
+const ListPlugins = `-- name: ListPlugins :many
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at FROM plugins ORDER BY name
+`
+
+func (q *Queries) ListPlugins(ctx context.Context) ([]*Plugin, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlugins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Plugin{}
+	for rows.Next() {
+		var i Plugin
+		if err := rows.Scan(
+			&i.Name,
+			&i.ApiVersion,
+			&i.Kind,
+			&i.Metadata,
+			&i.Spec,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListSettings = `-- name: ListSettings :many
 SELECT id, config, created_at, updated_at FROM settings
 ORDER BY created_at DESC
@@ -4881,6 +4987,47 @@ type UpdateOrganizationCRLParams struct {
 func (q *Queries) UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganizationCRLParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateOrganizationCRL, arg.CrlLastUpdate, arg.CrlKeyID, arg.ID)
 	return err
+}
+
+const UpdatePlugin = `-- name: UpdatePlugin :one
+UPDATE plugins
+SET 
+  api_version = ?,
+  kind = ?,
+  metadata = ?,
+  spec = ?,
+  updated_at = CURRENT_TIMESTAMP
+WHERE name = ?
+RETURNING name, api_version, kind, metadata, spec, created_at, updated_at
+`
+
+type UpdatePluginParams struct {
+	ApiVersion string      `json:"apiVersion"`
+	Kind       string      `json:"kind"`
+	Metadata   interface{} `json:"metadata"`
+	Spec       interface{} `json:"spec"`
+	Name       string      `json:"name"`
+}
+
+func (q *Queries) UpdatePlugin(ctx context.Context, arg *UpdatePluginParams) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, UpdatePlugin,
+		arg.ApiVersion,
+		arg.Kind,
+		arg.Metadata,
+		arg.Spec,
+		arg.Name,
+	)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
 }
 
 const UpdateProviderTestResults = `-- name: UpdateProviderTestResults :one

@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS plugins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    api_version TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    parameters_schema TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER IF NOT EXISTS update_plugins_updated_at
+AFTER UPDATE ON plugins
+BEGIN
+    UPDATE plugins SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END; 

@@ -960,3 +960,22 @@ WHERE fabric_organization_id = ? AND serial_number = ?;
 -- name: GetRevokedCertificateCount :one
 SELECT COUNT(*) FROM fabric_revoked_certificates
 WHERE fabric_organization_id = ?;
+
+-- name: CreatePlugin :one
+INSERT INTO plugins (
+    name,
+    api_version,
+    kind,
+    parameters_schema
+) VALUES (
+    ?, ?, ?, ?
+) RETURNING *;
+
+-- name: GetPlugin :one
+SELECT * FROM plugins WHERE name = ?;
+
+-- name: ListPlugins :many
+SELECT * FROM plugins ORDER BY name;
+
+-- name: DeletePlugin :exec
+DELETE FROM plugins WHERE name = ?;

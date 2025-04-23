@@ -104,27 +104,6 @@ const data = {
 				},
 			],
 		},
-
-		// {
-		// 	title: 'Decentralized Identity',
-		// 	items: [
-		// 		{
-		// 			title: 'Issuers',
-		// 			url: '/identity/issuers',
-		// 			icon: BadgeCheck,
-		// 		},
-		// 		{
-		// 			title: 'Verifiers',
-		// 			url: '/identity/verifiers',
-		// 			icon: ShieldCheck,
-		// 		},
-		// 		{
-		// 			title: 'Certificate templates',
-		// 			url: '/identity/certificates',
-		// 			icon: FileText,
-		// 		},
-		// 	],
-		// },
 	],
 }
 

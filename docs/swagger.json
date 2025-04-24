@@ -3206,10 +3206,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/http.BesuNodeDefaultsResponse"
-                            }
+                            "$ref": "#/definitions/http.BesuNodeDefaultsResponse"
                         }
                     },
                     "500": {

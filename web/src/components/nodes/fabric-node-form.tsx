@@ -10,31 +10,55 @@ import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import * as z from 'zod'
-
 const fabricNodeFormSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
-	fabricProperties: z.object({
-		nodeType: z.enum(['FABRIC_PEER', 'FABRIC_ORDERER']),
-		mode: z.enum(['docker', 'service']),
-		version: z.string(),
-		organizationId: z.number().optional(),
-		listenAddress: z.string(),
-		operationsListenAddress: z.string(),
-		externalEndpoint: z.string(),
-		domains: z.array(z.string()).optional(),
-		chaincodeAddress: z.string().optional(),
-		eventsAddress: z.string().optional(),
-		adminAddress: z.string().optional(),
-		addressOverrides: z
-			.array(
-				z.object({
-					from: z.string(),
-					to: z.string(),
-					tlsCACert: z.string(),
-				})
-			)
-			.optional(),
-	}),
+	fabricProperties: z
+		.object({
+			nodeType: z.enum(['FABRIC_PEER', 'FABRIC_ORDERER']),
+			mode: z.enum(['docker', 'service']),
+			version: z.string(),
+			organizationId: z.number(),
+			listenAddress: z.string(),
+			operationsListenAddress: z.string(),
+			externalEndpoint: z.string(),
+			domains: z.array(z.string()).optional(),
+			chaincodeAddress: z.string().optional(),
+			eventsAddress: z.string().optional(),
+			adminAddress: z.string().optional(),
+			addressOverrides: z
+				.array(
+					z.object({
+						from: z.string(),
+						to: z.string(),
+						tlsCACert: z.string(),
+					})
+				)
+				.optional(),
+		})
+		.refine(
+			(data) => {
+				if (data.nodeType === 'FABRIC_PEER') {
+					return !!(data.chaincodeAddress && data.eventsAddress)
+				}
+				return true
+			},
+			{
+				message: 'Chaincode address and events address are required for peer nodes',
+				path: ['chaincodeAddress'],
+			}
+		)
+		.refine(
+			(data) => {
+				if (data.nodeType === 'FABRIC_ORDERER') {
+					return !!data.adminAddress
+				}
+				return true
+			},
+			{
+				message: 'Admin address is required for orderer nodes',
+				path: ['adminAddress'],
+			}
+		),
 })
 
 export type FabricNodeFormValues = z.infer<typeof fabricNodeFormSchema>
@@ -123,11 +147,32 @@ export function FabricNodeForm({
 			<form
 				onSubmit={form.handleSubmit(onSubmit, (errors) => {
 					console.log(errors)
-					toast.error(
-						`Errors in the form: ${Object.values(errors)
-							.map((error) => error.message)
-							.join(', ')}`
-					)
+
+					// Function to recursively extract error messages
+					const extractErrorMessages = (obj: any, path = ''): string[] => {
+						if (!obj) return []
+
+						if (typeof obj === 'object') {
+							if ('message' in obj && 'type' in obj) {
+								// This is an error object
+								return [`${path}: ${obj.message}`]
+							}
+
+							// Recursively process nested objects
+							return Object.entries(obj).flatMap(([key, value]) => {
+								const newPath = path ? `${path}.${key}` : key
+								return extractErrorMessages(value, newPath)
+							})
+						}
+
+						return []
+					}
+
+					const errorMessages = extractErrorMessages(errors)
+
+					if (errorMessages.length > 0) {
+						toast.error(`Errors in the form: ${errorMessages.join(', ')}`)
+					}
 				})}
 				className="space-y-6"
 			>

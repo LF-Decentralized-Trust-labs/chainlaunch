@@ -3700,7 +3700,7 @@ export type GetNodesDefaultsBesuNodeResponses = {
     /**
      * OK
      */
-    200: Array<HttpBesuNodeDefaultsResponse>;
+    200: HttpBesuNodeDefaultsResponse;
 };
 
 export type GetNodesDefaultsBesuNodeResponse = GetNodesDefaultsBesuNodeResponses[keyof GetNodesDefaultsBesuNodeResponses];

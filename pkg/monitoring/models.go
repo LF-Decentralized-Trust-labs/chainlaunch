@@ -20,8 +20,10 @@ type Node struct {
 	ID int64
 	// Name is a human-readable name for the node
 	Name string
-	// URL is the endpoint to check for node status
-	URL string
+	// Endpoint is the endpoint to check for node status
+	Endpoint string
+	// Platform is the blockchain platform the node belongs to
+	Platform string
 	// CheckInterval is how often this node should be checked
 	CheckInterval time.Duration
 	// Timeout is the maximum time to wait for a response

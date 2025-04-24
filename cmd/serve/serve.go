@@ -318,28 +318,66 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 		// Get all nodes from the node service
 		ctx := context.Background()
+		var allNodes []nodesservice.NodeResponse
 		fabricPlatform := nodeTypes.PlatformFabric
 		nodes, err := nodesService.ListNodes(ctx, &fabricPlatform, 1, 100)
 		if err != nil {
 			log.Printf("Failed to fetch nodes for monitoring: %v", err)
 			return
 		}
+		allNodes = append(allNodes, nodes.Items...)
+
+		// Get Besu nodes
+		besuPlatform := nodeTypes.PlatformBesu
+		besuNodes, err := nodesService.ListNodes(ctx, &besuPlatform, 1, 100)
+		if err != nil {
+			log.Printf("Failed to fetch Besu nodes for monitoring: %v", err)
+		} else {
+			allNodes = append(allNodes, besuNodes.Items...)
+			logger.Infof("Added %d Besu nodes for monitoring", len(besuNodes.Items))
+		}
 
 		// Add each node to monitoring
-		for _, node := range nodes.Items {
-			// Skip nodes without endpoints
-			if node.Endpoint == "" {
+		for _, node := range allNodes {
+			var monitorNode *monitoring.Node
+			switch node.NodeType {
+			case nodeTypes.NodeTypeFabricPeer:
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         node.Endpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			case nodeTypes.NodeTypeFabricOrderer:
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         node.Endpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			case nodeTypes.NodeTypeBesuFullnode:
+				rcpEndpoint := fmt.Sprintf("%s:%d", node.BesuNode.RPCHost, node.BesuNode.RPCPort)
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         rcpEndpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			default:
+				logger.Infof("Skipping node %s (%s) as it is not a supported node type", node.Name, node.ID)
 				continue
-			}
-
-			// Create a monitoring node from the node data
-			monitorNode := &monitoring.Node{
-				ID:               node.ID,
-				Name:             node.Name,
-				URL:              node.Endpoint + "/health", // Assuming a health endpoint
-				CheckInterval:    1 * time.Minute,
-				Timeout:          10 * time.Second,
-				FailureThreshold: 3,
 			}
 
 			if monitoringService.NodeExists(node.ID) {

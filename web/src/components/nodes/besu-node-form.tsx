@@ -82,7 +82,7 @@ export function BesuNodeForm({ onSubmit, isSubmitting, hideSubmit, defaultValues
 	}, [defaultValues])
 	useEffect(() => {
 		if (besuDefaultConfig && !defaultValues) {
-			const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = besuDefaultConfig
+			const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = besuDefaultConfig.defaults![0]
 			form.setValue('p2pHost', p2pHost || '127.0.0.1')
 			form.setValue('p2pPort', Number(p2pPort) || 30303)
 			form.setValue('externalIp', externalIp || '127.0.0.1')

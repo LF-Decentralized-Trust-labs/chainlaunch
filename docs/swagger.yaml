@@ -4686,9 +4686,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/http.BesuNodeDefaultsResponse'
-            type: array
+            $ref: '#/definitions/http.BesuNodeDefaultsResponse'
         "500":
           description: Internal server error
           schema:

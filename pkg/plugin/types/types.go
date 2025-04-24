@@ -3,56 +3,74 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // Plugin represents a plugin definition
 type Plugin struct {
-	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
-	Kind       string         `json:"kind" yaml:"kind"`
-	Metadata   PluginMetadata `json:"metadata" yaml:"metadata"`
-	Spec       PluginSpec     `json:"spec" yaml:"spec"`
+	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string   `json:"kind" yaml:"kind"`
+	Metadata   Metadata `json:"metadata" yaml:"metadata"`
+	Spec       Spec     `json:"spec" yaml:"spec"`
 }
 
-// PluginMetadata contains metadata about the plugin
-type PluginMetadata struct {
-	Name        string            `json:"name" yaml:"name"`
-	Version     string            `json:"version" yaml:"version"`
-	Description string            `json:"description" yaml:"description"`
-	Author      string            `json:"author" yaml:"author"`
-	License     string            `json:"license" yaml:"license"`
-	Tags        []string          `json:"tags" yaml:"tags"`
-	Labels      map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+// Metadata contains plugin metadata
+type Metadata struct {
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version" yaml:"version"`
 }
 
-// PluginSpec contains the plugin specification
-type PluginSpec struct {
-	Image      string                 `json:"image" yaml:"image"`
-	Parameters map[string]interface{} `json:"parameters" yaml:"parameters"`
-	Env        map[string]string      `json:"env,omitempty" yaml:"env,omitempty"`
-	Volumes    []PluginVolume         `json:"volumes,omitempty" yaml:"volumes,omitempty"`
-	Ports      []PluginPort           `json:"ports,omitempty" yaml:"ports,omitempty"`
-	Resources  *PluginResources       `json:"resources,omitempty" yaml:"resources,omitempty"`
+// Spec contains the plugin specification
+type Spec struct {
+	DockerCompose DockerCompose `json:"dockerCompose" yaml:"dockerCompose"`
+	Parameters    Parameters    `json:"parameters" yaml:"parameters"`
 }
 
-// PluginVolume represents a volume mount for the plugin
-type PluginVolume struct {
+// DockerCompose contains the docker-compose configuration
+type DockerCompose struct {
+	Contents string `json:"contents" yaml:"contents"`
+}
+
+// Parameters defines the plugin parameters schema
+type Parameters struct {
+	Schema     string                   `json:"$schema" yaml:"$schema"`
+	Type       string                   `json:"type" yaml:"type"`
+	Properties map[string]ParameterSpec `json:"properties" yaml:"properties"`
+	Required   []string                 `json:"required" yaml:"required"`
+}
+
+// ParameterSpec defines a single parameter specification
+type ParameterSpec struct {
+	Type        string   `json:"type" yaml:"type"`
+	Description string   `json:"description" yaml:"description"`
+	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
+	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+}
+
+// DeploymentStatus represents the status of a plugin deployment
+type DeploymentStatus struct {
+	Status      string    `json:"status" yaml:"status"`
+	StartedAt   time.Time `json:"startedAt" yaml:"startedAt"`
+	StoppedAt   time.Time `json:"stoppedAt,omitempty" yaml:"stoppedAt,omitempty"`
+	Error       string    `json:"error,omitempty" yaml:"error,omitempty"`
+	Services    []Service `json:"services" yaml:"services"`
+	ProjectName string    `json:"projectName" yaml:"projectName"`
+}
+
+// Service represents a docker-compose service status
+type Service struct {
 	Name      string `json:"name" yaml:"name"`
-	MountPath string `json:"mountPath" yaml:"mountPath"`
-	HostPath  string `json:"hostPath,omitempty" yaml:"hostPath,omitempty"`
+	Status    string `json:"status" yaml:"status"`
+	Image     string `json:"image" yaml:"image"`
+	Ports     []Port `json:"ports" yaml:"ports"`
+	CreatedAt string `json:"createdAt" yaml:"createdAt"`
 }
 
-// PluginPort represents a port mapping for the plugin
-type PluginPort struct {
-	Name          string `json:"name" yaml:"name"`
-	ContainerPort int    `json:"containerPort" yaml:"containerPort"`
-	HostPort      int    `json:"hostPort,omitempty" yaml:"hostPort,omitempty"`
-	Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
-}
-
-// PluginResources represents resource requirements for the plugin
-type PluginResources struct {
-	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
-	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
+// Port represents a port mapping
+type Port struct {
+	HostPort      string `json:"hostPort" yaml:"hostPort"`
+	ContainerPort string `json:"containerPort" yaml:"containerPort"`
+	Protocol      string `json:"protocol" yaml:"protocol"`
 }
 
 // GetPluginParameters returns the plugin parameters as a JSON string
@@ -72,30 +90,39 @@ func (p *Plugin) SetPluginParameters(parameters string) error {
 	return nil
 }
 
-// GetPluginEnv returns the plugin environment variables
-func (p *Plugin) GetPluginEnv() map[string]string {
-	if p.Spec.Env == nil {
-		return make(map[string]string)
+// Validate validates the plugin structure
+func (p *Plugin) Validate() error {
+	if p.APIVersion == "" {
+		return fmt.Errorf("apiVersion is required")
 	}
-	return p.Spec.Env
-}
+	if p.Kind == "" {
+		return fmt.Errorf("kind is required")
+	}
+	if p.Metadata.Name == "" {
+		return fmt.Errorf("metadata.name is required")
+	}
+	if p.Metadata.Version == "" {
+		return fmt.Errorf("metadata.version is required")
+	}
+	if p.Spec.DockerCompose.Contents == "" {
+		return fmt.Errorf("spec.dockerCompose.contents is required")
+	}
+	if p.Spec.Parameters.Schema == "" {
+		return fmt.Errorf("spec.parameters.$schema is required")
+	}
+	if p.Spec.Parameters.Type == "" {
+		return fmt.Errorf("spec.parameters.type is required")
+	}
+	if len(p.Spec.Parameters.Properties) == 0 {
+		return fmt.Errorf("spec.parameters.properties is required")
+	}
 
-// SetPluginEnv sets the plugin environment variables
-func (p *Plugin) SetPluginEnv(env map[string]string) {
-	p.Spec.Env = env
-}
+	// Validate that all required parameters have corresponding properties
+	for _, required := range p.Spec.Parameters.Required {
+		if _, ok := p.Spec.Parameters.Properties[required]; !ok {
+			return fmt.Errorf("required parameter %s is not defined in properties", required)
+		}
+	}
 
-// AddPluginVolume adds a volume mount to the plugin
-func (p *Plugin) AddPluginVolume(volume PluginVolume) {
-	p.Spec.Volumes = append(p.Spec.Volumes, volume)
-}
-
-// AddPluginPort adds a port mapping to the plugin
-func (p *Plugin) AddPluginPort(port PluginPort) {
-	p.Spec.Ports = append(p.Spec.Ports, port)
-}
-
-// SetPluginResources sets the plugin resource requirements
-func (p *Plugin) SetPluginResources(resources PluginResources) {
-	p.Spec.Resources = &resources
+	return nil
 }

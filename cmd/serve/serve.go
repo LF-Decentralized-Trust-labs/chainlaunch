@@ -36,6 +36,7 @@ import (
 	nodesservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	notificationhttp "github.com/chainlaunch/chainlaunch/pkg/notifications/http"
 	notificationservice "github.com/chainlaunch/chainlaunch/pkg/notifications/service"
+	"github.com/chainlaunch/chainlaunch/pkg/plugin"
 	settingshttp "github.com/chainlaunch/chainlaunch/pkg/settings/http"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/go-chi/chi/v5"
@@ -394,6 +395,14 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		}
 	}()
 
+	// Initialize plugin store and manager
+	pluginStore := plugin.NewSQLStore(queries)
+	pluginManager, err := plugin.NewPluginManager(filepath.Join(dataPath, "plugins"))
+	if err != nil {
+		log.Fatal("Failed to initialize plugin manager:", err)
+	}
+	pluginHandler := plugin.NewHandler(pluginStore, pluginManager, logger)
+
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)
 	organizationHandler := fabrichandler.NewOrganizationHandler(organizationService)
@@ -452,6 +461,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			notificationHandler.RegisterRoutes(r)
 			// Mount settings routes
 			settingsHandler.RegisterRoutes(r)
+			// Mount plugin routes
+			pluginHandler.RegisterRoutes(r)
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(

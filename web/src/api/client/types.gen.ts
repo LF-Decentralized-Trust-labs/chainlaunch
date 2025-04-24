@@ -58,6 +58,28 @@ export type GithubComChainlaunchChainlaunchPkgNotificationsHttpErrorResponse = {
     error?: string;
 };
 
+export type GithubComChainlaunchChainlaunchPkgPluginTypesParameters = {
+    $schema?: string;
+    properties?: {
+        [key: string]: TypesParameterSpec;
+    };
+    required?: Array<string>;
+    type?: string;
+};
+
+export type GithubComChainlaunchChainlaunchPkgPluginTypesPlugin = {
+    apiVersion?: string;
+    kind?: string;
+    metadata?: TypesMetadata;
+    spec?: TypesSpec;
+};
+
+export type GithubComChainlaunchChainlaunchPkgPluginTypesPort = {
+    containerPort?: string;
+    hostPort?: string;
+    protocol?: string;
+};
+
 export type HandlerCreateOrganizationRequest = {
     description?: string;
     mspId: string;
@@ -1130,6 +1152,19 @@ export type TypesBesuNodeConfig = {
 
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
 
+export type TypesDeploymentStatus = {
+    error?: string;
+    projectName?: string;
+    services?: Array<TypesService>;
+    startedAt?: string;
+    status?: string;
+    stoppedAt?: string;
+};
+
+export type TypesDockerCompose = {
+    contents?: string;
+};
+
 export type TypesFabricOrdererConfig = {
     /**
      * @Description Address overrides for the orderer
@@ -1228,6 +1263,11 @@ export type TypesFabricPeerConfig = {
     version?: string;
 };
 
+export type TypesMetadata = {
+    name?: string;
+    version?: string;
+};
+
 export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
@@ -1245,6 +1285,26 @@ export type TypesOrdererAddressOverride = {
      * @Description New orderer address to use
      */
     to: string;
+};
+
+export type TypesParameterSpec = {
+    default?: string;
+    description?: string;
+    enum?: Array<string>;
+    type?: string;
+};
+
+export type TypesService = {
+    createdAt?: string;
+    image?: string;
+    name?: string;
+    ports?: Array<GithubComChainlaunchChainlaunchPkgPluginTypesPort>;
+    status?: string;
+};
+
+export type TypesSpec = {
+    dockerCompose?: TypesDockerCompose;
+    parameters?: GithubComChainlaunchChainlaunchPkgPluginTypesParameters;
 };
 
 export type UrlUrl = {
@@ -4880,6 +4940,277 @@ export type GetOrganizationsByIdRevokedCertificatesResponses = {
 };
 
 export type GetOrganizationsByIdRevokedCertificatesResponse = GetOrganizationsByIdRevokedCertificatesResponses[keyof GetOrganizationsByIdRevokedCertificatesResponses];
+
+export type GetPluginsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/plugins';
+};
+
+export type GetPluginsErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type GetPluginsError = GetPluginsErrors[keyof GetPluginsErrors];
+
+export type GetPluginsResponses = {
+    /**
+     * OK
+     */
+    200: Array<GithubComChainlaunchChainlaunchPkgPluginTypesPlugin>;
+};
+
+export type GetPluginsResponse = GetPluginsResponses[keyof GetPluginsResponses];
+
+export type PostPluginsData = {
+    /**
+     * Plugin to create
+     */
+    body: GithubComChainlaunchChainlaunchPkgPluginTypesPlugin;
+    path?: never;
+    query?: never;
+    url: '/plugins';
+};
+
+export type PostPluginsErrors = {
+    /**
+     * Bad Request
+     */
+    400: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type PostPluginsError = PostPluginsErrors[keyof PostPluginsErrors];
+
+export type PostPluginsResponses = {
+    /**
+     * Created
+     */
+    201: GithubComChainlaunchChainlaunchPkgPluginTypesPlugin;
+};
+
+export type PostPluginsResponse = PostPluginsResponses[keyof PostPluginsResponses];
+
+export type DeletePluginsByNameData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}';
+};
+
+export type DeletePluginsByNameErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type DeletePluginsByNameError = DeletePluginsByNameErrors[keyof DeletePluginsByNameErrors];
+
+export type DeletePluginsByNameResponses = {
+    /**
+     * No Content
+     */
+    204: unknown;
+};
+
+export type GetPluginsByNameData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}';
+};
+
+export type GetPluginsByNameErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type GetPluginsByNameError = GetPluginsByNameErrors[keyof GetPluginsByNameErrors];
+
+export type GetPluginsByNameResponses = {
+    /**
+     * OK
+     */
+    200: GithubComChainlaunchChainlaunchPkgPluginTypesPlugin;
+};
+
+export type GetPluginsByNameResponse = GetPluginsByNameResponses[keyof GetPluginsByNameResponses];
+
+export type PutPluginsByNameData = {
+    /**
+     * Plugin to update
+     */
+    body: GithubComChainlaunchChainlaunchPkgPluginTypesPlugin;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}';
+};
+
+export type PutPluginsByNameErrors = {
+    /**
+     * Bad Request
+     */
+    400: string;
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type PutPluginsByNameError = PutPluginsByNameErrors[keyof PutPluginsByNameErrors];
+
+export type PutPluginsByNameResponses = {
+    /**
+     * OK
+     */
+    200: GithubComChainlaunchChainlaunchPkgPluginTypesPlugin;
+};
+
+export type PutPluginsByNameResponse = PutPluginsByNameResponses[keyof PutPluginsByNameResponses];
+
+export type PostPluginsByNameDeployData = {
+    /**
+     * Deployment parameters
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/deploy';
+};
+
+export type PostPluginsByNameDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: string;
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type PostPluginsByNameDeployError = PostPluginsByNameDeployErrors[keyof PostPluginsByNameDeployErrors];
+
+export type PostPluginsByNameDeployResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetPluginsByNameStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/status';
+};
+
+export type GetPluginsByNameStatusErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type GetPluginsByNameStatusError = GetPluginsByNameStatusErrors[keyof GetPluginsByNameStatusErrors];
+
+export type GetPluginsByNameStatusResponses = {
+    /**
+     * OK
+     */
+    200: TypesDeploymentStatus;
+};
+
+export type GetPluginsByNameStatusResponse = GetPluginsByNameStatusResponses[keyof GetPluginsByNameStatusResponses];
+
+export type PostPluginsByNameStopData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/stop';
+};
+
+export type PostPluginsByNameStopErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type PostPluginsByNameStopError = PostPluginsByNameStopErrors[keyof PostPluginsByNameStopErrors];
+
+export type PostPluginsByNameStopResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type GetSettingsData = {
     body?: never;

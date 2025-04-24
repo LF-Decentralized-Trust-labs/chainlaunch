@@ -58,6 +58,41 @@ definitions:
       error:
         type: string
     type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters:
+    properties:
+      $schema:
+        type: string
+      properties:
+        additionalProperties:
+          $ref: '#/definitions/types.ParameterSpec'
+        type: object
+      required:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin:
+    properties:
+      apiVersion:
+        type: string
+      kind:
+        type: string
+      metadata:
+        $ref: '#/definitions/types.Metadata'
+      spec:
+        $ref: '#/definitions/types.Spec'
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Port:
+    properties:
+      containerPort:
+        type: string
+      hostPort:
+        type: string
+      protocol:
+        type: string
+    type: object
   handler.CreateOrganizationRequest:
     properties:
       description:
@@ -1947,6 +1982,28 @@ definitions:
     x-enum-varnames:
     - PlatformFabric
     - PlatformBesu
+  types.DeploymentStatus:
+    properties:
+      error:
+        type: string
+      projectName:
+        type: string
+      services:
+        items:
+          $ref: '#/definitions/types.Service'
+        type: array
+      startedAt:
+        type: string
+      status:
+        type: string
+      stoppedAt:
+        type: string
+    type: object
+  types.DockerCompose:
+    properties:
+      contents:
+        type: string
+    type: object
   types.FabricOrdererConfig:
     properties:
       addressOverrides:
@@ -2066,6 +2123,13 @@ definitions:
     - name
     - organizationId
     type: object
+  types.Metadata:
+    properties:
+      name:
+        type: string
+      version:
+        type: string
+    type: object
   types.NodeStatus:
     enum:
     - PENDING
@@ -2109,6 +2173,41 @@ definitions:
     - from
     - tlsCACert
     - to
+    type: object
+  types.ParameterSpec:
+    properties:
+      default:
+        type: string
+      description:
+        type: string
+      enum:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+    type: object
+  types.Service:
+    properties:
+      createdAt:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Port'
+        type: array
+      status:
+        type: string
+    type: object
+  types.Spec:
+    properties:
+      dockerCompose:
+        $ref: '#/definitions/types.DockerCompose'
+      parameters:
+        $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters'
     type: object
   url.URL:
     properties:
@@ -5392,6 +5491,243 @@ paths:
       summary: Get a Fabric organization by MSP ID
       tags:
       - Organizations
+  /plugins:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all available plugins
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: List all plugins
+      tags:
+      - plugins
+    post:
+      consumes:
+      - application/json
+      description: Create a new plugin
+      parameters:
+      - description: Plugin to create
+        in: body
+        name: plugin
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a plugin
+      tags:
+      - plugins
+  /plugins/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an existing plugin
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a plugin
+      tags:
+      - plugins
+    get:
+      consumes:
+      - application/json
+      description: Get a specific plugin by name
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a plugin
+      tags:
+      - plugins
+    put:
+      consumes:
+      - application/json
+      description: Update an existing plugin
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Plugin to update
+        in: body
+        name: plugin
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a plugin
+      tags:
+      - plugins
+  /plugins/{name}/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a plugin with the given parameters
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Deployment parameters
+        in: body
+        name: parameters
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Deploy a plugin
+      tags:
+      - plugins
+  /plugins/{name}/status:
+    get:
+      consumes:
+      - application/json
+      description: Get the current status of a plugin deployment
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeploymentStatus'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get plugin deployment status
+      tags:
+      - plugins
+  /plugins/{name}/stop:
+    post:
+      consumes:
+      - application/json
+      description: Stop a running plugin deployment
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Stop a plugin deployment
+      tags:
+      - plugins
   /settings:
     get:
       description: Get the default setting's details

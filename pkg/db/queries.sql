@@ -994,3 +994,24 @@ SELECT * FROM plugins ORDER BY name;
 
 -- name: DeletePlugin :exec
 DELETE FROM plugins WHERE name = ?;
+
+
+-- name: UpdateDeploymentMetadata :exec
+UPDATE plugins
+SET deployment_metadata = ?
+WHERE name = ?;
+
+-- name: UpdateDeploymentStatus :exec
+UPDATE plugins
+SET deployment_status = ?
+WHERE name = ?;
+
+-- name: GetDeploymentMetadata :one
+SELECT deployment_metadata
+FROM plugins
+WHERE name = ?;
+
+-- name: GetDeploymentStatus :one
+SELECT deployment_status
+FROM plugins
+WHERE name = ?; 

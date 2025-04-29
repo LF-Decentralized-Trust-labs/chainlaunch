@@ -49,12 +49,13 @@ type ParameterSpec struct {
 
 // DeploymentStatus represents the status of a plugin deployment
 type DeploymentStatus struct {
-	Status      string    `json:"status" yaml:"status"`
-	StartedAt   time.Time `json:"startedAt" yaml:"startedAt"`
-	StoppedAt   time.Time `json:"stoppedAt,omitempty" yaml:"stoppedAt,omitempty"`
-	Error       string    `json:"error,omitempty" yaml:"error,omitempty"`
-	Services    []Service `json:"services" yaml:"services"`
-	ProjectName string    `json:"projectName" yaml:"projectName"`
+	Status      string                 `json:"status" yaml:"status"`
+	StartedAt   time.Time              `json:"startedAt" yaml:"startedAt"`
+	StoppedAt   time.Time              `json:"stoppedAt,omitempty" yaml:"stoppedAt,omitempty"`
+	Error       string                 `json:"error,omitempty" yaml:"error,omitempty"`
+	Services    []Service              `json:"services" yaml:"services"`
+	ProjectName string                 `json:"projectName" yaml:"projectName"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
 // Service represents a docker-compose service status

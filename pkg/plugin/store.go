@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 
@@ -16,6 +17,33 @@ type Store interface {
 	ListPlugins(ctx context.Context) ([]*types.Plugin, error)
 	DeletePlugin(ctx context.Context, name string) error
 	UpdatePlugin(ctx context.Context, plugin *types.Plugin) error
+	UpdateDeploymentMetadata(ctx context.Context, name string, metadata map[string]interface{}) error
+	UpdateDeploymentStatus(ctx context.Context, name string, status string) error
+	GetDeploymentMetadata(ctx context.Context, name string) (map[string]interface{}, error)
+	GetDeploymentStatus(ctx context.Context, name string) (string, error)
+}
+
+// Service represents a docker-compose service
+type Service struct {
+	Name        string                 `json:"name"`
+	Image       string                 `json:"image"`
+	Ports       []string               `json:"ports,omitempty"`
+	Environment map[string]string      `json:"environment,omitempty"`
+	Volumes     []string               `json:"volumes,omitempty"`
+	DependsOn   []string               `json:"depends_on,omitempty"`
+	Config      map[string]interface{} `json:"config,omitempty"`
+}
+
+// ServiceStatus extends Service with runtime information
+type ServiceStatus struct {
+	Service
+	State      string   `json:"state"`
+	Running    bool     `json:"running"`
+	Health     string   `json:"health,omitempty"`
+	Containers []string `json:"containers,omitempty"`
+	LastError  string   `json:"last_error,omitempty"`
+	CreatedAt  string   `json:"created_at,omitempty"`
+	StartedAt  string   `json:"started_at,omitempty"`
 }
 
 // SQLStore implements the Store interface using SQL database
@@ -162,4 +190,62 @@ func (s *SQLStore) UpdatePlugin(ctx context.Context, plugin *types.Plugin) error
 		return fmt.Errorf("failed to update plugin: %w", err)
 	}
 	return nil
+}
+
+// UpdateDeploymentMetadata updates the deployment metadata for a plugin
+func (s *SQLStore) UpdateDeploymentMetadata(ctx context.Context, name string, metadata map[string]interface{}) error {
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal deployment metadata: %w", err)
+	}
+
+	err = s.queries.UpdateDeploymentMetadata(ctx, &db.UpdateDeploymentMetadataParams{
+		Name:               name,
+		DeploymentMetadata: metadataJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update deployment metadata: %w", err)
+	}
+	return nil
+}
+
+// UpdateDeploymentStatus updates the deployment status for a plugin
+func (s *SQLStore) UpdateDeploymentStatus(ctx context.Context, name string, status string) error {
+	err := s.queries.UpdateDeploymentStatus(ctx, &db.UpdateDeploymentStatusParams{
+		Name:             name,
+		DeploymentStatus: sql.NullString{String: status, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update deployment status: %w", err)
+	}
+	return nil
+}
+
+// GetDeploymentMetadata retrieves the deployment metadata for a plugin
+func (s *SQLStore) GetDeploymentMetadata(ctx context.Context, name string) (map[string]interface{}, error) {
+	metadata, err := s.queries.GetDeploymentMetadata(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment metadata: %w", err)
+	}
+
+	metadataBytes, ok := metadata.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("invalid deployment metadata type: expected []byte")
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(metadataBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal deployment metadata: %w", err)
+	}
+
+	return result, nil
+}
+
+// GetDeploymentStatus retrieves the deployment status for a plugin
+func (s *SQLStore) GetDeploymentStatus(ctx context.Context, name string) (string, error) {
+	status, err := s.queries.GetDeploymentStatus(ctx, name)
+	if err != nil {
+		return "", fmt.Errorf("failed to get deployment status: %w", err)
+	}
+	return status.String, nil
 }

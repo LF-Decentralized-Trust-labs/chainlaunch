@@ -1615,6 +1615,48 @@ definitions:
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+  plugin.ServiceStatus:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      containers:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      depends_on:
+        items:
+          type: string
+        type: array
+      environment:
+        additionalProperties:
+          type: string
+        type: object
+      health:
+        type: string
+      image:
+        type: string
+      last_error:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      running:
+        type: boolean
+      started_at:
+        type: string
+      state:
+        type: string
+      volumes:
+        items:
+          type: string
+        type: array
+    type: object
   response.ErrorResponse:
     properties:
       details:
@@ -1986,6 +2028,9 @@ definitions:
     properties:
       error:
         type: string
+      parameters:
+        additionalProperties: true
+        type: object
       projectName:
         type: string
       services:
@@ -5670,6 +5715,67 @@ paths:
           schema:
             type: string
       summary: Deploy a plugin
+      tags:
+      - plugins
+  /plugins/{name}/deployment-status:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a plugin deployment including service
+        status, logs, and metrics
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeploymentStatus'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get detailed deployment status
+      tags:
+      - plugins
+  /plugins/{name}/services:
+    get:
+      consumes:
+      - application/json
+      description: Get all services defined in the plugin's docker-compose configuration
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugin.ServiceStatus'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get Docker Compose services
       tags:
       - plugins
   /plugins/{name}/status:

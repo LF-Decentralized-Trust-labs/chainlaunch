@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	plugintypes "github.com/chainlaunch/chainlaunch/pkg/plugin/types"
@@ -68,10 +69,17 @@ func (pm *PluginManager) LoadPlugin(filePath string) (*plugintypes.Plugin, error
 }
 
 // DeployPlugin deploys a plugin using docker-compose
-func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.Plugin, parameters map[string]interface{}) error {
+func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.Plugin, parameters map[string]interface{}, store Store) error {
+	// Update plugin status to deploying
+	if err := store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "deploying"); err != nil {
+		return fmt.Errorf("failed to update deployment status: %w", err)
+	}
+
 	// Create a temporary directory for the plugin
 	tempDir, err := os.MkdirTemp("", plugin.Metadata.Name)
 	if err != nil {
+		// Update status to failed
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -79,6 +87,8 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.P
 	// Write the docker-compose contents to a file
 	composePath := filepath.Join(tempDir, "docker-compose.yml")
 	if err := os.WriteFile(composePath, []byte(plugin.Spec.DockerCompose.Contents), 0644); err != nil {
+		// Update status to failed
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return fmt.Errorf("failed to write docker-compose file: %w", err)
 	}
 
@@ -96,6 +106,8 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.P
 		envContent += fmt.Sprintf("%s=%s\n", name, value)
 	}
 	if err := os.WriteFile(envPath, []byte(envContent), 0644); err != nil {
+		// Update status to failed
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return fmt.Errorf("failed to write environment file: %w", err)
 	}
 
@@ -107,6 +119,8 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.P
 	// Turn projectOptions into a project with default values
 	projectType, _, err := projectOptions.ToProject(ctx, pm.dockerCli, []string{})
 	if err != nil {
+		// Update status to failed
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return err
 	}
 
@@ -123,7 +137,25 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.P
 	// Load the project
 	err = pm.compose.Up(ctx, projectType, upOptions)
 	if err != nil {
+		// Update status to failed
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return fmt.Errorf("failed to load project: %w", err)
+	}
+
+	// Save deployment metadata
+	deploymentMetadata := map[string]interface{}{
+		"deployedAt":  time.Now().Format(time.RFC3339),
+		"parameters":  parameters,
+		"projectName": plugin.Metadata.Name,
+	}
+
+	if err := store.UpdateDeploymentMetadata(ctx, plugin.Metadata.Name, deploymentMetadata); err != nil {
+		return fmt.Errorf("failed to update deployment metadata: %w", err)
+	}
+
+	// Update status to deployed
+	if err := store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "deployed"); err != nil {
+		return fmt.Errorf("failed to update deployment status: %w", err)
 	}
 
 	return nil
@@ -182,7 +214,7 @@ func (pm *PluginManager) ValidatePlugin(plugin *plugintypes.Plugin) error {
 }
 
 // StopPlugin stops a running plugin deployment
-func (pm *PluginManager) StopPlugin(ctx context.Context, plugin *plugintypes.Plugin) error {
+func (pm *PluginManager) StopPlugin(ctx context.Context, plugin *plugintypes.Plugin, store Store) error {
 	// Create a temporary directory for the plugin
 	tempDir, err := os.MkdirTemp("", plugin.Metadata.Name)
 	if err != nil {
@@ -216,6 +248,10 @@ func (pm *PluginManager) StopPlugin(ctx context.Context, plugin *plugintypes.Plu
 	err = pm.compose.Down(ctx, projectType.Name, downOptions)
 	if err != nil {
 		return fmt.Errorf("failed to stop project: %w", err)
+	}
+
+	if err := store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "stopped"); err != nil {
+		return fmt.Errorf("failed to store plugin status: %w", err)
 	}
 
 	return nil
@@ -291,4 +327,127 @@ func (pm *PluginManager) GetPluginStatus(ctx context.Context, plugin *plugintype
 	}
 
 	return status, nil
+}
+
+// GetDeploymentStatus gets detailed information about a plugin deployment
+func (pm *PluginManager) GetDeploymentStatus(ctx context.Context, plugin *plugintypes.Plugin, store Store) (*plugintypes.DeploymentStatus, error) {
+	// Get deployment status from store
+	status, err := store.GetDeploymentStatus(ctx, plugin.Metadata.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment status from store: %w", err)
+	}
+
+	// Create deployment status object
+	deploymentStatus := &plugintypes.DeploymentStatus{
+		Status:      status,
+		ProjectName: plugin.Metadata.Name,
+	}
+
+	return deploymentStatus, nil
+}
+
+// GetDockerComposeServices retrieves all services with their current status
+func (pm *PluginManager) GetDockerComposeServices(ctx context.Context, plugin *plugintypes.Plugin, store Store) ([]ServiceStatus, error) {
+	// Get deployment metadata to get the project name
+	projectName := plugin.Metadata.Name
+	// Create a temporary directory for the plugin
+	tempDir, err := os.MkdirTemp("", plugin.Metadata.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Write the docker-compose contents to a file
+	composePath := filepath.Join(tempDir, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte(plugin.Spec.DockerCompose.Contents), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write docker-compose file: %w", err)
+	}
+
+	projectOptions := cmdCompose.ProjectOptions{
+		ProjectName: projectName,
+		ConfigPaths: []string{composePath},
+	}
+
+	// Turn projectOptions into a project with default values
+	project, _, err := projectOptions.ToProject(ctx, pm.dockerCli, []string{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project: %w", err)
+	}
+
+	// Get service status using compose ps
+	services, err := pm.compose.Ps(ctx, project.Name, api.PsOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get services status: %w", err)
+	}
+
+	// Build response
+	serviceStatuses := make([]ServiceStatus, 0, len(services))
+	for _, svc := range services {
+		// Get container details
+		container, err := pm.dockerCli.Client().ContainerInspect(ctx, svc.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to inspect container %s: %w", svc.ID, err)
+		}
+
+		// Build ports list
+		ports := make([]string, 0)
+		for containerPort, bindings := range container.NetworkSettings.Ports {
+			for _, binding := range bindings {
+				ports = append(ports, fmt.Sprintf("%s:%s", binding.HostPort, containerPort.Port()))
+			}
+		}
+
+		// Build environment map
+		env := make(map[string]string)
+		for _, envStr := range container.Config.Env {
+			parts := strings.SplitN(envStr, "=", 2)
+			if len(parts) == 2 {
+				env[parts[0]] = parts[1]
+			}
+		}
+
+		// Build volumes list
+		volumes := make([]string, 0)
+		for _, mount := range container.Mounts {
+			volumes = append(volumes, fmt.Sprintf("%s:%s", mount.Source, mount.Destination))
+		}
+
+		// Initialize health status safely
+		var healthStatus string
+		if container.State.Health != nil {
+			healthStatus = container.State.Health.Status
+		}
+
+		// Initialize state safely
+		state := ""
+		if svc.State != "" {
+			state = svc.State
+		}
+
+		status := ServiceStatus{
+			Service: Service{
+				Name:        strings.TrimPrefix(svc.Service, "/"), // Remove leading slash if present
+				Image:       svc.Image,
+				Ports:       ports,
+				Environment: env,
+				Volumes:     volumes,
+				Config: map[string]interface{}{
+					"command":     container.Config.Cmd,
+					"working_dir": container.Config.WorkingDir,
+					"user":        container.Config.User,
+				},
+			},
+			State:      state,
+			Running:    state == "running",
+			Health:     healthStatus,
+			Containers: []string{svc.ID},
+			LastError:  container.State.Error,
+			CreatedAt:  container.Created,
+			StartedAt:  container.State.StartedAt,
+		}
+
+		serviceStatuses = append(serviceStatuses, status)
+	}
+
+	return serviceStatuses, nil
 }

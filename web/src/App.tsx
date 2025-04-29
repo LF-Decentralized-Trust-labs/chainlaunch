@@ -49,6 +49,8 @@ import ApiDocumentationPage from './pages/api-documentation'
 import BulkCreateBesuNetworkPage from './pages/networks/besu/bulk-create'
 import EditBesuNodePage from './pages/nodes/besu/edit'
 import CreateNodePage from './pages/nodes/create'
+import PluginsPage from './pages/plugins'
+import PluginDetailPage from './pages/plugins/[name]'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -114,6 +116,8 @@ const App = () => {
 														<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
 														<Route path="docs" element={<ApiDocumentationPage />} />
 														<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
+														<Route path="plugins" element={<PluginsPage />} />
+														<Route path="plugins/:name" element={<PluginDetailPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

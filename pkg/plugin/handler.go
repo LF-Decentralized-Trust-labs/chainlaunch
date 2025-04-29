@@ -2,12 +2,19 @@ package plugin
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 	"github.com/go-chi/chi/v5"
 )
+
+func init() {
+	// Initialize random seed
+	rand.Seed(time.Now().UnixNano())
+}
 
 // Handler handles HTTP requests for plugins
 type Handler struct {
@@ -37,6 +44,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 			r.Post("/deploy", h.deployPlugin)
 			r.Post("/stop", h.stopPlugin)
 			r.Get("/status", h.getPluginStatus)
+			r.Get("/deployment-status", h.getDeploymentStatus)
+			r.Get("/services", h.getDockerComposeServices)
 		})
 	})
 }
@@ -237,7 +246,6 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 	// Validate parameter types and values
 	for name, value := range parameters {
 		if spec, ok := plugin.Spec.Parameters.Properties[name]; ok {
-			// Check if value is of correct type
 			if spec.Type == "string" {
 				if _, ok := value.(string); !ok {
 					http.Error(w, "Invalid type for parameter "+name+": expected string", http.StatusBadRequest)
@@ -245,7 +253,6 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Check if value is in enum if specified
 			if len(spec.Enum) > 0 {
 				valid := false
 				for _, allowed := range spec.Enum {
@@ -262,13 +269,47 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.pm.DeployPlugin(r.Context(), plugin, parameters); err != nil {
+	// Create deployment metadata
+	deploymentMetadata := map[string]interface{}{
+		"parameters":   parameters,
+		"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(), // Add a helper function to generate random suffix
+		"created_at":   time.Now().UTC(),
+	}
+
+	// Save deployment metadata
+	if err := h.store.UpdateDeploymentMetadata(r.Context(), name, deploymentMetadata); err != nil {
+		h.logger.Errorf("Failed to save deployment metadata: %v", err)
+		http.Error(w, "Failed to save deployment metadata", http.StatusInternalServerError)
+		return
+	}
+
+	// Update deployment status to "deploying"
+	if err := h.store.UpdateDeploymentStatus(r.Context(), name, "deploying"); err != nil {
+		h.logger.Errorf("Failed to update deployment status: %v", err)
+		http.Error(w, "Failed to update deployment status", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.pm.DeployPlugin(r.Context(), plugin, parameters, h.store); err != nil {
 		h.logger.Errorf("Failed to deploy plugin: %v", err)
+		// Update status to "failed" if deployment fails
+		_ = h.store.UpdateDeploymentStatus(r.Context(), name, "failed")
 		http.Error(w, "Failed to deploy plugin", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// Helper function to generate random suffix
+func generateRandomSuffix() string {
+	// Generate a random 6-character string
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 6)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
 
 // @Summary Stop a plugin deployment
@@ -290,7 +331,7 @@ func (h *Handler) stopPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.pm.StopPlugin(r.Context(), plugin); err != nil {
+	if err := h.pm.StopPlugin(r.Context(), plugin, h.store); err != nil {
 		h.logger.Errorf("Failed to stop plugin: %v", err)
 		http.Error(w, "Failed to stop plugin", http.StatusInternalServerError)
 		return
@@ -329,6 +370,75 @@ func (h *Handler) getPluginStatus(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(status); err != nil {
 		h.logger.Errorf("Failed to encode plugin status: %v", err)
 		http.Error(w, "Failed to encode plugin status", http.StatusInternalServerError)
+		return
+	}
+}
+
+// @Summary Get detailed deployment status
+// @Description Get detailed information about a plugin deployment including service status, logs, and metrics
+// @Tags plugins
+// @Accept json
+// @Produce json
+// @Param name path string true "Plugin name"
+// @Success 200 {object} types.DeploymentStatus
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /plugins/{name}/deployment-status [get]
+func (h *Handler) getDeploymentStatus(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	plugin, err := h.store.GetPlugin(r.Context(), name)
+	if err != nil {
+		h.logger.Errorf("Failed to get plugin: %v", err)
+		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
+		return
+	}
+
+	status, err := h.pm.GetDeploymentStatus(r.Context(), plugin, h.store)
+	if err != nil {
+		h.logger.Errorf("Failed to get deployment status: %v", err)
+		http.Error(w, "Failed to get deployment status", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		h.logger.Errorf("Failed to encode deployment status: %v", err)
+		http.Error(w, "Failed to encode deployment status", http.StatusInternalServerError)
+		return
+	}
+}
+
+// @Summary Get Docker Compose services
+// @Description Get all services defined in the plugin's docker-compose configuration
+// @Tags plugins
+// @Accept json
+// @Produce json
+// @Param name path string true "Plugin name"
+// @Success 200 {array} ServiceStatus
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /plugins/{name}/services [get]
+func (h *Handler) getDockerComposeServices(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+
+	plugin, err := h.store.GetPlugin(r.Context(), name)
+	if err != nil {
+		h.logger.Errorf("Failed to get plugin: %v", err)
+		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
+		return
+	}
+
+	services, err := h.pm.GetDockerComposeServices(r.Context(), plugin, h.store)
+	if err != nil {
+		h.logger.Errorf("Failed to get docker-compose services: %v", err)
+		http.Error(w, "Failed to get docker-compose services", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(services); err != nil {
+		h.logger.Errorf("Failed to encode services: %v", err)
+		http.Error(w, "Failed to encode services", http.StatusInternalServerError)
 		return
 	}
 }

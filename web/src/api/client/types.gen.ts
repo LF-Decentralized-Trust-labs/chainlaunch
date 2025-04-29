@@ -936,6 +936,20 @@ export type ModelsProviderResponse = {
 
 export type NotificationsProviderType = 'SMTP';
 
+export type PluginService = {
+    config?: {
+        [key: string]: unknown;
+    };
+    depends_on?: Array<string>;
+    environment?: {
+        [key: string]: string;
+    };
+    image?: string;
+    name?: string;
+    ports?: Array<string>;
+    volumes?: Array<string>;
+};
+
 export type ResponseErrorResponse = {
     details?: {
         [key: string]: unknown;
@@ -1154,6 +1168,9 @@ export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
 
 export type TypesDeploymentStatus = {
     error?: string;
+    parameters?: {
+        [key: string]: unknown;
+    };
     projectName?: string;
     services?: Array<TypesService>;
     startedAt?: string;
@@ -5145,6 +5162,74 @@ export type PostPluginsByNameDeployResponses = {
      */
     200: unknown;
 };
+
+export type GetPluginsByNameDeploymentStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/deployment-status';
+};
+
+export type GetPluginsByNameDeploymentStatusErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type GetPluginsByNameDeploymentStatusError = GetPluginsByNameDeploymentStatusErrors[keyof GetPluginsByNameDeploymentStatusErrors];
+
+export type GetPluginsByNameDeploymentStatusResponses = {
+    /**
+     * OK
+     */
+    200: TypesDeploymentStatus;
+};
+
+export type GetPluginsByNameDeploymentStatusResponse = GetPluginsByNameDeploymentStatusResponses[keyof GetPluginsByNameDeploymentStatusResponses];
+
+export type GetPluginsByNameServicesData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/services';
+};
+
+export type GetPluginsByNameServicesErrors = {
+    /**
+     * Not Found
+     */
+    404: string;
+    /**
+     * Internal Server Error
+     */
+    500: string;
+};
+
+export type GetPluginsByNameServicesError = GetPluginsByNameServicesErrors[keyof GetPluginsByNameServicesErrors];
+
+export type GetPluginsByNameServicesResponses = {
+    /**
+     * OK
+     */
+    200: Array<PluginService>;
+};
+
+export type GetPluginsByNameServicesResponse = GetPluginsByNameServicesResponses[keyof GetPluginsByNameServicesResponses];
 
 export type GetPluginsByNameStatusData = {
     body?: never;

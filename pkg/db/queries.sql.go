@@ -867,7 +867,7 @@ INSERT INTO plugins (
   updated_at
 ) VALUES (
   ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-) RETURNING name, api_version, kind, metadata, spec, created_at, updated_at
+) RETURNING name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status
 `
 
 type CreatePluginParams struct {
@@ -895,6 +895,8 @@ func (q *Queries) CreatePlugin(ctx context.Context, arg *CreatePluginParams) (*P
 		&i.Spec,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
 	)
 	return &i, err
 }
@@ -1660,6 +1662,32 @@ func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, not
 		&i.LastTestMessage,
 	)
 	return &i, err
+}
+
+const GetDeploymentMetadata = `-- name: GetDeploymentMetadata :one
+SELECT deployment_metadata
+FROM plugins
+WHERE name = ?
+`
+
+func (q *Queries) GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, GetDeploymentMetadata, name)
+	var deployment_metadata interface{}
+	err := row.Scan(&deployment_metadata)
+	return deployment_metadata, err
+}
+
+const GetDeploymentStatus = `-- name: GetDeploymentStatus :one
+SELECT deployment_status
+FROM plugins
+WHERE name = ?
+`
+
+func (q *Queries) GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error) {
+	row := q.db.QueryRowContext(ctx, GetDeploymentStatus, name)
+	var deployment_status sql.NullString
+	err := row.Scan(&deployment_status)
+	return deployment_status, err
 }
 
 const GetFabricOrganization = `-- name: GetFabricOrganization :one
@@ -2723,7 +2751,7 @@ func (q *Queries) GetPeerPorts(ctx context.Context) ([]*GetPeerPortsRow, error) 
 }
 
 const GetPlugin = `-- name: GetPlugin :one
-SELECT name, api_version, kind, metadata, spec, created_at, updated_at FROM plugins WHERE name = ?
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status FROM plugins WHERE name = ?
 `
 
 func (q *Queries) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
@@ -2737,6 +2765,8 @@ func (q *Queries) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
 		&i.Spec,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
 	)
 	return &i, err
 }
@@ -3905,7 +3935,7 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]*Notificatio
 }
 
 const ListPlugins = `-- name: ListPlugins :many
-SELECT name, api_version, kind, metadata, spec, created_at, updated_at FROM plugins ORDER BY name
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status FROM plugins ORDER BY name
 `
 
 func (q *Queries) ListPlugins(ctx context.Context) ([]*Plugin, error) {
@@ -3925,6 +3955,8 @@ func (q *Queries) ListPlugins(ctx context.Context) ([]*Plugin, error) {
 			&i.Spec,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeploymentMetadata,
+			&i.DeploymentStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -4360,6 +4392,38 @@ func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploym
 		&i.ErrorMessage,
 	)
 	return &i, err
+}
+
+const UpdateDeploymentMetadata = `-- name: UpdateDeploymentMetadata :exec
+UPDATE plugins
+SET deployment_metadata = ?
+WHERE name = ?
+`
+
+type UpdateDeploymentMetadataParams struct {
+	DeploymentMetadata interface{} `json:"deploymentMetadata"`
+	Name               string      `json:"name"`
+}
+
+func (q *Queries) UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateDeploymentMetadata, arg.DeploymentMetadata, arg.Name)
+	return err
+}
+
+const UpdateDeploymentStatus = `-- name: UpdateDeploymentStatus :exec
+UPDATE plugins
+SET deployment_status = ?
+WHERE name = ?
+`
+
+type UpdateDeploymentStatusParams struct {
+	DeploymentStatus sql.NullString `json:"deploymentStatus"`
+	Name             string         `json:"name"`
+}
+
+func (q *Queries) UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateDeploymentStatus, arg.DeploymentStatus, arg.Name)
+	return err
 }
 
 const UpdateFabricOrganization = `-- name: UpdateFabricOrganization :one
@@ -4998,7 +5062,7 @@ SET
   spec = ?,
   updated_at = CURRENT_TIMESTAMP
 WHERE name = ?
-RETURNING name, api_version, kind, metadata, spec, created_at, updated_at
+RETURNING name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status
 `
 
 type UpdatePluginParams struct {
@@ -5026,6 +5090,8 @@ func (q *Queries) UpdatePlugin(ctx context.Context, arg *UpdatePluginParams) (*P
 		&i.Spec,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
 	)
 	return &i, err
 }

@@ -226,13 +226,15 @@ type NotificationProvider struct {
 }
 
 type Plugin struct {
-	Name       string      `json:"name"`
-	ApiVersion string      `json:"apiVersion"`
-	Kind       string      `json:"kind"`
-	Metadata   interface{} `json:"metadata"`
-	Spec       interface{} `json:"spec"`
-	CreatedAt  time.Time   `json:"createdAt"`
-	UpdatedAt  time.Time   `json:"updatedAt"`
+	Name               string         `json:"name"`
+	ApiVersion         string         `json:"apiVersion"`
+	Kind               string         `json:"kind"`
+	Metadata           interface{}    `json:"metadata"`
+	Spec               interface{}    `json:"spec"`
+	CreatedAt          time.Time      `json:"createdAt"`
+	UpdatedAt          time.Time      `json:"updatedAt"`
+	DeploymentMetadata interface{}    `json:"deploymentMetadata"`
+	DeploymentStatus   sql.NullString `json:"deploymentStatus"`
 }
 
 type Session struct {

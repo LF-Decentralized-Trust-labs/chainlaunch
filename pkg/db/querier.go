@@ -68,6 +68,8 @@ type Querier interface {
 	GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error)
 	GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error)
 	GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error)
+	GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error)
+	GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error)
 	GetFabricOrganization(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByID(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (*FabricOrganization, error)
@@ -139,6 +141,8 @@ type Querier interface {
 	UpdateBackupStatus(ctx context.Context, arg *UpdateBackupStatusParams) (*Backup, error)
 	UpdateBackupTarget(ctx context.Context, arg *UpdateBackupTargetParams) (*BackupTarget, error)
 	UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploymentConfigParams) (*Node, error)
+	UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error
+	UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error
 	UpdateFabricOrganization(ctx context.Context, arg *UpdateFabricOrganizationParams) (*FabricOrganization, error)
 	UpdateKey(ctx context.Context, arg *UpdateKeyParams) (*Key, error)
 	UpdateKeyProvider(ctx context.Context, arg *UpdateKeyProviderParams) (*KeyProvider, error)

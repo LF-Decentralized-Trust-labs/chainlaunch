@@ -51,6 +51,7 @@ import EditBesuNodePage from './pages/nodes/besu/edit'
 import CreateNodePage from './pages/nodes/create'
 import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
+import NewPluginPage from './pages/plugins/new'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -117,6 +118,7 @@ const App = () => {
 														<Route path="docs" element={<ApiDocumentationPage />} />
 														<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
 														<Route path="plugins" element={<PluginsPage />} />
+														<Route path="plugins/new" element={<NewPluginPage />} />
 														<Route path="plugins/:name" element={<PluginDetailPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />

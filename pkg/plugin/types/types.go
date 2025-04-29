@@ -8,10 +8,11 @@ import (
 
 // Plugin represents a plugin definition
 type Plugin struct {
-	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
-	Kind       string   `json:"kind" yaml:"kind"`
-	Metadata   Metadata `json:"metadata" yaml:"metadata"`
-	Spec       Spec     `json:"spec" yaml:"spec"`
+	APIVersion       string            `json:"apiVersion" yaml:"apiVersion"`
+	Kind             string            `json:"kind" yaml:"kind"`
+	Metadata         Metadata          `json:"metadata" yaml:"metadata"`
+	Spec             Spec              `json:"spec" yaml:"spec"`
+	DeploymentStatus *DeploymentStatus `json:"deploymentStatus,omitempty" yaml:"deploymentStatus,omitempty"`
 }
 
 // Metadata contains plugin metadata

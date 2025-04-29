@@ -77,6 +77,8 @@ definitions:
     properties:
       apiVersion:
         type: string
+      deploymentStatus:
+        $ref: '#/definitions/types.DeploymentStatus'
       kind:
         type: string
       metadata:

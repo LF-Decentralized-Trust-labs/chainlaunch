@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
@@ -55,6 +56,81 @@ type SQLStore struct {
 func NewSQLStore(db *db.Queries) *SQLStore {
 	return &SQLStore{
 		queries: db,
+	}
+}
+
+// getDeploymentStatusFromDB extracts deployment status from database plugin data
+func (s *SQLStore) getDeploymentStatusFromDB(dbPlugin *db.Plugin) *types.DeploymentStatus {
+	// If no deployment metadata, return not deployed status
+	if dbPlugin.DeploymentMetadata == nil {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	metadataBytes, ok := dbPlugin.DeploymentMetadata.([]byte)
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	var deploymentMetadata map[string]interface{}
+	if err := json.Unmarshal(metadataBytes, &deploymentMetadata); err != nil {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	// Extract values from deployment metadata
+	deployedAt, ok := deploymentMetadata["deployedAt"].(string)
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	startedAt, err := time.Parse(time.RFC3339, deployedAt)
+	if err != nil {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	parametersRaw, ok := deploymentMetadata["parameters"]
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	parameters, ok := parametersRaw.(map[string]interface{})
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	projectNameRaw, ok := deploymentMetadata["projectName"]
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	projectName, ok := projectNameRaw.(string)
+	if !ok {
+		return &types.DeploymentStatus{
+			Status: "not deployed",
+		}
+	}
+
+	// Create deployment status
+	return &types.DeploymentStatus{
+		Status:      dbPlugin.DeploymentStatus.String,
+		StartedAt:   startedAt,
+		ProjectName: projectName,
+		Parameters:  parameters,
 	}
 }
 
@@ -110,12 +186,17 @@ func (s *SQLStore) GetPlugin(ctx context.Context, name string) (*types.Plugin, e
 		return nil, fmt.Errorf("failed to unmarshal spec: %w", err)
 	}
 
-	return &types.Plugin{
+	plugin := &types.Plugin{
 		APIVersion: dbPlugin.ApiVersion,
 		Kind:       dbPlugin.Kind,
 		Metadata:   metadata,
 		Spec:       spec,
-	}, nil
+	}
+
+	// Get deployment status
+	plugin.DeploymentStatus = s.getDeploymentStatusFromDB(dbPlugin)
+
+	return plugin, nil
 }
 
 // ListPlugins retrieves all plugins
@@ -147,12 +228,17 @@ func (s *SQLStore) ListPlugins(ctx context.Context) ([]*types.Plugin, error) {
 			return nil, fmt.Errorf("failed to unmarshal spec: %w", err)
 		}
 
-		plugins[i] = &types.Plugin{
+		plugin := &types.Plugin{
 			APIVersion: dbPlugin.ApiVersion,
 			Kind:       dbPlugin.Kind,
 			Metadata:   metadata,
 			Spec:       spec,
 		}
+
+		// Get deployment status
+		plugin.DeploymentStatus = s.getDeploymentStatusFromDB(dbPlugin)
+
+		plugins[i] = plugin
 	}
 
 	return plugins, nil

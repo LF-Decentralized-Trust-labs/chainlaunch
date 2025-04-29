@@ -69,6 +69,7 @@ export type GithubComChainlaunchChainlaunchPkgPluginTypesParameters = {
 
 export type GithubComChainlaunchChainlaunchPkgPluginTypesPlugin = {
     apiVersion?: string;
+    deploymentStatus?: TypesDeploymentStatus;
     kind?: string;
     metadata?: TypesMetadata;
     spec?: TypesSpec;
@@ -936,17 +937,24 @@ export type ModelsProviderResponse = {
 
 export type NotificationsProviderType = 'SMTP';
 
-export type PluginService = {
+export type PluginServiceStatus = {
     config?: {
         [key: string]: unknown;
     };
+    containers?: Array<string>;
+    created_at?: string;
     depends_on?: Array<string>;
     environment?: {
         [key: string]: string;
     };
+    health?: string;
     image?: string;
+    last_error?: string;
     name?: string;
     ports?: Array<string>;
+    running?: boolean;
+    started_at?: string;
+    state?: string;
     volumes?: Array<string>;
 };
 
@@ -5226,7 +5234,7 @@ export type GetPluginsByNameServicesResponses = {
     /**
      * OK
      */
-    200: Array<PluginService>;
+    200: Array<PluginServiceStatus>;
 };
 
 export type GetPluginsByNameServicesResponse = GetPluginsByNameServicesResponses[keyof GetPluginsByNameServicesResponses];

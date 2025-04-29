@@ -39,13 +39,19 @@ const PluginDetailPage = () => {
 		// refetchInterval: (data) => (data?.status === 'running' ? 5000 : false),
 	})
 
+	const { data: services, refetch: refetchServices } = useQuery({
+		...getPluginsByNameServicesOptions({
+			path: { name: name! },
+		}),
+		// refetchInterval: (data) => (data?.status === 'running' ? 5000 : false),
+	})
 	// Deploy mutation
 	const deployMutation = useMutation({
 		...postPluginsByNameDeployMutation(),
 		onSuccess: () => {
-			toast.success('Plugin deployment started')
 			refetch()
 			refetchStatus()
+			refetchServices()
 		},
 		onError: (error) => {
 			toast.error(`Failed to deploy: ${error}`)
@@ -56,27 +62,28 @@ const PluginDetailPage = () => {
 	const stopMutation = useMutation({
 		...postPluginsByNameStopMutation(),
 		onSuccess: () => {
-			toast.success('Plugin stopped successfully')
 			refetch()
 			refetchStatus()
+			refetchServices()
 		},
-	})
-	const { data: services } = useQuery({
-		...getPluginsByNameServicesOptions({
-			path: { name: name! },
-		}),
-		// refetchInterval: (data) => (data?.status === 'running' ? 5000 : false),
 	})
 
 	if (isLoading) return <div className="container p-8">Loading...</div>
 	if (!plugin) return <div className="container p-8">Plugin not found</div>
 
 	// Update the deploy button click handler
-	const handleDeploy = (params: Record<string, unknown>) => {
-		deployMutation.mutate({
-			path: { name: name! },
-			body: params,
-		})
+	const handleDeploy = async (params: Record<string, unknown>) => {
+		toast.promise(
+			deployMutation.mutateAsync({
+				path: { name: name! },
+				body: params,
+			}),
+			{
+				loading: 'Deploying plugin...',
+				success: 'Plugin deployed successfully',
+				error: 'Failed to deploy plugin',
+			}
+		)
 	}
 
 	return (
@@ -100,9 +107,16 @@ const PluginDetailPage = () => {
 						<Button
 							variant="destructive"
 							onClick={() =>
-								stopMutation.mutate({
-									path: { name: name! },
-								})
+								toast.promise(
+									stopMutation.mutateAsync({
+										path: { name: name! },
+									}),
+									{
+										loading: 'Stopping plugin...',
+										success: 'Plugin stopped successfully',
+										error: 'Failed to stop plugin',
+									}
+								)
 							}
 						>
 							<Square className="mr-2 h-4 w-4" />
@@ -182,11 +196,10 @@ const PluginDetailPage = () => {
 											</ul>
 										</div>
 									)}
-
 									{service.config && (
 										<div className="mt-2 text-sm">
 											<span className="font-semibold">Config:</span>
-											<pre className="bg-gray-100 p-2 rounded mt-1 text-xs overflow-x-auto">
+											<pre className="bg-muted p-2 rounded mt-1 text-xs overflow-x-auto">
 												{typeof service.config === 'string' ? service.config : JSON.stringify(service.config, null, 2)}
 											</pre>
 										</div>

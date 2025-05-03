@@ -310,15 +310,42 @@ SELECT * FROM nodes WHERE slug = ?;
 
 -- name: CreateUser :one
 INSERT INTO users (
-    username, password, created_at, last_login_at, updated_at
+    username, password, role, created_at, last_login_at, updated_at
 ) VALUES (
-    ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
 RETURNING *;
+
+-- name: GetUser :one
+SELECT * FROM users
+WHERE id = ? LIMIT 1;
 
 -- name: GetUserByUsername :one
 SELECT * FROM users
 WHERE username = ? LIMIT 1;
+
+-- name: ListUsers :many
+SELECT * FROM users
+ORDER BY created_at DESC;
+
+-- name: UpdateUser :one
+UPDATE users
+SET username = ?,
+    role = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdateUserPassword :one
+UPDATE users
+SET password = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = ?;
 
 -- name: UpdateUserLastLogin :one
 UPDATE users
@@ -332,34 +359,27 @@ SELECT COUNT(*) FROM users;
 
 -- name: CreateSession :one
 INSERT INTO sessions (
-    session_id,
-    user_id,
-    token,
-    expires_at
+  token,
+  user_id,
+  expires_at,
+  session_id
 ) VALUES (
-    ?,
-    ?,
-    ?,
-    ?
-) RETURNING *;
+  ?, ?, ?, ?
+)
+RETURNING *;
 
 -- name: GetSession :one
-SELECT s.id, s.session_id, s.token, s.expires_at, s.created_at, u.username
-FROM sessions s
-JOIN users u ON s.user_id = u.id
-WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP;
+SELECT * FROM sessions WHERE token = ? LIMIT 1;
 
 -- name: DeleteSession :exec
-DELETE FROM sessions
-WHERE session_id = ?;
+DELETE FROM sessions WHERE token = ?;
 
 -- name: DeleteExpiredSessions :exec
-DELETE FROM sessions
-WHERE expires_at <= CURRENT_TIMESTAMP;
+DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP;
 
 -- name: DeleteUserSessions :exec
-DELETE FROM sessions
-WHERE user_id = ?;
+DELETE FROM sessions WHERE user_id = ?;
+
 
 -- name: CreateNodeEvent :one
 INSERT INTO node_events (
@@ -852,28 +872,6 @@ WHERE (
 )
 ORDER BY created_at DESC;
 
--- name: ListUsers :many
-SELECT * FROM users
-ORDER BY created_at DESC;
-
--- name: GetUser :one
-SELECT * FROM users
-WHERE id = ? LIMIT 1;
-
--- name: UpdateUser :one
-UPDATE users
-SET username = ?,
-    password = CASE WHEN ? IS NOT NULL THEN ? ELSE password END,
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
-RETURNING *;
-
--- name: DeleteUser :exec
-DELETE FROM users
-WHERE id = ?;
-
-
-
 -- name: GetRecentCompletedBackups :many
 SELECT * FROM backups
 WHERE (status = 'COMPLETED' OR status = 'FAILED')
@@ -1015,3 +1013,12 @@ WHERE name = ?;
 SELECT deployment_status
 FROM plugins
 WHERE name = ?; 
+
+
+-- name: GetSessionBySessionID :one
+SELECT * FROM sessions
+WHERE session_id = ?;
+
+-- name: GetSessionByToken :one
+SELECT * FROM sessions
+WHERE token = ?;

@@ -52,7 +52,7 @@ type Querier interface {
 	DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsParams) error
 	DeletePlugin(ctx context.Context, name string) error
 	DeleteRevokedCertificate(ctx context.Context, arg *DeleteRevokedCertificateParams) error
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, token string) error
 	DeleteSetting(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserSessions(ctx context.Context, userID int64) error
@@ -105,7 +105,9 @@ type Querier interface {
 	GetRevokedCertificate(ctx context.Context, arg *GetRevokedCertificateParams) (*FabricRevokedCertificate, error)
 	GetRevokedCertificateCount(ctx context.Context, fabricOrganizationID int64) (int64, error)
 	GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]*FabricRevokedCertificate, error)
-	GetSession(ctx context.Context, sessionID string) (*GetSessionRow, error)
+	GetSession(ctx context.Context, token string) (*Session, error)
+	GetSessionBySessionID(ctx context.Context, sessionID string) (*Session, error)
+	GetSessionByToken(ctx context.Context, token string) (*Session, error)
 	GetSetting(ctx context.Context, id int64) (*Setting, error)
 	GetUser(ctx context.Context, id int64) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
@@ -164,6 +166,7 @@ type Querier interface {
 	UpdateSetting(ctx context.Context, arg *UpdateSettingParams) (*Setting, error)
 	UpdateUser(ctx context.Context, arg *UpdateUserParams) (*User, error)
 	UpdateUserLastLogin(ctx context.Context, id int64) (*User, error)
+	UpdateUserPassword(ctx context.Context, arg *UpdateUserPasswordParams) (*User, error)
 }
 
 var _ Querier = (*Queries)(nil)

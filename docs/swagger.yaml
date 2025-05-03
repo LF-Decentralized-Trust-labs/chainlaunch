@@ -1,5 +1,35 @@
 basePath: /api/v1
 definitions:
+  auth.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  auth.CreateUserRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/auth.Role'
+        enum:
+        - admin
+        - manager
+        - viewer
+      username:
+        type: string
+    required:
+    - password
+    - role
+    - username
+    type: object
   auth.LoginRequest:
     properties:
       password:
@@ -8,40 +38,48 @@ definitions:
         type: string
     type: object
   auth.LoginResponse:
-    description: Login response
     properties:
       message:
-        description: |-
-          Success message
-          @Example "Login successful"
         type: string
     type: object
   auth.LogoutResponse:
-    description: Logout response
     properties:
       message:
-        description: |-
-          Success message
-          @Example "Logout successful"
+        type: string
+    type: object
+  auth.Role:
+    enum:
+    - admin
+    - manager
+    - viewer
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleManager
+    - RoleViewer
+  auth.UpdateUserRequest:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/auth.Role'
+        enum:
+        - admin
+        - manager
+        - viewer
+      username:
         type: string
     type: object
   auth.UserResponse:
-    description: User information response
     properties:
       created_at:
-        description: |-
-          Time when the user was created
-          @Example "2024-01-01T00:00:00Z"
         type: string
+      id:
+        type: integer
       last_login_at:
-        description: |-
-          Last time the user logged in
-          @Example "2024-01-01T12:34:56Z"
         type: string
+      role:
+        $ref: '#/definitions/auth.Role'
       username:
-        description: |-
-          Username of the user
-          @Example "admin"
         type: string
     type: object
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
@@ -2363,6 +2401,44 @@ info:
   title: ChainLaunch API
   version: "1.0"
 paths:
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Allows a user to change their own password
+      parameters:
+      - description: Password change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password changed successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Invalid current password
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Change own password
+      tags:
+      - Authentication
   /auth/login:
     post:
       consumes:
@@ -2431,11 +2507,143 @@ paths:
           schema:
             type: string
       security:
-      - BasicAuth: []
       - CookieAuth: []
       summary: Get current user
       tags:
       - Authentication
+  /auth/users:
+    get:
+      description: Returns a list of all users (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/auth.UserResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: List users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user with specified role (admin only)
+      parameters:
+      - description: User to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Create new user
+      tags:
+      - Users
+  /auth/users/{id}:
+    delete:
+      description: Deletes a user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: User deleted
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Delete user
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User updates
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Update user
+      tags:
+      - Users
   /backups:
     get:
       consumes:

@@ -648,7 +648,11 @@ func (c *serveCmd) run() error {
 		}
 
 		// Create initial user with provided credentials
-		if err := authService.CreateUser(context.Background(), username, password); err != nil {
+		if _, err := authService.CreateUser(context.Background(), &auth.CreateUserRequest{
+			Username: username,
+			Password: password,
+			Role:     auth.RoleAdmin,
+		}); err != nil {
 			log.Fatalf("Failed to create initial user: %v", err)
 		}
 		log.Printf("Created initial user with username: %s", username)

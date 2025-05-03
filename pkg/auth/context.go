@@ -6,15 +6,34 @@ import (
 
 type contextKey string
 
-const sessionContextKey contextKey = "session"
+const (
+	userContextKey contextKey = "user"
+)
 
-// WithSession adds a session to the context
-func WithSession(ctx context.Context, session *Session) context.Context {
-	return context.WithValue(ctx, sessionContextKey, session)
+// UserFromContext retrieves the user from the context
+func UserFromContext(ctx context.Context) (*User, bool) {
+	user, ok := ctx.Value(userContextKey).(*User)
+	return user, ok
 }
 
-// SessionFromContext retrieves a session from the context
+// ContextWithUser adds the user to the context
+func ContextWithUser(ctx context.Context, user *User) context.Context {
+	return context.WithValue(ctx, userContextKey, user)
+}
+
+// SessionFromContext retrieves the session from the context by converting the user
 func SessionFromContext(ctx context.Context) (*Session, bool) {
-	session, ok := ctx.Value(sessionContextKey).(*Session)
-	return session, ok
+	user, ok := UserFromContext(ctx)
+	if !ok {
+		return nil, false
+	}
+
+	// Convert User to Session format
+	session := &Session{
+		UserID:   user.ID,
+		Username: user.Username,
+		Role:     user.Role,
+	}
+
+	return session, true
 }

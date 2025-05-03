@@ -57,64 +57,87 @@ func parseBasicAuth(r *http.Request) (username, password string, ok bool) {
 	return pair[0], pair[1], true
 }
 
-// AuthMiddleware creates a new authentication middleware
+// AuthMiddleware validates the session token and adds the user to the context
 func AuthMiddleware(authService *AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			// Skip authentication for login endpoint and swagger docs
-			if r.URL.Path == "/api/auth/login" ||
-				strings.HasPrefix(r.URL.Path, "/swagger/") {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			var session *Session
+			var user *User
 			var err error
 
-			// Try Basic Auth first
+			// First try Basic Auth
 			if username, password, ok := parseBasicAuth(r); ok {
-				session, err = authService.Login(ctx, username, password)
+				session, err := authService.Login(r.Context(), username, password)
 				if err != nil {
 					http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 					return
 				}
+				user, err = authService.GetUser(r.Context(), session.UserID)
+				if err != nil {
+					http.Error(w, "Invalid session", http.StatusUnauthorized)
+					return
+				}
 			} else {
-				// Try Cookie Auth
-				cookie, err := r.Cookie(SessionCookieName)
-				if err != nil {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
+				// Try Bearer token auth
+				var token string
+				var sessionID string
+				authHeader := r.Header.Get("Authorization")
+				if authHeader != "" {
+					parts := strings.Split(authHeader, " ")
+					if len(parts) != 2 || parts[0] != "Bearer" {
+						http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+						return
+					}
+					token = parts[1]
+				} else {
+					// Finally, try cookie auth
+					cookie, err := r.Cookie(SessionCookieName)
+					if err != nil {
+						http.Error(w, "No authentication credentials found", http.StatusUnauthorized)
+						return
+					}
+
+					// Split cookie value into session ID and signature
+					parts := strings.Split(cookie.Value, ".")
+					if len(parts) != 2 {
+						http.Error(w, "Invalid session format", http.StatusUnauthorized)
+						return
+					}
+
+					sessionID = parts[0]
+					signature := parts[1]
+
+					// Verify signature
+					if !verifySessionID(sessionID, signature) {
+						http.Error(w, "Invalid session signature", http.StatusUnauthorized)
+						return
+					}
 				}
 
-				// Split cookie value into session ID and signature
-				parts := strings.Split(cookie.Value, ".")
-				if len(parts) != 2 {
-					http.Error(w, "Invalid session format", http.StatusUnauthorized)
-					return
+				// Validate session for both Bearer token and Cookie auth
+				if token != "" {
+					user, err = authService.ValidateSessionByToken(r.Context(), token)
+					if err != nil {
+						http.Error(w, "Invalid or expired session", http.StatusUnauthorized)
+						return
+					}
 				}
-
-				sessionID, signature := parts[0], parts[1]
-
-				// Verify signature
-				if !verifySessionID(sessionID, signature) {
-					http.Error(w, "Invalid session signature", http.StatusUnauthorized)
-					return
-				}
-
-				// Validate session
-				session, err = authService.ValidateSession(ctx, sessionID)
-				if err != nil {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
+				if sessionID != "" {
+					user, err = authService.ValidateSessionByID(r.Context(), sessionID)
+					if err != nil {
+						http.Error(w, "Invalid or expired session", http.StatusUnauthorized)
+						return
+					}
 				}
 			}
 
-			// Add session to request context
-			ctx = WithSession(ctx, session)
-			r = r.WithContext(ctx)
+			if user == nil {
+				http.Error(w, "Authentication failed", http.StatusUnauthorized)
+				return
+			}
 
-			next.ServeHTTP(w, r)
+			// Add user to context
+			ctx := ContextWithUser(r.Context(), user)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

@@ -12,6 +12,29 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// RegisterRoutes registers all authentication and user management routes
+func RegisterRoutes(r chi.Router, authService *AuthService) {
+	// Auth routes
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/login", LoginHandler(authService))
+		r.Post("/logout", LogoutHandler(authService))
+		r.Get("/me", GetCurrentUserHandler(authService))
+		r.Post("/change-password", ChangePasswordHandler(authService))
+
+	})
+
+	// User management routes
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/", ListUsersHandler(authService))
+		r.Post("/", CreateUserHandler(authService))
+		r.Get("/{id}", GetUserHandler(authService))
+		r.Put("/{id}", UpdateUserHandler(authService))
+		r.Delete("/{id}", DeleteUserHandler(authService))
+		r.Put("/{id}/password", UpdateUserPasswordHandler(authService))
+		r.Put("/{id}/role", UpdateUserRoleHandler(authService))
+	})
+}
+
 // @Summary Login user
 // @Description Authenticates a user and returns a session cookie
 // @Tags Authentication
@@ -153,7 +176,7 @@ func GetCurrentUserHandler(authService *AuthService) http.HandlerFunc {
 // @Failure 400 {string} string "Invalid request body"
 // @Failure 401 {string} string "Unauthorized"
 // @Failure 403 {string} string "Forbidden - Requires admin role"
-// @Router /auth/users [post]
+// @Router /users [post]
 // @BasePath /api/v1
 func CreateUserHandler(authService *AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -207,7 +230,7 @@ func CreateUserHandler(authService *AuthService) http.HandlerFunc {
 // @Success 200 {array} UserResponse "List of users"
 // @Failure 401 {string} string "Unauthorized"
 // @Failure 403 {string} string "Forbidden - Requires admin role"
-// @Router /auth/users [get]
+// @Router /users [get]
 // @BasePath /api/v1
 func ListUsersHandler(authService *AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -249,6 +272,65 @@ func ListUsersHandler(authService *AuthService) http.HandlerFunc {
 	}
 }
 
+// @Summary Get user by ID
+// @Description Get a user's details by ID (admin only)
+// @Tags Users
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} UserResponse "User details"
+// @Failure 401 {string} string "Unauthorized"
+// @Failure 403 {string} string "Forbidden - Requires admin role"
+// @Failure 404 {string} string "User not found"
+// @Router /users/{id} [get]
+// @BasePath /api/v1
+func GetUserHandler(authService *AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		session, ok := SessionFromContext(r.Context())
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if session.Role != RoleAdmin {
+			http.Error(w, "Forbidden - Requires admin role", http.StatusForbidden)
+			return
+		}
+
+		userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		user, err := authService.GetUserByID(r.Context(), userID)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := UserResponse{
+			ID:          user.ID,
+			Username:    user.Username,
+			Role:        user.Role,
+			CreatedAt:   user.CreatedAt,
+			LastLoginAt: user.LastLoginAt,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
 // @Summary Update user
 // @Description Updates an existing user (admin only)
 // @Tags Users
@@ -262,7 +344,7 @@ func ListUsersHandler(authService *AuthService) http.HandlerFunc {
 // @Failure 401 {string} string "Unauthorized"
 // @Failure 403 {string} string "Forbidden - Requires admin role"
 // @Failure 404 {string} string "User not found"
-// @Router /auth/users/{id} [put]
+// @Router /users/{id} [put]
 // @BasePath /api/v1
 func UpdateUserHandler(authService *AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -326,7 +408,7 @@ func UpdateUserHandler(authService *AuthService) http.HandlerFunc {
 // @Failure 401 {string} string "Unauthorized"
 // @Failure 403 {string} string "Forbidden - Requires admin role"
 // @Failure 404 {string} string "User not found"
-// @Router /auth/users/{id} [delete]
+// @Router /users/{id} [delete]
 // @BasePath /api/v1
 func DeleteUserHandler(authService *AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -368,6 +450,162 @@ func DeleteUserHandler(authService *AuthService) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// @Summary Update user password
+// @Description Update a user's password (admin only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Param request body ChangePasswordRequest true "New password"
+// @Success 200 {object} map[string]string "Password updated successfully"
+// @Failure 400 {string} string "Invalid request body"
+// @Failure 401 {string} string "Unauthorized"
+// @Failure 403 {string} string "Forbidden - Requires admin role or self-modification not allowed"
+// @Failure 404 {string} string "User not found"
+// @Router /users/{id}/password [put]
+// @BasePath /api/v1
+func UpdateUserPasswordHandler(authService *AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		session, ok := SessionFromContext(r.Context())
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if session.Role != RoleAdmin {
+			http.Error(w, "Forbidden - Requires admin role", http.StatusForbidden)
+			return
+		}
+
+		userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		// Prevent self-modification
+		if userID == session.UserID {
+			http.Error(w, "Cannot modify your own password through this endpoint. Use /auth/change-password instead", http.StatusForbidden)
+			return
+		}
+
+		var req ChangePasswordRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// For admin password updates, we don't need to verify the current password
+		user, err := authService.GetUserByID(r.Context(), userID)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := authService.UpdateUserPassword(r.Context(), user.Username, req.NewPassword); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Password updated successfully",
+		})
+	}
+}
+
+// @Summary Update user role
+// @Description Update a user's role (admin only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security CookieAuth
+// @Param id path int true "User ID"
+// @Param request body UpdateUserRequest true "New role"
+// @Success 200 {object} UserResponse "User role updated"
+// @Failure 400 {string} string "Invalid request body"
+// @Failure 401 {string} string "Unauthorized"
+// @Failure 403 {string} string "Forbidden - Requires admin role or self-modification not allowed"
+// @Failure 404 {string} string "User not found"
+// @Router /users/{id}/role [put]
+// @BasePath /api/v1
+func UpdateUserRoleHandler(authService *AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		session, ok := SessionFromContext(r.Context())
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if session.Role != RoleAdmin {
+			http.Error(w, "Forbidden - Requires admin role", http.StatusForbidden)
+			return
+		}
+
+		userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		// Prevent self-modification
+		if userID == session.UserID {
+			http.Error(w, "Cannot modify your own role", http.StatusForbidden)
+			return
+		}
+
+		var req UpdateUserRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Role == "" {
+			http.Error(w, "Role is required", http.StatusBadRequest)
+			return
+		}
+
+		// Update only the role
+		updatedUser, err := authService.UpdateUser(r.Context(), userID, &UpdateUserRequest{
+			Role: req.Role,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := UserResponse{
+			ID:          updatedUser.ID,
+			Username:    updatedUser.Username,
+			Role:        updatedUser.Role,
+			CreatedAt:   updatedUser.CreatedAt,
+			LastLoginAt: updatedUser.LastLoginAt,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
 }
 

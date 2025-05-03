@@ -444,8 +444,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		r.Group(func(r chi.Router) {
 			r.Use(auth.AuthMiddleware(authService))
 
-			r.Post("/auth/logout", auth.LogoutHandler(authService))
-			r.Get("/auth/me", auth.GetCurrentUserHandler(authService))
+			// Mount auth routes
+			auth.RegisterRoutes(r, authService)
 
 			// Mount key management routes
 			keyManagementHandler.RegisterRoutes(r)
@@ -657,11 +657,21 @@ func (c *serveCmd) run() error {
 		}
 		log.Printf("Created initial user with username: %s", username)
 	} else if password != "" {
+		user, err := authService.GetUserByUsername(username)
+		if err != nil {
+			log.Fatalf("Failed to get user: %v", err)
+		}
 		// If password is set and users exist, update the first user's password
-		if err := authService.UpdateUserPassword(context.Background(), users[0].Username, password); err != nil {
+		if err := authService.UpdateUserPassword(context.Background(), user.Username, password); err != nil {
 			log.Fatalf("Failed to update user password: %v", err)
 		}
-		log.Printf("Updated password for user: %s", users[0].Username)
+
+		if _, err := authService.UpdateUser(context.Background(), user.ID, &auth.UpdateUserRequest{
+			Role: auth.RoleAdmin,
+		}); err != nil {
+			log.Fatalf("Failed to update user role to admin: %v", err)
+		}
+		log.Printf("Updated password and role for user: %s", user.Username)
 	}
 
 	// Setup and start HTTP server

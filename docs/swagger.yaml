@@ -2511,139 +2511,6 @@ paths:
       summary: Get current user
       tags:
       - Authentication
-  /auth/users:
-    get:
-      description: Returns a list of all users (admin only)
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of users
-          schema:
-            items:
-              $ref: '#/definitions/auth.UserResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            type: string
-        "403":
-          description: Forbidden - Requires admin role
-          schema:
-            type: string
-      security:
-      - CookieAuth: []
-      summary: List users
-      tags:
-      - Users
-    post:
-      consumes:
-      - application/json
-      description: Creates a new user with specified role (admin only)
-      parameters:
-      - description: User to create
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/auth.CreateUserRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: User created
-          schema:
-            $ref: '#/definitions/auth.UserResponse'
-        "400":
-          description: Invalid request body
-          schema:
-            type: string
-        "401":
-          description: Unauthorized
-          schema:
-            type: string
-        "403":
-          description: Forbidden - Requires admin role
-          schema:
-            type: string
-      security:
-      - CookieAuth: []
-      summary: Create new user
-      tags:
-      - Users
-  /auth/users/{id}:
-    delete:
-      description: Deletes a user (admin only)
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      responses:
-        "204":
-          description: User deleted
-        "401":
-          description: Unauthorized
-          schema:
-            type: string
-        "403":
-          description: Forbidden - Requires admin role
-          schema:
-            type: string
-        "404":
-          description: User not found
-          schema:
-            type: string
-      security:
-      - CookieAuth: []
-      summary: Delete user
-      tags:
-      - Users
-    put:
-      consumes:
-      - application/json
-      description: Updates an existing user (admin only)
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: User updates
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/auth.UpdateUserRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User updated
-          schema:
-            $ref: '#/definitions/auth.UserResponse'
-        "400":
-          description: Invalid request body
-          schema:
-            type: string
-        "401":
-          description: Unauthorized
-          schema:
-            type: string
-        "403":
-          description: Forbidden - Requires admin role
-          schema:
-            type: string
-        "404":
-          description: User not found
-          schema:
-            type: string
-      security:
-      - CookieAuth: []
-      summary: Update user
-      tags:
-      - Users
   /backups:
     get:
       consumes:
@@ -6078,6 +5945,263 @@ paths:
       summary: Create or update the default setting
       tags:
       - Settings
+  /users:
+    get:
+      description: Returns a list of all users (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/auth.UserResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: List users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user with specified role (admin only)
+      parameters:
+      - description: User to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Create new user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Deletes a user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: User deleted
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Delete user
+      tags:
+      - Users
+    get:
+      description: Get a user's details by ID (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User updates
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /users/{id}/password:
+    put:
+      consumes:
+      - application/json
+      description: Update a user's password (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role or self-modification not allowed
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Update user password
+      tags:
+      - Users
+  /users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      description: Update a user's role (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New role
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User role updated
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden - Requires admin role or self-modification not allowed
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+      security:
+      - CookieAuth: []
+      summary: Update user role
+      tags:
+      - Users
 schemes:
 - http
 - https

@@ -52,6 +52,7 @@ import CreateNodePage from './pages/nodes/create'
 import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
 import NewPluginPage from './pages/plugins/new'
+import UsersPage from './pages/users'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -120,6 +121,7 @@ const App = () => {
 														<Route path="plugins" element={<PluginsPage />} />
 														<Route path="plugins/new" element={<NewPluginPage />} />
 														<Route path="plugins/:name" element={<PluginDetailPage />} />
+														<Route path="users" element={<UsersPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

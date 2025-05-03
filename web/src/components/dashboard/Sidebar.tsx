@@ -65,6 +65,11 @@ const data = {
 					icon: Key,
 				},
 				{
+					title: 'Users',
+					url: '/users',
+					icon: BadgeCheck,
+				},
+				{
 					title: 'Backups',
 					url: '/settings/backups',
 					icon: DatabaseBackup,

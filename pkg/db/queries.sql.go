@@ -856,33 +856,76 @@ func (q *Queries) CreateNotificationProvider(ctx context.Context, arg *CreateNot
 	return &i, err
 }
 
+const CreatePlugin = `-- name: CreatePlugin :one
+INSERT INTO plugins (
+  name,
+  api_version,
+  kind,
+  metadata,
+  spec,
+  created_at,
+  updated_at
+) VALUES (
+  ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) RETURNING name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status
+`
+
+type CreatePluginParams struct {
+	Name       string      `json:"name"`
+	ApiVersion string      `json:"apiVersion"`
+	Kind       string      `json:"kind"`
+	Metadata   interface{} `json:"metadata"`
+	Spec       interface{} `json:"spec"`
+}
+
+func (q *Queries) CreatePlugin(ctx context.Context, arg *CreatePluginParams) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, CreatePlugin,
+		arg.Name,
+		arg.ApiVersion,
+		arg.Kind,
+		arg.Metadata,
+		arg.Spec,
+	)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
+	)
+	return &i, err
+}
+
 const CreateSession = `-- name: CreateSession :one
 INSERT INTO sessions (
-    session_id,
-    user_id,
-    token,
-    expires_at
+  token,
+  user_id,
+  expires_at,
+  session_id
 ) VALUES (
-    ?,
-    ?,
-    ?,
-    ?
-) RETURNING id, session_id, user_id, token, ip_address, user_agent, created_at, updated_at, expires_at, last_activity_at
+  ?, ?, ?, ?
+)
+RETURNING id, session_id, user_id, token, ip_address, user_agent, created_at, updated_at, expires_at, last_activity_at
 `
 
 type CreateSessionParams struct {
-	SessionID string    `json:"sessionId"`
-	UserID    int64     `json:"userId"`
 	Token     string    `json:"token"`
+	UserID    int64     `json:"userId"`
 	ExpiresAt time.Time `json:"expiresAt"`
+	SessionID string    `json:"sessionId"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg *CreateSessionParams) (*Session, error) {
 	row := q.db.QueryRowContext(ctx, CreateSession,
-		arg.SessionID,
-		arg.UserID,
 		arg.Token,
+		arg.UserID,
 		arg.ExpiresAt,
+		arg.SessionID,
 	)
 	var i Session
 	err := row.Scan(
@@ -923,20 +966,21 @@ func (q *Queries) CreateSetting(ctx context.Context, config string) (*Setting, e
 
 const CreateUser = `-- name: CreateUser :one
 INSERT INTO users (
-    username, password, created_at, last_login_at, updated_at
+    username, password, role, created_at, last_login_at, updated_at
 ) VALUES (
-    ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
 RETURNING id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string         `json:"username"`
+	Password string         `json:"password"`
+	Role     sql.NullString `json:"role"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
-	row := q.db.QueryRowContext(ctx, CreateUser, arg.Username, arg.Password)
+	row := q.db.QueryRowContext(ctx, CreateUser, arg.Username, arg.Password, arg.Role)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -1003,8 +1047,7 @@ func (q *Queries) DeleteBackupsByTarget(ctx context.Context, targetID int64) err
 }
 
 const DeleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
-DELETE FROM sessions
-WHERE expires_at <= CURRENT_TIMESTAMP
+DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP
 `
 
 func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
@@ -1099,6 +1142,15 @@ func (q *Queries) DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsPar
 	return err
 }
 
+const DeletePlugin = `-- name: DeletePlugin :exec
+DELETE FROM plugins WHERE name = ?
+`
+
+func (q *Queries) DeletePlugin(ctx context.Context, name string) error {
+	_, err := q.db.ExecContext(ctx, DeletePlugin, name)
+	return err
+}
+
 const DeleteRevokedCertificate = `-- name: DeleteRevokedCertificate :exec
 DELETE FROM fabric_revoked_certificates
 WHERE fabric_organization_id = ? AND serial_number = ?
@@ -1115,12 +1167,11 @@ func (q *Queries) DeleteRevokedCertificate(ctx context.Context, arg *DeleteRevok
 }
 
 const DeleteSession = `-- name: DeleteSession :exec
-DELETE FROM sessions
-WHERE session_id = ?
+DELETE FROM sessions WHERE token = ?
 `
 
-func (q *Queries) DeleteSession(ctx context.Context, sessionID string) error {
-	_, err := q.db.ExecContext(ctx, DeleteSession, sessionID)
+func (q *Queries) DeleteSession(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, DeleteSession, token)
 	return err
 }
 
@@ -1145,8 +1196,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const DeleteUserSessions = `-- name: DeleteUserSessions :exec
-DELETE FROM sessions
-WHERE user_id = ?
+DELETE FROM sessions WHERE user_id = ?
 `
 
 func (q *Queries) DeleteUserSessions(ctx context.Context, userID int64) error {
@@ -1608,6 +1658,32 @@ func (q *Queries) GetDefaultNotificationProviderForType(ctx context.Context, not
 		&i.LastTestMessage,
 	)
 	return &i, err
+}
+
+const GetDeploymentMetadata = `-- name: GetDeploymentMetadata :one
+SELECT deployment_metadata
+FROM plugins
+WHERE name = ?
+`
+
+func (q *Queries) GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, GetDeploymentMetadata, name)
+	var deployment_metadata interface{}
+	err := row.Scan(&deployment_metadata)
+	return deployment_metadata, err
+}
+
+const GetDeploymentStatus = `-- name: GetDeploymentStatus :one
+SELECT deployment_status
+FROM plugins
+WHERE name = ?
+`
+
+func (q *Queries) GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error) {
+	row := q.db.QueryRowContext(ctx, GetDeploymentStatus, name)
+	var deployment_status sql.NullString
+	err := row.Scan(&deployment_status)
+	return deployment_status, err
 }
 
 const GetFabricOrganization = `-- name: GetFabricOrganization :one
@@ -2670,6 +2746,27 @@ func (q *Queries) GetPeerPorts(ctx context.Context) ([]*GetPeerPortsRow, error) 
 	return items, nil
 }
 
+const GetPlugin = `-- name: GetPlugin :one
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status FROM plugins WHERE name = ?
+`
+
+func (q *Queries) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, GetPlugin, name)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
+	)
+	return &i, err
+}
+
 const GetProvidersByNotificationType = `-- name: GetProvidersByNotificationType :many
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE (
@@ -2851,31 +2948,69 @@ func (q *Queries) GetRevokedCertificates(ctx context.Context, fabricOrganization
 }
 
 const GetSession = `-- name: GetSession :one
-SELECT s.id, s.session_id, s.token, s.expires_at, s.created_at, u.username
-FROM sessions s
-JOIN users u ON s.user_id = u.id
-WHERE s.session_id = ? AND s.expires_at > CURRENT_TIMESTAMP
+SELECT id, session_id, user_id, token, ip_address, user_agent, created_at, updated_at, expires_at, last_activity_at FROM sessions WHERE token = ? LIMIT 1
 `
 
-type GetSessionRow struct {
-	ID        int64     `json:"id"`
-	SessionID string    `json:"sessionId"`
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	CreatedAt time.Time `json:"createdAt"`
-	Username  string    `json:"username"`
-}
-
-func (q *Queries) GetSession(ctx context.Context, sessionID string) (*GetSessionRow, error) {
-	row := q.db.QueryRowContext(ctx, GetSession, sessionID)
-	var i GetSessionRow
+func (q *Queries) GetSession(ctx context.Context, token string) (*Session, error) {
+	row := q.db.QueryRowContext(ctx, GetSession, token)
+	var i Session
 	err := row.Scan(
 		&i.ID,
 		&i.SessionID,
+		&i.UserID,
 		&i.Token,
-		&i.ExpiresAt,
+		&i.IpAddress,
+		&i.UserAgent,
 		&i.CreatedAt,
-		&i.Username,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+		&i.LastActivityAt,
+	)
+	return &i, err
+}
+
+const GetSessionBySessionID = `-- name: GetSessionBySessionID :one
+SELECT id, session_id, user_id, token, ip_address, user_agent, created_at, updated_at, expires_at, last_activity_at FROM sessions
+WHERE session_id = ?
+`
+
+func (q *Queries) GetSessionBySessionID(ctx context.Context, sessionID string) (*Session, error) {
+	row := q.db.QueryRowContext(ctx, GetSessionBySessionID, sessionID)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.UserID,
+		&i.Token,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+		&i.LastActivityAt,
+	)
+	return &i, err
+}
+
+const GetSessionByToken = `-- name: GetSessionByToken :one
+SELECT id, session_id, user_id, token, ip_address, user_agent, created_at, updated_at, expires_at, last_activity_at FROM sessions
+WHERE token = ?
+`
+
+func (q *Queries) GetSessionByToken(ctx context.Context, token string) (*Session, error) {
+	row := q.db.QueryRowContext(ctx, GetSessionByToken, token)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.UserID,
+		&i.Token,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+		&i.LastActivityAt,
 	)
 	return &i, err
 }
@@ -3833,6 +3968,43 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]*Notificatio
 	return items, nil
 }
 
+const ListPlugins = `-- name: ListPlugins :many
+SELECT name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status FROM plugins ORDER BY name
+`
+
+func (q *Queries) ListPlugins(ctx context.Context) ([]*Plugin, error) {
+	rows, err := q.db.QueryContext(ctx, ListPlugins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Plugin{}
+	for rows.Next() {
+		var i Plugin
+		if err := rows.Scan(
+			&i.Name,
+			&i.ApiVersion,
+			&i.Kind,
+			&i.Metadata,
+			&i.Spec,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeploymentMetadata,
+			&i.DeploymentStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListSettings = `-- name: ListSettings :many
 SELECT id, config, created_at, updated_at FROM settings
 ORDER BY created_at DESC
@@ -4254,6 +4426,38 @@ func (q *Queries) UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploym
 		&i.ErrorMessage,
 	)
 	return &i, err
+}
+
+const UpdateDeploymentMetadata = `-- name: UpdateDeploymentMetadata :exec
+UPDATE plugins
+SET deployment_metadata = ?
+WHERE name = ?
+`
+
+type UpdateDeploymentMetadataParams struct {
+	DeploymentMetadata interface{} `json:"deploymentMetadata"`
+	Name               string      `json:"name"`
+}
+
+func (q *Queries) UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateDeploymentMetadata, arg.DeploymentMetadata, arg.Name)
+	return err
+}
+
+const UpdateDeploymentStatus = `-- name: UpdateDeploymentStatus :exec
+UPDATE plugins
+SET deployment_status = ?
+WHERE name = ?
+`
+
+type UpdateDeploymentStatusParams struct {
+	DeploymentStatus sql.NullString `json:"deploymentStatus"`
+	Name             string         `json:"name"`
+}
+
+func (q *Queries) UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateDeploymentStatus, arg.DeploymentStatus, arg.Name)
+	return err
 }
 
 const UpdateFabricOrganization = `-- name: UpdateFabricOrganization :one
@@ -4883,6 +5087,49 @@ func (q *Queries) UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganiza
 	return err
 }
 
+const UpdatePlugin = `-- name: UpdatePlugin :one
+UPDATE plugins
+SET 
+  api_version = ?,
+  kind = ?,
+  metadata = ?,
+  spec = ?,
+  updated_at = CURRENT_TIMESTAMP
+WHERE name = ?
+RETURNING name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status
+`
+
+type UpdatePluginParams struct {
+	ApiVersion string      `json:"apiVersion"`
+	Kind       string      `json:"kind"`
+	Metadata   interface{} `json:"metadata"`
+	Spec       interface{} `json:"spec"`
+	Name       string      `json:"name"`
+}
+
+func (q *Queries) UpdatePlugin(ctx context.Context, arg *UpdatePluginParams) (*Plugin, error) {
+	row := q.db.QueryRowContext(ctx, UpdatePlugin,
+		arg.ApiVersion,
+		arg.Kind,
+		arg.Metadata,
+		arg.Spec,
+		arg.Name,
+	)
+	var i Plugin
+	err := row.Scan(
+		&i.Name,
+		&i.ApiVersion,
+		&i.Kind,
+		&i.Metadata,
+		&i.Spec,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeploymentMetadata,
+		&i.DeploymentStatus,
+	)
+	return &i, err
+}
+
 const UpdateProviderTestResults = `-- name: UpdateProviderTestResults :one
 UPDATE notification_providers
 SET last_test_at = ?,
@@ -4956,26 +5203,20 @@ func (q *Queries) UpdateSetting(ctx context.Context, arg *UpdateSettingParams) (
 const UpdateUser = `-- name: UpdateUser :one
 UPDATE users
 SET username = ?,
-    password = CASE WHEN ? IS NOT NULL THEN ? ELSE password END,
+    role = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 RETURNING id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at
 `
 
 type UpdateUserParams struct {
-	Username string      `json:"username"`
-	Column2  interface{} `json:"column2"`
-	Password string      `json:"password"`
-	ID       int64       `json:"id"`
+	Username string         `json:"username"`
+	Role     sql.NullString `json:"role"`
+	ID       int64          `json:"id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (*User, error) {
-	row := q.db.QueryRowContext(ctx, UpdateUser,
-		arg.Username,
-		arg.Column2,
-		arg.Password,
-		arg.ID,
-	)
+	row := q.db.QueryRowContext(ctx, UpdateUser, arg.Username, arg.Role, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -5004,6 +5245,39 @@ RETURNING id, username, password, name, email, role, provider, provider_id, avat
 
 func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int64) (*User, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUserLastLogin, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.Provider,
+		&i.ProviderID,
+		&i.AvatarUrl,
+		&i.CreatedAt,
+		&i.LastLoginAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const UpdateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET password = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, username, password, name, email, role, provider, provider_id, avatar_url, created_at, last_login_at, updated_at
+`
+
+type UpdateUserPasswordParams struct {
+	Password string `json:"password"`
+	ID       int64  `json:"id"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg *UpdateUserPasswordParams) (*User, error) {
+	row := q.db.QueryRowContext(ctx, UpdateUserPassword, arg.Password, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,

@@ -24,6 +24,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabrichandler "github.com/chainlaunch/chainlaunch/pkg/fabric/handler"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
+	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/handler"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -36,6 +37,7 @@ import (
 	nodesservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	notificationhttp "github.com/chainlaunch/chainlaunch/pkg/notifications/http"
 	notificationservice "github.com/chainlaunch/chainlaunch/pkg/notifications/service"
+	"github.com/chainlaunch/chainlaunch/pkg/plugin"
 	settingshttp "github.com/chainlaunch/chainlaunch/pkg/settings/http"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/go-chi/chi/v5"
@@ -132,14 +134,47 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @in cookie
 // @name session_id
 
+// @tag.name Authentication
+// @tag.description User authentication and authorization operations
+
+// @tag.name Backup Schedules
+// @tag.description Backup schedule configuration and management
+
+// @tag.name Backup Targets
+// @tag.description Backup target location configuration and management
+
+// @tag.name Backups
+// @tag.description Backup management operations
+
+// @tag.name Besu Networks
+// @tag.description Hyperledger Besu network management operations
+
+// @tag.name Fabric Networks
+// @tag.description Hyperledger Fabric network management operations
+
 // @tag.name Keys
 // @tag.description Cryptographic key management operations
+
+// @tag.name Nodes
+// @tag.description Network node management operations
+
+// @tag.name Notifications
+// @tag.description System notification configuration and management
+
+// @tag.name Organizations
+// @tag.description Organization management operations
+
+// @tag.name Plugins
+// @tag.description Plugin management operations
 
 // @tag.name Providers
 // @tag.description Key provider management operations
 
-// @tag.name Nodes
-// @tag.description Network node management operations
+// @tag.name Settings
+// @tag.description Settings management operations
+
+// @tag.name Users
+// @tag.description User account management operations
 
 // Add these constants at the top level
 const (
@@ -318,28 +353,66 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 		// Get all nodes from the node service
 		ctx := context.Background()
+		var allNodes []nodesservice.NodeResponse
 		fabricPlatform := nodeTypes.PlatformFabric
 		nodes, err := nodesService.ListNodes(ctx, &fabricPlatform, 1, 100)
 		if err != nil {
 			log.Printf("Failed to fetch nodes for monitoring: %v", err)
 			return
 		}
+		allNodes = append(allNodes, nodes.Items...)
+
+		// Get Besu nodes
+		besuPlatform := nodeTypes.PlatformBesu
+		besuNodes, err := nodesService.ListNodes(ctx, &besuPlatform, 1, 100)
+		if err != nil {
+			log.Printf("Failed to fetch Besu nodes for monitoring: %v", err)
+		} else {
+			allNodes = append(allNodes, besuNodes.Items...)
+			logger.Infof("Added %d Besu nodes for monitoring", len(besuNodes.Items))
+		}
 
 		// Add each node to monitoring
-		for _, node := range nodes.Items {
-			// Skip nodes without endpoints
-			if node.Endpoint == "" {
+		for _, node := range allNodes {
+			var monitorNode *monitoring.Node
+			switch node.NodeType {
+			case nodeTypes.NodeTypeFabricPeer:
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         node.Endpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			case nodeTypes.NodeTypeFabricOrderer:
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         node.Endpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			case nodeTypes.NodeTypeBesuFullnode:
+				rcpEndpoint := fmt.Sprintf("%s:%d", node.BesuNode.RPCHost, node.BesuNode.RPCPort)
+				// Create a monitoring node from the node data
+				monitorNode = &monitoring.Node{
+					ID:               node.ID,
+					Name:             node.Name,
+					Endpoint:         rcpEndpoint,
+					Platform:         string(node.Platform),
+					CheckInterval:    1 * time.Minute,
+					Timeout:          10 * time.Second,
+					FailureThreshold: 3,
+				}
+			default:
+				logger.Infof("Skipping node %s (%s) as it is not a supported node type", node.Name, node.ID)
 				continue
-			}
-
-			// Create a monitoring node from the node data
-			monitorNode := &monitoring.Node{
-				ID:               node.ID,
-				Name:             node.Name,
-				URL:              node.Endpoint + "/health", // Assuming a health endpoint
-				CheckInterval:    1 * time.Minute,
-				Timeout:          10 * time.Second,
-				FailureThreshold: 3,
 			}
 
 			if monitoringService.NodeExists(node.ID) {
@@ -356,6 +429,14 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		}
 	}()
 
+	// Initialize plugin store and manager
+	pluginStore := plugin.NewSQLStore(queries)
+	pluginManager, err := plugin.NewPluginManager(filepath.Join(dataPath, "plugins"))
+	if err != nil {
+		log.Fatal("Failed to initialize plugin manager:", err)
+	}
+	pluginHandler := plugin.NewHandler(pluginStore, pluginManager, logger)
+
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)
 	organizationHandler := fabrichandler.NewOrganizationHandler(organizationService)
@@ -366,7 +447,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	)
 	backupHandler := backuphttp.NewHandler(backupService)
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
-
+	authHandler := auth.NewHandler(authService)
 	// Setup router
 	r := chi.NewRouter()
 
@@ -378,9 +459,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 	// Add CORS middleware
 	r.Use(cors.Handler(cors.Options{
-		// AllowedOrigins: []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins: []string{"*"}, // Allow all origins
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedOrigins:   []string{"*"}, // Allow all origins
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -391,14 +470,14 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public routes (no auth required)
-		r.Post("/auth/login", auth.LoginHandler(authService))
+		r.Post("/auth/login", response.Middleware(authHandler.LoginHandler))
 
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(auth.AuthMiddleware(authService))
 
-			r.Post("/auth/logout", auth.LogoutHandler(authService))
-			r.Get("/auth/me", auth.GetCurrentUserHandler(authService))
+			// Mount auth routes
+			authHandler.RegisterRoutes(r)
 
 			// Mount key management routes
 			keyManagementHandler.RegisterRoutes(r)
@@ -414,6 +493,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			notificationHandler.RegisterRoutes(r)
 			// Mount settings routes
 			settingsHandler.RegisterRoutes(r)
+			// Mount plugin routes
+			pluginHandler.RegisterRoutes(r)
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(
@@ -599,16 +680,30 @@ func (c *serveCmd) run() error {
 		}
 
 		// Create initial user with provided credentials
-		if err := authService.CreateUser(context.Background(), username, password); err != nil {
+		if _, err := authService.CreateUser(context.Background(), &auth.CreateUserRequest{
+			Username: username,
+			Password: password,
+			Role:     auth.RoleAdmin,
+		}); err != nil {
 			log.Fatalf("Failed to create initial user: %v", err)
 		}
 		log.Printf("Created initial user with username: %s", username)
 	} else if password != "" {
+		user, err := authService.GetUserByUsername(username)
+		if err != nil {
+			log.Fatalf("Failed to get user: %v", err)
+		}
 		// If password is set and users exist, update the first user's password
-		if err := authService.UpdateUserPassword(context.Background(), users[0].Username, password); err != nil {
+		if err := authService.UpdateUserPassword(context.Background(), user.Username, password); err != nil {
 			log.Fatalf("Failed to update user password: %v", err)
 		}
-		log.Printf("Updated password for user: %s", users[0].Username)
+
+		if _, err := authService.UpdateUser(context.Background(), user.ID, &auth.UpdateUserRequest{
+			Role: auth.RoleAdmin,
+		}); err != nil {
+			log.Fatalf("Failed to update user role to admin: %v", err)
+		}
+		log.Printf("Updated password and role for user: %s", user.Username)
 	}
 
 	// Setup and start HTTP server

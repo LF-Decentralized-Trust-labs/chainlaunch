@@ -32,6 +32,7 @@ type Querier interface {
 	CreateNode(ctx context.Context, arg *CreateNodeParams) (*Node, error)
 	CreateNodeEvent(ctx context.Context, arg *CreateNodeEventParams) (*NodeEvent, error)
 	CreateNotificationProvider(ctx context.Context, arg *CreateNotificationProviderParams) (*NotificationProvider, error)
+	CreatePlugin(ctx context.Context, arg *CreatePluginParams) (*Plugin, error)
 	CreateSession(ctx context.Context, arg *CreateSessionParams) (*Session, error)
 	CreateSetting(ctx context.Context, config string) (*Setting, error)
 	CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error)
@@ -49,8 +50,9 @@ type Querier interface {
 	DeleteNode(ctx context.Context, id int64) error
 	DeleteNotificationProvider(ctx context.Context, id int64) error
 	DeleteOldBackups(ctx context.Context, arg *DeleteOldBackupsParams) error
+	DeletePlugin(ctx context.Context, name string) error
 	DeleteRevokedCertificate(ctx context.Context, arg *DeleteRevokedCertificateParams) error
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, token string) error
 	DeleteSetting(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteUserSessions(ctx context.Context, userID int64) error
@@ -66,6 +68,8 @@ type Querier interface {
 	GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error)
 	GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error)
 	GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error)
+	GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error)
+	GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error)
 	GetFabricOrganization(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByID(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (*FabricOrganization, error)
@@ -95,12 +99,15 @@ type Querier interface {
 	GetOrdererPorts(ctx context.Context) ([]*GetOrdererPortsRow, error)
 	GetOrganizationCRLInfo(ctx context.Context, id int64) (*GetOrganizationCRLInfoRow, error)
 	GetPeerPorts(ctx context.Context) ([]*GetPeerPortsRow, error)
+	GetPlugin(ctx context.Context, name string) (*Plugin, error)
 	GetProvidersByNotificationType(ctx context.Context, arg *GetProvidersByNotificationTypeParams) ([]*NotificationProvider, error)
 	GetRecentCompletedBackups(ctx context.Context) ([]*Backup, error)
 	GetRevokedCertificate(ctx context.Context, arg *GetRevokedCertificateParams) (*FabricRevokedCertificate, error)
 	GetRevokedCertificateCount(ctx context.Context, fabricOrganizationID int64) (int64, error)
 	GetRevokedCertificates(ctx context.Context, fabricOrganizationID int64) ([]*FabricRevokedCertificate, error)
-	GetSession(ctx context.Context, sessionID string) (*GetSessionRow, error)
+	GetSession(ctx context.Context, token string) (*Session, error)
+	GetSessionBySessionID(ctx context.Context, sessionID string) (*Session, error)
+	GetSessionByToken(ctx context.Context, token string) (*Session, error)
 	GetSetting(ctx context.Context, id int64) (*Setting, error)
 	GetUser(ctx context.Context, id int64) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
@@ -122,6 +129,7 @@ type Querier interface {
 	ListNodesByNetwork(ctx context.Context, arg *ListNodesByNetworkParams) ([]*Node, error)
 	ListNodesByPlatform(ctx context.Context, arg *ListNodesByPlatformParams) ([]*Node, error)
 	ListNotificationProviders(ctx context.Context) ([]*NotificationProvider, error)
+	ListPlugins(ctx context.Context) ([]*Plugin, error)
 	ListSettings(ctx context.Context) ([]*Setting, error)
 	ListUsers(ctx context.Context) ([]*User, error)
 	MarkBackupNotified(ctx context.Context, id int64) error
@@ -135,6 +143,8 @@ type Querier interface {
 	UpdateBackupStatus(ctx context.Context, arg *UpdateBackupStatusParams) (*Backup, error)
 	UpdateBackupTarget(ctx context.Context, arg *UpdateBackupTargetParams) (*BackupTarget, error)
 	UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploymentConfigParams) (*Node, error)
+	UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error
+	UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error
 	UpdateFabricOrganization(ctx context.Context, arg *UpdateFabricOrganizationParams) (*FabricOrganization, error)
 	UpdateKey(ctx context.Context, arg *UpdateKeyParams) (*Key, error)
 	UpdateKeyProvider(ctx context.Context, arg *UpdateKeyProviderParams) (*KeyProvider, error)
@@ -151,10 +161,12 @@ type Querier interface {
 	UpdateNodeStatusWithError(ctx context.Context, arg *UpdateNodeStatusWithErrorParams) (*Node, error)
 	UpdateNotificationProvider(ctx context.Context, arg *UpdateNotificationProviderParams) (*NotificationProvider, error)
 	UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganizationCRLParams) error
+	UpdatePlugin(ctx context.Context, arg *UpdatePluginParams) (*Plugin, error)
 	UpdateProviderTestResults(ctx context.Context, arg *UpdateProviderTestResultsParams) (*NotificationProvider, error)
 	UpdateSetting(ctx context.Context, arg *UpdateSettingParams) (*Setting, error)
 	UpdateUser(ctx context.Context, arg *UpdateUserParams) (*User, error)
 	UpdateUserLastLogin(ctx context.Context, id int64) (*User, error)
+	UpdateUserPassword(ctx context.Context, arg *UpdateUserPasswordParams) (*User, error)
 }
 
 var _ Querier = (*Queries)(nil)

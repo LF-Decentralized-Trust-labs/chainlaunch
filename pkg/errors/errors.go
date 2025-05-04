@@ -9,13 +9,14 @@ import (
 type ErrorType string
 
 const (
-	ValidationError    ErrorType = "VALIDATION_ERROR"
-	NotFoundError      ErrorType = "NOT_FOUND"
-	AuthorizationError ErrorType = "AUTHORIZATION_ERROR"
-	DatabaseError      ErrorType = "DATABASE_ERROR"
-	NetworkError       ErrorType = "NETWORK_ERROR"
-	ConflictError      ErrorType = "CONFLICT_ERROR"
-	InternalError      ErrorType = "INTERNAL_ERROR"
+	ValidationError     ErrorType = "VALIDATION_ERROR"
+	NotFoundError       ErrorType = "NOT_FOUND"
+	AuthenticationError ErrorType = "AUTHENTICATION_ERROR"
+	AuthorizationError  ErrorType = "AUTHORIZATION_ERROR"
+	DatabaseError       ErrorType = "DATABASE_ERROR"
+	NetworkError        ErrorType = "NETWORK_ERROR"
+	ConflictError       ErrorType = "CONFLICT_ERROR"
+	InternalError       ErrorType = "INTERNAL_ERROR"
 )
 
 // AppError represents a custom application error
@@ -45,6 +46,14 @@ func NewValidationError(msg string, details map[string]interface{}) *AppError {
 func NewNotFoundError(msg string, details map[string]interface{}) *AppError {
 	return &AppError{
 		Type:    NotFoundError,
+		Message: msg,
+		Details: details,
+	}
+}
+
+func NewAuthenticationError(msg string, details map[string]interface{}) *AppError {
+	return &AppError{
+		Type:    AuthenticationError,
 		Message: msg,
 		Details: details,
 	}

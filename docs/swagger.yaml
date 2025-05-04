@@ -1,5 +1,35 @@
 basePath: /api/v1
 definitions:
+  auth.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  auth.CreateUserRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/auth.Role'
+        enum:
+        - admin
+        - manager
+        - viewer
+      username:
+        type: string
+    required:
+    - password
+    - role
+    - username
+    type: object
   auth.LoginRequest:
     properties:
       password:
@@ -8,40 +38,48 @@ definitions:
         type: string
     type: object
   auth.LoginResponse:
-    description: Login response
     properties:
       message:
-        description: |-
-          Success message
-          @Example "Login successful"
         type: string
     type: object
   auth.LogoutResponse:
-    description: Logout response
     properties:
       message:
-        description: |-
-          Success message
-          @Example "Logout successful"
+        type: string
+    type: object
+  auth.Role:
+    enum:
+    - admin
+    - manager
+    - viewer
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleManager
+    - RoleViewer
+  auth.UpdateUserRequest:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/auth.Role'
+        enum:
+        - admin
+        - manager
+        - viewer
+      username:
         type: string
     type: object
   auth.UserResponse:
-    description: User information response
     properties:
       created_at:
-        description: |-
-          Time when the user was created
-          @Example "2024-01-01T00:00:00Z"
         type: string
+      id:
+        type: integer
       last_login_at:
-        description: |-
-          Last time the user logged in
-          @Example "2024-01-01T12:34:56Z"
         type: string
+      role:
+        $ref: '#/definitions/auth.Role'
       username:
-        description: |-
-          Username of the user
-          @Example "admin"
         type: string
     type: object
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
@@ -56,6 +94,43 @@ definitions:
   github_com_chainlaunch_chainlaunch_pkg_notifications_http.ErrorResponse:
     properties:
       error:
+        type: string
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters:
+    properties:
+      $schema:
+        type: string
+      properties:
+        additionalProperties:
+          $ref: '#/definitions/types.ParameterSpec'
+        type: object
+      required:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin:
+    properties:
+      apiVersion:
+        type: string
+      deploymentStatus:
+        $ref: '#/definitions/types.DeploymentStatus'
+      kind:
+        type: string
+      metadata:
+        $ref: '#/definitions/types.Metadata'
+      spec:
+        $ref: '#/definitions/types.Spec'
+    type: object
+  github_com_chainlaunch_chainlaunch_pkg_plugin_types.Port:
+    properties:
+      containerPort:
+        type: string
+      hostPort:
+        type: string
+      protocol:
         type: string
     type: object
   handler.CreateOrganizationRequest:
@@ -1580,6 +1655,48 @@ definitions:
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+  plugin.ServiceStatus:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      containers:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      depends_on:
+        items:
+          type: string
+        type: array
+      environment:
+        additionalProperties:
+          type: string
+        type: object
+      health:
+        type: string
+      image:
+        type: string
+      last_error:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      running:
+        type: boolean
+      started_at:
+        type: string
+      state:
+        type: string
+      volumes:
+        items:
+          type: string
+        type: array
+    type: object
   response.ErrorResponse:
     properties:
       details:
@@ -1947,6 +2064,31 @@ definitions:
     x-enum-varnames:
     - PlatformFabric
     - PlatformBesu
+  types.DeploymentStatus:
+    properties:
+      error:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+      projectName:
+        type: string
+      services:
+        items:
+          $ref: '#/definitions/types.Service'
+        type: array
+      startedAt:
+        type: string
+      status:
+        type: string
+      stoppedAt:
+        type: string
+    type: object
+  types.DockerCompose:
+    properties:
+      contents:
+        type: string
+    type: object
   types.FabricOrdererConfig:
     properties:
       addressOverrides:
@@ -2066,6 +2208,13 @@ definitions:
     - name
     - organizationId
     type: object
+  types.Metadata:
+    properties:
+      name:
+        type: string
+      version:
+        type: string
+    type: object
   types.NodeStatus:
     enum:
     - PENDING
@@ -2109,6 +2258,41 @@ definitions:
     - from
     - tlsCACert
     - to
+    type: object
+  types.ParameterSpec:
+    properties:
+      default:
+        type: string
+      description:
+        type: string
+      enum:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+    type: object
+  types.Service:
+    properties:
+      createdAt:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Port'
+        type: array
+      status:
+        type: string
+    type: object
+  types.Spec:
+    properties:
+      dockerCompose:
+        $ref: '#/definitions/types.DockerCompose'
+      parameters:
+        $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters'
     type: object
   url.URL:
     properties:
@@ -2217,6 +2401,44 @@ info:
   title: ChainLaunch API
   version: "1.0"
 paths:
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Allows a user to change their own password
+      parameters:
+      - description: Password change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password changed successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Invalid current password
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Change own password
+      tags:
+      - Authentication
   /auth/login:
     post:
       consumes:
@@ -2239,15 +2461,15 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Invalid credentials
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "405":
           description: Method not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Login user
       tags:
       - Authentication
@@ -2264,7 +2486,7 @@ paths:
         "405":
           description: Method not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Logout user
@@ -2283,9 +2505,8 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
-      - BasicAuth: []
       - CookieAuth: []
       summary: Get current user
       tags:
@@ -4686,9 +4907,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/http.BesuNodeDefaultsResponse'
-            type: array
+            $ref: '#/definitions/http.BesuNodeDefaultsResponse'
         "500":
           description: Internal server error
           schema:
@@ -5394,6 +5613,304 @@ paths:
       summary: Get a Fabric organization by MSP ID
       tags:
       - Organizations
+  /plugins:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all available plugins
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: List all plugins
+      tags:
+      - Plugins
+    post:
+      consumes:
+      - application/json
+      description: Create a new plugin
+      parameters:
+      - description: Plugin to create
+        in: body
+        name: plugin
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a plugin
+      tags:
+      - Plugins
+  /plugins/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an existing plugin
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a plugin
+      tags:
+      - Plugins
+    get:
+      consumes:
+      - application/json
+      description: Get a specific plugin by name
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a plugin
+      tags:
+      - Plugins
+    put:
+      consumes:
+      - application/json
+      description: Update an existing plugin
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Plugin to update
+        in: body
+        name: plugin
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a plugin
+      tags:
+      - Plugins
+  /plugins/{name}/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a plugin with the given parameters
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Deployment parameters
+        in: body
+        name: parameters
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Deploy a plugin
+      tags:
+      - Plugins
+  /plugins/{name}/deployment-status:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a plugin deployment including service
+        status, logs, and metrics
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeploymentStatus'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get detailed deployment status
+      tags:
+      - Plugins
+  /plugins/{name}/services:
+    get:
+      consumes:
+      - application/json
+      description: Get all services defined in the plugin's docker-compose configuration
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/plugin.ServiceStatus'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get Docker Compose services
+      tags:
+      - Plugins
+  /plugins/{name}/status:
+    get:
+      consumes:
+      - application/json
+      description: Get the current status of a plugin deployment
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeploymentStatus'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get plugin deployment status
+      tags:
+      - Plugins
+  /plugins/{name}/stop:
+    post:
+      consumes:
+      - application/json
+      description: Stop a running plugin deployment
+      parameters:
+      - description: Plugin name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Stop a plugin deployment
+      tags:
+      - Plugins
   /settings:
     get:
       description: Get the default setting's details
@@ -5428,6 +5945,263 @@ paths:
       summary: Create or update the default setting
       tags:
       - Settings
+  /users:
+    get:
+      description: Returns a list of all users (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/auth.UserResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: List users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user with specified role (admin only)
+      parameters:
+      - description: User to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Create new user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Deletes a user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: User deleted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Delete user
+      tags:
+      - Users
+    get:
+      description: Get a user's details by ID (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User updates
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /users/{id}/password:
+    put:
+      consumes:
+      - application/json
+      description: Update a user's password (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role or self-modification not allowed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Update user password
+      tags:
+      - Users
+  /users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      description: Update a user's role (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New role
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User role updated
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden - Requires admin role or self-modification not allowed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - CookieAuth: []
+      summary: Update user role
+      tags:
+      - Users
 schemes:
 - http
 - https
@@ -5440,9 +6214,31 @@ securityDefinitions:
     type: apiKey
 swagger: "2.0"
 tags:
+- description: User authentication and authorization operations
+  name: Authentication
+- description: Backup schedule configuration and management
+  name: Backup Schedules
+- description: Backup target location configuration and management
+  name: Backup Targets
+- description: Backup management operations
+  name: Backups
+- description: Hyperledger Besu network management operations
+  name: Besu Networks
+- description: Hyperledger Fabric network management operations
+  name: Fabric Networks
 - description: Cryptographic key management operations
   name: Keys
-- description: Key provider management operations
-  name: Providers
 - description: Network node management operations
   name: Nodes
+- description: System notification configuration and management
+  name: Notifications
+- description: Organization management operations
+  name: Organizations
+- description: Plugin management operations
+  name: Plugins
+- description: Key provider management operations
+  name: Providers
+- description: Settings management operations
+  name: Settings
+- description: User account management operations
+  name: Users

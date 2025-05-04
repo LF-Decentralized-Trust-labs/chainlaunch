@@ -452,7 +452,7 @@ func (h *NodeHandler) GetFabricNodesDefaults(w http.ResponseWriter, r *http.Requ
 // @Tags Nodes
 // @Produce json
 // @Param besuNodes query int false "Number of Besu nodes" default(1) minimum(0)
-// @Success 200 {array} BesuNodeDefaultsResponse
+// @Success 200 {object} BesuNodeDefaultsResponse
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /nodes/defaults/besu-node [get]
 func (h *NodeHandler) GetBesuNodeDefaults(w http.ResponseWriter, r *http.Request) error {
@@ -549,7 +549,7 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Write log line to response
-			fmt.Fprintf(w, "data: %s\n\n", logLine)
+			fmt.Fprintf(w, "%s\n\n", logLine)
 			flusher.Flush()
 		}
 	}

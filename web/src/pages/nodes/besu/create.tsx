@@ -64,15 +64,14 @@ export default function CreateBesuNodePage() {
 	const { data: besuDefaultConfig } = useQuery(getNodesDefaultsBesuNodeOptions())
 	useEffect(() => {
 		if (besuDefaultConfig) {
-			const [p2pHost, p2pPort] = besuDefaultConfig.p2pAddress!.split(':')
-			const [rpcHost, rpcPort] = besuDefaultConfig.rpcAddress!.split(':')
-			form.setValue('p2pHost', p2pHost)
+			const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = besuDefaultConfig[0].defaults![0]
+			form.setValue('p2pHost', p2pHost!)
 			form.setValue('p2pPort', Number(p2pPort))
-			form.setValue('rpcHost', rpcHost)
+			form.setValue('rpcHost', rpcHost!)
 			form.setValue('rpcPort', Number(rpcPort))
 
-			form.setValue('externalIp', besuDefaultConfig.externalIP!)
-			form.setValue('internalIp', besuDefaultConfig.internalIP!)
+			form.setValue('externalIp', externalIp!)
+			form.setValue('internalIp', internalIp!)
 		}
 	}, [besuDefaultConfig, form.setValue])
 	// Add queries for networks and keys

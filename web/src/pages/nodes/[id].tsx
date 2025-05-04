@@ -18,12 +18,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CertificateViewer } from '@/components/ui/certificate-viewer'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns/format'
-import { AlertCircle, CheckCircle2, Clock, KeyRound, Pencil, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ChevronDown, Clock, KeyRound, Pencil, Play, PlayCircle, RefreshCcw, RefreshCw, Square, StopCircle, Trash, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -53,7 +54,7 @@ function isFabricNode(node: HttpNodeResponse): node is HttpNodeResponse & { depl
 }
 
 function isBesuNode(node: HttpNodeResponse): node is HttpNodeResponse & { deploymentConfig: DeploymentConfig } {
-	return node.platform === 'BESU' && (node.besuNode !== undefined)
+	return node.platform === 'BESU' && node.besuNode !== undefined
 }
 
 function getNodeActions(status: string) {
@@ -64,11 +65,17 @@ function getNodeActions(status: string) {
 				{ label: 'Restart', action: 'restart', icon: RefreshCw },
 			]
 		case 'stopped':
-			return [{ label: 'Start', action: 'start', icon: Play }]
+			return [
+				{ label: 'Start', action: 'start', icon: Play },
+				{ label: 'Delete', action: 'delete', icon: Trash },
+			]
+		case 'stopping':
+			return [{ label: 'Stop', action: 'stop', icon: Square }]
 		case 'error':
 			return [
 				{ label: 'Start', action: 'start', icon: Play },
 				{ label: 'Restart', action: 'restart', icon: RefreshCw },
+				{ label: 'Delete', action: 'delete', icon: Trash },
 			]
 		case 'starting':
 		case 'stopping':
@@ -335,36 +342,51 @@ export default function NodeDetailPage() {
 					<p className="text-muted-foreground">Node Details</p>
 				</div>
 				<div className="flex gap-2">
-					{getNodeActions(node.status!).map(({ label, action, icon: Icon }) => (
-						<Button
-							key={action}
-							onClick={() => handleAction(action)}
-							variant="outline"
-							size="sm"
-							disabled={['starting', 'stopping'].includes(node.status!.toLowerCase()) || startNode.isPending || stopNode.isPending || restartNode.isPending}
-						>
-							<Icon className="mr-2 h-4 w-4" />
-							{label}
-						</Button>
-					))}
-					{isFabricNode(node) && (
-						<Button onClick={() => handleAction('renew-certificates')} variant="outline" size="sm" disabled={renewCertificates.isPending}>
-							<KeyRound className="mr-2 h-4 w-4" />
-							Renew Certificates
-						</Button>
-					)}
-					{isFabricNode(node) && (
-						<Button onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)} variant="outline" size="sm">
-							<Pencil className="mr-2 h-4 w-4" />
-							Edit
-						</Button>
-					)}
-					{isBesuNode(node) && (
-						<Button onClick={() => navigate(`/nodes/besu/edit/${node.id}`)} variant="outline" size="sm">
-							<Pencil className="mr-2 h-4 w-4" />
-							Edit
-						</Button>
-					)}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm">
+								Actions <ChevronDown className="ml-2 h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuGroup>
+								{getNodeActions(node.status!).map(({ label, action, icon: Icon }) => (
+									<DropdownMenuItem
+										key={action}
+										onClick={() => handleAction(action)}
+										disabled={['starting', 'stopping'].includes(node.status!.toLowerCase()) || startNode.isPending || stopNode.isPending || restartNode.isPending}
+									>
+										<Icon className="mr-2 h-4 w-4" />
+										{label}
+									</DropdownMenuItem>
+								))}
+
+								{isFabricNode(node) && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onClick={() => handleAction('renew-certificates')} disabled={renewCertificates.isPending}>
+											<KeyRound className="mr-2 h-4 w-4" />
+											Renew Certificates
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => navigate(`/nodes/fabric/edit/${node.id}`)}>
+											<Pencil className="mr-2 h-4 w-4" />
+											Edit
+										</DropdownMenuItem>
+									</>
+								)}
+
+								{isBesuNode(node) && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onClick={() => navigate(`/nodes/besu/edit/${node.id}`)}>
+											<Pencil className="mr-2 h-4 w-4" />
+											Edit
+										</DropdownMenuItem>
+									</>
+								)}
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 

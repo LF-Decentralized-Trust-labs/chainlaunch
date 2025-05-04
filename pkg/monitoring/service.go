@@ -1,14 +1,15 @@
 package monitoring
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -94,8 +95,11 @@ func (s *service) AddNode(node *Node) error {
 	if node.ID == 0 {
 		return fmt.Errorf("node ID cannot be zero")
 	}
-	if node.URL == "" {
-		return fmt.Errorf("node URL cannot be empty")
+	if node.Endpoint == "" {
+		return fmt.Errorf("node endpoint cannot be empty")
+	}
+	if node.Platform == "" {
+		return fmt.Errorf("node platform cannot be empty")
 	}
 
 	// Set defaults if not provided
@@ -204,107 +208,212 @@ func (s *service) checkNodes(ctx context.Context) {
 
 // checkNode checks a single node and updates its status
 func (s *service) checkNode(ctx context.Context, node *Node) {
-	start := time.Now()
-
-	// Parse the URL to get host and port
-	u, err := url.Parse(node.URL)
-	if err != nil {
-		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
-		return
-	}
-
-	// Extract host and port
-	host := u.Host
-	if !strings.Contains(host, ":") {
-		// Default to port 443 for HTTPS
-		host = host + ":443"
-	}
-
-	// Try to establish TCP connection
-	dialer := &net.Dialer{
-		Timeout: node.Timeout,
-	}
 	nodeResponse, err := s.nodeService.GetNode(ctx, node.ID)
 	if err != nil {
 		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
 		return
 	}
-	var x509Cert *x509.Certificate
-	if nodeResponse.FabricPeer != nil {
-		tlsCertStr := nodeResponse.FabricPeer.TLSCert
-		if tlsCertStr != "" {
-			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
-			if err != nil {
-				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
-				return
-			}
-		}
-	} else if nodeResponse.FabricOrderer != nil {
-		tlsCertStr := nodeResponse.FabricOrderer.TLSCert
-		if tlsCertStr != "" {
-			x509Cert, err = certutils.ParseX509Certificate([]byte(tlsCertStr))
-			if err != nil {
-				s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
-				return
-			}
-		}
+
+	var status NodeStatus
+	var responseTime time.Duration
+	var checkErr error
+
+	// Route to appropriate check function based on node type
+	switch {
+	case nodeResponse.FabricPeer != nil:
+		status, responseTime, checkErr = s.checkFabricPeer(ctx, node, nodeResponse.FabricPeer)
+	case nodeResponse.FabricOrderer != nil:
+		status, responseTime, checkErr = s.checkFabricOrderer(ctx, node, nodeResponse.FabricOrderer)
+	case nodeResponse.BesuNode != nil:
+		status, responseTime, checkErr = s.checkBesuNode(ctx, node, nodeResponse.BesuNode)
+	default:
+		checkErr = fmt.Errorf("unsupported node type")
 	}
+
+	if checkErr != nil {
+		s.handleNodeCheckResult(node, NodeStatusDown, responseTime, checkErr)
+		return
+	}
+
+	s.handleNodeCheckResult(node, status, responseTime, nil)
+}
+
+// checkFabricPeer checks a Fabric peer node using TLS only
+func (s *service) checkFabricPeer(ctx context.Context, node *Node, peer *nodes.FabricPeerProperties) (NodeStatus, time.Duration, error) {
+	start := time.Now()
+
+	// Create a certificate pool for trusted CAs
+	caCertPool := x509.NewCertPool()
+
+	// Add TLS CA certificate if available
+	if peer.TLSCACert != "" {
+		caCert, err := certutils.ParseX509Certificate([]byte(peer.TLSCACert))
+		if err != nil {
+			return NodeStatusDown, 0, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
+		}
+		caCertPool.AddCert(caCert)
+	}
+
+	// Get the node's TLS certificate
 	var tlsCert tls.Certificate
-	if x509Cert != nil {
+	if peer.TLSCert != "" {
+		x509Cert, err := certutils.ParseX509Certificate([]byte(peer.TLSCert))
+		if err != nil {
+			return NodeStatusDown, 0, fmt.Errorf("failed to parse TLS certificate: %w", err)
+		}
 		tlsCert = tls.Certificate{
 			Certificate: [][]byte{x509Cert.Raw},
 			PrivateKey:  nil,
 		}
 	}
+
+	// Configure TLS
 	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS12,
 	}
+
 	// Try TLS connection
-	conn, err := tls.DialWithDialer(dialer, "tcp", host, tlsConfig)
+	dialer := &net.Dialer{
+		Timeout: node.Timeout,
+	}
+	conn, err := tls.DialWithDialer(dialer, "tcp", node.Endpoint, tlsConfig)
 	if err != nil {
-		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
-		return
+		return NodeStatusDown, time.Since(start), err
 	}
 	defer conn.Close()
 
-	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "GET", node.URL, nil)
-	if err != nil {
-		s.handleNodeCheckResult(node, NodeStatusDown, 0, err)
-		return
+	// Verify the connection is established
+	if err := conn.Handshake(); err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("TLS handshake failed: %w", err)
 	}
 
-	// Create a client with the TLS connection
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return conn, nil
-		},
+	return NodeStatusUp, time.Since(start), nil
+}
+
+// checkFabricOrderer checks a Fabric orderer node using TLS only
+func (s *service) checkFabricOrderer(ctx context.Context, node *Node, orderer *nodes.FabricOrdererProperties) (NodeStatus, time.Duration, error) {
+	start := time.Now()
+
+	// Create a certificate pool for trusted CAs
+	caCertPool := x509.NewCertPool()
+
+	// Add TLS CA certificate if available
+	if orderer.TLSCACert != "" {
+		caCert, err := certutils.ParseX509Certificate([]byte(orderer.TLSCACert))
+		if err != nil {
+			return NodeStatusDown, 0, fmt.Errorf("failed to parse TLS CA certificate: %w", err)
+		}
+		caCertPool.AddCert(caCert)
 	}
+
+	// Get the node's TLS certificate
+	var tlsCert tls.Certificate
+	if orderer.TLSCert != "" {
+		x509Cert, err := certutils.ParseX509Certificate([]byte(orderer.TLSCert))
+		if err != nil {
+			return NodeStatusDown, 0, fmt.Errorf("failed to parse TLS certificate: %w", err)
+		}
+		tlsCert = tls.Certificate{
+			Certificate: [][]byte{x509Cert.Raw},
+			PrivateKey:  nil,
+		}
+	}
+
+	// Configure TLS
+	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	// Try TLS connection
+	dialer := &net.Dialer{
+		Timeout: node.Timeout,
+	}
+	conn, err := tls.DialWithDialer(dialer, "tcp", node.Endpoint, tlsConfig)
+	if err != nil {
+		return NodeStatusDown, time.Since(start), err
+	}
+	defer conn.Close()
+
+	// Verify the connection is established
+	if err := conn.Handshake(); err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("TLS handshake failed: %w", err)
+	}
+
+	return NodeStatusUp, time.Since(start), nil
+}
+
+// checkBesuNode checks a Besu node using JSON-RPC
+func (s *service) checkBesuNode(ctx context.Context, node *Node, besu *nodes.BesuNodeProperties) (NodeStatus, time.Duration, error) {
+	start := time.Now()
+
+	// Create HTTP client
 	client := &http.Client{
-		Transport: transport,
-		Timeout:   node.Timeout,
+		Timeout: node.Timeout,
 	}
 
-	// Perform the request
-	resp, err := client.Do(req)
-	responseTime := time.Since(start)
+	// Prepare JSON-RPC request
+	requestBody := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "net_version",
+		"params":  []interface{}{},
+		"id":      1,
+	}
 
+	jsonBody, err := json.Marshal(requestBody)
 	if err != nil {
-		s.handleNodeCheckResult(node, NodeStatusDown, responseTime, err)
-		return
+		return NodeStatusDown, time.Since(start), fmt.Errorf("failed to marshal JSON-RPC request: %w", err)
+	}
+	rpcUrl := fmt.Sprintf("http://%s:%d", besu.RPCHost, besu.RPCPort)
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, "POST", rpcUrl, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send request
+	resp, err := client.Do(req)
+	if err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Check if the response is successful (2xx status code)
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err = fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-		s.handleNodeCheckResult(node, NodeStatusDown, responseTime, err)
-		return
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Node is up
-	s.handleNodeCheckResult(node, NodeStatusUp, responseTime, nil)
+	// Parse JSON-RPC response
+	var response struct {
+		Jsonrpc string `json:"jsonrpc"`
+		ID      int    `json:"id"`
+		Result  string `json:"result"`
+		Error   *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	if err := json.Unmarshal(body, &response); err != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Check for RPC error
+	if response.Error != nil {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("RPC error: %s (code: %d)", response.Error.Message, response.Error.Code)
+	}
+
+	// Verify we got a valid network version
+	if response.Result == "" {
+		return NodeStatusDown, time.Since(start), fmt.Errorf("invalid network version response")
+	}
+
+	return NodeStatusUp, time.Since(start), nil
 }
 
 // handleNodeCheckResult processes the result of a node check
@@ -376,7 +485,7 @@ func (s *service) sendNodeDownNotification(ctx context.Context, node *Node, err 
 	data := notifications.NodeDowntimeData{
 		NodeID:       node.ID,
 		NodeName:     node.Name,
-		NodeURL:      node.URL,
+		NodeURL:      node.Endpoint,
 		DownSince:    node.LastStatusChange,
 		FailureCount: node.FailureCount,
 		Error:        err.Error(),
@@ -394,7 +503,7 @@ func (s *service) sendNodeRecoveryNotification(ctx context.Context, node *Node, 
 	data := notifications.NodeUpData{
 		NodeID:           node.ID,
 		NodeName:         node.Name,
-		NodeURL:          node.URL,
+		NodeURL:          node.Endpoint,
 		DownSince:        node.LastStatusChange,
 		RecoveredAt:      recoveryTime,
 		DowntimeDuration: downtimeDuration,

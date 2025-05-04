@@ -243,7 +243,7 @@ export default function NodesPage() {
 										</Link>
 									</Button>
 									<Button asChild>
-										<Link to="/nodes/fabric/create">Create Node</Link>
+										<Link to="/nodes/create">Create Node</Link>
 									</Button>
 								</div>
 							</div>
@@ -305,31 +305,16 @@ export default function NodesPage() {
 								View Logs
 							</Link>
 						</Button>
-						<div className="flex items-center">
-							<Button asChild className="rounded-r-none">
-								<Link to="/nodes/fabric/create">Create Node</Link>
+						<div className="flex items-center gap-2">
+							<Button asChild variant="outline">
+								<Link to="/nodes/fabric/bulk">
+									<Server className="mr-2 h-4 w-4" />
+									Bulk Create Fabric
+								</Link>
 							</Button>
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="default" className="rounded-l-none border-l border-primary/20 px-2">
-										<ChevronDown className="h-4 w-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem asChild>
-										<Link to="/nodes/fabric/bulk" className="flex items-center">
-											<FabricIcon className="w-4 h-4 mr-2" />
-											Bulk Create Fabric
-										</Link>
-									</DropdownMenuItem>
-									<DropdownMenuItem asChild>
-										<Link to="/nodes/besu/create" className="flex items-center">
-											<BesuIcon className="w-4 h-4 mr-2" />
-											Create Besu Node
-										</Link>
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<Button asChild>
+								<Link to="/nodes/create">Create Node</Link>
+							</Button>
 						</div>
 					</div>
 				</div>

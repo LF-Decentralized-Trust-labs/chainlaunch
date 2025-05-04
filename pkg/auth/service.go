@@ -69,6 +69,23 @@ func (s *AuthService) InitializeDefaultUser() (string, error) {
 	return password, nil
 }
 
+// GetUser retrieves a user by their ID
+func (s *AuthService) GetUser(ctx context.Context, id int64) (*User, error) {
+	user, err := s.db.GetUser(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return &User{
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     Role(user.Role.String),
+	}, nil
+}
+
 // Login authenticates a user and returns a session
 func (s *AuthService) Login(ctx context.Context, username, password string) (*Session, error) {
 	// Get user from database
@@ -121,26 +138,62 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Se
 		ID:        dbSession.SessionID,
 		Token:     token,
 		Username:  username,
+		UserID:    user.ID,
+		Role:      Role(user.Role.String),
 		CreatedAt: dbSession.CreatedAt,
 		ExpiresAt: dbSession.ExpiresAt,
 	}, nil
 }
 
-// ValidateSession checks if a session is valid
-func (s *AuthService) ValidateSession(ctx context.Context, sessionID string) (*Session, error) {
-	dbSession, err := s.db.GetSession(ctx, sessionID)
+// ValidateSessionByToken validates a session token and returns the associated user
+func (s *AuthService) ValidateSessionByToken(ctx context.Context, token string) (*User, error) {
+	// Get session from database
+	session, err := s.db.GetSessionByToken(ctx, token)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("session not found")
-		}
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
 
-	return &Session{
-		ID:        dbSession.SessionID,
-		Username:  dbSession.Username,
-		CreatedAt: dbSession.CreatedAt,
-		ExpiresAt: dbSession.ExpiresAt,
+	// Check if session is expired
+	if time.Now().After(session.ExpiresAt) {
+		return nil, fmt.Errorf("session expired")
+	}
+
+	// Get user from database
+	user, err := s.db.GetUser(ctx, session.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return &User{
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     Role(user.Role.String),
+	}, nil
+}
+
+// ValidateSessionByID validates a session by its session ID and returns the associated user
+func (s *AuthService) ValidateSessionByID(ctx context.Context, sessionID string) (*User, error) {
+	// Get session from database
+	session, err := s.db.GetSessionBySessionID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// Check if session is expired
+	if time.Now().After(session.ExpiresAt) {
+		return nil, fmt.Errorf("session expired")
+	}
+
+	// Get user from database
+	user, err := s.db.GetUser(ctx, session.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return &User{
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     Role(user.Role.String),
 	}, nil
 }
 
@@ -170,38 +223,41 @@ func (s *AuthService) GetUserByUsername(username string) (*User, error) {
 	}
 
 	return &User{
+		ID:          dbUser.ID,
 		Username:    dbUser.Username,
+		Role:        Role(dbUser.Role.String),
 		CreatedAt:   dbUser.CreatedAt,
 		LastLoginAt: dbUser.LastLoginAt.Time,
 	}, nil
 }
 
-// Add these new types at the top of the file after the imports
-type CreateUserRequest struct {
-	Username string
-	Password string
-}
-
 // Add these new methods to AuthService
 
 // CreateUser creates a new user with the given credentials
-func (s *AuthService) CreateUser(ctx context.Context, username, password string) error {
+func (s *AuthService) CreateUser(ctx context.Context, req *CreateUserRequest) (*User, error) {
 	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Create user
-	_, err = s.db.CreateUser(ctx, &db.CreateUserParams{
-		Username: username,
+	dbUser, err := s.db.CreateUser(ctx, &db.CreateUserParams{
+		Username: req.Username,
 		Password: string(hashedPassword),
+		Role:     sql.NullString{String: string(req.Role), Valid: true},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return nil
+	return &User{
+		ID:          dbUser.ID,
+		Username:    dbUser.Username,
+		Role:        Role(dbUser.Role.String),
+		CreatedAt:   dbUser.CreatedAt,
+		LastLoginAt: dbUser.LastLoginAt.Time,
+	}, nil
 }
 
 // ListUsers returns all users
@@ -216,6 +272,7 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*User, error) {
 		users[i] = &User{
 			ID:          dbUser.ID,
 			Username:    dbUser.Username,
+			Role:        Role(dbUser.Role.String),
 			CreatedAt:   dbUser.CreatedAt,
 			LastLoginAt: dbUser.LastLoginAt.Time,
 		}
@@ -225,26 +282,44 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]*User, error) {
 }
 
 // UpdateUser updates a user's details
-func (s *AuthService) UpdateUser(ctx context.Context, id int64, username, password string) error {
+func (s *AuthService) UpdateUser(ctx context.Context, id int64, req *UpdateUserRequest) (*User, error) {
+	// Get existing user
+	existingUser, err := s.db.GetUser(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Prepare update params
 	params := &db.UpdateUserParams{
 		ID:       id,
-		Username: username,
+		Username: existingUser.Username,
+		Role:     existingUser.Role,
 	}
 
-	if password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			return fmt.Errorf("failed to hash password: %w", err)
-		}
-		params.Password = string(hashedPassword)
+	// Update fields if provided
+	if req.Username != "" {
+		params.Username = req.Username
+	}
+	if req.Role != "" {
+		params.Role = sql.NullString{String: string(req.Role), Valid: true}
 	}
 
-	_, err := s.db.UpdateUser(ctx, params)
+	// Update user
+	dbUser, err := s.db.UpdateUser(ctx, params)
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return nil
+	return &User{
+		ID:          dbUser.ID,
+		Username:    dbUser.Username,
+		Role:        Role(dbUser.Role.String),
+		CreatedAt:   dbUser.CreatedAt,
+		LastLoginAt: dbUser.LastLoginAt.Time,
+	}, nil
 }
 
 // DeleteUser deletes a user by ID
@@ -297,14 +372,12 @@ func (s *AuthService) UpdateUserPassword(ctx context.Context, username, newPassw
 	}
 
 	// Update user's password
-	params := &db.UpdateUserParams{
+	params := &db.UpdateUserPasswordParams{
 		ID:       user.ID,
-		Username: user.Username,
-		Column2:  string(hashedPassword),
 		Password: string(hashedPassword),
 	}
 
-	_, err = s.db.UpdateUser(ctx, params)
+	_, err = s.db.UpdateUserPassword(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to update user password: %w", err)
 	}

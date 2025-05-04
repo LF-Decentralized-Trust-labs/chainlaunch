@@ -305,7 +305,13 @@ export default function NodesPage() {
 								View Logs
 							</Link>
 						</Button>
-						<div className="flex items-center">
+						<div className="flex items-center gap-2">
+							<Button asChild variant="outline">
+								<Link to="/nodes/fabric/bulk">
+									<Server className="mr-2 h-4 w-4" />
+									Bulk Create Fabric
+								</Link>
+							</Button>
 							<Button asChild>
 								<Link to="/nodes/create">Create Node</Link>
 							</Button>

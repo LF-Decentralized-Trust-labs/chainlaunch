@@ -1,0 +1,79 @@
+package org
+
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/spf13/cobra"
+)
+
+type createCmd struct {
+	name     string
+	mspID    string
+	domain   string
+	baseURL  string
+	username string
+	password string
+	logger   *logger.Logger
+}
+
+func (c *createCmd) validate() error {
+	if c.name == "" {
+		return fmt.Errorf("organization name is required")
+	}
+	if c.mspID == "" {
+		return fmt.Errorf("MSP ID is required")
+	}
+	if c.domain == "" {
+		return fmt.Errorf("domain is required")
+	}
+	if c.username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if c.password == "" {
+		return fmt.Errorf("password is required")
+	}
+	return nil
+}
+
+func (c *createCmd) run(out io.Writer) error {
+	client := NewClientWrapper(c.baseURL, c.username, c.password, c.logger)
+	return client.CreateOrganization(c.name, c.mspID, c.domain)
+}
+
+// NewCreateCmd returns the create organization command
+func NewCreateCmd(logger *logger.Logger) *cobra.Command {
+	c := &createCmd{
+		logger: logger,
+	}
+
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a new organization",
+		Long:  `Create a new Hyperledger Fabric organization`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := c.validate(); err != nil {
+				return err
+			}
+			return c.run(os.Stdout)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVarP(&c.name, "name", "n", "", "Organization name")
+	flags.StringVarP(&c.mspID, "msp-id", "m", "", "MSP ID")
+	flags.StringVarP(&c.domain, "domain", "d", "", "Organization domain")
+	flags.StringVar(&c.baseURL, "url", "", "Base URL of the API server (defaults to CHAINLAUNCH_URL env var or http://localhost:8100/api/v1)")
+	flags.StringVarP(&c.username, "username", "u", "", "Username for basic auth")
+	flags.StringVarP(&c.password, "password", "p", "", "Password for basic auth")
+
+	cmd.MarkFlagRequired("name")
+	cmd.MarkFlagRequired("msp-id")
+	cmd.MarkFlagRequired("domain")
+	cmd.MarkFlagRequired("username")
+	cmd.MarkFlagRequired("password")
+
+	return cmd
+}

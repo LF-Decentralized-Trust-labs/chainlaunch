@@ -24,6 +24,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	fabrichandler "github.com/chainlaunch/chainlaunch/pkg/fabric/handler"
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
+	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/handler"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -413,7 +414,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	)
 	backupHandler := backuphttp.NewHandler(backupService)
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
-
+	authHandler := auth.NewHandler(authService)
 	// Setup router
 	r := chi.NewRouter()
 
@@ -425,9 +426,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 	// Add CORS middleware
 	r.Use(cors.Handler(cors.Options{
-		// AllowedOrigins: []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins: []string{"*"}, // Allow all origins
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedOrigins:   []string{"*"}, // Allow all origins
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -438,14 +437,14 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public routes (no auth required)
-		r.Post("/auth/login", auth.LoginHandler(authService))
+		r.Post("/auth/login", response.Middleware(authHandler.LoginHandler))
 
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(auth.AuthMiddleware(authService))
 
 			// Mount auth routes
-			auth.RegisterRoutes(r, authService)
+			authHandler.RegisterRoutes(r)
 
 			// Mount key management routes
 			keyManagementHandler.RegisterRoutes(r)

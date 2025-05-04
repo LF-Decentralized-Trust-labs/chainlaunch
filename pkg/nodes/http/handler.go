@@ -549,7 +549,7 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Write log line to response
-			fmt.Fprintf(w, "data: %s\n\n", logLine)
+			fmt.Fprintf(w, "%s\n\n", logLine)
 			flusher.Flush()
 		}
 	}

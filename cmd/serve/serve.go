@@ -268,30 +268,6 @@ func ensureKeyExists(filename string, dataPath string) (string, error) {
 	return string(keyBytes), nil
 }
 
-// Add formatDuration helper function to format time.Duration to human-readable string
-func formatDuration(d time.Duration) string {
-	days := int(d.Hours() / 24)
-	hours := int(d.Hours()) % 24
-	minutes := int(d.Minutes()) % 60
-	seconds := int(d.Seconds()) % 60
-
-	parts := []string{}
-	if days > 0 {
-		parts = append(parts, fmt.Sprintf("%dd", days))
-	}
-	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%dh", hours))
-	}
-	if minutes > 0 {
-		parts = append(parts, fmt.Sprintf("%dm", minutes))
-	}
-	if seconds > 0 || len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf("%ds", seconds))
-	}
-
-	return strings.Join(parts, " ")
-}
-
 // setupServer configures and returns the HTTP server
 func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string) *chi.Mux {
 	// Initialize services

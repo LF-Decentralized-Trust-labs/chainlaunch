@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/chainlaunch/chainlaunch/pkg/errors"
+	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
 
 func init() {
@@ -18,34 +22,36 @@ func init() {
 
 // Handler handles HTTP requests for plugins
 type Handler struct {
-	store  Store
-	pm     *PluginManager
-	logger *logger.Logger
+	store    Store
+	pm       *PluginManager
+	logger   *logger.Logger
+	validate *validator.Validate
 }
 
 // NewHandler creates a new plugin handler
 func NewHandler(store Store, pm *PluginManager, logger *logger.Logger) *Handler {
 	return &Handler{
-		store:  store,
-		pm:     pm,
-		logger: logger,
+		store:    store,
+		pm:       pm,
+		logger:   logger,
+		validate: validator.New(),
 	}
 }
 
 // RegisterRoutes registers the plugin routes
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/plugins", func(r chi.Router) {
-		r.Get("/", h.listPlugins)
-		r.Post("/", h.createPlugin)
+		r.Get("/", response.Middleware(h.listPlugins))
+		r.Post("/", response.Middleware(h.createPlugin))
 		r.Route("/{name}", func(r chi.Router) {
-			r.Get("/", h.getPlugin)
-			r.Put("/", h.updatePlugin)
-			r.Delete("/", h.deletePlugin)
-			r.Post("/deploy", h.deployPlugin)
-			r.Post("/stop", h.stopPlugin)
-			r.Get("/status", h.getPluginStatus)
-			r.Get("/deployment-status", h.getDeploymentStatus)
-			r.Get("/services", h.getDockerComposeServices)
+			r.Get("/", response.Middleware(h.getPlugin))
+			r.Put("/", response.Middleware(h.updatePlugin))
+			r.Delete("/", response.Middleware(h.deletePlugin))
+			r.Post("/deploy", response.Middleware(h.deployPlugin))
+			r.Post("/stop", response.Middleware(h.stopPlugin))
+			r.Get("/status", response.Middleware(h.getPluginStatus))
+			r.Get("/deployment-status", response.Middleware(h.getDeploymentStatus))
+			r.Get("/services", response.Middleware(h.getDockerComposeServices))
 		})
 	})
 }
@@ -58,20 +64,13 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // @Success 200 {array} types.Plugin
 // @Failure 500 {object} string
 // @Router /plugins [get]
-func (h *Handler) listPlugins(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) listPlugins(w http.ResponseWriter, r *http.Request) error {
 	plugins, err := h.store.ListPlugins(r.Context())
 	if err != nil {
-		h.logger.Errorf("Failed to list plugins: %v", err)
-		http.Error(w, "Failed to list plugins", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to list plugins", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(plugins); err != nil {
-		h.logger.Errorf("Failed to encode plugins: %v", err)
-		http.Error(w, "Failed to encode plugins", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, plugins)
 }
 
 // @Summary Get a plugin
@@ -84,21 +83,21 @@ func (h *Handler) listPlugins(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} string
 // @Failure 500 {object} string
 // @Router /plugins/{name} [get]
-func (h *Handler) getPlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getPlugin(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(plugin); err != nil {
-		h.logger.Errorf("Failed to encode plugin: %v", err)
-		http.Error(w, "Failed to encode plugin", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, plugin)
 }
 
 // @Summary Create a plugin
@@ -108,36 +107,48 @@ func (h *Handler) getPlugin(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param plugin body types.Plugin true "Plugin to create"
 // @Success 201 {object} types.Plugin
-// @Failure 400 {object} string
-// @Failure 500 {object} string
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins [post]
-func (h *Handler) createPlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createPlugin(w http.ResponseWriter, r *http.Request) error {
 	var plugin types.Plugin
 	if err := json.NewDecoder(r.Body).Decode(&plugin); err != nil {
-		h.logger.Errorf("Failed to decode plugin: %v", err)
-		http.Error(w, "Failed to decode plugin", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
+	}
+
+	if err := h.validate.Struct(plugin); err != nil {
+		validationErrors := make(map[string]string)
+		for _, err := range err.(validator.ValidationErrors) {
+			validationErrors[err.Field()] = err.Tag()
+		}
+		return errors.NewValidationError("validation failed", map[string]interface{}{
+			"detail": "Request validation failed",
+			"code":   "VALIDATION_ERROR",
+			"errors": validationErrors,
+		})
 	}
 
 	if err := h.pm.ValidatePlugin(&plugin); err != nil {
-		h.logger.Errorf("Invalid plugin: %v", err)
-		http.Error(w, "Invalid plugin", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("invalid plugin", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_PLUGIN",
+		})
 	}
 
 	if err := h.store.CreatePlugin(r.Context(), &plugin); err != nil {
-		h.logger.Errorf("Failed to create plugin: %v", err)
-		http.Error(w, "Failed to create plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "already exists") {
+			return errors.NewConflictError("plugin already exists", map[string]interface{}{
+				"detail": err.Error(),
+				"code":   "PLUGIN_ALREADY_EXISTS",
+			})
+		}
+		return errors.NewInternalError("failed to create plugin", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(plugin); err != nil {
-		h.logger.Errorf("Failed to encode plugin: %v", err)
-		http.Error(w, "Failed to encode plugin", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusCreated, plugin)
 }
 
 // @Summary Update a plugin
@@ -148,42 +159,58 @@ func (h *Handler) createPlugin(w http.ResponseWriter, r *http.Request) {
 // @Param name path string true "Plugin name"
 // @Param plugin body types.Plugin true "Plugin to update"
 // @Success 200 {object} types.Plugin
-// @Failure 400 {object} string
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 400 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name} [put]
-func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	var plugin types.Plugin
 	if err := json.NewDecoder(r.Body).Decode(&plugin); err != nil {
-		h.logger.Errorf("Failed to decode plugin: %v", err)
-		http.Error(w, "Failed to decode plugin", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
 	}
 
 	if plugin.Metadata.Name != name {
-		http.Error(w, "Plugin name in URL does not match body", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("plugin name mismatch", map[string]interface{}{
+			"detail": "Plugin name in URL does not match body",
+			"code":   "NAME_MISMATCH",
+		})
+	}
+
+	if err := h.validate.Struct(plugin); err != nil {
+		validationErrors := make(map[string]string)
+		for _, err := range err.(validator.ValidationErrors) {
+			validationErrors[err.Field()] = err.Tag()
+		}
+		return errors.NewValidationError("validation failed", map[string]interface{}{
+			"detail": "Request validation failed",
+			"code":   "VALIDATION_ERROR",
+			"errors": validationErrors,
+		})
 	}
 
 	if err := h.pm.ValidatePlugin(&plugin); err != nil {
-		h.logger.Errorf("Invalid plugin: %v", err)
-		http.Error(w, "Invalid plugin", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("invalid plugin", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_PLUGIN",
+		})
 	}
 
 	if err := h.store.UpdatePlugin(r.Context(), &plugin); err != nil {
-		h.logger.Errorf("Failed to update plugin: %v", err)
-		http.Error(w, "Failed to update plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to update plugin", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(plugin); err != nil {
-		h.logger.Errorf("Failed to encode plugin: %v", err)
-		http.Error(w, "Failed to encode plugin", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, plugin)
 }
 
 // @Summary Delete a plugin
@@ -193,18 +220,23 @@ func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param name path string true "Plugin name"
 // @Success 204
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name} [delete]
-func (h *Handler) deletePlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deletePlugin(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	if err := h.store.DeletePlugin(r.Context(), name); err != nil {
-		h.logger.Errorf("Failed to delete plugin: %v", err)
-		http.Error(w, "Failed to delete plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to delete plugin", err, nil)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return response.WriteJSON(w, http.StatusNoContent, nil)
 }
 
 // @Summary Deploy a plugin
@@ -215,31 +247,40 @@ func (h *Handler) deletePlugin(w http.ResponseWriter, r *http.Request) {
 // @Param name path string true "Plugin name"
 // @Param parameters body map[string]interface{} true "Deployment parameters"
 // @Success 200
-// @Failure 400 {object} string
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 400 {object} response.Response
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name}/deploy [post]
-func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
 	var parameters map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&parameters); err != nil {
-		h.logger.Errorf("Failed to decode parameters: %v", err)
-		http.Error(w, "Failed to decode parameters", http.StatusBadRequest)
-		return
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
 	}
 
 	// Validate required parameters
 	for _, required := range plugin.Spec.Parameters.Required {
 		if _, ok := parameters[required]; !ok {
-			http.Error(w, "Missing required parameter: "+required, http.StatusBadRequest)
-			return
+			return errors.NewValidationError("missing required parameter", map[string]interface{}{
+				"detail":    "Required parameter is missing",
+				"code":      "MISSING_PARAMETER",
+				"parameter": required,
+			})
 		}
 	}
 
@@ -248,8 +289,12 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 		if spec, ok := plugin.Spec.Parameters.Properties[name]; ok {
 			if spec.Type == "string" {
 				if _, ok := value.(string); !ok {
-					http.Error(w, "Invalid type for parameter "+name+": expected string", http.StatusBadRequest)
-					return
+					return errors.NewValidationError("invalid parameter type", map[string]interface{}{
+						"detail":    "Parameter type mismatch",
+						"code":      "INVALID_PARAMETER_TYPE",
+						"parameter": name,
+						"expected":  "string",
+					})
 				}
 			}
 
@@ -262,8 +307,12 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				if !valid {
-					http.Error(w, "Invalid value for parameter "+name+": not in allowed values", http.StatusBadRequest)
-					return
+					return errors.NewValidationError("invalid parameter value", map[string]interface{}{
+						"detail":    "Parameter value not in allowed values",
+						"code":      "INVALID_PARAMETER_VALUE",
+						"parameter": name,
+						"allowed":   spec.Enum,
+					})
 				}
 			}
 		}
@@ -272,33 +321,27 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) {
 	// Create deployment metadata
 	deploymentMetadata := map[string]interface{}{
 		"parameters":   parameters,
-		"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(), // Add a helper function to generate random suffix
+		"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(),
 		"created_at":   time.Now().UTC(),
 	}
 
-	// Save deployment metadata
 	if err := h.store.UpdateDeploymentMetadata(r.Context(), name, deploymentMetadata); err != nil {
-		h.logger.Errorf("Failed to save deployment metadata: %v", err)
-		http.Error(w, "Failed to save deployment metadata", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to save deployment metadata", err, nil)
 	}
 
-	// Update deployment status to "deploying"
 	if err := h.store.UpdateDeploymentStatus(r.Context(), name, "deploying"); err != nil {
-		h.logger.Errorf("Failed to update deployment status: %v", err)
-		http.Error(w, "Failed to update deployment status", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to update deployment status", err, nil)
 	}
 
 	if err := h.pm.DeployPlugin(r.Context(), plugin, parameters, h.store); err != nil {
-		h.logger.Errorf("Failed to deploy plugin: %v", err)
-		// Update status to "failed" if deployment fails
 		_ = h.store.UpdateDeploymentStatus(r.Context(), name, "failed")
-		http.Error(w, "Failed to deploy plugin", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to deploy plugin", err, nil)
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return response.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"status":   "deploying",
+		"metadata": deploymentMetadata,
+	})
 }
 
 // Helper function to generate random suffix
@@ -319,25 +362,30 @@ func generateRandomSuffix() string {
 // @Produce json
 // @Param name path string true "Plugin name"
 // @Success 200
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name}/stop [post]
-func (h *Handler) stopPlugin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) stopPlugin(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
 	if err := h.pm.StopPlugin(r.Context(), plugin, h.store); err != nil {
-		h.logger.Errorf("Failed to stop plugin: %v", err)
-		http.Error(w, "Failed to stop plugin", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to stop plugin", err, nil)
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return response.WriteJSON(w, http.StatusOK, map[string]string{
+		"status": "stopped",
+	})
 }
 
 // @Summary Get plugin deployment status
@@ -347,31 +395,29 @@ func (h *Handler) stopPlugin(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param name path string true "Plugin name"
 // @Success 200 {object} types.DeploymentStatus
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name}/status [get]
-func (h *Handler) getPluginStatus(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getPluginStatus(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
 	status, err := h.pm.GetPluginStatus(r.Context(), plugin)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin status: %v", err)
-		http.Error(w, "Failed to get plugin status", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to get plugin status", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		h.logger.Errorf("Failed to encode plugin status: %v", err)
-		http.Error(w, "Failed to encode plugin status", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, status)
 }
 
 // @Summary Get detailed deployment status
@@ -381,31 +427,29 @@ func (h *Handler) getPluginStatus(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param name path string true "Plugin name"
 // @Success 200 {object} types.DeploymentStatus
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name}/deployment-status [get]
-func (h *Handler) getDeploymentStatus(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getDeploymentStatus(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
 	status, err := h.pm.GetDeploymentStatus(r.Context(), plugin, h.store)
 	if err != nil {
-		h.logger.Errorf("Failed to get deployment status: %v", err)
-		http.Error(w, "Failed to get deployment status", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to get deployment status", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(status); err != nil {
-		h.logger.Errorf("Failed to encode deployment status: %v", err)
-		http.Error(w, "Failed to encode deployment status", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, status)
 }
 
 // @Summary Get Docker Compose services
@@ -415,30 +459,27 @@ func (h *Handler) getDeploymentStatus(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param name path string true "Plugin name"
 // @Success 200 {array} ServiceStatus
-// @Failure 404 {object} string
-// @Failure 500 {object} string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
 // @Router /plugins/{name}/services [get]
-func (h *Handler) getDockerComposeServices(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getDockerComposeServices(w http.ResponseWriter, r *http.Request) error {
 	name := chi.URLParam(r, "name")
-
 	plugin, err := h.store.GetPlugin(r.Context(), name)
 	if err != nil {
-		h.logger.Errorf("Failed to get plugin: %v", err)
-		http.Error(w, "Failed to get plugin", http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
 	}
 
 	services, err := h.pm.GetDockerComposeServices(r.Context(), plugin, h.store)
 	if err != nil {
-		h.logger.Errorf("Failed to get docker-compose services: %v", err)
-		http.Error(w, "Failed to get docker-compose services", http.StatusInternalServerError)
-		return
+		return errors.NewInternalError("failed to get docker-compose services", err, nil)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(services); err != nil {
-		h.logger.Errorf("Failed to encode services: %v", err)
-		http.Error(w, "Failed to encode services", http.StatusInternalServerError)
-		return
-	}
+	return response.WriteJSON(w, http.StatusOK, services)
 }

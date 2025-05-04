@@ -52,7 +52,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 
 // @Summary List all plugins
 // @Description Get a list of all available plugins
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Success 200 {array} types.Plugin
@@ -76,7 +76,7 @@ func (h *Handler) listPlugins(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get a plugin
 // @Description Get a specific plugin by name
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -103,7 +103,7 @@ func (h *Handler) getPlugin(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Create a plugin
 // @Description Create a new plugin
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param plugin body types.Plugin true "Plugin to create"
@@ -142,7 +142,7 @@ func (h *Handler) createPlugin(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Update a plugin
 // @Description Update an existing plugin
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -188,7 +188,7 @@ func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Delete a plugin
 // @Description Delete an existing plugin
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -209,7 +209,7 @@ func (h *Handler) deletePlugin(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Deploy a plugin
 // @Description Deploy a plugin with the given parameters
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -314,7 +314,7 @@ func generateRandomSuffix() string {
 
 // @Summary Stop a plugin deployment
 // @Description Stop a running plugin deployment
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -342,7 +342,7 @@ func (h *Handler) stopPlugin(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get plugin deployment status
 // @Description Get the current status of a plugin deployment
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -376,7 +376,7 @@ func (h *Handler) getPluginStatus(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get detailed deployment status
 // @Description Get detailed information about a plugin deployment including service status, logs, and metrics
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"
@@ -410,7 +410,7 @@ func (h *Handler) getDeploymentStatus(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get Docker Compose services
 // @Description Get all services defined in the plugin's docker-compose configuration
-// @Tags plugins
+// @Tags Plugins
 // @Accept json
 // @Produce json
 // @Param name path string true "Plugin name"

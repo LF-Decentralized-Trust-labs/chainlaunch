@@ -64,19 +64,19 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Invalid current password",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -116,19 +116,19 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Invalid credentials",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "405": {
                         "description": "Method not allowed",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -159,7 +159,7 @@
                     "405": {
                         "description": "Method not allowed",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -190,7 +190,7 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -4863,7 +4863,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "List all plugins",
                 "responses": {
@@ -4893,7 +4893,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Create a plugin",
                 "parameters": [
@@ -4939,7 +4939,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Get a plugin",
                 "parameters": [
@@ -4981,7 +4981,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Update a plugin",
                 "parameters": [
@@ -5038,7 +5038,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Delete a plugin",
                 "parameters": [
@@ -5079,7 +5079,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Deploy a plugin",
                 "parameters": [
@@ -5136,7 +5136,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Get detailed deployment status",
                 "parameters": [
@@ -5180,7 +5180,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Get Docker Compose services",
                 "parameters": [
@@ -5227,7 +5227,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Get plugin deployment status",
                 "parameters": [
@@ -5271,7 +5271,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Stop a plugin deployment",
                 "parameters": [
@@ -5382,13 +5382,13 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5431,19 +5431,19 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5483,19 +5483,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5545,25 +5545,25 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5595,19 +5595,19 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5662,25 +5662,25 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role or self-modification not allowed",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5732,25 +5732,25 @@
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden - Requires admin role or self-modification not allowed",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -9142,16 +9142,60 @@
     },
     "tags": [
         {
+            "description": "User authentication and authorization operations",
+            "name": "Authentication"
+        },
+        {
+            "description": "Backup schedule configuration and management",
+            "name": "Backup Schedules"
+        },
+        {
+            "description": "Backup target location configuration and management",
+            "name": "Backup Targets"
+        },
+        {
+            "description": "Backup management operations",
+            "name": "Backups"
+        },
+        {
+            "description": "Hyperledger Besu network management operations",
+            "name": "Besu Networks"
+        },
+        {
+            "description": "Hyperledger Fabric network management operations",
+            "name": "Fabric Networks"
+        },
+        {
             "description": "Cryptographic key management operations",
             "name": "Keys"
+        },
+        {
+            "description": "Network node management operations",
+            "name": "Nodes"
+        },
+        {
+            "description": "System notification configuration and management",
+            "name": "Notifications"
+        },
+        {
+            "description": "Organization management operations",
+            "name": "Organizations"
+        },
+        {
+            "description": "Plugin management operations",
+            "name": "Plugins"
         },
         {
             "description": "Key provider management operations",
             "name": "Providers"
         },
         {
-            "description": "Network node management operations",
-            "name": "Nodes"
+            "description": "Settings management operations",
+            "name": "Settings"
+        },
+        {
+            "description": "User account management operations",
+            "name": "Users"
         }
     ]
 }

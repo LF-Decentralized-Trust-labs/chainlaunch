@@ -2425,15 +2425,15 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Invalid current password
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Change own password
@@ -2461,15 +2461,15 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Invalid credentials
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "405":
           description: Method not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Login user
       tags:
       - Authentication
@@ -2486,7 +2486,7 @@ paths:
         "405":
           description: Method not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Logout user
@@ -2505,7 +2505,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Get current user
@@ -5633,7 +5633,7 @@ paths:
             type: string
       summary: List all plugins
       tags:
-      - plugins
+      - Plugins
     post:
       consumes:
       - application/json
@@ -5662,7 +5662,7 @@ paths:
             type: string
       summary: Create a plugin
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}:
     delete:
       consumes:
@@ -5689,7 +5689,7 @@ paths:
             type: string
       summary: Delete a plugin
       tags:
-      - plugins
+      - Plugins
     get:
       consumes:
       - application/json
@@ -5717,7 +5717,7 @@ paths:
             type: string
       summary: Get a plugin
       tags:
-      - plugins
+      - Plugins
     put:
       consumes:
       - application/json
@@ -5755,7 +5755,7 @@ paths:
             type: string
       summary: Update a plugin
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}/deploy:
     post:
       consumes:
@@ -5793,7 +5793,7 @@ paths:
             type: string
       summary: Deploy a plugin
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}/deployment-status:
     get:
       consumes:
@@ -5823,7 +5823,7 @@ paths:
             type: string
       summary: Get detailed deployment status
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}/services:
     get:
       consumes:
@@ -5854,7 +5854,7 @@ paths:
             type: string
       summary: Get Docker Compose services
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}/status:
     get:
       consumes:
@@ -5883,7 +5883,7 @@ paths:
             type: string
       summary: Get plugin deployment status
       tags:
-      - plugins
+      - Plugins
   /plugins/{name}/stop:
     post:
       consumes:
@@ -5910,7 +5910,7 @@ paths:
             type: string
       summary: Stop a plugin deployment
       tags:
-      - plugins
+      - Plugins
   /settings:
     get:
       description: Get the default setting's details
@@ -5960,11 +5960,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: List users
@@ -5991,15 +5991,15 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Create new user
@@ -6020,15 +6020,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: User not found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Delete user
@@ -6052,15 +6052,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: User not found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Get user by ID
@@ -6092,19 +6092,19 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: User not found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Update user
@@ -6139,19 +6139,19 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role or self-modification not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: User not found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Update user password
@@ -6184,19 +6184,19 @@ paths:
         "400":
           description: Invalid request body
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "403":
           description: Forbidden - Requires admin role or self-modification not allowed
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: User not found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       security:
       - CookieAuth: []
       summary: Update user role
@@ -6214,9 +6214,31 @@ securityDefinitions:
     type: apiKey
 swagger: "2.0"
 tags:
+- description: User authentication and authorization operations
+  name: Authentication
+- description: Backup schedule configuration and management
+  name: Backup Schedules
+- description: Backup target location configuration and management
+  name: Backup Targets
+- description: Backup management operations
+  name: Backups
+- description: Hyperledger Besu network management operations
+  name: Besu Networks
+- description: Hyperledger Fabric network management operations
+  name: Fabric Networks
 - description: Cryptographic key management operations
   name: Keys
-- description: Key provider management operations
-  name: Providers
 - description: Network node management operations
   name: Nodes
+- description: System notification configuration and management
+  name: Notifications
+- description: Organization management operations
+  name: Organizations
+- description: Plugin management operations
+  name: Plugins
+- description: Key provider management operations
+  name: Providers
+- description: Settings management operations
+  name: Settings
+- description: User account management operations
+  name: Users

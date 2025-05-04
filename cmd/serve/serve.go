@@ -134,14 +134,47 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @in cookie
 // @name session_id
 
+// @tag.name Authentication
+// @tag.description User authentication and authorization operations
+
+// @tag.name Backup Schedules
+// @tag.description Backup schedule configuration and management
+
+// @tag.name Backup Targets
+// @tag.description Backup target location configuration and management
+
+// @tag.name Backups
+// @tag.description Backup management operations
+
+// @tag.name Besu Networks
+// @tag.description Hyperledger Besu network management operations
+
+// @tag.name Fabric Networks
+// @tag.description Hyperledger Fabric network management operations
+
 // @tag.name Keys
 // @tag.description Cryptographic key management operations
+
+// @tag.name Nodes
+// @tag.description Network node management operations
+
+// @tag.name Notifications
+// @tag.description System notification configuration and management
+
+// @tag.name Organizations
+// @tag.description Organization management operations
+
+// @tag.name Plugins
+// @tag.description Plugin management operations
 
 // @tag.name Providers
 // @tag.description Key provider management operations
 
-// @tag.name Nodes
-// @tag.description Network node management operations
+// @tag.name Settings
+// @tag.description Settings management operations
+
+// @tag.name Users
+// @tag.description User account management operations
 
 // Add these constants at the top level
 const (

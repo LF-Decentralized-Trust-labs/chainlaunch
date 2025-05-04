@@ -17,6 +17,7 @@ type NavItem = {
 	url: string
 	icon: LucideIcon | React.FC<{ className?: string }>
 	isPro?: boolean
+	roles?: string[]
 }
 
 const data = {
@@ -33,6 +34,7 @@ const data = {
 					title: 'Plugins',
 					url: '/plugins',
 					icon: Puzzle,
+					roles: ['admin', 'manager'],
 				},
 				{
 					title: 'Monitoring',
@@ -68,16 +70,19 @@ const data = {
 					title: 'Users',
 					url: '/users',
 					icon: BadgeCheck,
+					roles: ['admin'],
 				},
 				{
 					title: 'Backups',
 					url: '/settings/backups',
 					icon: DatabaseBackup,
+					roles: ['admin', 'manager'],
 				},
 				{
 					title: 'Settings',
 					url: '/settings/general',
 					icon: Settings,
+					roles: ['admin', 'manager'],
 				},
 			],
 		},
@@ -88,6 +93,7 @@ const data = {
 					title: 'API Documentation',
 					url: '/docs',
 					icon: FileText,
+					roles: ['admin', 'manager', 'viewer'],
 				},
 			],
 		},
@@ -99,24 +105,26 @@ const data = {
 					url: '/connect',
 					icon: Globe,
 					isPro: true,
+					roles: ['admin', 'manager'],
 				},
 				{
 					title: 'External Nodes',
 					url: '/external-nodes',
 					icon: Network,
 					isPro: true,
+					roles: ['admin', 'manager', 'viewer'],
 				},
 				{
 					title: 'Shared Networks',
 					url: '/networks/fabric/shared',
 					icon: Share2,
 					isPro: true,
+					roles: ['admin', 'manager'],
 				},
 			],
 		},
 	],
 }
-
 function NavMain({
 	items,
 }: {
@@ -126,31 +134,45 @@ function NavMain({
 	}[]
 }) {
 	const location = useLocation()
+	const { user } = useAuth()
 
 	return (
 		<>
-			{items.map((section) => (
-				<SidebarGroup key={section.title}>
-					<SidebarGroupLabel>{section.title}</SidebarGroupLabel>
-					<SidebarMenu>
-						{section.items.map((item) => {
-							const isActive = location.pathname.startsWith(item.url)
-							const Icon = item.icon
-							return (
-								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton asChild tooltip={item.title} className={isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
-										<Link to={item.url}>
-											<Icon className="size-4" />
-											<span>{item.title}</span>
-											{item.isPro && <ProBadge />}
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							)
-						})}
-					</SidebarMenu>
-				</SidebarGroup>
-			))}
+			{items.map((section) => {
+				// Filter items based on user role
+				const filteredItems = section.items.filter((item) => {
+					// If no roles specified, show to everyone
+					if (!item.roles) return true
+					// Otherwise only show if user has required role
+					return item.roles.includes(user?.role || '')
+				})
+
+				// Don't render section if no visible items
+				if (filteredItems.length === 0) return null
+
+				return (
+					<SidebarGroup key={section.title}>
+						<SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+						<SidebarMenu>
+							{filteredItems.map((item) => {
+								const isActive = location.pathname.startsWith(item.url)
+								const Icon = item.icon
+								return (
+									<SidebarMenuItem key={item.title}>
+										<SidebarMenuButton asChild tooltip={item.title} className={isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}>
+											<Link to={item.url}>
+												<Icon className="size-4" />
+												<span>{item.title}</span>
+												{item.isPro && <ProBadge />}
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								)
+							})}
+						</SidebarMenu>
+					</SidebarGroup>
+				)
+			})}
 		</>
 	)
 }

@@ -14,6 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import DeploymentModal from './components/DeploymentModal'
+import { YamlViewer } from '@/components/plugins/YamlViewer'
 
 const PluginDetailPage = () => {
 	const { name } = useParams()
@@ -53,9 +54,6 @@ const PluginDetailPage = () => {
 			refetchStatus()
 			refetchServices()
 		},
-		onError: (error) => {
-			toast.error(`Failed to deploy: ${error}`)
-		},
 	})
 
 	// Stop mutation
@@ -81,7 +79,7 @@ const PluginDetailPage = () => {
 			{
 				loading: 'Deploying plugin...',
 				success: 'Plugin deployed successfully',
-				error: 'Failed to deploy plugin',
+				error: (e) => `Failed to deploy plugin: ${(e as any).error.message}`,
 			}
 		)
 	}
@@ -98,6 +96,7 @@ const PluginDetailPage = () => {
 						<ArrowLeft className="mr-2 h-4 w-4" />
 						Back
 					</Button>
+					<YamlViewer yaml={plugin} label="View YAML" />
 					{status?.status !== 'deployed' ? (
 						<Button onClick={() => setIsDeployModalOpen(true)}>
 							<Play className="mr-2 h-4 w-4" />

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { ArrowLeft, Play, Square, Code } from 'lucide-react'
+import { ArrowLeft, Play, Square } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useState } from 'react'

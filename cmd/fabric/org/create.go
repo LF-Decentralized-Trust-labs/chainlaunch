@@ -10,13 +10,10 @@ import (
 )
 
 type createCmd struct {
-	name     string
-	mspID    string
-	domain   string
-	baseURL  string
-	username string
-	password string
-	logger   *logger.Logger
+	name   string
+	mspID  string
+	domain string
+	logger *logger.Logger
 }
 
 func (c *createCmd) validate() error {
@@ -29,17 +26,11 @@ func (c *createCmd) validate() error {
 	if c.domain == "" {
 		return fmt.Errorf("domain is required")
 	}
-	if c.username == "" {
-		return fmt.Errorf("username is required")
-	}
-	if c.password == "" {
-		return fmt.Errorf("password is required")
-	}
 	return nil
 }
 
 func (c *createCmd) run(out io.Writer) error {
-	client := NewClientWrapper(c.baseURL, c.username, c.password, c.logger)
+	client := NewClientWrapper(c.logger)
 	return client.CreateOrganization(c.name, c.mspID, c.domain)
 }
 
@@ -65,15 +56,10 @@ func NewCreateCmd(logger *logger.Logger) *cobra.Command {
 	flags.StringVarP(&c.name, "name", "n", "", "Organization name")
 	flags.StringVarP(&c.mspID, "msp-id", "m", "", "MSP ID")
 	flags.StringVarP(&c.domain, "domain", "d", "", "Organization domain")
-	flags.StringVar(&c.baseURL, "url", "", "Base URL of the API server (defaults to CHAINLAUNCH_URL env var or http://localhost:8100/api/v1)")
-	flags.StringVarP(&c.username, "username", "u", "", "Username for basic auth")
-	flags.StringVarP(&c.password, "password", "p", "", "Password for basic auth")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("msp-id")
 	cmd.MarkFlagRequired("domain")
-	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
 
 	return cmd
 }

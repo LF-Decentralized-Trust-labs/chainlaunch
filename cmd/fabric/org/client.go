@@ -21,15 +21,16 @@ type ClientWrapper struct {
 }
 
 // NewClientWrapper creates a new client wrapper
-func NewClientWrapper(baseURL, username, password string, logger *logger.Logger) *ClientWrapper {
-	// Get base URL from environment variable if not provided
+func NewClientWrapper(logger *logger.Logger) *ClientWrapper {
+	// Get base URL from environment variable
+	baseURL := os.Getenv("CHAINLAUNCH_URL")
 	if baseURL == "" {
-		if envURL := os.Getenv("CHAINLAUNCH_URL"); envURL != "" {
-			baseURL = envURL
-		} else {
-			baseURL = defaultBaseURL
-		}
+		baseURL = defaultBaseURL
 	}
+
+	// Get credentials from environment variables
+	username := os.Getenv("CHAINLAUNCH_USER")
+	password := os.Getenv("CHAINLAUNCH_PASSWORD")
 
 	return &ClientWrapper{
 		client: client.NewClient(baseURL, username, password),

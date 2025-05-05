@@ -10,30 +10,21 @@ import (
 )
 
 type updateCmd struct {
-	mspID    string
-	name     string
-	domain   string
-	baseURL  string
-	username string
-	password string
-	logger   *logger.Logger
+	mspID  string
+	name   string
+	domain string
+	logger *logger.Logger
 }
 
 func (c *updateCmd) validate() error {
 	if c.mspID == "" {
 		return fmt.Errorf("MSP ID is required")
 	}
-	if c.username == "" {
-		return fmt.Errorf("username is required")
-	}
-	if c.password == "" {
-		return fmt.Errorf("password is required")
-	}
 	return nil
 }
 
 func (c *updateCmd) run(out io.Writer) error {
-	client := NewClientWrapper(c.baseURL, c.username, c.password, c.logger)
+	client := NewClientWrapper(c.logger)
 	return client.UpdateOrganization(c.mspID, c.name, c.domain)
 }
 
@@ -59,13 +50,8 @@ func NewUpdateCmd(logger *logger.Logger) *cobra.Command {
 	flags.StringVarP(&c.mspID, "msp-id", "m", "", "MSP ID of the organization to update")
 	flags.StringVarP(&c.name, "name", "n", "", "New organization name")
 	flags.StringVarP(&c.domain, "domain", "d", "", "New organization domain")
-	flags.StringVar(&c.baseURL, "url", "", "Base URL of the API server (defaults to CHAINLAUNCH_URL env var or http://localhost:8100/api/v1)")
-	flags.StringVarP(&c.username, "username", "u", "", "Username for basic auth")
-	flags.StringVarP(&c.password, "password", "p", "", "Password for basic auth")
 
 	cmd.MarkFlagRequired("msp-id")
-	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
 
 	return cmd
 }

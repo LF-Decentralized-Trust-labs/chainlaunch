@@ -78,8 +78,9 @@ func (c *Client) CreateOrdererNode(req *types.FabricOrdererConfig) (*NodeRespons
 }
 
 // CreateBesuNode creates a new Besu node
-func (c *Client) CreateBesuNode(req *types.BesuNodeConfig) (*NodeResponse, error) {
+func (c *Client) CreateBesuNode(name string, req *types.BesuNodeConfig) (*NodeResponse, error) {
 	body := map[string]interface{}{
+		"name":               name,
 		"blockchainPlatform": "BESU",
 		"besuNode":           req,
 	}

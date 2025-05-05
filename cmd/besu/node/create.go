@@ -12,44 +12,50 @@ import (
 )
 
 type createCmd struct {
-	name           string
-	networkID      int64
-	networkName    string
-	networkVersion string
-	networkType    string
-	consensus      string
-	genesisFile    string
-	configFile     string
-	envVars        []string
-	domainNames    []string
-	addresses      []string
-	logger         *logger.Logger
+	name       string
+	p2pPort    int64
+	rpcPort    int64
+	p2pHost    string
+	rpcHost    string
+	externalIP string
+	internalIP string
+	envVars    map[string]string
+	keyID      int64
+	bootNodes  []string
+	networkID  int64
+	logger     *logger.Logger
 }
 
 func (c *createCmd) validate() error {
 	if c.name == "" {
-		return fmt.Errorf("node name is required")
+		return fmt.Errorf("Name is required")
+	}
+	if c.p2pPort == 0 {
+		return fmt.Errorf("P2P port is required")
+	}
+	if c.rpcPort == 0 {
+		return fmt.Errorf("RPC port is required")
+	}
+	if c.p2pHost == "" {
+		return fmt.Errorf("P2P host is required")
+	}
+	if c.rpcHost == "" {
+		return fmt.Errorf("RPC host is required")
+	}
+	if c.externalIP == "" {
+		return fmt.Errorf("External IP is required")
+	}
+	if c.internalIP == "" {
+		return fmt.Errorf("Internal IP is required")
+	}
+	if c.keyID == 0 {
+		return fmt.Errorf("Key ID is required")
+	}
+	if len(c.bootNodes) == 0 {
+		return fmt.Errorf("Boot nodes are required")
 	}
 	if c.networkID == 0 {
-		return fmt.Errorf("network ID is required")
-	}
-	if c.networkName == "" {
-		return fmt.Errorf("network name is required")
-	}
-	if c.networkVersion == "" {
-		return fmt.Errorf("network version is required")
-	}
-	if c.networkType == "" {
-		return fmt.Errorf("network type is required")
-	}
-	if c.consensus == "" {
-		return fmt.Errorf("consensus type is required")
-	}
-	if c.genesisFile == "" {
-		return fmt.Errorf("genesis file is required")
-	}
-	if c.configFile == "" {
-		return fmt.Errorf("config file is required")
+		return fmt.Errorf("Network ID is required")
 	}
 	return nil
 }
@@ -94,44 +100,26 @@ func (c *createCmd) run(out *os.File) error {
 		envVars[key] = value
 	}
 
-	// Parse domain names
-	domainNames := make(map[string]string)
-	for _, domain := range c.domainNames {
-		key, value, err := parseDomainName(domain)
-		if err != nil {
-			return err
-		}
-		domainNames[key] = value
-	}
-
-	// Parse addresses
-	addresses := make(map[string]string)
-	for _, addr := range c.addresses {
-		key, value, err := parseAddress(addr)
-		if err != nil {
-			return err
-		}
-		addresses[key] = value
-	}
-
-	// Create node request
+	// Create node request with only the specified parameters
 	req := &types.BesuNodeConfig{
 		BaseNodeConfig: types.BaseNodeConfig{
 			Type: "besu",
 			Mode: "service",
 		},
 		NetworkID:  c.networkID,
-		P2PPort:    30303,
-		RPCPort:    8545,
-		P2PHost:    "0.0.0.0",
-		RPCHost:    "0.0.0.0",
-		ExternalIP: "127.0.0.1",
-		InternalIP: "127.0.0.1",
+		P2PPort:    uint(c.p2pPort),
+		RPCPort:    uint(c.rpcPort),
+		P2PHost:    c.p2pHost,
+		RPCHost:    c.rpcHost,
+		ExternalIP: c.externalIP,
+		InternalIP: c.internalIP,
 		Env:        envVars,
+		KeyID:      c.keyID,
+		BootNodes:  c.bootNodes,
 	}
 
 	// Create node
-	node, err := client.CreateBesuNode(req)
+	node, err := client.CreateBesuNode(c.name, req)
 	if err != nil {
 		return fmt.Errorf("failed to create Besu node: %w", err)
 	}
@@ -166,26 +154,26 @@ func NewCreateCmd(logger *logger.Logger) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&c.name, "name", "n", "", "Name of the node")
-	flags.Int64VarP(&c.networkID, "network-id", "i", 0, "Network ID")
-	flags.StringVar(&c.networkName, "network-name", "", "Network name")
-	flags.StringVar(&c.networkVersion, "network-version", "", "Network version")
-	flags.StringVar(&c.networkType, "network-type", "", "Network type")
-	flags.StringVar(&c.consensus, "consensus", "", "Consensus type")
-	flags.StringVar(&c.genesisFile, "genesis-file", "", "Path to genesis file")
-	flags.StringVar(&c.configFile, "config-file", "", "Path to config file")
-	flags.StringArrayVar(&c.envVars, "env", []string{}, "Environment variables (format: KEY=VALUE)")
-	flags.StringArrayVar(&c.domainNames, "domain", []string{}, "Domain names (format: KEY=VALUE)")
-	flags.StringArrayVar(&c.addresses, "address", []string{}, "Addresses (format: KEY=VALUE)")
-
-	cmd.MarkFlagRequired("name")
+	flags.Int64Var(&c.p2pPort, "p2p-port", 30303, "P2P port")
+	flags.Int64Var(&c.rpcPort, "rpc-port", 8545, "RPC port")
+	flags.StringVar(&c.p2pHost, "p2p-host", "0.0.0.0", "P2P host")
+	flags.StringVar(&c.rpcHost, "rpc-host", "0.0.0.0", "RPC host")
+	flags.StringVar(&c.externalIP, "external-ip", "127.0.0.1", "External IP")
+	flags.StringVar(&c.internalIP, "internal-ip", "127.0.0.1", "Internal IP")
+	flags.StringToStringVar(&c.envVars, "env", map[string]string{}, "Environment variables (format: KEY=VALUE)")
+	flags.Int64Var(&c.keyID, "key-id", 0, "Key ID")
+	flags.StringSliceVar(&c.bootNodes, "boot-nodes", []string{}, "Boot nodes")
+	flags.Int64Var(&c.networkID, "network-id", 0, "Network ID")
+	flags.StringVar(&c.name, "name", "", "Name")
+	// Mark all flags as required
+	cmd.MarkFlagRequired("p2p-port")
+	cmd.MarkFlagRequired("rpc-port")
+	cmd.MarkFlagRequired("p2p-host")
+	cmd.MarkFlagRequired("rpc-host")
+	cmd.MarkFlagRequired("external-ip")
+	cmd.MarkFlagRequired("internal-ip")
+	cmd.MarkFlagRequired("key-id")
 	cmd.MarkFlagRequired("network-id")
-	cmd.MarkFlagRequired("network-name")
-	cmd.MarkFlagRequired("network-version")
-	cmd.MarkFlagRequired("network-type")
-	cmd.MarkFlagRequired("consensus")
-	cmd.MarkFlagRequired("genesis-file")
-	cmd.MarkFlagRequired("config-file")
-
+	cmd.MarkFlagRequired("name")
 	return cmd
 }

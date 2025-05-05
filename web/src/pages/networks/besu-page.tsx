@@ -1,28 +1,11 @@
-import { getNetworksBesuById } from '@/api/client'
-import {
-	getNetworksBesuByIdOptions,
-	getNetworksFabricByIdChannelConfigOptions,
-	getNetworksFabricByIdCurrentChannelConfigOptions,
-	getNetworksFabricByIdNodesOptions,
-	getNetworksFabricByIdOptions,
-	getNodesOptions,
-	getOrganizationsOptions,
-	postNetworksFabricByIdAnchorPeersMutation,
-	postNetworksFabricByIdOrderersByOrdererIdJoinMutation,
-	postNetworksFabricByIdPeersByPeerIdJoinMutation,
-} from '@/api/client/@tanstack/react-query.gen'
-import { BesuIcon } from '@/components/icons/besu-icon'
-import { FabricIcon } from '@/components/icons/fabric-icon'
+import { getNetworksBesuByIdOptions } from '@/api/client/@tanstack/react-query.gen'
 import { BesuNetworkDetails } from '@/components/networks/BesuNetworkDetails'
-import FabricNetworkDetails from '@/components/networks/FabricNetworkDetails'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Network } from 'lucide-react'
-import { useMemo } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { Link, useParams } from 'react-router-dom'
 
 // Add this type for tab values
 type TabValue = 'details' | 'anchor-peers' | 'consenters'

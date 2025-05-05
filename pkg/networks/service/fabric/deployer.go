@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
 
 	"bytes"
 
@@ -33,7 +34,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
-	"github.com/golang/protobuf/proto"
+
 	"github.com/google/uuid"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
 	"github.com/hyperledger/fabric-config/configtx"

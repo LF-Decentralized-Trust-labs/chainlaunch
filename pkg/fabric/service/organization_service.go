@@ -160,7 +160,14 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	curve := models.ECCurveP256
 	// Create SIGN key
 	providerID := int(params.ProviderID)
+
+	_, err := s.keyManagement.GetProviderByID(ctx, providerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key management provider: %w", err)
+	}
+
 	isCA := 1
+	isNotCA := 0
 	signKeyReq := models.CreateKeyRequest{
 		Name:        fmt.Sprintf("%s-sign-ca", params.MspID),
 		Description: &description,
@@ -184,7 +191,6 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	}
 
 	// Create SIGN admin key
-	isCA = 0
 	signAdminKeyReq := models.CreateKeyRequest{
 		Name:        fmt.Sprintf("%s-sign-admin", params.MspID),
 		Description: &description,
@@ -192,7 +198,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 		KeySize:     nil,
 		Curve:       &curve,
 		ProviderID:  &providerID,
-		IsCA:        &isCA,
+		IsCA:        &isNotCA,
 	}
 	signAdminKey, err := s.keyManagement.CreateKey(ctx, signAdminKeyReq, providerID)
 	if err != nil {
@@ -201,7 +207,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	}
 
 	// Sign the admin key with the CA
-	signAdminKey, err = s.keyManagement.SignCertificate(ctx, signAdminKey.ID, signKey.ID, models.CertificateRequest{
+	_, err = s.keyManagement.SignCertificate(ctx, signAdminKey.ID, signKey.ID, models.CertificateRequest{
 		CommonName:         fmt.Sprintf("%s-sign-admin", params.MspID),
 		Organization:       []string{params.Name},
 		OrganizationalUnit: []string{"admin"},
@@ -211,7 +217,6 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 	})
 	if err != nil {
 		_ = s.keyManagement.DeleteKey(ctx, signKey.ID)
-		_ = s.keyManagement.DeleteKey(ctx, signAdminKey.ID)
 		return nil, fmt.Errorf("failed to sign admin certificate: %w", err)
 	}
 
@@ -223,7 +228,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 		KeySize:     nil,
 		Curve:       &curve,
 		ProviderID:  &providerID,
-		IsCA:        &isCA,
+		IsCA:        &isNotCA,
 	}
 	signClientKey, err := s.keyManagement.CreateKey(ctx, signClientKeyReq, providerID)
 	if err != nil {
@@ -284,7 +289,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, params Cre
 		KeySize:     nil,
 		Curve:       &curve,
 		ProviderID:  &providerID,
-		IsCA:        &isCA,
+		IsCA:        &isNotCA,
 	}
 	tlsAdminKey, err := s.keyManagement.CreateKey(ctx, tlsAdminKeyReq, providerID)
 	if err != nil {

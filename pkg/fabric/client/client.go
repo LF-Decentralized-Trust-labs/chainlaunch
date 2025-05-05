@@ -179,3 +179,4 @@ func (c *Client) GetNetworkConfig(networkID int64, organizationID int64) ([]byte
 	}
 	return respBody, nil
 }
+

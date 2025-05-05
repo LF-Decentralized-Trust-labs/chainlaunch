@@ -18,7 +18,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 
 	"github.com/chainlaunch/chainlaunch/internal/protoutil"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // ChannelService handles channel operations

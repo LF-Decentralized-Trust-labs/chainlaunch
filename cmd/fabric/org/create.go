@@ -10,10 +10,10 @@ import (
 )
 
 type createCmd struct {
-	name   string
-	mspID  string
-	domain string
-	logger *logger.Logger
+	name       string
+	mspID      string
+	providerID int64
+	logger     *logger.Logger
 }
 
 func (c *createCmd) validate() error {
@@ -23,15 +23,12 @@ func (c *createCmd) validate() error {
 	if c.mspID == "" {
 		return fmt.Errorf("MSP ID is required")
 	}
-	if c.domain == "" {
-		return fmt.Errorf("domain is required")
-	}
 	return nil
 }
 
 func (c *createCmd) run(out io.Writer) error {
 	client := NewClientWrapper(c.logger)
-	return client.CreateOrganization(c.name, c.mspID, c.domain)
+	return client.CreateOrganization(c.name, c.mspID, c.providerID)
 }
 
 // NewCreateCmd returns the create organization command
@@ -55,11 +52,11 @@ func NewCreateCmd(logger *logger.Logger) *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVarP(&c.name, "name", "n", "", "Organization name")
 	flags.StringVarP(&c.mspID, "msp-id", "m", "", "MSP ID")
-	flags.StringVarP(&c.domain, "domain", "d", "", "Organization domain")
+	flags.Int64VarP(&c.providerID, "provider-id", "p", 0, "Key management provider ID")
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("msp-id")
-	cmd.MarkFlagRequired("domain")
+	cmd.MarkFlagRequired("provider-id")
 
 	return cmd
 }

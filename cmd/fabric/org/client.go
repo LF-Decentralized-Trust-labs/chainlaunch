@@ -2,7 +2,6 @@ package org
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/chainlaunch/chainlaunch/pkg/fabric/client"
@@ -39,11 +38,12 @@ func NewClientWrapper(logger *logger.Logger) *ClientWrapper {
 }
 
 // CreateOrganization creates a new organization
-func (cw *ClientWrapper) CreateOrganization(name, mspID, domain string) error {
+func (cw *ClientWrapper) CreateOrganization(name, mspID string, providerID int64) error {
 	req := handler.CreateOrganizationRequest{
 		MspID:       mspID,
 		Name:        name,
-		Description: fmt.Sprintf("Organization %s with domain %s", name, domain),
+		Description: fmt.Sprintf("Organization %s", name),
+		ProviderID:  providerID,
 	}
 
 	org, err := cw.client.CreateOrganization(req)
@@ -56,24 +56,17 @@ func (cw *ClientWrapper) CreateOrganization(name, mspID, domain string) error {
 }
 
 // ListOrganizations lists all organizations
-func (cw *ClientWrapper) ListOrganizations(out io.Writer) error {
+func (cw *ClientWrapper) ListOrganizations() ([]client.Organization, error) {
 	orgs, err := cw.client.ListOrganizations()
 	if err != nil {
-		return fmt.Errorf("failed to list organizations: %w", err)
+		return nil, fmt.Errorf("failed to list organizations: %w", err)
 	}
 
 	if len(orgs) == 0 {
-		fmt.Fprintln(out, "No organizations found")
-		return nil
+		return nil, fmt.Errorf("no organizations found")
 	}
 
-	fmt.Fprintln(out, "Organizations:")
-	for _, org := range orgs {
-		fmt.Fprintf(out, "- %s (ID: %d, MSP ID: %s)\n",
-			org.Description, org.ID, org.MspID)
-	}
-
-	return nil
+	return orgs, nil
 }
 
 // DeleteOrganization deletes an organization by MSP ID

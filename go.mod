@@ -31,6 +31,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/hyperledger/fabric-gateway v1.5.0
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6

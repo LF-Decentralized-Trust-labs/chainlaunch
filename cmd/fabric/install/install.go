@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 

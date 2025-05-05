@@ -19,7 +19,6 @@ import (
 
 	// add sprig/v3
 	"github.com/Masterminds/sprig/v3"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
@@ -28,6 +27,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/chainlaunch/chainlaunch/internal/protoutil"
 	"github.com/chainlaunch/chainlaunch/pkg/binaries"
@@ -2658,7 +2658,6 @@ func (p *LocalPeer) GetBlock(ctx context.Context, channelID string, blockNum uin
 	}
 	return nil, fmt.Errorf("block not found")
 }
-
 
 func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, blockNum uint64) ([]*cb.Envelope, error) {
 	peerUrl := p.GetPeerAddress()

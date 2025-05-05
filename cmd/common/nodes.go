@@ -77,6 +77,30 @@ func (c *Client) CreateOrdererNode(req *types.FabricOrdererConfig) (*NodeRespons
 	return &node, nil
 }
 
+// CreateBesuNode creates a new Besu node
+func (c *Client) CreateBesuNode(req *types.BesuNodeConfig) (*NodeResponse, error) {
+	body := map[string]interface{}{
+		"blockchainPlatform": "BESU",
+		"besuNode":           req,
+	}
+
+	resp, err := c.Post("/nodes", body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create besu node: %w", err)
+	}
+
+	if err := CheckResponse(resp, stdhttp.StatusCreated); err != nil {
+		return nil, fmt.Errorf("failed to create besu node: %w", err)
+	}
+
+	var node NodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&node); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &node, nil
+}
+
 // ListNodes lists all nodes with optional platform filter
 func (c *Client) ListNodes(platform string, page, limit int) (*PaginatedNodesResponse, error) {
 	path := "/nodes"
@@ -152,6 +176,28 @@ func (c *Client) ListOrdererNodes(page, limit int) (*PaginatedNodesResponse, err
 	return &ordererNodes, nil
 }
 
+// ListBesuNodes lists all Besu nodes
+func (c *Client) ListBesuNodes(page, limit int) (*PaginatedNodesResponse, error) {
+	nodes, err := c.ListNodes("BESU", page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter only Besu nodes
+	var besuNodes PaginatedNodesResponse
+	for _, node := range nodes.Items {
+		if node.NodeType == "BESU_FULLNODE" {
+			besuNodes.Items = append(besuNodes.Items, node)
+		}
+	}
+	besuNodes.Total = int64(len(besuNodes.Items))
+	besuNodes.Page = nodes.Page
+	besuNodes.PageCount = nodes.PageCount
+	besuNodes.HasNextPage = nodes.HasNextPage
+
+	return &besuNodes, nil
+}
+
 // DeleteNode deletes a node by ID
 func (c *Client) DeleteNode(id int64) error {
 	resp, err := c.Delete(fmt.Sprintf("/nodes/%d", id))
@@ -204,6 +250,30 @@ func (c *Client) UpdateOrdererNode(id int64, req *types.FabricOrdererConfig) (*N
 
 	if err := CheckResponse(resp, stdhttp.StatusOK); err != nil {
 		return nil, fmt.Errorf("failed to update orderer node: %w", err)
+	}
+
+	var node NodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&node); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &node, nil
+}
+
+// UpdateBesuNode updates a Besu node
+func (c *Client) UpdateBesuNode(id int64, req *types.BesuNodeConfig) (*NodeResponse, error) {
+	body := map[string]interface{}{
+		"blockchainPlatform": "BESU",
+		"besuNode":           req,
+	}
+
+	resp, err := c.Put(fmt.Sprintf("/nodes/%d", id), body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update besu node: %w", err)
+	}
+
+	if err := CheckResponse(resp, stdhttp.StatusOK); err != nil {
+		return nil, fmt.Errorf("failed to update besu node: %w", err)
 	}
 
 	var node NodeResponse

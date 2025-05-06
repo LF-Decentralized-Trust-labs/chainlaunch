@@ -27,7 +27,7 @@ export function BlockDetails() {
 	const transactions = useMemo(() => blockResponse?.transactions || [], [blockResponse])
 	if (isLoading) {
 		return (
-			<div className="space-y-6">
+			<div className="space-y-6 p-4">
 				<Skeleton className="h-[600px] w-full" />
 			</div>
 		)
@@ -72,23 +72,19 @@ export function BlockDetails() {
 						<dl className="grid gap-4 sm:grid-cols-2">
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Block Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.hash}</dd>
+								<dd className="mt-1 font-mono text-sm break-all">{blockResponse?.block?.hash}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Previous Block Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.previous_hash}</dd>
+								<dd className="mt-1 font-mono text-sm break-all">{blockResponse?.block?.previous_hash}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Timestamp</dt>
-								<dd className="mt-1 text-sm">{new Date(decodedBlock?.timestamp || '').toLocaleString()}</dd>
+								<dd className="mt-1 text-sm">{new Date(blockResponse?.block?.timestamp || '').toLocaleString()}</dd>
 							</div>
 							<div>
 								<dt className="text-sm font-medium text-muted-foreground">Transactions</dt>
-								<dd className="mt-1 text-sm">{transactions.length}</dd>
-							</div>
-							<div>
-								<dt className="text-sm font-medium text-muted-foreground">Data Hash</dt>
-								<dd className="mt-1 font-mono text-sm break-all">{decodedBlock?.hash}</dd>
+								<dd className="mt-1 text-sm">{blockResponse?.transactions?.length}</dd>
 							</div>
 						</dl>
 					</CardContent>

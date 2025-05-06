@@ -36,11 +36,11 @@ export function BlocksOverview() {
 	})
 	const blocks = useMemo(() => blocksResponse?.blocks?.sort((a, b) => b.number! - a.number!) || [], [blocksResponse?.blocks])
 	const lastBlock = useMemo(() => blocks[0], [blocks])
-	const lastBlockJson = useMemo(() => lastBlock ? decodeBlockToJson(lastBlock.data as unknown as string) : null, [lastBlock])
+	const lastBlockJson = useMemo(() => (lastBlock ? decodeBlockToJson(lastBlock.data as unknown as string) : null), [lastBlock])
 	console.log(lastBlockJson)
 	if (chainLoading || networkLoading || blocksLoading) {
 		return (
-			<div className="space-y-6">
+			<div className="space-y-6 p-4">
 				<Skeleton className="h-[200px] w-full" />
 				<Skeleton className="h-[400px] w-full" />
 			</div>
@@ -48,7 +48,7 @@ export function BlocksOverview() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 p-4	">
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 				<Card>
 					<CardHeader>

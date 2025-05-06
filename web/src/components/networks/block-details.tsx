@@ -35,7 +35,7 @@ export function BlockDetails() {
 
 	if (!transactions) {
 		return (
-			<div className="flex flex-col items-center justify-center space-y-4 py-12">
+			<div className="flex flex-col items-center justify-center space-y-4 py-12 p-4">
 				<h2 className="text-2xl font-bold">Block Not Found</h2>
 				<p className="text-muted-foreground">The requested block could not be found.</p>
 				<Button asChild>
@@ -49,7 +49,7 @@ export function BlockDetails() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 p-4">
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<h2 className="text-2xl font-bold">Block #{decodedBlock?.number}</h2>

@@ -40,7 +40,7 @@ export default function CreateProviderPage() {
 	}
 
 	return (
-		<div className="container space-y-6">
+		<div className="container space-y-6 p-4">
 			<div>
 				<h1 className="text-2xl font-semibold tracking-tight">New Provider</h1>
 				<p className="text-sm text-muted-foreground">Configure SMTP settings and notification preferences</p>

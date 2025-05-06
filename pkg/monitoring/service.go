@@ -483,12 +483,17 @@ func (s *service) handleNodeCheckResult(node *Node, status NodeStatus, responseT
 // sendNodeDownNotification sends a notification that a node is down
 func (s *service) sendNodeDownNotification(ctx context.Context, node *Node, err error) {
 	data := notifications.NodeDowntimeData{
-		NodeID:       node.ID,
-		NodeName:     node.Name,
-		NodeURL:      node.Endpoint,
-		DownSince:    node.LastStatusChange,
-		FailureCount: node.FailureCount,
-		Error:        err.Error(),
+		NodeID:        node.ID,
+		NodeName:      node.Name,
+		NodeURL:       node.Endpoint,
+		DownSince:     node.LastStatusChange,
+		FailureCount:  node.FailureCount,
+		Error:         err.Error(),
+		ErrorMessage:  err.Error(),
+		Endpoint:      node.Endpoint,
+		NodeType:      node.Platform,
+		LastSeen:      node.LastChecked,
+		DowntimeStart: node.LastStatusChange,
 	}
 
 	// Send the notification

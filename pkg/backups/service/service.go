@@ -48,6 +48,7 @@ func NewBackupService(
 	logger *logger.Logger,
 	notificationSvc *notificationService.NotificationService,
 	databasePath string,
+	configService *config.ConfigService,
 ) *BackupService {
 	c := cron.New(cron.WithSeconds())
 	c.Start()
@@ -60,6 +61,7 @@ func NewBackupService(
 		cronEntryIDs:        make(map[int64]cron.EntryID),
 		stopCh:              make(chan struct{}),
 		databasePath:        databasePath,
+		configService:       configService,
 	}
 
 	// Load and schedule existing backup schedules

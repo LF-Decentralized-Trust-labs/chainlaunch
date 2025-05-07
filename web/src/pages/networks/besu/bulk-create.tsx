@@ -1,11 +1,11 @@
 import { getNodesDefaultsBesuNode, postKeys } from '@/api/client'
-import { getKeyProvidersOptions, getKeysOptions, getNodesDefaultsBesuNodeOptions, postKeysMutation, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { getKeyProvidersOptions, getKeysOptions, getNodesDefaultsBesuNodeOptions, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { BesuNodeForm, BesuNodeFormValues } from '@/components/nodes/besu-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Steps } from '@/components/ui/steps'
 import { hexToNumber, isValidHex, numberToHex } from '@/utils'
@@ -17,7 +17,6 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import * as z from 'zod'
-import { BesuNodeForm, BesuNodeFormValues } from '@/components/nodes/besu-node-form'
 
 const steps = [
 	{ id: 'nodes', title: 'Number of Nodes' },
@@ -45,6 +44,14 @@ const networkStepSchema = z.object({
 	requestTimeout: z.number(),
 	timestamp: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 	selectedValidatorKeys: z.array(z.number()).min(1, 'At least one validator key must be selected'),
+	alloc: z
+		.array(
+			z.object({
+				account: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
+				balance: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
+			})
+		)
+		.default([]),
 })
 
 type NodesStepValues = z.infer<typeof nodesStepSchema>
@@ -62,6 +69,7 @@ const defaultNetworkValues: Partial<NetworkStepValues> = {
 	nonce: numberToHex(0),
 	requestTimeout: 10,
 	timestamp: numberToHex(new Date().getUTCSeconds()),
+	alloc: [],
 }
 
 type Step = 'nodes' | 'network' | 'nodes-config' | 'review'
@@ -105,7 +113,7 @@ export default function BulkCreateBesuNetworkPage() {
 		...getKeyProvidersOptions({}),
 	})
 
-	const { data: existingKeys } = useQuery({
+	const { data: existingKeys, refetch: refetchKeys } = useQuery({
 		...getKeysOptions({
 			query: {
 				page: 1,
@@ -317,13 +325,11 @@ export default function BulkCreateBesuNetworkPage() {
 	const onNodesStepSubmit = async (data: NodesStepValues) => {
 		try {
 			const newValidatorKeys = await createValidatorKeys(data.numberOfNodes, networkForm.getValues('networkName'))
-			console.log('newValidatorKeys', newValidatorKeys)
-			// Update the network form with the new validator keys
-			// networkForm.reset({
-			// 	...networkForm.getValues(),
-			// 	selectedValidatorKeys: newValidatorKeys.map((key) => key.id),
-			// })
-
+			networkForm.setValue(
+				'selectedValidatorKeys',
+				newValidatorKeys.map((key) => key.id)
+			)
+			await refetchKeys()
 			setCurrentStep('network')
 		} catch (error) {
 			// Error is already handled in createValidatorKeys
@@ -357,6 +363,10 @@ export default function BulkCreateBesuNetworkPage() {
 					nonce: data.nonce,
 					requestTimeout: data.requestTimeout,
 					timestamp: data.timestamp,
+					alloc: data.alloc.reduce((acc, item) => {
+						acc[item.account!] = { balance: item.balance }
+						return acc
+					}, {} as Record<string, { balance: string }>),
 				},
 			}
 
@@ -397,7 +407,7 @@ export default function BulkCreateBesuNetworkPage() {
 					// For all nodes after the first one, use the first node as bootnode
 					// Use the first node's external IP and p2p port
 					const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
-					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pAddress?.split(':')[1] || '30303'
+					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pPort || '30303'
 					bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${Number(firstNodeP2pPort)}`
 				}
 
@@ -832,6 +842,72 @@ export default function BulkCreateBesuNetworkPage() {
 											)}
 										/>
 									</div>
+
+									<FormField
+										control={networkForm.control}
+										name="alloc"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Initial Allocations</FormLabel>
+												<FormDescription>Add initial account balances for the genesis block (in hex format)</FormDescription>
+												<div className="space-y-4">
+													{field.value.map((allocation, index) => (
+														<div key={index} className="flex gap-4 items-start">
+															<div className="flex-1">
+																<Input
+																	placeholder="0x..."
+																	value={allocation.account}
+																	onChange={(e) => {
+																		const value = e.target.value
+																		// Ensure the value starts with 0x
+																		const hexValue = value.startsWith('0x') ? value : `0x${value}`
+																		const newAlloc = [...field.value]
+																		newAlloc[index] = { ...newAlloc[index], account: hexValue }
+																		field.onChange(newAlloc)
+																	}}
+																/>
+															</div>
+															<div className="flex-1">
+																<Input
+																	placeholder="0x..."
+																	value={allocation.balance}
+																	onChange={(e) => {
+																		const value = e.target.value
+																		// Ensure the value starts with 0x
+																		const hexValue = value.startsWith('0x') ? value : `0x${value}`
+																		const newAlloc = [...field.value]
+																		newAlloc[index] = { ...newAlloc[index], balance: hexValue }
+																		field.onChange(newAlloc)
+																	}}
+																/>
+															</div>
+															<Button
+																type="button"
+																variant="outline"
+																size="icon"
+																onClick={() => {
+																	const newAlloc = field.value.filter((_, i) => i !== index)
+																	field.onChange(newAlloc)
+																}}
+															>
+																×
+															</Button>
+														</div>
+													))}
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() => {
+															field.onChange([...field.value, { account: '0x', balance: '0x0' }])
+														}}
+													>
+														Add Allocation
+													</Button>
+												</div>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
 								</div>
 							</Card>
 

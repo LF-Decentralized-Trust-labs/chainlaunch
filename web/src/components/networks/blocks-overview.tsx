@@ -7,7 +7,6 @@ import { formatDistanceToNow } from 'date-fns'
 import { Link, useParams } from 'react-router-dom'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useMemo } from 'react'
-import { decodeBlockToJson } from '@/utils/block'
 
 export function BlocksOverview() {
 	const { id } = useParams<{ id: string }>()
@@ -34,21 +33,62 @@ export function BlocksOverview() {
 			},
 		}),
 	})
-	const blocks = useMemo(() => blocksResponse?.blocks?.sort((a, b) => b.number! - a.number!) || [], [blocksResponse?.blocks])
+	const blocks = useMemo(() => blocksResponse?.blocks?.sort((a, b) => (b.number || 0) - (a.number || 0)) || [], [blocksResponse?.blocks])
 	const lastBlock = useMemo(() => blocks[0], [blocks])
-	const lastBlockJson = useMemo(() => lastBlock ? decodeBlockToJson(lastBlock.data as unknown as string) : null, [lastBlock])
-	console.log(lastBlockJson)
+	const transactions = useMemo(() => lastBlock?.transactions || [], [lastBlock])
+
 	if (chainLoading || networkLoading || blocksLoading) {
 		return (
-			<div className="space-y-6">
-				<Skeleton className="h-[200px] w-full" />
-				<Skeleton className="h-[400px] w-full" />
+			<div className="space-y-6 p-4">
+				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{[1, 2, 3].map((i) => (
+						<Card key={i}>
+							<CardHeader>
+								<CardTitle><Skeleton className="h-5 w-32" /></CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Skeleton className="h-8 w-24 mb-1" />
+								<Skeleton className="h-4 w-48" />
+							</CardContent>
+						</Card>
+					))}
+				</div>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Recent Blocks</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Block</TableHead>
+									<TableHead>Hash</TableHead>
+									<TableHead>Time</TableHead>
+									<TableHead>Transactions</TableHead>
+									<TableHead className="text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{[1, 2, 3, 4, 5].map((i) => (
+									<TableRow key={i}>
+										<TableCell><Skeleton className="h-4 w-16" /></TableCell>
+										<TableCell><Skeleton className="h-4 w-48" /></TableCell>
+										<TableCell><Skeleton className="h-4 w-24" /></TableCell>
+										<TableCell><Skeleton className="h-4 w-8" /></TableCell>
+										<TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</CardContent>
+				</Card>
 			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 p-4">
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 				<Card>
 					<CardHeader>
@@ -56,7 +96,7 @@ export function BlocksOverview() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-2xl font-bold">#{chainInfo?.height}</p>
-						<p className="text-sm text-muted-foreground">{/* {chainInfo && formatDistanceToNow(new Date(chainInfo.timestamp || ''), { addSuffix: true })} */}</p>
+						<p className="text-sm text-muted-foreground">Latest block height</p>
 					</CardContent>
 				</Card>
 				<Card>
@@ -73,7 +113,7 @@ export function BlocksOverview() {
 						<CardTitle>Total Transactions</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-2xl font-bold">{lastBlockJson?.data?.data?.length || 0}</p>
+						<p className="text-2xl font-bold">{transactions.length}</p>
 						<p className="text-sm text-muted-foreground">In Latest Block</p>
 					</CardContent>
 				</Card>
@@ -99,14 +139,14 @@ export function BlocksOverview() {
 								<TableRow key={block.number}>
 									<TableCell className="font-medium">#{block.number}</TableCell>
 									<TableCell className="font-mono text-sm">
-										{block.hash && (
+										{block.dataHash && (
 											<>
-												{block.hash.substring(0, 10)}...{block.hash.substring(block.hash.length - 10)}
+												{block.dataHash.substring(0, 10)}...{block.dataHash.substring(block.dataHash.length - 10)}
 											</>
 										)}
 									</TableCell>
-									<TableCell>{formatDistanceToNow(new Date(block.timestamp || ''), { addSuffix: true })}</TableCell>
-									<TableCell>{block.tx_count}</TableCell>
+									<TableCell>{formatDistanceToNow(new Date(block.createdAt || ''), { addSuffix: true })}</TableCell>
+									<TableCell>{block.transactions?.length || 0}</TableCell>
 									<TableCell className="text-right">
 										<Button variant="ghost" size="sm" asChild>
 											<Link to={`/networks/${id}/blocks/${block.number}`}>View Details</Link>

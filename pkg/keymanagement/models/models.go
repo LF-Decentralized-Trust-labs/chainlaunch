@@ -120,7 +120,6 @@ type KeyResponse struct {
 	SHA256Fingerprint string          `json:"sha256Fingerprint"`
 	SHA1Fingerprint   string          `json:"sha1Fingerprint"`
 	Provider          KeyProviderInfo `json:"provider"`
-	PrivateKey        string          `json:"privateKey"`
 	EthereumAddress   string          `json:"ethereumAddress"`
 	SigningKeyID      *int            `json:"signingKeyID,omitempty"`
 }

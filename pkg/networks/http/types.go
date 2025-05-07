@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	networksservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/block"
 )
 
 // ListNetworksResponse represents the response for listing networks
@@ -141,17 +142,16 @@ type ImportBesuNetworkRequest struct {
 
 // BlockListResponse represents the response for listing blocks
 type BlockListResponse struct {
-	Blocks []networksservice.Block `json:"blocks"`
-	Total  int64                   `json:"total"`
+	Blocks []block.Block `json:"blocks"`
+	Total  int64         `json:"total"`
 }
 
 // BlockTransactionsResponse represents the response for listing transactions in a block
 type BlockTransactionsResponse struct {
-	Block        *networksservice.Block        `json:"block"`
-	Transactions []networksservice.Transaction `json:"transactions"`
+	Block *block.Block `json:"block"`
 }
 
 // TransactionResponse represents the response for getting a single transaction
 type TransactionResponse struct {
-	Transaction networksservice.Transaction `json:"transaction"`
+	Block *block.Block `json:"block"`
 }

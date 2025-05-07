@@ -52,7 +52,7 @@ export function BlockExplorer({ networkId }: BlockExplorerProps) {
 							<div>
 								<p className="font-medium">Block #{block.number}</p>
 								<p className="text-sm text-muted-foreground">
-									{block.tx_count} {block.tx_count === 1 ? 'transaction' : 'transactions'} • {formatDistanceToNow(new Date(block.timestamp || ''), { addSuffix: true })}
+									{block.transactions?.length} {block.transactions?.length === 1 ? 'transaction' : 'transactions'} • {formatDistanceToNow(new Date(block.createdAt || ''), { addSuffix: true })}
 								</p>
 							</div>
 							<Button variant="ghost" size="sm" asChild>

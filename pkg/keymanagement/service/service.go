@@ -173,7 +173,6 @@ func (s *KeyManagementService) GetKeys(ctx context.Context, page, pageSize int) 
 				ID:   int(key.ProviderID),
 				Name: key.ProviderName,
 			},
-			PrivateKey:      key.PrivateKey,
 			EthereumAddress: key.EthereumAddress.String,
 		}
 	}
@@ -217,7 +216,6 @@ func (s *KeyManagementService) GetKey(ctx context.Context, id int) (*models.KeyR
 			ID:   int(key.ProviderID),
 			Name: key.ProviderName,
 		},
-		PrivateKey:      key.PrivateKey,
 		EthereumAddress: key.EthereumAddress.String,
 		SigningKeyID:    &signingKeyID,
 	}, err
@@ -621,7 +619,6 @@ func (s *KeyManagementService) FilterKeys(ctx context.Context, algorithm, curve 
 				ID:   int(key.ProviderID),
 				Name: key.ProviderName,
 			},
-			PrivateKey:      key.PrivateKey,
 			EthereumAddress: key.EthereumAddress.String,
 		})
 	}

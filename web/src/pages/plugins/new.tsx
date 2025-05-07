@@ -22,11 +22,23 @@ spec:
       version: '2.2'
       services:
         app:
-          image: nginx:latest
+          image: nginx:\${NGINX_VERSION}
+          ports:
+            - "\${NGINX_PORT}:80"
   parameters:
     $schema: http://json-schema.org/draft-07/schema#
     type: object
-    properties: {}
+    properties:
+      NGINX_VERSION:
+        type: string
+        title: Nginx Version
+        description: The version of Nginx to use
+        default: "1.28.0"
+      NGINX_PORT:
+        type: string
+        title: Nginx Port
+        description: The port to expose Nginx on
+        default: "8080"
     required: []`
 
 const formSchema = z.object({

@@ -39,6 +39,49 @@ export type AuthUserResponse = {
     username?: string;
 };
 
+export type BlockBlock = {
+    createdAt?: string;
+    dataHash?: string;
+    number?: number;
+    transactions?: Array<BlockTransaction>;
+};
+
+export type BlockTransaction = {
+    chaincodeId?: string;
+    channelId?: string;
+    createdAt?: string;
+    event?: BlockTransactionEvent;
+    id?: string;
+    path?: string;
+    reads?: Array<BlockTransactionRead>;
+    request?: Array<number>;
+    response?: Array<number>;
+    type?: BlockTxType;
+    version?: string;
+    writes?: Array<BlockTransactionWrite>;
+};
+
+export type BlockTransactionEvent = {
+    name?: string;
+    value?: string;
+};
+
+export type BlockTransactionRead = {
+    blockNumVersion?: number;
+    chaincodeId?: string;
+    key?: string;
+    txNumVersion?: number;
+};
+
+export type BlockTransactionWrite = {
+    chaincodeId?: string;
+    deleted?: boolean;
+    key?: string;
+    value?: string;
+};
+
+export type BlockTxType = 'MESSAGE' | 'CONFIG' | 'CONFIG_UPDATE' | 'ENDORSER_TRANSACTION' | 'ORDERER_TRANSACTION' | 'DELIVER_SEEK_INFO' | 'CHAINCODE_PACKAGE';
+
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -209,13 +252,12 @@ export type HttpBesuNodeDefaultsResponse = {
 };
 
 export type HttpBlockListResponse = {
-    blocks?: Array<ServiceBlock>;
+    blocks?: Array<BlockBlock>;
     total?: number;
 };
 
 export type HttpBlockTransactionsResponse = {
-    block?: ServiceBlock;
-    transactions?: Array<ServiceTransaction>;
+    block?: BlockBlock;
 };
 
 export type HttpChainInfoResponse = {
@@ -390,6 +432,17 @@ export type HttpCreateBesuNetworkRequest = {
      * @Description Network configuration
      */
     config: {
+        /**
+         * @Description Optional initial account balances
+         */
+        alloc?: {
+            [key: string]: {
+                /**
+                 * @Description Initial balance for the account in hex format (e.g. "0x100000000000000000000000000000000000000000000000000000000000000")
+                 */
+                balance: string;
+            };
+        };
         /**
          * @Description Block period in seconds
          * @Default 5
@@ -672,7 +725,7 @@ export type HttpTestProviderResponse = {
 };
 
 export type HttpTransactionResponse = {
-    transaction?: ServiceTransaction;
+    block?: BlockBlock;
 };
 
 export type HttpUpdateBackupScheduleRequest = {
@@ -901,7 +954,6 @@ export type ModelsKeyResponse = {
     keySize?: number;
     lastRotatedAt?: string;
     name?: string;
-    privateKey?: string;
     provider?: ModelsKeyProviderInfo;
     publicKey?: string;
     sha1Fingerprint?: string;
@@ -992,15 +1044,6 @@ export type ServiceBesuNodeProperties = {
     rpcHost?: string;
     rpcPort?: number;
     version?: string;
-};
-
-export type ServiceBlock = {
-    data?: Array<number>;
-    hash?: string;
-    number?: number;
-    previous_hash?: string;
-    timestamp?: string;
-    tx_count?: number;
 };
 
 export type ServiceCreateSettingParams = {
@@ -1123,15 +1166,6 @@ export type ServiceSettingConfig = {
     besuTemplateCMD?: string;
     ordererTemplateCMD?: string;
     peerTemplateCMD?: string;
-};
-
-export type ServiceTransaction = {
-    block_number?: number;
-    creator?: string;
-    payload?: Array<number>;
-    timestamp?: string;
-    tx_id?: string;
-    type?: string;
 };
 
 export type TypesAddressOverride = {
@@ -1389,15 +1423,15 @@ export type PostAuthChangePasswordErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Invalid current password
      */
-    403: string;
+    403: ResponseResponse;
 };
 
 export type PostAuthChangePasswordError = PostAuthChangePasswordErrors[keyof PostAuthChangePasswordErrors];
@@ -1427,15 +1461,15 @@ export type PostAuthLoginErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Invalid credentials
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Method not allowed
      */
-    405: string;
+    405: ResponseResponse;
 };
 
 export type PostAuthLoginError = PostAuthLoginErrors[keyof PostAuthLoginErrors];
@@ -1460,7 +1494,7 @@ export type PostAuthLogoutErrors = {
     /**
      * Method not allowed
      */
-    405: string;
+    405: ResponseResponse;
 };
 
 export type PostAuthLogoutError = PostAuthLogoutErrors[keyof PostAuthLogoutErrors];
@@ -1485,7 +1519,7 @@ export type GetAuthMeErrors = {
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
 };
 
 export type GetAuthMeError = GetAuthMeErrors[keyof GetAuthMeErrors];
@@ -5034,11 +5068,11 @@ export type PostPluginsErrors = {
     /**
      * Bad Request
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type PostPluginsError = PostPluginsErrors[keyof PostPluginsErrors];
@@ -5068,11 +5102,11 @@ export type DeletePluginsByNameErrors = {
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type DeletePluginsByNameError = DeletePluginsByNameErrors[keyof DeletePluginsByNameErrors];
@@ -5137,15 +5171,15 @@ export type PutPluginsByNameErrors = {
     /**
      * Bad Request
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type PutPluginsByNameError = PutPluginsByNameErrors[keyof PutPluginsByNameErrors];
@@ -5180,15 +5214,15 @@ export type PostPluginsByNameDeployErrors = {
     /**
      * Bad Request
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type PostPluginsByNameDeployError = PostPluginsByNameDeployErrors[keyof PostPluginsByNameDeployErrors];
@@ -5216,11 +5250,11 @@ export type GetPluginsByNameDeploymentStatusErrors = {
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type GetPluginsByNameDeploymentStatusError = GetPluginsByNameDeploymentStatusErrors[keyof GetPluginsByNameDeploymentStatusErrors];
@@ -5250,11 +5284,11 @@ export type GetPluginsByNameServicesErrors = {
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type GetPluginsByNameServicesError = GetPluginsByNameServicesErrors[keyof GetPluginsByNameServicesErrors];
@@ -5284,11 +5318,11 @@ export type GetPluginsByNameStatusErrors = {
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type GetPluginsByNameStatusError = GetPluginsByNameStatusErrors[keyof GetPluginsByNameStatusErrors];
@@ -5318,11 +5352,11 @@ export type PostPluginsByNameStopErrors = {
     /**
      * Not Found
      */
-    404: string;
+    404: ResponseResponse;
     /**
      * Internal Server Error
      */
-    500: string;
+    500: ResponseResponse;
 };
 
 export type PostPluginsByNameStopError = PostPluginsByNameStopErrors[keyof PostPluginsByNameStopErrors];
@@ -5380,11 +5414,11 @@ export type GetUsersErrors = {
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role
      */
-    403: string;
+    403: ResponseResponse;
 };
 
 export type GetUsersError = GetUsersErrors[keyof GetUsersErrors];
@@ -5412,15 +5446,15 @@ export type PostUsersErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role
      */
-    403: string;
+    403: ResponseResponse;
 };
 
 export type PostUsersError = PostUsersErrors[keyof PostUsersErrors];
@@ -5450,15 +5484,15 @@ export type DeleteUsersByIdErrors = {
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role
      */
-    403: string;
+    403: ResponseResponse;
     /**
      * User not found
      */
-    404: string;
+    404: ResponseResponse;
 };
 
 export type DeleteUsersByIdError = DeleteUsersByIdErrors[keyof DeleteUsersByIdErrors];
@@ -5486,15 +5520,15 @@ export type GetUsersByIdErrors = {
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role
      */
-    403: string;
+    403: ResponseResponse;
     /**
      * User not found
      */
-    404: string;
+    404: ResponseResponse;
 };
 
 export type GetUsersByIdError = GetUsersByIdErrors[keyof GetUsersByIdErrors];
@@ -5527,19 +5561,19 @@ export type PutUsersByIdErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role
      */
-    403: string;
+    403: ResponseResponse;
     /**
      * User not found
      */
-    404: string;
+    404: ResponseResponse;
 };
 
 export type PutUsersByIdError = PutUsersByIdErrors[keyof PutUsersByIdErrors];
@@ -5572,19 +5606,19 @@ export type PutUsersByIdPasswordErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role or self-modification not allowed
      */
-    403: string;
+    403: ResponseResponse;
     /**
      * User not found
      */
-    404: string;
+    404: ResponseResponse;
 };
 
 export type PutUsersByIdPasswordError = PutUsersByIdPasswordErrors[keyof PutUsersByIdPasswordErrors];
@@ -5619,19 +5653,19 @@ export type PutUsersByIdRoleErrors = {
     /**
      * Invalid request body
      */
-    400: string;
+    400: ResponseResponse;
     /**
      * Unauthorized
      */
-    401: string;
+    401: ResponseResponse;
     /**
      * Forbidden - Requires admin role or self-modification not allowed
      */
-    403: string;
+    403: ResponseResponse;
     /**
      * User not found
      */
-    404: string;
+    404: ResponseResponse;
 };
 
 export type PutUsersByIdRoleError = PutUsersByIdRoleErrors[keyof PutUsersByIdRoleErrors];

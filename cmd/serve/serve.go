@@ -293,7 +293,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService, settingsService)
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
-	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath)
+	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath, configService)
 
 	// Initialize and start monitoring service
 	monitoringConfig := &monitoring.Config{

@@ -889,23 +889,32 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the Besu network config
-	besuConfig := types.BesuNetworkConfig{
+	besuConfig := &types.BesuNetworkConfig{
+		BaseNetworkConfig: types.BaseNetworkConfig{
+			Type: types.NetworkTypeBesu,
+		},
 		ChainID:                req.Config.ChainID,
+		Consensus:              types.BesuConsensusType(req.Config.Consensus),
+		InitialValidatorKeyIds: req.Config.InitialValidatorKeyIds,
 		BlockPeriod:            req.Config.BlockPeriod,
 		EpochLength:            req.Config.EpochLength,
 		RequestTimeout:         req.Config.RequestTimeout,
-		InitialValidatorKeyIds: req.Config.InitialValidatorKeyIds,
 		Nonce:                  req.Config.Nonce,
 		Timestamp:              req.Config.Timestamp,
 		GasLimit:               req.Config.GasLimit,
 		Difficulty:             req.Config.Difficulty,
 		MixHash:                req.Config.MixHash,
 		Coinbase:               req.Config.Coinbase,
-		BaseNetworkConfig: types.BaseNetworkConfig{
-			Type: types.NetworkTypeBesu,
-		},
-		NetworkID: 0,
-		Consensus: types.BesuConsensusType(req.Config.Consensus),
+	}
+
+	// Add allocation if provided
+	if req.Config.Alloc != nil {
+		besuConfig.Alloc = make(map[string]types.AccountBalance)
+		for address, balance := range req.Config.Alloc {
+			besuConfig.Alloc[address] = types.AccountBalance{
+				Balance: balance.Balance,
+			}
+		}
 	}
 
 	// Marshal the config to bytes
@@ -915,24 +924,16 @@ func (h *Handler) BesuNetworkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create network using service
+	// Create the network
 	network, err := h.networkService.CreateNetwork(r.Context(), req.Name, req.Description, configBytes)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "create_network_failed", err.Error())
 		return
 	}
 
-	// Return network response
+	// Convert to response type and return
 	resp := mapBesuNetworkToResponse(*network)
-
-	// Ensure proper JSON response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		// If encoding fails, log the error and return a generic error
-		writeError(w, http.StatusInternalServerError, "response_encoding_failed", "Failed to encode response")
-		return
-	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // @Summary Get a Besu network by ID
@@ -1728,8 +1729,7 @@ func (h *Handler) FabricGetBlock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := BlockTransactionsResponse{
-		Block:        &blck.Block,
-		Transactions: blck.Transactions,
+		Block: blck,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -1758,7 +1758,7 @@ func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transaction, err := h.networkService.GetTransaction(r.Context(), networkID, txID)
+	blck, err := h.networkService.GetBlockByTransaction(r.Context(), networkID, txID)
 	if err != nil {
 		if err.Error() == "transaction not found" {
 			writeError(w, http.StatusNotFound, "transaction_not_found", "Transaction not found")
@@ -1769,7 +1769,7 @@ func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := TransactionResponse{
-		Transaction: transaction,
+		Block: blck,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

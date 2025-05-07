@@ -45,6 +45,11 @@ type CreateBesuNetworkRequest struct {
 		MixHash string `json:"mixHash,omitempty"`
 		// @Description Optional coinbase address
 		Coinbase string `json:"coinbase,omitempty"`
+		// @Description Optional initial account balances
+		Alloc map[string]struct {
+			// @Description Initial balance for the account in hex format (e.g. "0x100000000000000000000000000000000000000000000000000000000000000")
+			Balance string `json:"balance" validate:"required,hexadecimal"`
+		} `json:"alloc,omitempty"`
 	} `json:"config" validate:"required"`
 }
 

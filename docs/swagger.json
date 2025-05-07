@@ -4917,13 +4917,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5012,19 +5012,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5057,13 +5057,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5108,19 +5108,19 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5158,13 +5158,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5205,13 +5205,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5249,13 +5249,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5290,13 +5290,13 @@
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5883,6 +5883,145 @@
                 }
             }
         },
+        "block.Block": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "dataHash": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/block.Transaction"
+                    }
+                }
+            }
+        },
+        "block.Transaction": {
+            "type": "object",
+            "properties": {
+                "chaincodeId": {
+                    "type": "string"
+                },
+                "channelId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "event": {
+                    "$ref": "#/definitions/block.TransactionEvent"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "reads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/block.TransactionRead"
+                    }
+                },
+                "request": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "response": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "type": {
+                    "$ref": "#/definitions/block.TxType"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "writes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/block.TransactionWrite"
+                    }
+                }
+            }
+        },
+        "block.TransactionEvent": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "block.TransactionRead": {
+            "type": "object",
+            "properties": {
+                "blockNumVersion": {
+                    "type": "integer"
+                },
+                "chaincodeId": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "txNumVersion": {
+                    "type": "integer"
+                }
+            }
+        },
+        "block.TransactionWrite": {
+            "type": "object",
+            "properties": {
+                "chaincodeId": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "block.TxType": {
+            "type": "string",
+            "enum": [
+                "MESSAGE",
+                "CONFIG",
+                "CONFIG_UPDATE",
+                "ENDORSER_TRANSACTION",
+                "ORDERER_TRANSACTION",
+                "DELIVER_SEEK_INFO",
+                "CHAINCODE_PACKAGE"
+            ],
+            "x-enum-varnames": [
+                "MESSAGE",
+                "CONFIG",
+                "CONFIG_UPDATE",
+                "ENDORSER_TRANSACTION",
+                "ORDERER_TRANSACTION",
+                "DELIVER_SEEK_INFO",
+                "CHAINCODE_PACKAGE"
+            ]
+        },
         "github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -6329,7 +6468,7 @@
                 "blocks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/service.Block"
+                        "$ref": "#/definitions/block.Block"
                     }
                 },
                 "total": {
@@ -6341,13 +6480,7 @@
             "type": "object",
             "properties": {
                 "block": {
-                    "$ref": "#/definitions/service.Block"
-                },
-                "transactions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/service.Transaction"
-                    }
+                    "$ref": "#/definitions/block.Block"
                 }
             }
         },
@@ -6589,6 +6722,22 @@
                         "requestTimeout"
                     ],
                     "properties": {
+                        "alloc": {
+                            "description": "@Description Optional initial account balances",
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "required": [
+                                    "balance"
+                                ],
+                                "properties": {
+                                    "balance": {
+                                        "description": "@Description Initial balance for the account in hex format (e.g. \"0x100000000000000000000000000000000000000000000000000000000000000\")",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
                         "blockPeriod": {
                             "description": "@Description Block period in seconds\n@Default 5\n@Required",
                             "type": "integer",
@@ -7274,8 +7423,8 @@
         "http.TransactionResponse": {
             "type": "object",
             "properties": {
-                "transaction": {
-                    "$ref": "#/definitions/service.Transaction"
+                "block": {
+                    "$ref": "#/definitions/block.Block"
                 }
             }
         },
@@ -8011,9 +8160,6 @@
                 "name": {
                     "type": "string"
                 },
-                "privateKey": {
-                    "type": "string"
-                },
                 "provider": {
                     "$ref": "#/definitions/models.KeyProviderInfo"
                 },
@@ -8253,32 +8399,6 @@
                 },
                 "version": {
                     "type": "string"
-                }
-            }
-        },
-        "service.Block": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "hash": {
-                    "type": "string"
-                },
-                "number": {
-                    "type": "integer"
-                },
-                "previous_hash": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                },
-                "tx_count": {
-                    "type": "integer"
                 }
             }
         },
@@ -8581,32 +8701,6 @@
                     "type": "string"
                 },
                 "peerTemplateCMD": {
-                    "type": "string"
-                }
-            }
-        },
-        "service.Transaction": {
-            "type": "object",
-            "properties": {
-                "block_number": {
-                    "type": "integer"
-                },
-                "creator": {
-                    "type": "string"
-                },
-                "payload": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "timestamp": {
-                    "type": "string"
-                },
-                "tx_id": {
-                    "type": "string"
-                },
-                "type": {
                     "type": "string"
                 }
             }

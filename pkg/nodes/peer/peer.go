@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
+	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -2648,17 +2649,23 @@ func (p *LocalPeer) GetBlock(ctx context.Context, channelID string, blockNum uin
 	}
 	defer gateway.Close()
 	network := gateway.GetNetwork(channelID)
-	blockEvents, err := network.BlockAndPrivateDataEvents(ctx, client.WithStartBlock(blockNum))
+
+	// Create a cancellable context derived from the parent context
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel() // Ensure we cancel the context when we're done
+
+	blockEvents, err := network.BlockAndPrivateDataEvents(ctxWithCancel, client.WithStartBlock(blockNum))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block: %w", err)
 	}
 
 	for blockEvent := range blockEvents {
+		// Cancel the context after we get the first block
+		cancel()
 		return blockEvent.Block, nil
 	}
 	return nil, fmt.Errorf("block not found")
 }
-
 func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, blockNum uint64) ([]*cb.Envelope, error) {
 	peerUrl := p.GetPeerAddress()
 	tlsCACert, err := p.GetTLSRootCACert(ctx)
@@ -2680,12 +2687,26 @@ func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, 
 	}
 	defer gateway.Close()
 	network := gateway.GetNetwork(channelID)
-	blockEvents, err := network.BlockAndPrivateDataEvents(ctx, client.WithStartBlock(blockNum))
+
+	// Create a cancellable context derived from the parent context with a 10 second timeout
+	ctxWithTimeout, cancelTimeout := context.WithTimeout(ctx, 10*time.Second)
+	ctxWithCancel, cancel := context.WithCancel(ctxWithTimeout)
+	defer cancel()        // Ensure we cancel the context when we're done
+	defer cancelTimeout() // Ensure we cancel the timeout context when we're done
+
+	blockEvents, err := network.BlockAndPrivateDataEvents(ctxWithCancel, client.WithStartBlock(blockNum))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block: %w", err)
 	}
 
 	for blockEvent := range blockEvents {
+		// Cancel the context after we get the first block
+		cancel()
+
+		var json bytes.Buffer
+		if err := protolator.DeepMarshalJSON(&json, blockEvent.Block); err != nil {
+			return nil, fmt.Errorf("failed to marshal block: %w", err)
+		}
 		var transactions []*cb.Envelope
 		for _, data := range blockEvent.Block.Data.Data {
 			envelope := &cb.Envelope{}
@@ -2694,10 +2715,19 @@ func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, 
 			}
 			transactions = append(transactions, envelope)
 		}
+
 		return transactions, nil
 	}
+
+	// Check if we timed out
+	if ctxWithTimeout.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("timed out waiting for block after 10 seconds")
+	}
+
 	return nil, fmt.Errorf("block not found")
 }
+
+
 
 // GetBlocksInRange retrieves blocks from startBlock to endBlock (inclusive)
 func (p *LocalPeer) GetBlocksInRange(ctx context.Context, channelID string, startBlock, endBlock uint64) ([]*cb.Block, error) {

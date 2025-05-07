@@ -71,24 +71,53 @@ type RemoveOrdererResponse struct {
 	OrdererID int64  `json:"orderer_id"`
 }
 
-// Block represents a block in the blockchain
-type Block struct {
-	Number       uint64    `json:"number"`
-	Hash         string    `json:"hash"`
-	PreviousHash string    `json:"previous_hash"`
-	Timestamp    time.Time `json:"timestamp"`
-	TxCount      int       `json:"tx_count"`
-	Data         []byte    `json:"data"`
-}
+type TxType string
 
-// Transaction represents a transaction in a block
+const (
+	MESSAGE              TxType = "MESSAGE"
+	CONFIG               TxType = "CONFIG"
+	CONFIG_UPDATE        TxType = "CONFIG_UPDATE"
+	ENDORSER_TRANSACTION TxType = "ENDORSER_TRANSACTION"
+	ORDERER_TRANSACTION  TxType = "ORDERER_TRANSACTION"
+	DELIVER_SEEK_INFO    TxType = "DELIVER_SEEK_INFO"
+	CHAINCODE_PACKAGE    TxType = "CHAINCODE_PACKAGE"
+)
+
 type Transaction struct {
-	TxID        string    `json:"tx_id"`
-	BlockNumber uint64    `json:"block_number"`
-	Timestamp   time.Time `json:"timestamp"`
-	Type        string    `json:"type"`
-	Creator     string    `json:"creator"`
-	Payload     []byte    `json:"payload"`
+	ID          string
+	Type        TxType
+	ChannelID   string
+	CreatedAt   time.Time
+	ChaincodeID string
+	Version     string
+	Path        string
+	Response    []byte
+	Request     []byte
+	Event       TransactionEvent
+	Writes      []*TransactionWrite
+	Reads       []*TransactionRead
+}
+type TransactionEvent struct {
+	Name  string
+	Value string
+}
+type TransactionWrite struct {
+	ChaincodeID string
+	Deleted     bool
+	Key         string
+	Value       string
+}
+type TransactionRead struct {
+	ChaincodeID     string
+	Key             string
+	BlockNumVersion int
+	TxNumVersion    int
+}
+type Block struct {
+	Number       int
+	DataHash     string
+	Transactions []*Transaction
+	CreatedAt    *time.Time
 }
 
 type ChainInfo struct {

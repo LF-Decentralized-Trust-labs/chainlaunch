@@ -1,6 +1,8 @@
 package fabric
 
-import "time"
+import (
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/block"
+)
 
 // NodeType represents the type of a Fabric node
 type NodeType string
@@ -65,27 +67,6 @@ type NetworkConfig struct {
 	Policies         map[string]interface{} `json:"policies"`
 }
 
-// Block represents a block in the Fabric blockchain
-type Block struct {
-	Number       uint64    `json:"number"`
-	Hash         string    `json:"hash"`
-	PreviousHash string    `json:"previousHash"`
-	DataHash     string    `json:"dataHash"`
-	Timestamp    time.Time `json:"timestamp"`
-	TxCount      int       `json:"txCount"`
-	Data         []byte    `json:"data"`
-}
-
-// Transaction represents a transaction in a Fabric block
-type Transaction struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Timestamp time.Time `json:"timestamp"`
-	Creator   string    `json:"creator"`
-	Status    string    `json:"status"`
-	BlockNum  uint64    `json:"blockNum"`
-}
-
 // BlockInfo represents information about the blockchain
 type BlockInfo struct {
 	Height            uint64 `json:"height"`
@@ -118,12 +99,12 @@ type BlockQueryOptions struct {
 
 // PaginatedBlocks represents a paginated list of blocks
 type PaginatedBlocks struct {
-	Items      []Block `json:"items"`
-	TotalCount int64   `json:"totalCount"`
+	Items      []block.Block `json:"items"`
+	TotalCount int64         `json:"totalCount"`
 }
 
 // PaginatedTransactions represents a paginated list of transactions
 type PaginatedTransactions struct {
-	Items      []Transaction `json:"items"`
-	TotalCount int64         `json:"totalCount"`
+	Items      []block.Transaction `json:"items"`
+	TotalCount int64               `json:"totalCount"`
 }

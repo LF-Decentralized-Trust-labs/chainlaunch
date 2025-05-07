@@ -2727,6 +2727,8 @@ func (p *LocalPeer) GetBlockTransactions(ctx context.Context, channelID string, 
 	return nil, fmt.Errorf("block not found")
 }
 
+
+
 // GetBlocksInRange retrieves blocks from startBlock to endBlock (inclusive)
 func (p *LocalPeer) GetBlocksInRange(ctx context.Context, channelID string, startBlock, endBlock uint64) ([]*cb.Block, error) {
 	peerUrl := p.GetPeerAddress()

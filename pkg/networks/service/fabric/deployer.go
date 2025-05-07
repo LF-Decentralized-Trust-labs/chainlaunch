@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/proto"
 
 	"bytes"
@@ -29,6 +28,7 @@ import (
 	orgservicefabric "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/block"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	fabricorg "github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric/org"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
@@ -2458,7 +2458,7 @@ func (d *FabricDeployer) GetChainInfo(ctx context.Context, networkID int64) (*Ch
 		PreviousBlockHash: fmt.Sprintf("%x", chainInfo.PreviousBlockHash),
 	}, nil
 }
-func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]Block, int64, error) {
+func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, offset int32, reverse bool) ([]block.Block, int64, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
 	if err != nil {
@@ -2501,7 +2501,7 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 
 	// Check if offset is greater than channel height
 	if int64(offset) >= int64(channelInfo.Height) {
-		return []Block{}, total, nil // Return empty slice if offset exceeds height
+		return []block.Block{}, total, nil // Return empty slice if offset exceeds height
 	}
 
 	if reverse {
@@ -2537,7 +2537,7 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 	}
 
 	// Convert blocks to response type
-	result := make([]Block, len(blocks))
+	result := make([]block.Block, len(blocks))
 	for i, block := range blocks {
 		blck, err := d.MapBlock(block)
 		if err != nil {
@@ -2550,54 +2550,16 @@ func (d *FabricDeployer) GetBlocks(ctx context.Context, networkID int64, limit, 
 }
 
 // GetBlocks retrieves blocks from a specific network
-func (d *FabricDeployer) MapBlock(block *cb.Block) (*Block, error) {
-	timestamp := time.Now()
-	for _, txData := range block.Data.Data {
-		env := &cb.Envelope{}
-		err := proto.Unmarshal(txData, env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal envelope: %w", err)
-		}
-		payload := &cb.Payload{}
-		err = proto.Unmarshal(env.Payload, payload)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
-		}
-		chdr := &cb.ChannelHeader{}
-		err = proto.Unmarshal(payload.Header.ChannelHeader, chdr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal channel header: %w", err)
-		}
-		txDate, err := ptypes.Timestamp(chdr.Timestamp)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
-		}
-		timestamp = txDate
-		break
-	}
-	buffer := &bytes.Buffer{}
-	err := protolator.DeepMarshalJSON(buffer, block)
+func (d *FabricDeployer) MapBlock(blk *cb.Block) (*block.Block, error) {
+	blockResponse, err := block.MapBlock(blk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block data: %w", err)
+		return nil, fmt.Errorf("failed to map block: %w", err)
 	}
-	blockDataJson := buffer.Bytes()
-	return &Block{
-		Number:       block.Header.Number,
-		Hash:         fmt.Sprintf("%x", block.Header.DataHash),
-		PreviousHash: fmt.Sprintf("%x", block.Header.PreviousHash),
-		Timestamp:    timestamp,
-		TxCount:      len(block.Data.Data),
-		Data:         blockDataJson,
-	}, nil
-}
-
-type BlockWithTransactions struct {
-	Block        Block
-	Transactions []Transaction
+	return blockResponse, nil
 }
 
 // GetBlockTransactions retrieves all transactions from a specific block
-func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*BlockWithTransactions, error) {
+func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*block.Block, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
 	if err != nil {
@@ -2629,65 +2591,29 @@ func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int
 	}
 
 	// Get transactions from block
-	block, err := peer.GetBlock(ctx, network.Name, blockNum)
+	blk, err := peer.GetBlock(ctx, network.Name, blockNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block: %w", err)
 	}
-	envelopes, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block transactions: %w", err)
-	}
-
-	// Convert envelopes to transactions
-	transactions := make([]Transaction, len(envelopes))
-	for i, env := range envelopes {
-		payload := &cb.Payload{}
-		if err := proto.Unmarshal(env.Payload, payload); err != nil {
-			continue
-		}
-
-		chdr := &cb.ChannelHeader{}
-		if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
-			continue
-		}
-
-		shdr := &cb.SignatureHeader{}
-		if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
-			continue
-		}
-
-		transactions[i] = Transaction{
-			ID:        chdr.TxId,
-			BlockNum:  blockNum,
-			Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
-			Type:      cb.HeaderType_name[int32(chdr.Type)],
-			Creator:   string(shdr.Creator),
-			Status:    "success",
-		}
-	}
-	blck, err := d.MapBlock(block)
+	blockReponse, err := block.MapBlock(blk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to map block: %w", err)
 	}
-	blockWithTransactions := &BlockWithTransactions{
-		Block:        *blck,
-		Transactions: transactions,
-	}
-	return blockWithTransactions, nil
+	return blockReponse, nil
 }
 
 // GetTransaction retrieves a specific transaction by its ID
-func (d *FabricDeployer) GetTransaction(ctx context.Context, networkID int64, txID string) (Transaction, error) {
+func (d *FabricDeployer) GetBlockByTransaction(ctx context.Context, networkID int64, txID string) (*block.Block, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
 	if err != nil {
-		return Transaction{}, fmt.Errorf("failed to get network: %w", err)
+		return nil, fmt.Errorf("failed to get network: %w", err)
 	}
 
 	// Get a peer from the network
 	networkNodes, err := d.db.GetNetworkNodes(ctx, networkID)
 	if err != nil {
-		return Transaction{}, fmt.Errorf("failed to get network nodes: %w", err)
+		return nil, fmt.Errorf("failed to get network nodes: %w", err)
 	}
 
 	var peerNode *db.GetNetworkNodesRow
@@ -2699,56 +2625,24 @@ func (d *FabricDeployer) GetTransaction(ctx context.Context, networkID int64, tx
 	}
 
 	if peerNode == nil {
-		return Transaction{}, fmt.Errorf("no active peer found in network")
+		return nil, fmt.Errorf("no active peer found in network")
 	}
 
 	// Get peer instance
 	peer, err := d.nodes.GetFabricPeer(ctx, peerNode.NodeID)
 	if err != nil {
-		return Transaction{}, fmt.Errorf("failed to get peer: %w", err)
+		return nil, fmt.Errorf("failed to get peer: %w", err)
 	}
 
 	// Get channel info
-	channelInfo, err := peer.GetChannelBlockInfo(ctx, network.Name)
+	blk, err := peer.GetBlockByTxID(ctx, network.Name, txID)
 	if err != nil {
-		return Transaction{}, fmt.Errorf("failed to get channel info: %w", err)
+		return nil, fmt.Errorf("failed to get channel info: %w", err)
+	}
+	blockResponse, err := block.MapBlock(blk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map block: %w", err)
 	}
 
-	// Search for transaction in blocks
-	for blockNum := uint64(0); blockNum < channelInfo.Height; blockNum++ {
-		transactions, err := peer.GetBlockTransactions(ctx, network.Name, blockNum)
-		if err != nil {
-			continue
-		}
-
-		for _, tx := range transactions {
-			payload := &cb.Payload{}
-			if err := proto.Unmarshal(tx.Payload, payload); err != nil {
-				continue
-			}
-
-			chdr := &cb.ChannelHeader{}
-			if err := proto.Unmarshal(payload.Header.ChannelHeader, chdr); err != nil {
-				continue
-			}
-
-			if chdr.TxId == txID {
-				shdr := &cb.SignatureHeader{}
-				if err := proto.Unmarshal(payload.Header.SignatureHeader, shdr); err != nil {
-					continue
-				}
-
-				return Transaction{
-					ID:        chdr.TxId,
-					BlockNum:  blockNum,
-					Timestamp: time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos)),
-					Type:      cb.HeaderType_name[int32(chdr.Type)],
-					Creator:   string(shdr.Creator),
-					Status:    "success",
-				}, nil
-			}
-		}
-	}
-
-	return Transaction{}, fmt.Errorf("transaction not found")
+	return blockResponse, nil
 }

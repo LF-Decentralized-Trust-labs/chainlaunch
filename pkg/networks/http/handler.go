@@ -1728,8 +1728,7 @@ func (h *Handler) FabricGetBlock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := BlockTransactionsResponse{
-		Block:        &blck.Block,
-		Transactions: blck.Transactions,
+		Block: blck,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -1758,7 +1757,7 @@ func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transaction, err := h.networkService.GetTransaction(r.Context(), networkID, txID)
+	blck, err := h.networkService.GetBlockByTransaction(r.Context(), networkID, txID)
 	if err != nil {
 		if err.Error() == "transaction not found" {
 			writeError(w, http.StatusNotFound, "transaction_not_found", "Transaction not found")
@@ -1769,7 +1768,7 @@ func (h *Handler) FabricGetTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := TransactionResponse{
-		Transaction: transaction,
+		Block: blck,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

@@ -82,6 +82,101 @@ definitions:
       username:
         type: string
     type: object
+  block.Block:
+    properties:
+      createdAt:
+        type: string
+      dataHash:
+        type: string
+      number:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/block.Transaction'
+        type: array
+    type: object
+  block.Transaction:
+    properties:
+      chaincodeId:
+        type: string
+      channelId:
+        type: string
+      createdAt:
+        type: string
+      event:
+        $ref: '#/definitions/block.TransactionEvent'
+      id:
+        type: string
+      path:
+        type: string
+      reads:
+        items:
+          $ref: '#/definitions/block.TransactionRead'
+        type: array
+      request:
+        items:
+          type: integer
+        type: array
+      response:
+        items:
+          type: integer
+        type: array
+      type:
+        $ref: '#/definitions/block.TxType'
+      version:
+        type: string
+      writes:
+        items:
+          $ref: '#/definitions/block.TransactionWrite'
+        type: array
+    type: object
+  block.TransactionEvent:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  block.TransactionRead:
+    properties:
+      blockNumVersion:
+        type: integer
+      chaincodeId:
+        type: string
+      key:
+        type: string
+      txNumVersion:
+        type: integer
+    type: object
+  block.TransactionWrite:
+    properties:
+      chaincodeId:
+        type: string
+      deleted:
+        type: boolean
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  block.TxType:
+    enum:
+    - MESSAGE
+    - CONFIG
+    - CONFIG_UPDATE
+    - ENDORSER_TRANSACTION
+    - ORDERER_TRANSACTION
+    - DELIVER_SEEK_INFO
+    - CHAINCODE_PACKAGE
+    type: string
+    x-enum-varnames:
+    - MESSAGE
+    - CONFIG
+    - CONFIG_UPDATE
+    - ENDORSER_TRANSACTION
+    - ORDERER_TRANSACTION
+    - DELIVER_SEEK_INFO
+    - CHAINCODE_PACKAGE
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
     properties:
       code:
@@ -378,7 +473,7 @@ definitions:
     properties:
       blocks:
         items:
-          $ref: '#/definitions/service.Block'
+          $ref: '#/definitions/block.Block'
         type: array
       total:
         type: integer
@@ -386,11 +481,7 @@ definitions:
   http.BlockTransactionsResponse:
     properties:
       block:
-        $ref: '#/definitions/service.Block'
-      transactions:
-        items:
-          $ref: '#/definitions/service.Transaction'
-        type: array
+        $ref: '#/definitions/block.Block'
     type: object
   http.ChainInfoResponse:
     properties:
@@ -1092,8 +1183,8 @@ definitions:
     type: object
   http.TransactionResponse:
     properties:
-      transaction:
-        $ref: '#/definitions/service.Transaction'
+      block:
+        $ref: '#/definitions/block.Block'
     type: object
   http.UpdateBackupScheduleRequest:
     properties:
@@ -1604,8 +1695,6 @@ definitions:
         type: string
       name:
         type: string
-      privateKey:
-        type: string
       provider:
         $ref: '#/definitions/models.KeyProviderInfo'
       publicKey:
@@ -1765,23 +1854,6 @@ definitions:
         type: integer
       version:
         type: string
-    type: object
-  service.Block:
-    properties:
-      data:
-        items:
-          type: integer
-        type: array
-      hash:
-        type: string
-      number:
-        type: integer
-      previous_hash:
-        type: string
-      timestamp:
-        type: string
-      tx_count:
-        type: integer
     type: object
   service.CreateSettingParams:
     properties:
@@ -1983,23 +2055,6 @@ definitions:
       ordererTemplateCMD:
         type: string
       peerTemplateCMD:
-        type: string
-    type: object
-  service.Transaction:
-    properties:
-      block_number:
-        type: integer
-      creator:
-        type: string
-      payload:
-        items:
-          type: integer
-        type: array
-      timestamp:
-        type: string
-      tx_id:
-        type: string
-      type:
         type: string
     type: object
   types.AddressOverride:
@@ -5655,11 +5710,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Create a plugin
       tags:
       - Plugins
@@ -5682,11 +5737,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Delete a plugin
       tags:
       - Plugins
@@ -5744,15 +5799,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Update a plugin
       tags:
       - Plugins
@@ -5782,15 +5837,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Deploy a plugin
       tags:
       - Plugins
@@ -5816,11 +5871,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Get detailed deployment status
       tags:
       - Plugins
@@ -5847,11 +5902,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Get Docker Compose services
       tags:
       - Plugins
@@ -5876,11 +5931,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Get plugin deployment status
       tags:
       - Plugins
@@ -5903,11 +5958,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.Response'
       summary: Stop a plugin deployment
       tags:
       - Plugins

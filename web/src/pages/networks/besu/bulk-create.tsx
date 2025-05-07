@@ -1,11 +1,11 @@
 import { getNodesDefaultsBesuNode, postKeys } from '@/api/client'
-import { getKeyProvidersOptions, getKeysOptions, getNodesDefaultsBesuNodeOptions, postKeysMutation, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { getKeyProvidersOptions, getKeysOptions, getNodesDefaultsBesuNodeOptions, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { BesuNodeForm, BesuNodeFormValues } from '@/components/nodes/besu-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Steps } from '@/components/ui/steps'
 import { hexToNumber, isValidHex, numberToHex } from '@/utils'
@@ -17,7 +17,6 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import * as z from 'zod'
-import { BesuNodeForm, BesuNodeFormValues } from '@/components/nodes/besu-node-form'
 
 const steps = [
 	{ id: 'nodes', title: 'Number of Nodes' },
@@ -105,7 +104,7 @@ export default function BulkCreateBesuNetworkPage() {
 		...getKeyProvidersOptions({}),
 	})
 
-	const { data: existingKeys } = useQuery({
+	const { data: existingKeys, refetch: refetchKeys } = useQuery({
 		...getKeysOptions({
 			query: {
 				page: 1,
@@ -317,13 +316,11 @@ export default function BulkCreateBesuNetworkPage() {
 	const onNodesStepSubmit = async (data: NodesStepValues) => {
 		try {
 			const newValidatorKeys = await createValidatorKeys(data.numberOfNodes, networkForm.getValues('networkName'))
-			console.log('newValidatorKeys', newValidatorKeys)
-			// Update the network form with the new validator keys
-			// networkForm.reset({
-			// 	...networkForm.getValues(),
-			// 	selectedValidatorKeys: newValidatorKeys.map((key) => key.id),
-			// })
-
+			networkForm.setValue(
+				'selectedValidatorKeys',
+				newValidatorKeys.map((key) => key.id)
+			)
+			await refetchKeys()
 			setCurrentStep('network')
 		} catch (error) {
 			// Error is already handled in createValidatorKeys
@@ -397,7 +394,7 @@ export default function BulkCreateBesuNetworkPage() {
 					// For all nodes after the first one, use the first node as bootnode
 					// Use the first node's external IP and p2p port
 					const firstNodeExternalIp = besuDefaultNodes.data.defaults![0]?.externalIp || '127.0.0.1'
-					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pAddress?.split(':')[1] || '30303'
+					const firstNodeP2pPort = besuDefaultNodes.data.defaults![0]?.p2pPort || '30303'
 					bootNodes = `enode://${validatorKeys[0].publicKey.substring(2)}@${firstNodeExternalIp}:${Number(firstNodeP2pPort)}`
 				}
 

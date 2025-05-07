@@ -79,23 +79,29 @@ const (
 	BesuConsensusTypeQBFT BesuConsensusType = "qbft"
 )
 
+// AccountBalance represents the balance configuration for an account
+type AccountBalance struct {
+	Balance string `json:"balance"`
+}
+
 // BesuNetworkConfig represents the configuration for a Besu network
 type BesuNetworkConfig struct {
 	BaseNetworkConfig
-	NetworkID              int64             `json:"networkId"`
-	ChainID                int64             `json:"chainId"`
-	Consensus              BesuConsensusType `json:"consensus"`
-	InitialValidatorKeyIds []int64           `json:"initialValidators"`
-	ExternalNodes          []ExternalNodeRef `json:"externalNodes,omitempty"`
-	BlockPeriod            int               `json:"blockPeriod"`
-	EpochLength            int               `json:"epochLength"`
-	RequestTimeout         int               `json:"requestTimeout"`
-	Nonce                  string            `json:"nonce"`
-	Timestamp              string            `json:"timestamp"`
-	GasLimit               string            `json:"gasLimit"`
-	Difficulty             string            `json:"difficulty"`
-	MixHash                string            `json:"mixHash"`
-	Coinbase               string            `json:"coinbase"`
+	NetworkID              int64                     `json:"networkId"`
+	ChainID                int64                     `json:"chainId"`
+	Consensus              BesuConsensusType         `json:"consensus"`
+	InitialValidatorKeyIds []int64                   `json:"initialValidators"`
+	ExternalNodes          []ExternalNodeRef         `json:"externalNodes,omitempty"`
+	BlockPeriod            int                       `json:"blockPeriod"`
+	EpochLength            int                       `json:"epochLength"`
+	RequestTimeout         int                       `json:"requestTimeout"`
+	Nonce                  string                    `json:"nonce"`
+	Timestamp              string                    `json:"timestamp"`
+	GasLimit               string                    `json:"gasLimit"`
+	Difficulty             string                    `json:"difficulty"`
+	MixHash                string                    `json:"mixHash"`
+	Coinbase               string                    `json:"coinbase"`
+	Alloc                  map[string]AccountBalance `json:"alloc,omitempty"`
 }
 
 // UnmarshalNetworkConfig unmarshals network configuration based on its type

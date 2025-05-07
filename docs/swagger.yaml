@@ -698,6 +698,18 @@ definitions:
       config:
         description: '@Description Network configuration'
         properties:
+          alloc:
+            additionalProperties:
+              properties:
+                balance:
+                  description: '@Description Initial balance for the account in hex
+                    format (e.g. "0x100000000000000000000000000000000000000000000000000000000000000")'
+                  type: string
+              required:
+              - balance
+              type: object
+            description: '@Description Optional initial account balances'
+            type: object
           blockPeriod:
             description: |-
               @Description Block period in seconds

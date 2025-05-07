@@ -433,6 +433,17 @@ export type HttpCreateBesuNetworkRequest = {
      */
     config: {
         /**
+         * @Description Optional initial account balances
+         */
+        alloc?: {
+            [key: string]: {
+                /**
+                 * @Description Initial balance for the account in hex format (e.g. "0x100000000000000000000000000000000000000000000000000000000000000")
+                 */
+                balance: string;
+            };
+        };
+        /**
          * @Description Block period in seconds
          * @Default 5
          * @Required

@@ -44,6 +44,14 @@ const networkStepSchema = z.object({
 	requestTimeout: z.number(),
 	timestamp: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
 	selectedValidatorKeys: z.array(z.number()).min(1, 'At least one validator key must be selected'),
+	alloc: z
+		.array(
+			z.object({
+				account: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
+				balance: z.string().refine((val) => isValidHex(val), { message: 'Must be a valid hex value starting with 0x' }),
+			})
+		)
+		.default([]),
 })
 
 type NodesStepValues = z.infer<typeof nodesStepSchema>
@@ -61,6 +69,7 @@ const defaultNetworkValues: Partial<NetworkStepValues> = {
 	nonce: numberToHex(0),
 	requestTimeout: 10,
 	timestamp: numberToHex(new Date().getUTCSeconds()),
+	alloc: [],
 }
 
 type Step = 'nodes' | 'network' | 'nodes-config' | 'review'
@@ -354,6 +363,10 @@ export default function BulkCreateBesuNetworkPage() {
 					nonce: data.nonce,
 					requestTimeout: data.requestTimeout,
 					timestamp: data.timestamp,
+					alloc: data.alloc.reduce((acc, item) => {
+						acc[item.account!] = { balance: item.balance }
+						return acc
+					}, {} as Record<string, { balance: string }>),
 				},
 			}
 
@@ -829,6 +842,72 @@ export default function BulkCreateBesuNetworkPage() {
 											)}
 										/>
 									</div>
+
+									<FormField
+										control={networkForm.control}
+										name="alloc"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Initial Allocations</FormLabel>
+												<FormDescription>Add initial account balances for the genesis block (in hex format)</FormDescription>
+												<div className="space-y-4">
+													{field.value.map((allocation, index) => (
+														<div key={index} className="flex gap-4 items-start">
+															<div className="flex-1">
+																<Input
+																	placeholder="0x..."
+																	value={allocation.account}
+																	onChange={(e) => {
+																		const value = e.target.value
+																		// Ensure the value starts with 0x
+																		const hexValue = value.startsWith('0x') ? value : `0x${value}`
+																		const newAlloc = [...field.value]
+																		newAlloc[index] = { ...newAlloc[index], account: hexValue }
+																		field.onChange(newAlloc)
+																	}}
+																/>
+															</div>
+															<div className="flex-1">
+																<Input
+																	placeholder="0x..."
+																	value={allocation.balance}
+																	onChange={(e) => {
+																		const value = e.target.value
+																		// Ensure the value starts with 0x
+																		const hexValue = value.startsWith('0x') ? value : `0x${value}`
+																		const newAlloc = [...field.value]
+																		newAlloc[index] = { ...newAlloc[index], balance: hexValue }
+																		field.onChange(newAlloc)
+																	}}
+																/>
+															</div>
+															<Button
+																type="button"
+																variant="outline"
+																size="icon"
+																onClick={() => {
+																	const newAlloc = field.value.filter((_, i) => i !== index)
+																	field.onChange(newAlloc)
+																}}
+															>
+																×
+															</Button>
+														</div>
+													))}
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() => {
+															field.onChange([...field.value, { account: '0x', balance: '0x0' }])
+														}}
+													>
+														Add Allocation
+													</Button>
+												</div>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
 								</div>
 							</Card>
 

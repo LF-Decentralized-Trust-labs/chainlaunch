@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Activity, AlertTriangle, Anchor, ArrowLeft, Check, Code, Copy, Network, Plus, Settings, Blocks, ShieldAlert, ArrowUpToLine, Loader2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import SyntaxHighlighter from 'react-syntax-highlighter'
@@ -648,6 +648,30 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 		setSearchParams({ tab })
 	}
 
+	const [selectedOrg, setSelectedOrg] = useState<{ id: number; mspId: string } | null>(null)
+
+	useEffect(() => {
+		if (fabricOrgs && fabricOrgs.length > 0 && !selectedOrg) {
+			// First try to find an org with at least one peer
+			const orgWithPeer = fabricOrgs.find(org => 
+				org.id && org.mspId && // Ensure both id and mspId exist
+				networkNodes?.nodes?.some(node => 
+					node.node?.nodeType === 'FABRIC_PEER' && 
+					node.node?.mspId === org.mspId
+				)
+			)
+			
+			// If found, use that org, otherwise use the first org that has both id and mspId
+			const defaultOrg = fabricOrgs.find(org => org.id && org.mspId)
+			if (defaultOrg) {
+				setSelectedOrg({
+					id: defaultOrg.id!,
+					mspId: defaultOrg.mspId!
+				})
+			}
+		}
+	}, [fabricOrgs, networkNodes, selectedOrg])
+
 	if (fabricOrgsLoading || channelConfigLoading || currentChannelConfigLoading || nodesLoading || networkNodesLoading) {
 		return (
 			<div className="flex-1 p-8">
@@ -915,6 +939,29 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 								</div>
 
 								<Card className="p-6">
+									<div className="mb-6">
+										<Select
+											value={selectedOrg?.mspId}
+											onValueChange={(mspId) => {
+												const org = fabricOrgs?.find(org => org.mspId === mspId)
+												if (org) {
+													setSelectedOrg(org)
+												}
+											}}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder="Select an organization" />
+											</SelectTrigger>
+											<SelectContent>
+												{fabricOrgs?.map((org) => (
+													<SelectItem key={org.id} value={org.mspId!}>
+														{org.mspId}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
 									<div className="prose dark:prose-invert max-w-none prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:p-4 prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
 										<ReactMarkdown
 											rehypePlugins={[rehypeRaw]}
@@ -927,7 +974,6 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 
 													return match ? (
 														<div className="relative group">
-															{/* <div className="absolute left-2 top-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md">{match[1]}</div> */}
 															<CopyButton text={content.replace(/\n$/, '')} />
 															<SyntaxHighlighter style={docco} language="javascript">
 																{content}
@@ -945,7 +991,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 												blockquote: ({ children }) => <blockquote className="mt-6 border-l-2 border-border pl-6 italic">{children}</blockquote>,
 											}}
 										>
-											{getChainCodeInstructions(network.name!, fabricOrgs?.[0]?.mspId || 'Org1MSP')}
+											{getChainCodeInstructions(network.name!, selectedOrg?.mspId || '')}
 										</ReactMarkdown>
 									</div>
 								</Card>

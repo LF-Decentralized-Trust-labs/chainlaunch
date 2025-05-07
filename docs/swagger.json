@@ -6722,6 +6722,22 @@
                         "requestTimeout"
                     ],
                     "properties": {
+                        "alloc": {
+                            "description": "@Description Optional initial account balances",
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "required": [
+                                    "balance"
+                                ],
+                                "properties": {
+                                    "balance": {
+                                        "description": "@Description Initial balance for the account in hex format (e.g. \"0x100000000000000000000000000000000000000000000000000000000000000\")",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
                         "blockPeriod": {
                             "description": "@Description Block period in seconds\n@Default 5\n@Required",
                             "type": "integer",

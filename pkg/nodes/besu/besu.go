@@ -171,6 +171,10 @@ func (b *LocalBesu) buildCommand(dataDir string, genesisPath string, configDir s
 		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
 		"--host-allowlist=*",
 		fmt.Sprintf("--node-private-key-file=%s", keyPath),
+		fmt.Sprintf("--metrics-enabled=%t", b.opts.MetricsEnabled),
+		"--metrics-host=0.0.0.0",
+		fmt.Sprintf("--metrics-port=%d", b.opts.MetricsPort),
+		fmt.Sprintf("--metrics-protocol=%s", b.opts.MetricsProtocol),
 
 		"--p2p-enabled=true",
 		fmt.Sprintf("--p2p-host=%s", b.opts.P2PHost),

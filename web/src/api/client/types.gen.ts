@@ -862,6 +862,21 @@ export type HttpUpdateProviderRequest = {
     type: 'SMTP';
 };
 
+export type MetricsDeployPrometheusRequest = {
+    deployment_mode: string;
+    prometheus_port: number;
+    prometheus_version: string;
+    scrape_interval: number;
+};
+
+export type MetricsRefreshNodesRequest = {
+    nodes: Array<{
+        address: string;
+        id: string;
+        port: number;
+    }>;
+};
+
 export type ModelsCertificateRequest = {
     commonName: string;
     country?: Array<string>;
@@ -1002,17 +1017,12 @@ export type PluginServiceStatus = {
 };
 
 export type ResponseErrorResponse = {
-    details?: {
-        [key: string]: unknown;
-    };
-    message?: string;
-    type?: string;
+    error?: string;
 };
 
 export type ResponseResponse = {
     data?: unknown;
-    error?: ResponseErrorResponse;
-    success?: boolean;
+    message?: string;
 };
 
 export type ServiceBesuNodeDefaults = {
@@ -1408,6 +1418,151 @@ export type UrlUserinfo = {
 export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
 export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
+
+export type PostApiV1MetricsDeployData = {
+    /**
+     * Prometheus deployment configuration
+     */
+    body: MetricsDeployPrometheusRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/metrics/deploy';
+};
+
+export type PostApiV1MetricsDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsDeployError = PostApiV1MetricsDeployErrors[keyof PostApiV1MetricsDeployErrors];
+
+export type PostApiV1MetricsDeployResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsDeployResponse = PostApiV1MetricsDeployResponses[keyof PostApiV1MetricsDeployResponses];
+
+export type GetApiV1MetricsNodeByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/metrics/node/{id}';
+};
+
+export type GetApiV1MetricsNodeByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetApiV1MetricsNodeByIdError = GetApiV1MetricsNodeByIdErrors[keyof GetApiV1MetricsNodeByIdErrors];
+
+export type GetApiV1MetricsNodeByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1MetricsNodeByIdResponse = GetApiV1MetricsNodeByIdResponses[keyof GetApiV1MetricsNodeByIdResponses];
+
+export type PostApiV1MetricsRefreshData = {
+    /**
+     * List of nodes to scrape
+     */
+    body: MetricsRefreshNodesRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/metrics/refresh';
+};
+
+export type PostApiV1MetricsRefreshErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsRefreshError = PostApiV1MetricsRefreshErrors[keyof PostApiV1MetricsRefreshErrors];
+
+export type PostApiV1MetricsRefreshResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsRefreshResponse = PostApiV1MetricsRefreshResponses[keyof PostApiV1MetricsRefreshResponses];
+
+export type PostApiV1MetricsReloadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/metrics/reload';
+};
+
+export type PostApiV1MetricsReloadErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsReloadError = PostApiV1MetricsReloadErrors[keyof PostApiV1MetricsReloadErrors];
+
+export type PostApiV1MetricsReloadResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostApiV1MetricsReloadResponse = PostApiV1MetricsReloadResponses[keyof PostApiV1MetricsReloadResponses];
 
 export type PostAuthChangePasswordData = {
     /**

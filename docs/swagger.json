@@ -22,6 +22,282 @@
     "host": "localhost:8100",
     "basePath": "/api/v1",
     "paths": {
+        "/api/v1/metrics/deploy": {
+            "post": {
+                "description": "Deploys a new Prometheus instance with the specified configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Deploy a new Prometheus instance",
+                "parameters": [
+                    {
+                        "description": "Prometheus deployment configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metrics.DeployPrometheusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}": {
+            "get": {
+                "description": "Retrieves metrics for a specific node by ID and optional PromQL query",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get metrics for a specific node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PromQL query to filter metrics",
+                        "name": "query",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}/label/{label}/values": {
+            "get": {
+                "description": "Retrieves all values for a specific label, optionally filtered by metric matches and node ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get label values for a specific label",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Label name",
+                        "name": "label",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "description": "Metric matches (e.g. {__name__=\\",
+                        "name": "match",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Label values",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}/range": {
+            "get": {
+                "description": "Retrieves metrics for a specific node within a specified time range",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get metrics for a specific node with time range",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PromQL query",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339 format)",
+                        "name": "start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339 format)",
+                        "name": "end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Step duration (e.g. 1m, 5m, 1h)",
+                        "name": "step",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Metrics data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/reload": {
+            "post": {
+                "description": "Triggers a reload of the Prometheus configuration to pick up any changes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Reload Prometheus configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/change-password": {
             "post": {
                 "security": [
@@ -7560,6 +7836,12 @@
                 "internalIp": {
                     "type": "string"
                 },
+                "metricsEnabled": {
+                    "type": "boolean"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
                 "networkId": {
                     "type": "integer"
                 },
@@ -7841,6 +8123,29 @@
                             "$ref": "#/definitions/notifications.ProviderType"
                         }
                     ]
+                }
+            }
+        },
+        "metrics.DeployPrometheusRequest": {
+            "type": "object",
+            "required": [
+                "deployment_mode",
+                "prometheus_port",
+                "prometheus_version",
+                "scrape_interval"
+            ],
+            "properties": {
+                "deployment_mode": {
+                    "type": "string"
+                },
+                "prometheus_port": {
+                    "type": "integer"
+                },
+                "prometheus_version": {
+                    "type": "string"
+                },
+                "scrape_interval": {
+                    "type": "integer"
                 }
             }
         },
@@ -8301,14 +8606,7 @@
         "response.ErrorResponse": {
             "type": "object",
             "properties": {
-                "details": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "message": {
-                    "type": "string"
-                },
-                "type": {
+                "error": {
                     "type": "string"
                 }
             }
@@ -8317,11 +8615,8 @@
             "type": "object",
             "properties": {
                 "data": {},
-                "error": {
-                    "$ref": "#/definitions/response.ErrorResponse"
-                },
-                "success": {
-                    "type": "boolean"
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -8752,6 +9047,15 @@
                 },
                 "keyId": {
                     "type": "integer"
+                },
+                "metricsEnabled": {
+                    "type": "boolean"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
+                    "type": "string"
                 },
                 "mode": {
                     "description": "@Description The deployment mode (service or docker)",

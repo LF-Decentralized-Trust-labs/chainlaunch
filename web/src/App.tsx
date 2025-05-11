@@ -53,6 +53,7 @@ import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
 import NewPluginPage from './pages/plugins/new'
 import UsersPage from './pages/users'
+import AccountPage from './pages/account'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -82,6 +83,7 @@ const App = () => {
 												<Routes>
 													<Route path="/">
 														<Route path="/" element={<Navigate to="/nodes" replace />} />
+														<Route path="account" element={<AccountPage />} />
 														<Route path="nodes" element={<NodesPage />} />
 														<Route path="smart-contracts" element={<SmartContractsPage />} />
 														<Route path="monitoring" element={<MonitoringPage />} />

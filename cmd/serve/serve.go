@@ -31,6 +31,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 
+	"github.com/chainlaunch/chainlaunch/pkg/metrics"
 	networkshttp "github.com/chainlaunch/chainlaunch/pkg/networks/http"
 	networksservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
 	nodeshttp "github.com/chainlaunch/chainlaunch/pkg/nodes/http"
@@ -290,7 +291,15 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	}
 	settingsHandler := settingshttp.NewHandler(settingsService, logger)
 
+	// Initialize metrics service
+	metricsConfig := metrics.DefaultConfig()
 	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService, settingsService)
+	metricsService, err := metrics.NewService(metricsConfig, queries, nodesService)
+	if err != nil {
+		log.Fatal("Failed to initialize metrics service:", err)
+	}
+	metricsHandler := metrics.NewHandler(metricsService, logger)
+
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)
 	notificationService := notificationservice.NewNotificationService(queries, logger)
 	backupService := backupservice.NewBackupService(queries, logger, notificationService, dbPath, configService)
@@ -471,6 +480,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			settingsHandler.RegisterRoutes(r)
 			// Mount plugin routes
 			pluginHandler.RegisterRoutes(r)
+			// Mount metrics routes
+			metricsHandler.RegisterRoutes(r)
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(

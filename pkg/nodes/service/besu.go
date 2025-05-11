@@ -122,20 +122,23 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 
 	localBesu := besu.NewLocalBesu(
 		besu.StartBesuOpts{
-			ID:             dbNode.Slug,
-			GenesisFile:    network.GenesisBlockB64.String,
-			NetworkID:      deployConfig.NetworkID,
-			P2PPort:        fmt.Sprintf("%d", deployConfig.P2PPort),
-			RPCPort:        fmt.Sprintf("%d", deployConfig.RPCPort),
-			ListenAddress:  deployConfig.P2PHost,
-			MinerAddress:   key.EthereumAddress,
-			ConsensusType:  "qbft", // TODO: get consensus type from network
-			BootNodes:      config.BootNodes,
-			Version:        "25.4.1", // TODO: get version from network
-			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
-			Env:            config.Env,
-			P2PHost:        config.P2PHost,
-			RPCHost:        config.RPCHost,
+			ID:              dbNode.Slug,
+			GenesisFile:     network.GenesisBlockB64.String,
+			NetworkID:       deployConfig.NetworkID,
+			P2PPort:         fmt.Sprintf("%d", deployConfig.P2PPort),
+			RPCPort:         fmt.Sprintf("%d", deployConfig.RPCPort),
+			ListenAddress:   deployConfig.P2PHost,
+			MinerAddress:    key.EthereumAddress,
+			ConsensusType:   "qbft", // TODO: get consensus type from network
+			BootNodes:       config.BootNodes,
+			Version:         "25.4.1", // TODO: get version from network
+			NodePrivateKey:  strings.TrimPrefix(privateKeyDecrypted, "0x"),
+			Env:             config.Env,
+			P2PHost:         config.P2PHost,
+			RPCHost:         config.RPCHost,
+			MetricsEnabled:  config.MetricsEnabled,
+			MetricsPort:     config.MetricsPort,
+			MetricsProtocol: config.MetricsProtocol,
 		},
 		string(config.Mode),
 		dbNode.ID,
@@ -228,21 +231,24 @@ func (s *NodeService) startBesuNode(ctx context.Context, dbNode *db.Node) error 
 	// Create LocalBesu instance
 	localBesu := besu.NewLocalBesu(
 		besu.StartBesuOpts{
-			ID:             dbNode.Slug,
-			GenesisFile:    network.GenesisBlockB64.String,
-			NetworkID:      besuDeployConfig.NetworkID,
-			ChainID:        networkConfig.ChainID,
-			P2PPort:        fmt.Sprintf("%d", besuDeployConfig.P2PPort),
-			RPCPort:        fmt.Sprintf("%d", besuDeployConfig.RPCPort),
-			ListenAddress:  besuDeployConfig.P2PHost,
-			MinerAddress:   key.EthereumAddress,
-			ConsensusType:  "qbft", // TODO: get consensus type from network
-			BootNodes:      besuNodeConfig.BootNodes,
-			Version:        "25.4.1", // TODO: get version from network
-			NodePrivateKey: strings.TrimPrefix(privateKeyDecrypted, "0x"),
-			Env:            besuNodeConfig.Env,
-			P2PHost:        besuNodeConfig.P2PHost,
-			RPCHost:        besuNodeConfig.RPCHost,
+			ID:              dbNode.Slug,
+			GenesisFile:     network.GenesisBlockB64.String,
+			NetworkID:       besuDeployConfig.NetworkID,
+			ChainID:         networkConfig.ChainID,
+			P2PPort:         fmt.Sprintf("%d", besuDeployConfig.P2PPort),
+			RPCPort:         fmt.Sprintf("%d", besuDeployConfig.RPCPort),
+			ListenAddress:   besuDeployConfig.P2PHost,
+			MinerAddress:    key.EthereumAddress,
+			ConsensusType:   "qbft", // TODO: get consensus type from network
+			BootNodes:       besuNodeConfig.BootNodes,
+			Version:         "25.4.1", // TODO: get version from network
+			NodePrivateKey:  strings.TrimPrefix(privateKeyDecrypted, "0x"),
+			Env:             besuNodeConfig.Env,
+			P2PHost:         besuNodeConfig.P2PHost,
+			RPCHost:         besuNodeConfig.RPCHost,
+			MetricsEnabled:  besuDeployConfig.MetricsEnabled,
+			MetricsPort:     besuDeployConfig.MetricsPort,
+			MetricsProtocol: "PROMETHEUS",
 		},
 		string(besuNodeConfig.Mode),
 		dbNode.ID,
@@ -278,6 +284,9 @@ type UpdateBesuNodeRequest struct {
 	ExternalIP string            `json:"externalIp,omitempty"`
 	InternalIP string            `json:"internalIp,omitempty"`
 	Env        map[string]string `json:"env,omitempty"`
+	// Metrics configuration
+	MetricsEnabled bool  `json:"metricsEnabled"`
+	MetricsPort    int64 `json:"metricsPort"`
 }
 
 // UpdateBesuNode updates an existing Besu node configuration
@@ -344,6 +353,12 @@ func (s *NodeService) UpdateBesuNode(ctx context.Context, nodeID int64, req Upda
 		besuConfig.InternalIP = req.InternalIP
 		deployBesuConfig.InternalIP = req.InternalIP
 	}
+
+	// Update metrics configuration
+	besuConfig.MetricsEnabled = req.MetricsEnabled
+	besuConfig.MetricsPort = req.MetricsPort
+	deployBesuConfig.MetricsEnabled = req.MetricsEnabled
+	deployBesuConfig.MetricsPort = req.MetricsPort
 
 	// Update environment variables
 	if req.Env != nil {
@@ -565,15 +580,17 @@ func (s *NodeService) initializeBesuNode(ctx context.Context, dbNode *db.Node, c
 			Type: "besu",
 			Mode: string(config.Mode),
 		},
-		KeyID:      config.KeyID,
-		P2PPort:    config.P2PPort,
-		RPCPort:    config.RPCPort,
-		NetworkID:  config.NetworkID,
-		ExternalIP: config.ExternalIP,
-		P2PHost:    config.P2PHost,
-		RPCHost:    config.RPCHost,
-		InternalIP: config.InternalIP,
-		EnodeURL:   enodeURL,
+		KeyID:          config.KeyID,
+		P2PPort:        config.P2PPort,
+		RPCPort:        config.RPCPort,
+		NetworkID:      config.NetworkID,
+		ExternalIP:     config.ExternalIP,
+		P2PHost:        config.P2PHost,
+		RPCHost:        config.RPCHost,
+		InternalIP:     config.InternalIP,
+		EnodeURL:       enodeURL,
+		MetricsEnabled: config.MetricsEnabled,
+		MetricsPort:    config.MetricsPort,
 	}
 
 	// Update node endpoint

@@ -1022,3 +1022,41 @@ WHERE session_id = ?;
 -- name: GetSessionByToken :one
 SELECT * FROM sessions
 WHERE token = ?;
+
+-- name: GetPrometheusConfig :one
+SELECT * FROM prometheus_config
+WHERE id = 1;
+
+-- name: UpdatePrometheusConfig :one
+UPDATE prometheus_config
+SET prometheus_port = ?,
+    data_dir = ?,
+    config_dir = ?,
+    container_name = ?,
+    scrape_interval = ?,
+    evaluation_interval = ?,
+    deployment_mode = ?,
+    docker_image = ?,
+    docker_network = ?,
+    docker_restart_policy = ?,
+    docker_extra_args = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 1
+RETURNING *;
+
+-- name: ResetPrometheusConfig :one
+UPDATE prometheus_config
+SET prometheus_port = 9090,
+    data_dir = '/var/lib/prometheus',
+    config_dir = '/etc/prometheus',
+    container_name = 'chainlaunch-prometheus',
+    scrape_interval = 15,
+    evaluation_interval = 15,
+    deployment_mode = 'docker',
+    docker_image = 'prom/prometheus:latest',
+    docker_network = 'chainlaunch-network',
+    docker_restart_policy = 'unless-stopped',
+    docker_extra_args = '--web.enable-lifecycle --web.enable-admin-api',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 1
+RETURNING *;

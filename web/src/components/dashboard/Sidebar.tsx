@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
-import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, FileText, Globe, Key, LogOut, Network, Puzzle, Server, Settings, Share2 } from 'lucide-react'
+import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, FileText, Globe, Key, LogOut, Network, Puzzle, Server, Settings, Share2, User } from 'lucide-react'
 ;('use client')
 
 // import { Project } from '@/api/client'
@@ -276,6 +276,12 @@ function NavUser() {
 								</div>
 							</DropdownMenuLabel>
 							<DropdownMenuSeparator />
+							<DropdownMenuItem asChild>
+								<Link to="/account">
+									<User className="mr-2 h-4 w-4" />
+									Account
+								</Link>
+							</DropdownMenuItem>
 							<DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => setLoggedOutOpen(true)}>
 								<LogOut className="mr-2 h-4 w-4" />
 								Log out

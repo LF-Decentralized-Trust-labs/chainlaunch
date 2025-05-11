@@ -400,7 +400,7 @@ WHERE id = ? LIMIT 1;
 -- name: ListNodeEvents :many
 SELECT * FROM node_events
 WHERE node_id = ?
-ORDER BY created_at DESC
+ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
 -- name: CountNodeEvents :one

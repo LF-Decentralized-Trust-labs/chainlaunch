@@ -3664,7 +3664,7 @@ func (q *Queries) ListNetworks(ctx context.Context) ([]*Network, error) {
 const ListNodeEvents = `-- name: ListNodeEvents :many
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE node_id = ?
-ORDER BY created_at DESC
+ORDER BY id DESC
 LIMIT ? OFFSET ?
 `
 

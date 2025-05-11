@@ -485,34 +485,44 @@ export default function NodeDetailPage() {
 							<CardDescription>Recent node operations and their status</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<div className="space-y-8">
-								{events?.items?.map((event) => {
-									const EventIcon = getEventIcon(event.type!)
-									const StatusIcon = getEventStatusIcon(event.type!)
-									return (
-										<div key={event.id} className="flex gap-4">
-											<div className="mt-1">
-												<EventIcon className="h-5 w-5 text-muted-foreground" />
-											</div>
-											<div className="flex-1 space-y-1">
-												<div className="flex items-center justify-between">
-													<div className="flex items-center gap-2">
-														<span className="font-medium">{event.type}</span>
-														<StatusIcon className={cn('h-4 w-4', getEventStatusColor(event.type!))} />
-														<span className="text-sm text-muted-foreground">{event.type}</span>
-													</div>
-													<time className="text-sm text-muted-foreground">{format(new Date(event.created_at!), 'PPp')}</time>
+							{!events?.items?.length ? (
+								<div className="flex flex-col items-center justify-center py-8 text-center">
+									<Clock className="h-12 w-12 text-muted-foreground mb-4" />
+									<h3 className="text-lg font-medium mb-2">No Events Found</h3>
+									<p className="text-sm text-muted-foreground max-w-md">
+										There are no events recorded for this node yet. Events will appear here when you perform operations like start, stop, or restart.
+									</p>
+								</div>
+							) : (
+								<div className="space-y-8">
+									{events.items.map((event) => {
+										const EventIcon = getEventIcon(event.type!)
+										const StatusIcon = getEventStatusIcon(event.type!)
+										return (
+											<div key={event.id} className="flex gap-4">
+												<div className="mt-1">
+													<EventIcon className="h-5 w-5 text-muted-foreground" />
 												</div>
-												{event.data && typeof event.data === 'object' ? (
-													<div className="rounded-md bg-muted p-2 text-sm">
-														<pre className="whitespace-pre-wrap font-mono text-xs">{JSON.stringify(event.data, null, 2)}</pre>
+												<div className="flex-1 space-y-1">
+													<div className="flex items-center justify-between">
+														<div className="flex items-center gap-2">
+															<span className="font-medium">{event.type}</span>
+															<StatusIcon className={cn('h-4 w-4', getEventStatusColor(event.type!))} />
+															<span className="text-sm text-muted-foreground">{event.type}</span>
+														</div>
+														<time className="text-sm text-muted-foreground">{format(new Date(event.created_at!), 'PPp')}</time>
 													</div>
-												) : null}
+													{event.data && typeof event.data === 'object' ? (
+														<div className="rounded-md bg-muted p-2 text-sm">
+															<pre className="whitespace-pre-wrap font-mono text-xs">{JSON.stringify(event.data, null, 2)}</pre>
+														</div>
+													) : null}
+												</div>
 											</div>
-										</div>
-									)
-								})}
-							</div>
+										)
+									})}
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				</TabsContent>

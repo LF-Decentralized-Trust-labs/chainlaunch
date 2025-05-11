@@ -148,7 +148,7 @@ func (s *NodeService) generateSlug(name string) string {
 	reg = regexp.MustCompile("-+")
 	slug = reg.ReplaceAllString(slug, "-")
 
-	// Trim hyphens from start and end‰
+	// Trim hyphens from start and end
 	slug = strings.Trim(slug, "-")
 
 	return slug
@@ -718,6 +718,14 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 		return nil, fmt.Errorf("failed to update node status: %w", err)
 	}
 
+	// Create stopping event
+	if err := s.eventService.CreateEvent(ctx, id, NodeEventStopping, map[string]interface{}{
+		"node_id": id,
+		"name":    node.Name,
+	}); err != nil {
+		s.logger.Error("Failed to create stopping event", "error", err)
+	}
+
 	var stopErr error
 	switch types.NodeType(node.NodeType.String) {
 	case types.NodeTypeFabricPeer:
@@ -736,6 +744,14 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to stop node: %v", stopErr)); err != nil {
 			s.logger.Error("Failed to update node status after stop error", "error", err)
 		}
+		// Create error event
+		if err := s.eventService.CreateEvent(ctx, id, NodeEventError, map[string]interface{}{
+			"node_id": id,
+			"name":    node.Name,
+			"error":   stopErr.Error(),
+		}); err != nil {
+			s.logger.Error("Failed to create error event", "error", err)
+		}
 		return nil, fmt.Errorf("failed to stop node: %w", stopErr)
 	}
 
@@ -743,8 +759,16 @@ func (s *NodeService) StopNode(ctx context.Context, id int64) (*NodeResponse, er
 	if err := s.updateNodeStatus(ctx, id, types.NodeStatusStopped); err != nil {
 		return nil, fmt.Errorf("failed to update node status: %w", err)
 	}
-	_, nodeResponse := s.mapDBNodeToServiceNode(node)
 
+	// Create stopped event
+	if err := s.eventService.CreateEvent(ctx, id, NodeEventStopped, map[string]interface{}{
+		"node_id": id,
+		"name":    node.Name,
+	}); err != nil {
+		s.logger.Error("Failed to create stopped event", "error", err)
+	}
+
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
 	return nodeResponse, nil
 }
 
@@ -753,6 +777,14 @@ func (s *NodeService) startNode(ctx context.Context, dbNode *db.Node) error {
 	// Update status to starting
 	if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusStarting); err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Create starting event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventStarting, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+	}); err != nil {
+		s.logger.Error("Failed to create starting event", "error", err)
 	}
 
 	var startErr error
@@ -773,12 +805,28 @@ func (s *NodeService) startNode(ctx context.Context, dbNode *db.Node) error {
 		if err := s.updateNodeStatusWithError(ctx, dbNode.ID, types.NodeStatusError, fmt.Sprintf("Failed to start node: %v", startErr)); err != nil {
 			s.logger.Error("Failed to update node status after start error", "error", err)
 		}
+		// Create error event
+		if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventError, map[string]interface{}{
+			"node_id": dbNode.ID,
+			"name":    dbNode.Name,
+			"error":   startErr.Error(),
+		}); err != nil {
+			s.logger.Error("Failed to create error event", "error", err)
+		}
 		return fmt.Errorf("failed to start node: %w", startErr)
 	}
 
 	// Update status to running if start succeeded
 	if err := s.updateNodeStatus(ctx, dbNode.ID, types.NodeStatusRunning); err != nil {
 		return fmt.Errorf("failed to update node status: %w", err)
+	}
+
+	// Create started event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventStarted, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+	}); err != nil {
+		s.logger.Error("Failed to create started event", "error", err)
 	}
 
 	return nil
@@ -1167,6 +1215,15 @@ func (s *NodeService) RenewCertificates(ctx context.Context, id int64) (*NodeRes
 		if err := s.updateNodeStatusWithError(ctx, id, types.NodeStatusError, fmt.Sprintf("Failed to renew certificates: %v", renewErr)); err != nil {
 			s.logger.Error("Failed to update node status after renewal error", "error", err)
 		}
+		// Create error event
+		if err := s.eventService.CreateEvent(ctx, id, NodeEventError, map[string]interface{}{
+			"node_id": id,
+			"name":    node.Name,
+			"action":  "certificate_renewal",
+			"error":   renewErr.Error(),
+		}); err != nil {
+			s.logger.Error("Failed to create error event", "error", err)
+		}
 		return nil, fmt.Errorf("failed to renew certificates: %w", renewErr)
 	}
 
@@ -1192,6 +1249,15 @@ func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, r
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 
+	// Create environment update event
+	if err := s.eventService.CreateEvent(ctx, nodeID, NodeEventStarting, map[string]interface{}{
+		"node_id": nodeID,
+		"name":    dbNode.Name,
+		"action":  "environment_update",
+	}); err != nil {
+		s.logger.Error("Failed to create environment update event", "error", err)
+	}
+
 	// Get the node's current configuration
 	switch dbNode.NodeType.String {
 	case string(types.NodeTypeFabricPeer):
@@ -1208,6 +1274,15 @@ func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, r
 			ID:         nodeID,
 			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
 		}); err != nil {
+			// Create error event
+			if err := s.eventService.CreateEvent(ctx, nodeID, NodeEventError, map[string]interface{}{
+				"node_id": nodeID,
+				"name":    dbNode.Name,
+				"action":  "environment_update",
+				"error":   err.Error(),
+			}); err != nil {
+				s.logger.Error("Failed to create error event", "error", err)
+			}
 			return nil, fmt.Errorf("failed to update node config: %w", err)
 		}
 
@@ -1225,11 +1300,29 @@ func (s *NodeService) UpdateNodeEnvironment(ctx context.Context, nodeID int64, r
 			ID:         nodeID,
 			NodeConfig: sql.NullString{String: string(newConfig), Valid: true},
 		}); err != nil {
+			// Create error event
+			if err := s.eventService.CreateEvent(ctx, nodeID, NodeEventError, map[string]interface{}{
+				"node_id": nodeID,
+				"name":    dbNode.Name,
+				"action":  "environment_update",
+				"error":   err.Error(),
+			}); err != nil {
+				s.logger.Error("Failed to create error event", "error", err)
+			}
 			return nil, fmt.Errorf("failed to update node config: %w", err)
 		}
 
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", dbNode.NodeType.String)
+	}
+
+	// Create environment update completed event
+	if err := s.eventService.CreateEvent(ctx, nodeID, NodeEventStarted, map[string]interface{}{
+		"node_id": nodeID,
+		"name":    dbNode.Name,
+		"action":  "environment_update",
+	}); err != nil {
+		s.logger.Error("Failed to create environment update completed event", "error", err)
 	}
 
 	// Return the updated environment variables and indicate that a restart is required

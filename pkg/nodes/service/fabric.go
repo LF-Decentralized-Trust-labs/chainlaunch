@@ -908,6 +908,16 @@ func (s *NodeService) getPeerFromConfig(dbNode *db.Node, org *fabricservice.Orga
 
 // renewPeerCertificates handles certificate renewal for a Fabric peer
 func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	// Create certificate renewal starting event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventRenewingCertificates, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+		"action":  "renewing_certificates",
+		"type":    "peer",
+	}); err != nil {
+		s.logger.Error("Failed to create certificate renewal starting event", "error", err)
+	}
+
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to load node config: %w", err)
@@ -934,11 +944,31 @@ func (s *NodeService) renewPeerCertificates(ctx context.Context, dbNode *db.Node
 		return fmt.Errorf("failed to renew peer certificates: %w", err)
 	}
 
+	// Create certificate renewal completed event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventRenewedCertificates, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+		"action":  "renewing_certificates",
+		"type":    "peer",
+	}); err != nil {
+		s.logger.Error("Failed to create certificate renewal completed event", "error", err)
+	}
+
 	return nil
 }
 
 // renewOrdererCertificates handles certificate renewal for a Fabric orderer
 func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode *db.Node, deploymentConfig types.NodeDeploymentConfig) error {
+	// Create certificate renewal starting event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventRenewingCertificates, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+		"action":  "renewing_certificates",
+		"type":    "orderer",
+	}); err != nil {
+		s.logger.Error("Failed to create certificate renewal starting event", "error", err)
+	}
+
 	nodeConfig, err := utils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
 	if err != nil {
 		return fmt.Errorf("failed to load node config: %w", err)
@@ -963,6 +993,16 @@ func (s *NodeService) renewOrdererCertificates(ctx context.Context, dbNode *db.N
 	err = localOrderer.RenewCertificates(ordererDeployConfig)
 	if err != nil {
 		return fmt.Errorf("failed to renew orderer certificates: %w", err)
+	}
+
+	// Create certificate renewal completed event
+	if err := s.eventService.CreateEvent(ctx, dbNode.ID, NodeEventRenewedCertificates, map[string]interface{}{
+		"node_id": dbNode.ID,
+		"name":    dbNode.Name,
+		"action":  "renewing_certificates",
+		"type":    "orderer",
+	}); err != nil {
+		s.logger.Error("Failed to create certificate renewal completed event", "error", err)
 	}
 
 	return nil

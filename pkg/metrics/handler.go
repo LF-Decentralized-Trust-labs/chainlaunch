@@ -39,6 +39,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/reload", h.ReloadConfiguration)
 		r.Get("/node/{id}/label/{label}/values", h.GetLabelValues)
 		r.Get("/node/{id}/range", h.GetNodeMetricsRange)
+		r.Post("/node/{id}/query", h.CustomQuery)
 	})
 }
 
@@ -288,4 +289,78 @@ func (h *Handler) GetNodeMetricsRange(w http.ResponseWriter, r *http.Request) {
 		"status": "success",
 		"data":   metrics,
 	})
+}
+
+// CustomQueryRequest represents the request body for custom Prometheus queries
+type CustomQueryRequest struct {
+	Query string     `json:"query" binding:"required"`
+	Start *time.Time `json:"start,omitempty"`
+	End   *time.Time `json:"end,omitempty"`
+	Step  *string    `json:"step,omitempty"`
+}
+
+// CustomQuery executes a custom Prometheus query
+// @Summary Execute custom Prometheus query
+// @Description Execute a custom Prometheus query with optional time range
+// @Tags metrics
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID"
+// @Param request body CustomQueryRequest true "Query parameters"
+// @Success 200 {object} QueryResult
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/metrics/node/{id}/query [post]
+func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
+	nodeID := chi.URLParam(r, "id")
+	if nodeID == "" {
+		http.Error(w, "Node ID is required", http.StatusBadRequest)
+		return
+	}
+	nodeIDInt, err := strconv.ParseInt(nodeID, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid node ID", http.StatusBadRequest)
+		return
+	}
+
+	var req CustomQueryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// If time range parameters are provided, use QueryRange
+	if req.Start != nil && req.End != nil {
+		step := 1 * time.Minute // Default step
+		if req.Step != nil {
+			var err error
+			step, err = time.ParseDuration(*req.Step)
+			if err != nil {
+				http.Error(w, "Invalid step duration: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		result, err := h.service.QueryRange(r.Context(), nodeIDInt, req.Query, *req.Start, *req.End, step)
+		if err != nil {
+			h.logger.Error("Failed to execute range query", "error", err)
+			http.Error(w, "Failed to execute range query: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Otherwise use regular Query
+	result, err := h.service.Query(r.Context(), nodeIDInt, req.Query)
+	if err != nil {
+		h.logger.Error("Failed to execute query", "error", err)
+		http.Error(w, "Failed to execute query: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
 }

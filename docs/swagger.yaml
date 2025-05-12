@@ -1486,6 +1486,19 @@ definitions:
     - name
     - type
     type: object
+  metrics.CustomQueryRequest:
+    properties:
+      end:
+        type: string
+      query:
+        type: string
+      start:
+        type: string
+      step:
+        type: string
+    required:
+    - query
+    type: object
   metrics.DeployPrometheusRequest:
     properties:
       deployment_mode:
@@ -1501,6 +1514,35 @@ definitions:
     - prometheus_port
     - prometheus_version
     - scrape_interval
+    type: object
+  metrics.QueryResult:
+    properties:
+      data:
+        properties:
+          result:
+            items:
+              properties:
+                metric:
+                  additionalProperties:
+                    type: string
+                  type: object
+                value:
+                  description: For instant queries
+                  items: {}
+                  type: array
+                values:
+                  description: For range queries (matrix)
+                  items:
+                    items: {}
+                    type: array
+                  type: array
+              type: object
+            type: array
+          resultType:
+            type: string
+        type: object
+      status:
+        type: string
     type: object
   models.CertificateRequest:
     properties:
@@ -2600,6 +2642,45 @@ paths:
             additionalProperties: true
             type: object
       summary: Get label values for a specific label
+      tags:
+      - metrics
+  /api/v1/metrics/node/{id}/query:
+    post:
+      consumes:
+      - application/json
+      description: Execute a custom Prometheus query with optional time range
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Query parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/metrics.CustomQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/metrics.QueryResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Execute custom Prometheus query
       tags:
       - metrics
   /api/v1/metrics/node/{id}/range:

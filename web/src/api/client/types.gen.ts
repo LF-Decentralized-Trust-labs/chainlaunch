@@ -769,6 +769,8 @@ export type HttpUpdateBesuNodeRequest = {
     };
     externalIp?: string;
     internalIp?: string;
+    metricsEnabled?: boolean;
+    metricsPort?: number;
     networkId: number;
     p2pHost: string;
     p2pPort: number;
@@ -862,6 +864,13 @@ export type HttpUpdateProviderRequest = {
     type: 'SMTP';
 };
 
+export type MetricsCustomQueryRequest = {
+    end?: string;
+    query: string;
+    start?: string;
+    step?: string;
+};
+
 export type MetricsDeployPrometheusRequest = {
     deployment_mode: string;
     prometheus_port: number;
@@ -869,12 +878,24 @@ export type MetricsDeployPrometheusRequest = {
     scrape_interval: number;
 };
 
-export type MetricsRefreshNodesRequest = {
-    nodes: Array<{
-        address: string;
-        id: string;
-        port: number;
-    }>;
+export type MetricsQueryResult = {
+    data?: {
+        result?: Array<{
+            metric?: {
+                [key: string]: string;
+            };
+            /**
+             * For instant queries
+             */
+            value?: Array<unknown>;
+            /**
+             * For range queries (matrix)
+             */
+            values?: Array<Array<unknown>>;
+        }>;
+        resultType?: string;
+    };
+    status?: string;
 };
 
 export type ModelsCertificateRequest = {
@@ -1192,6 +1213,9 @@ export type TypesBesuNodeConfig = {
     externalIp: string;
     internalIp: string;
     keyId: number;
+    metricsEnabled?: boolean;
+    metricsPort?: number;
+    metricsProtocol?: string;
     /**
      * @Description The deployment mode (service or docker)
      */
@@ -1465,7 +1489,12 @@ export type GetApiV1MetricsNodeByIdData = {
          */
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * PromQL query to filter metrics
+         */
+        query?: string;
+    };
     url: '/api/v1/metrics/node/{id}';
 };
 
@@ -1497,17 +1526,71 @@ export type GetApiV1MetricsNodeByIdResponses = {
 
 export type GetApiV1MetricsNodeByIdResponse = GetApiV1MetricsNodeByIdResponses[keyof GetApiV1MetricsNodeByIdResponses];
 
-export type PostApiV1MetricsRefreshData = {
-    /**
-     * List of nodes to scrape
-     */
-    body: MetricsRefreshNodesRequest;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/refresh';
+export type GetApiV1MetricsNodeByIdLabelByLabelValuesData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+        /**
+         * Label name
+         */
+        label: string;
+    };
+    query?: {
+        /**
+         * Metric matches (e.g. {__name__=\
+         */
+        match?: Array<unknown>;
+    };
+    url: '/api/v1/metrics/node/{id}/label/{label}/values';
 };
 
-export type PostApiV1MetricsRefreshErrors = {
+export type GetApiV1MetricsNodeByIdLabelByLabelValuesErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1MetricsNodeByIdLabelByLabelValuesError = GetApiV1MetricsNodeByIdLabelByLabelValuesErrors[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesErrors];
+
+export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponses = {
+    /**
+     * Label values
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponse = GetApiV1MetricsNodeByIdLabelByLabelValuesResponses[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesResponses];
+
+export type PostApiV1MetricsNodeByIdQueryData = {
+    /**
+     * Query parameters
+     */
+    body: MetricsCustomQueryRequest;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/metrics/node/{id}/query';
+};
+
+export type PostApiV1MetricsNodeByIdQueryErrors = {
     /**
      * Bad Request
      */
@@ -1522,18 +1605,73 @@ export type PostApiV1MetricsRefreshErrors = {
     };
 };
 
-export type PostApiV1MetricsRefreshError = PostApiV1MetricsRefreshErrors[keyof PostApiV1MetricsRefreshErrors];
+export type PostApiV1MetricsNodeByIdQueryError = PostApiV1MetricsNodeByIdQueryErrors[keyof PostApiV1MetricsNodeByIdQueryErrors];
 
-export type PostApiV1MetricsRefreshResponses = {
+export type PostApiV1MetricsNodeByIdQueryResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: string;
+    200: MetricsQueryResult;
+};
+
+export type PostApiV1MetricsNodeByIdQueryResponse = PostApiV1MetricsNodeByIdQueryResponses[keyof PostApiV1MetricsNodeByIdQueryResponses];
+
+export type GetApiV1MetricsNodeByIdRangeData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * PromQL query
+         */
+        query: string;
+        /**
+         * Start time (RFC3339 format)
+         */
+        start: string;
+        /**
+         * End time (RFC3339 format)
+         */
+        end: string;
+        /**
+         * Step duration (e.g. 1m, 5m, 1h)
+         */
+        step: string;
+    };
+    url: '/api/v1/metrics/node/{id}/range';
+};
+
+export type GetApiV1MetricsNodeByIdRangeErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
     };
 };
 
-export type PostApiV1MetricsRefreshResponse = PostApiV1MetricsRefreshResponses[keyof PostApiV1MetricsRefreshResponses];
+export type GetApiV1MetricsNodeByIdRangeError = GetApiV1MetricsNodeByIdRangeErrors[keyof GetApiV1MetricsNodeByIdRangeErrors];
+
+export type GetApiV1MetricsNodeByIdRangeResponses = {
+    /**
+     * Metrics data
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1MetricsNodeByIdRangeResponse = GetApiV1MetricsNodeByIdRangeResponses[keyof GetApiV1MetricsNodeByIdRangeResponses];
 
 export type PostApiV1MetricsReloadData = {
     body?: never;

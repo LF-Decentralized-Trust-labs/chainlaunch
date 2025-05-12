@@ -29,6 +29,12 @@ type Service interface {
 
 	// Reload reloads the Prometheus configuration
 	Reload(ctx context.Context) error
+
+	// Query executes a PromQL query for a specific node
+	Query(ctx context.Context, nodeID int64, query string) (*QueryResult, error)
+
+	// QueryRange executes a PromQL query with a time range for a specific node
+	QueryRange(ctx context.Context, nodeID int64, query string, start, end time.Time, step time.Duration) (*QueryResult, error)
 }
 
 // service implements the Service interface
@@ -140,4 +146,36 @@ func (s *service) GetLabelValues(ctx context.Context, nodeID int64, labelName st
 // Reload reloads the Prometheus configuration
 func (s *service) Reload(ctx context.Context) error {
 	return s.manager.Reload(ctx)
+}
+
+// Query executes a PromQL query for a specific node
+func (s *service) Query(ctx context.Context, nodeID int64, query string) (*QueryResult, error) {
+	node, err := s.nodeService.GetNodeByID(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+	jobName := slugify(fmt.Sprintf("%d-%s", node.ID, node.Name))
+
+	// Add job filter to query if not already present
+	if !strings.Contains(query, "job=") {
+		query = fmt.Sprintf(`%s{job="%s"}`, query, jobName)
+	}
+
+	return s.manager.Query(ctx, query)
+}
+
+// QueryRange executes a PromQL query with a time range for a specific node
+func (s *service) QueryRange(ctx context.Context, nodeID int64, query string, start, end time.Time, step time.Duration) (*QueryResult, error) {
+	node, err := s.nodeService.GetNodeByID(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+	jobName := slugify(fmt.Sprintf("%d-%s", node.ID, node.Name))
+
+	// Add job filter to query if not already present
+	if strings.Contains(query, "{jobName") {
+		query = strings.Replace(query, "{jobName}", jobName, 1)
+	}
+
+	return s.manager.QueryRange(ctx, query, start, end, step)
 }

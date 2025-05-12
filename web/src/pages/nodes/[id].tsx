@@ -28,6 +28,9 @@ import { AlertCircle, CheckCircle2, ChevronDown, Clock, KeyRound, Pencil, Play, 
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import BesuMetricsPage from '../metrics/besu/[nodeId]'
+import OrdererMetricsPage from '../metrics/orderer/[nodeId]'
+import PeerMetricsPage from '../metrics/peer/[nodeId]'
 
 interface DeploymentConfig {
 	type?: string
@@ -138,6 +141,7 @@ export default function NodeDetailPage() {
 	const logsRef = useRef<HTMLTextAreaElement>(null)
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const [showRenewCertDialog, setShowRenewCertDialog] = useState(false)
+	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
 
 	// Get the active tab from URL or default to 'logs'
 	const activeTab = searchParams.get('tab') || 'logs'
@@ -430,6 +434,7 @@ export default function NodeDetailPage() {
 			<Tabs defaultValue={activeTab} className="space-y-4" onValueChange={handleTabChange}>
 				<TabsList>
 					<TabsTrigger value="logs">Logs</TabsTrigger>
+					<TabsTrigger value="metrics">Metrics</TabsTrigger>
 					<TabsTrigger value="crypto">Crypto Material</TabsTrigger>
 					<TabsTrigger value="events">Events</TabsTrigger>
 					{isFabricNode(node) && <TabsTrigger value="channels">Channels</TabsTrigger>}
@@ -445,6 +450,12 @@ export default function NodeDetailPage() {
 							<LogViewer logs={logs} onScroll={() => {}} />
 						</CardContent>
 					</Card>
+				</TabsContent>
+
+				<TabsContent value="metrics" className="space-y-4">
+					{node.besuNode && <BesuMetricsPage nodeId={node.id!} />}
+					{node.fabricOrderer && <OrdererMetricsPage nodeId={node.id!} />}
+					{node.fabricPeer && <PeerMetricsPage node={node} />}
 				</TabsContent>
 
 				<TabsContent value="crypto" className="space-y-4">

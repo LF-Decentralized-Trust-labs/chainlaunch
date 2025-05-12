@@ -191,6 +191,65 @@
                 }
             }
         },
+        "/api/v1/metrics/node/{id}/query": {
+            "post": {
+                "description": "Execute a custom Prometheus query with optional time range",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Execute custom Prometheus query",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Query parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metrics.CustomQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/metrics.QueryResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/metrics/node/{id}/range": {
             "get": {
                 "description": "Retrieves metrics for a specific node within a specified time range",
@@ -8126,6 +8185,26 @@
                 }
             }
         },
+        "metrics.CustomQueryRequest": {
+            "type": "object",
+            "required": [
+                "query"
+            ],
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                },
+                "step": {
+                    "type": "string"
+                }
+            }
+        },
         "metrics.DeployPrometheusRequest": {
             "type": "object",
             "required": [
@@ -8146,6 +8225,49 @@
                 },
                 "scrape_interval": {
                     "type": "integer"
+                }
+            }
+        },
+        "metrics.QueryResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "metric": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "value": {
+                                        "description": "For instant queries",
+                                        "type": "array",
+                                        "items": {}
+                                    },
+                                    "values": {
+                                        "description": "For range queries (matrix)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "resultType": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

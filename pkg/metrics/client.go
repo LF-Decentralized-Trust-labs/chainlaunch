@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -104,7 +105,16 @@ func (c *Client) QueryRange(ctx context.Context, query string, start, end time.T
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		// Read the response body for error details
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("unexpected status code: %d (failed to read response body: %v)", resp.StatusCode, readErr)
+		}
+
+		// Reset the response body for potential further reads
+		resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result QueryResult

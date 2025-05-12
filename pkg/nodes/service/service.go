@@ -20,10 +20,7 @@ import (
 	fabricservice "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
 	keymanagement "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/chainlaunch/chainlaunch/pkg/nodes/events"
-	"github.com/chainlaunch/chainlaunch/pkg/nodes/eventtypes"
-	nodemetrics "github.com/chainlaunch/chainlaunch/pkg/nodes/nodemetrics"
-	"github.com/chainlaunch/chainlaunch/pkg/nodes/nodetypes"
+	metricscommon "github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
@@ -38,8 +35,7 @@ type NodeService struct {
 	eventService         *NodeEventService
 	configService        *config.ConfigService
 	settingsService      *settingsservice.SettingsService
-	metricsService       *nodemetrics.Service
-	eventBus             *events.EventBus
+	metricsService       metricscommon.Service
 }
 
 // CreateNodeRequest represents the service-layer request to create a node
@@ -61,8 +57,6 @@ func NewNodeService(
 	eventService *NodeEventService,
 	configService *config.ConfigService,
 	settingsService *settingsservice.SettingsService,
-	metricsService *nodemetrics.Service,
-	eventBus *events.EventBus,
 ) *NodeService {
 	return &NodeService{
 		db:                   db,
@@ -72,9 +66,11 @@ func NewNodeService(
 		eventService:         eventService,
 		configService:        configService,
 		settingsService:      settingsService,
-		metricsService:       metricsService,
-		eventBus:             eventBus,
 	}
+}
+
+func (s *NodeService) SetMetricsService(metricsService metricscommon.Service) {
+	s.metricsService = metricsService
 }
 
 func (s *NodeService) validateCreateNodeRequest(req CreateNodeRequest) error {
@@ -272,32 +268,42 @@ func (s *NodeService) CreateNode(ctx context.Context, req CreateNodeRequest) (*N
 		return nil, fmt.Errorf("failed to create node: %w", err)
 	}
 
+	// Initialize the node based on its type
+	deploymentConfig, err := s.initializeNode(ctx, node, req)
+	if err != nil {
+		// Update node status to failed if initialization fails
+		s.updateNodeStatusWithError(ctx, node.ID, types.NodeStatusError, fmt.Sprintf("Failed to initialize node: %v", err))
+		return nil, fmt.Errorf("failed to initialize node: %w", err)
+	}
+
+	// Store deployment config
+	deploymentConfigJSON, err := json.Marshal(deploymentConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal deployment config: %w", err)
+	}
+
+	// Update node with deployment config
+	node, err = s.db.UpdateNodeDeploymentConfig(ctx, &db.UpdateNodeDeploymentConfigParams{
+		ID:               node.ID,
+		DeploymentConfig: sql.NullString{String: string(deploymentConfigJSON), Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update node deployment config: %w", err)
+	}
+
+	// Start the node
+	if err := s.startNode(ctx, node); err != nil {
+		return nil, fmt.Errorf("failed to start node: %w", err)
+	}
+	node, err = s.db.GetNode(ctx, node.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
 	// Map database node to service node
-	serviceNode, nodeResponse := s.mapDBNodeToServiceNode(node)
+	_, nodeResponse := s.mapDBNodeToServiceNode(node)
 
 	// Publish node created event
-	if s.eventBus != nil {
-		metricsNode := &nodetypes.Node{
-			ID:                 serviceNode.ID,
-			Name:               serviceNode.Name,
-			BlockchainPlatform: serviceNode.BlockchainPlatform,
-			NodeType:           serviceNode.NodeType,
-			Status:             serviceNode.Status,
-			ErrorMessage:       serviceNode.ErrorMessage,
-			Endpoint:           serviceNode.Endpoint,
-			PublicEndpoint:     serviceNode.PublicEndpoint,
-			NodeConfig:         serviceNode.NodeConfig,
-			DeploymentConfig:   serviceNode.DeploymentConfig,
-			MSPID:              serviceNode.MSPID,
-			CreatedAt:          serviceNode.CreatedAt,
-			UpdatedAt:          serviceNode.UpdatedAt,
-		}
-		s.eventBus.Publish(eventtypes.Event{
-			Type:      eventtypes.EventTypeNodeCreated,
-			Node:      metricsNode,
-			Timestamp: time.Now(),
-		})
-	}
+	s.metricsService.Reload(ctx)
 
 	return nodeResponse, nil
 }
@@ -882,20 +888,7 @@ func (s *NodeService) DeleteNode(ctx context.Context, id int64) error {
 	}
 
 	// Publish node deleted event
-	if s.eventBus != nil {
-		s.eventBus.Publish(eventtypes.Event{
-			Type:      eventtypes.EventTypeNodeDeleted,
-			NodeID:    id,
-			Timestamp: time.Now(),
-		})
-	}
-
-	// Notify metrics service about the deleted node
-	if s.metricsService != nil {
-		if err := (*s.metricsService).OnNodeDeleted(ctx, id); err != nil {
-			s.logger.Error("failed to notify metrics service about deleted node", "error", err)
-		}
-	}
+	s.metricsService.Reload(ctx)
 
 	return nil
 }

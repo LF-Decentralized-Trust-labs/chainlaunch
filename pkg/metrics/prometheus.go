@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
+	"github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -19,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -51,14 +53,14 @@ type PrometheusDeployer interface {
 
 // DockerPrometheusDeployer implements PrometheusDeployer for Docker deployment
 type DockerPrometheusDeployer struct {
-	config      *Config
+	config      *common.Config
 	client      *client.Client
 	db          *db.Queries
 	nodeService *nodeservice.NodeService
 }
 
 // NewDockerPrometheusDeployer creates a new Docker-based Prometheus deployer
-func NewDockerPrometheusDeployer(config *Config, db *db.Queries, nodeService *nodeservice.NodeService) (*DockerPrometheusDeployer, error) {
+func NewDockerPrometheusDeployer(config *common.Config, db *db.Queries, nodeService *nodeservice.NodeService) (*DockerPrometheusDeployer, error) {
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -100,7 +102,9 @@ func (d *DockerPrometheusDeployer) Start(ctx context.Context) error {
 
 	// Pull Prometheus image
 	imageName := fmt.Sprintf("prom/prometheus:%s", d.config.PrometheusVersion)
-	_, err = d.client.ImagePull(ctx, imageName, image.PullOptions{})
+	_, err = d.client.ImagePull(ctx, imageName, image.PullOptions{
+		// All: true,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to pull Prometheus image: %w", err)
 	}
@@ -150,7 +154,7 @@ func (d *DockerPrometheusDeployer) Start(ctx context.Context) error {
 	}
 
 	// Create container
-	resp, err := d.client.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
+	resp, err := d.client.ContainerCreate(ctx, containerConfig, hostConfig, nil, &v1.Platform{}, containerName)
 	if err != nil {
 		return fmt.Errorf("failed to create container: %w", err)
 	}
@@ -386,7 +390,7 @@ type PrometheusManager struct {
 }
 
 // NewPrometheusManager creates a new PrometheusManager
-func NewPrometheusManager(config *Config, db *db.Queries, nodeService *nodeservice.NodeService) (*PrometheusManager, error) {
+func NewPrometheusManager(config *common.Config, db *db.Queries, nodeService *nodeservice.NodeService) (*PrometheusManager, error) {
 	var deployer PrometheusDeployer
 	var err error
 
@@ -541,12 +545,12 @@ func (pm *PrometheusManager) RemoveTarget(ctx context.Context, jobName string) e
 }
 
 // Query executes a PromQL query against Prometheus
-func (pm *PrometheusManager) Query(ctx context.Context, query string) (*QueryResult, error) {
+func (pm *PrometheusManager) Query(ctx context.Context, query string) (*common.QueryResult, error) {
 	return pm.client.Query(ctx, query)
 }
 
 // QueryRange executes a PromQL query with a time range
-func (pm *PrometheusManager) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*QueryResult, error) {
+func (pm *PrometheusManager) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*common.QueryResult, error) {
 	return pm.client.QueryRange(ctx, query, start, end, step)
 }
 

@@ -28,6 +28,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/handler"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	metricscommon "github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 
@@ -292,12 +293,13 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	settingsHandler := settingshttp.NewHandler(settingsService, logger)
 
 	// Initialize metrics service
-	metricsConfig := metrics.DefaultConfig()
+	metricsConfig := metricscommon.DefaultConfig()
 	nodesService := nodesservice.NewNodeService(queries, logger, keyManagementService, organizationService, nodeEventService, configService, settingsService)
 	metricsService, err := metrics.NewService(metricsConfig, queries, nodesService)
 	if err != nil {
 		log.Fatal("Failed to initialize metrics service:", err)
 	}
+	nodesService.SetMetricsService(metricsService)
 	metricsHandler := metrics.NewHandler(metricsService, logger)
 
 	networksService := networksservice.NewNetworkService(queries, nodesService, keyManagementService, logger, organizationService)

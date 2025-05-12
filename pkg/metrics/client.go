@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 )
 
 // Client handles querying Prometheus for metrics
@@ -28,23 +30,8 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// QueryResult represents the result of a Prometheus query
-type QueryResult struct {
-	Status string `json:"status"`
-	Data   struct {
-		ResultType string `json:"resultType"`
-		Result     []struct {
-			Metric map[string]string `json:"metric"`
-			// For instant queries
-			Value []interface{} `json:"value,omitempty"`
-			// For range queries (matrix)
-			Values [][]interface{} `json:"values,omitempty"`
-		} `json:"result"`
-	} `json:"data"`
-}
-
 // Query executes a PromQL query against Prometheus
-func (c *Client) Query(ctx context.Context, query string) (*QueryResult, error) {
+func (c *Client) Query(ctx context.Context, query string) (*common.QueryResult, error) {
 	u, err := url.Parse(c.baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
@@ -70,7 +57,7 @@ func (c *Client) Query(ctx context.Context, query string) (*QueryResult, error) 
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var result QueryResult
+	var result common.QueryResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -79,7 +66,7 @@ func (c *Client) Query(ctx context.Context, query string) (*QueryResult, error) 
 }
 
 // QueryRange executes a PromQL query with a time range
-func (c *Client) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*QueryResult, error) {
+func (c *Client) QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*common.QueryResult, error) {
 	u, err := url.Parse(c.baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
@@ -117,7 +104,7 @@ func (c *Client) QueryRange(ctx context.Context, query string, start, end time.T
 		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var result QueryResult
+	var result common.QueryResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}

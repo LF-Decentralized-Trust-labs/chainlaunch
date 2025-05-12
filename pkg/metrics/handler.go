@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -19,12 +20,12 @@ type Node struct {
 
 // Handler handles HTTP requests for metrics
 type Handler struct {
-	service Service
+	service common.Service
 	logger  *logger.Logger
 }
 
 // NewHandler creates a new metrics handler
-func NewHandler(service Service, logger *logger.Logger) *Handler {
+func NewHandler(service common.Service, logger *logger.Logger) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
@@ -69,7 +70,7 @@ func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config := &Config{
+	config := &common.Config{
 		PrometheusVersion: req.PrometheusVersion,
 		PrometheusPort:    req.PrometheusPort,
 		ScrapeInterval:    time.Duration(req.ScrapeInterval) * time.Second,

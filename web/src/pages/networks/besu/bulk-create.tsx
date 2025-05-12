@@ -83,7 +83,7 @@ export default function BulkCreateBesuNetworkPage() {
 		}
 		return 'nodes'
 	})
-	const [validatorKeys, setValidatorKeys] = useState<{ id: number; name: string; publicKey: string }[]>(() => {
+	const [validatorKeys, setValidatorKeys] = useState<{ id: number; name: string; publicKey: string; ethereumAddress: string }[]>(() => {
 		if (typeof window !== 'undefined') {
 			const savedKeys = localStorage.getItem('besuBulkCreateKeys')
 			if (savedKeys) {
@@ -111,15 +111,6 @@ export default function BulkCreateBesuNetworkPage() {
 	console.log('nodeConfigs', nodeConfigs)
 	const { data: providersData } = useQuery({
 		...getKeyProvidersOptions({}),
-	})
-
-	const { data: existingKeys, refetch: refetchKeys } = useQuery({
-		...getKeysOptions({
-			query: {
-				page: 1,
-				pageSize: 100,
-			},
-		}),
 	})
 
 	const nodesForm = useForm<NodesStepValues>({
@@ -253,6 +244,8 @@ export default function BulkCreateBesuNetworkPage() {
 							p2pPort: Number(p2pPort),
 							rpcHost: rpcHost,
 							rpcPort: Number(rpcPort),
+							metricsHost: '127.0.0.1',
+							metricsPort: 9545 + index,
 							bootNodes: bootNodes,
 							requestTimeout: 30,
 						} as BesuNodeFormValues
@@ -309,6 +302,7 @@ export default function BulkCreateBesuNetworkPage() {
 				id: key.data!.id!,
 				name: key.data!.name!,
 				publicKey: key.data!.publicKey!,
+				ethereumAddress: key.data!.ethereumAddress!,
 			}))
 			console.log('newValidatorKeys', newValidatorKeys)
 			setValidatorKeys(newValidatorKeys)
@@ -329,7 +323,6 @@ export default function BulkCreateBesuNetworkPage() {
 				'selectedValidatorKeys',
 				newValidatorKeys.map((key) => key.id)
 			)
-			await refetchKeys()
 			setCurrentStep('network')
 		} catch (error) {
 			// Error is already handled in createValidatorKeys
@@ -424,6 +417,8 @@ export default function BulkCreateBesuNetworkPage() {
 					p2pPort: Number(p2pPort),
 					rpcHost: rpcHost,
 					rpcPort: Number(rpcPort),
+					metricsHost: '127.0.0.1',
+					metricsPort: 9545 + index,
 					bootNodes: bootNodes,
 					requestTimeout: 30,
 				} as BesuNodeFormValues
@@ -477,10 +472,12 @@ export default function BulkCreateBesuNetworkPage() {
 							p2pPort: nodeConfig.p2pPort,
 							rpcHost: '127.0.0.1',
 							rpcPort: nodeConfig.rpcPort,
+							metricsPort: nodeConfig.metricsPort,
 							bootNodes: nodeConfig.bootNodes
 								?.split(',')
 								.map((node) => node.trim())
 								.filter(Boolean),
+							metricsEnabled: true,
 						},
 					},
 				})
@@ -599,34 +596,28 @@ export default function BulkCreateBesuNetworkPage() {
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel>Validator Keys</FormLabel>
-												<FormDescription>Select the validator keys for your network (EC/secp256k1 only)</FormDescription>
+												<FormDescription>Validator keys generated for your network</FormDescription>
 												<div className="space-y-4 mt-2">
-													{existingKeys?.items?.map((key) => {
-														const isGeneratedKey = validatorKeys.some((vk) => vk.id === key.id)
-														return (
-															<div key={key.id} className="flex items-center space-x-2">
-																<input
-																	type="checkbox"
-																	id={`key-${key.id}`}
-																	value={key.id}
-																	checked={field.value?.includes(key.id!)}
-																	onChange={(e) => {
-																		const currentValue = field.value || []
-																		if (e.target.checked) {
-																			field.onChange([...currentValue, key.id!])
-																		} else {
-																			field.onChange(currentValue.filter((k) => k !== key.id!))
-																		}
-																	}}
-																/>
-																<label htmlFor={`key-${key.id}`} className="text-sm">
-																	{key.name}
-																	{isGeneratedKey && <span className="ml-2 text-xs text-primary">(Generated in step 1)</span>}
-																	<span className="ml-2 text-xs text-muted-foreground">Created {new Date(key.createdAt!).toLocaleDateString()}</span>
-																</label>
+													{validatorKeys.map((key) => (
+														<div key={key.id} className="p-3 border rounded-lg hover:bg-accent/50">
+															<div className="flex-1 space-y-1">
+																<div className="flex items-center gap-2">
+																	<label className="font-medium">{key.name}</label>
+																	<span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">Generated in step 1</span>
+																</div>
+																<div className="text-sm space-y-1">
+																	<div className="flex items-center gap-2">
+																		<span className="text-muted-foreground">Address:</span>
+																		<code className="text-xs bg-muted px-2 py-1 rounded">{key.ethereumAddress}</code>
+																	</div>
+																	<div className="flex items-center gap-2">
+																		<span className="text-muted-foreground">Public Key:</span>
+																		<code className="text-xs bg-muted px-2 py-1 rounded">{key.publicKey}</code>
+																	</div>
+																</div>
 															</div>
-														)
-													})}
+														</div>
+													))}
 												</div>
 												<FormMessage />
 											</FormItem>
@@ -962,6 +953,8 @@ export default function BulkCreateBesuNetworkPage() {
 										p2pPort: 30303 + index,
 										rpcHost: '127.0.0.1',
 										rpcPort: 8545 + index,
+										metricsHost: '127.0.0.1',
+										metricsPort: 9545 + index,
 										bootNodes: bootNodes,
 										requestTimeout: 30,
 									} as BesuNodeFormValues

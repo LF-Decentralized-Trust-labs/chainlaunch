@@ -1052,6 +1052,13 @@ export type ServiceBesuNodeDefaults = {
     };
     externalIp?: string;
     internalIp?: string;
+    /**
+     * Metrics configuration
+     */
+    metricsEnabled?: boolean;
+    metricsHost?: string;
+    metricsPort?: number;
+    metricsProtocol?: string;
     mode?: ServiceMode;
     p2pHost?: string;
     p2pPort?: number;
@@ -1065,6 +1072,13 @@ export type ServiceBesuNodeProperties = {
     externalIp?: string;
     internalIp?: string;
     keyId?: number;
+    /**
+     * Metrics configuration
+     */
+    metricsEnabled?: boolean;
+    metricsHost?: string;
+    metricsPort?: number;
+    metricsProtocol?: string;
     mode?: string;
     networkId?: number;
     /**

@@ -303,6 +303,45 @@ func (d *DockerPrometheusDeployer) getOrdererNodes(ctx context.Context) ([]PeerN
 	return ordererNodes, nil
 }
 
+// getBesuNodes retrieves Besu nodes from the database that have metrics enabled
+func (d *DockerPrometheusDeployer) getBesuNodes(ctx context.Context) ([]PeerNode, error) {
+	// Get all nodes from database
+	nodes, err := d.nodeService.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
+	}
+
+	besuNodes := make([]PeerNode, 0)
+	for _, node := range nodes.Items {
+		// Skip nodes that are not Besu nodes or don't have metrics enabled
+		if node.BesuNode == nil || !node.BesuNode.MetricsEnabled {
+			continue
+		}
+
+		// Get metrics host and port
+		metricsHost := node.BesuNode.MetricsHost
+		if metricsHost == "" || metricsHost == "0.0.0.0" {
+			// Use host.docker.internal to access host machine from container
+			metricsHost = "host.docker.internal"
+		}
+
+		metricsPort := fmt.Sprintf("%d", node.BesuNode.MetricsPort)
+		if metricsPort == "0" {
+			metricsPort = "9545" // Default metrics port if not specified
+		}
+
+		formattedAddress := fmt.Sprintf("%s:%s", metricsHost, metricsPort)
+
+		besuNodes = append(besuNodes, PeerNode{
+			ID:               strconv.FormatInt(node.ID, 10),
+			Name:             node.Name,
+			OperationAddress: formattedAddress,
+		})
+	}
+
+	return besuNodes, nil
+}
+
 // GetStatus returns the current status of the Prometheus container
 func (d *DockerPrometheusDeployer) GetStatus(ctx context.Context) (string, error) {
 	containerName := "chainlaunch-prometheus"
@@ -532,6 +571,12 @@ func (d *DockerPrometheusDeployer) Reload(ctx context.Context) error {
 		return fmt.Errorf("failed to get orderer nodes: %w", err)
 	}
 
+	// Get Besu nodes from the database
+	besuNodes, err := d.getBesuNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Besu nodes: %w", err)
+	}
+
 	// Generate new config with peer targets
 	config := &PrometheusConfig{
 		Global: GlobalConfig{
@@ -567,6 +612,21 @@ func (d *DockerPrometheusDeployer) Reload(ctx context.Context) error {
 	// Add orderer node targets
 	if len(ordererNodes) > 0 {
 		for _, node := range ordererNodes {
+			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
+			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
+				JobName: jobName,
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{node.OperationAddress},
+					},
+				},
+			})
+		}
+	}
+
+	// Add Besu node targets
+	if len(besuNodes) > 0 {
+		for _, node := range besuNodes {
 			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
 			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
 				JobName: jobName,

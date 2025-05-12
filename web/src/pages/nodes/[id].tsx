@@ -453,8 +453,8 @@ export default function NodeDetailPage() {
 				</TabsContent>
 
 				<TabsContent value="metrics" className="space-y-4">
-					{node.besuNode && <BesuMetricsPage nodeId={node.id!} />}
-					{node.fabricOrderer && <OrdererMetricsPage nodeId={node.id!} />}
+					{node.besuNode && <BesuMetricsPage node={node} />}
+					{node.fabricOrderer && <OrdererMetricsPage node={node} />}
 					{node.fabricPeer && <PeerMetricsPage node={node} />}
 				</TabsContent>
 

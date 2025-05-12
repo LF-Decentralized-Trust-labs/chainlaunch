@@ -8757,6 +8757,19 @@
                 "internalIp": {
                     "type": "string"
                 },
+                "metricsEnabled": {
+                    "description": "Metrics configuration",
+                    "type": "boolean"
+                },
+                "metricsHost": {
+                    "type": "string"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
+                    "type": "string"
+                },
                 "mode": {
                     "$ref": "#/definitions/service.Mode"
                 },
@@ -8794,6 +8807,19 @@
                 },
                 "keyId": {
                     "type": "integer"
+                },
+                "metricsEnabled": {
+                    "description": "Metrics configuration",
+                    "type": "boolean"
+                },
+                "metricsHost": {
+                    "type": "string"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
+                    "type": "string"
                 },
                 "mode": {
                     "type": "string"

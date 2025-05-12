@@ -1881,6 +1881,15 @@ definitions:
         type: string
       internalIp:
         type: string
+      metricsEnabled:
+        description: Metrics configuration
+        type: boolean
+      metricsHost:
+        type: string
+      metricsPort:
+        type: integer
+      metricsProtocol:
+        type: string
       mode:
         $ref: '#/definitions/service.Mode'
       p2pHost:
@@ -1906,6 +1915,15 @@ definitions:
         type: string
       keyId:
         type: integer
+      metricsEnabled:
+        description: Metrics configuration
+        type: boolean
+      metricsHost:
+        type: string
+      metricsPort:
+        type: integer
+      metricsProtocol:
+        type: string
       mode:
         type: string
       networkId:

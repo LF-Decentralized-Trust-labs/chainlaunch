@@ -10,14 +10,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface OrdererMetricsPageProps {
-	nodeId: string
+	node: HttpNodeResponse
 }
 
 function filterNaN(data: MetricsDataPoint[] | undefined): MetricsDataPoint[] {
 	return (data || []).filter((point: MetricsDataPoint) => !isNaN(point.value))
 }
 
-export default function OrdererMetricsPage({ nodeId }: OrdererMetricsPageProps) {
+export default function OrdererMetricsPage({ node }: OrdererMetricsPageProps) {
 	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
 	const [selectedChannel, setSelectedChannel] = useState<string>('')
 	const [selectedTimeRangeLabel, setSelectedTimeRangeLabel] = useState('Last 1 hour')
@@ -27,20 +27,10 @@ export default function OrdererMetricsPage({ nodeId }: OrdererMetricsPageProps) 
 		{ label: 'Last 6 hours', value: 21600000 },
 		{ label: 'Last 24 hours', value: 86400000 },
 	]
-
-	const { data: nodeData } = useQuery({
-		queryKey: ['node', nodeId],
-		queryFn: async () => {
-			if (!nodeId) return null
-			const response = await getApiV1MetricsNodeById({ path: { id: nodeId.toString() } })
-			return response.data as HttpNodeResponse
-		},
-		enabled: !!nodeId,
-	})
-
+	const nodeId = node.id?.toString() || ''
 	// Get available channels
 	const { data: channels } = useMetricLabels({
-		nodeId: nodeId.toString(),
+		nodeId: nodeId,
 		metric: 'consensus_etcdraft_committed_block_number',
 		label: 'channel',
 	})
@@ -298,7 +288,7 @@ export default function OrdererMetricsPage({ nodeId }: OrdererMetricsPageProps) 
 	// If no channels, show a message and do not render the metrics grid
 	const noChannels = !channels || channels.length === 0
 
-	if (!nodeId || !nodeData) {
+	if (!nodeId) {
 		return null
 	}
 

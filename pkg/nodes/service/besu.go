@@ -58,9 +58,10 @@ func (s *NodeService) GetBesuNodeDefaults(besuNodes int) ([]BesuNodeDefaults, er
 
 	// Base ports for Besu nodes with sufficient spacing
 	const (
-		baseP2PPort = 30303 // Starting P2P port
-		baseRPCPort = 8545  // Starting RPC port
-		portOffset  = 100   // Each node gets a 100 port range
+		baseP2PPort     = 30303 // Starting P2P port
+		baseRPCPort     = 8545  // Starting RPC port
+		baseMetricsPort = 9545  // Starting metrics port
+		portOffset      = 100   // Each node gets a 100 port range
 	)
 
 	// Create array to hold all node defaults
@@ -84,6 +85,16 @@ func (s *NodeService) GetBesuNodeDefaults(besuNodes int) ([]BesuNodeDefaults, er
 			}
 		}
 
+		// Find available metrics port
+		metricsPorts, err := findConsecutivePorts(int(baseMetricsPort+(i*portOffset)), 1, int(baseMetricsPort+(i*portOffset))+100)
+		if err != nil {
+			// If we can't get the preferred metrics port, try from a higher range
+			metricsPorts, err = findConsecutivePorts(int(19545+(i*portOffset)), 1, int(19545+(i*portOffset))+100)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find available metrics port for node %d: %w", i+1, err)
+			}
+		}
+
 		// Create node defaults with unique ports
 		nodeDefaults[i] = BesuNodeDefaults{
 			P2PHost:    externalIP, // Use external IP for p2p host
@@ -96,6 +107,11 @@ func (s *NodeService) GetBesuNodeDefaults(besuNodes int) ([]BesuNodeDefaults, er
 			Env: map[string]string{
 				"JAVA_OPTS": "-Xmx4g",
 			},
+			// Set metrics configuration
+			MetricsEnabled:  true,
+			MetricsHost:     "0.0.0.0", // Allow metrics from any interface
+			MetricsPort:     uint(metricsPorts[0]),
+			MetricsProtocol: "PROMETHEUS",
 		}
 	}
 

@@ -1060,3 +1060,40 @@ SET prometheus_port = 9090,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = 1
 RETURNING *;
+
+-- name: CreateAuditLog :one
+INSERT INTO audit_logs (
+    timestamp,
+    event_source,
+    user_identity,
+    source_ip,
+    event_type,
+    event_outcome,
+    affected_resource,
+    request_id,
+    severity,
+    details
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+)
+RETURNING *;
+
+-- name: GetAuditLog :one
+SELECT * FROM audit_logs
+WHERE id = ? LIMIT 1;
+
+-- name: ListAuditLogs :many
+SELECT * FROM audit_logs
+WHERE (? IS NULL OR timestamp >= ?)
+  AND (? IS NULL OR timestamp <= ?)
+  AND (? = '' OR event_type = ?)
+  AND (? = 0 OR user_identity = ?)
+ORDER BY timestamp DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountAuditLogs :one
+SELECT COUNT(*) FROM audit_logs
+WHERE (? IS NULL OR timestamp >= ?)
+  AND (? IS NULL OR timestamp <= ?)
+  AND (? = '' OR event_type = ?)
+  AND (? = '' OR user_identity = ?);

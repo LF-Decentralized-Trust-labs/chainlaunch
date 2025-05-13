@@ -115,17 +115,19 @@ export function NotificationProvidersList() {
 				</div>
 
 				{!providers?.length ? (
-					<Card className="flex h-[180px] flex-col items-center justify-center text-center">
-						<CardContent className="pt-6">
-							<div className="mb-4 flex justify-center">
+					<Card className="flex flex-col items-center justify-center py-16">
+						<div className="flex flex-col items-center gap-4 text-center">
+							<div className="rounded-full bg-muted p-4">
 								<Mail className="h-8 w-8 text-muted-foreground" />
 							</div>
-							<CardTitle className="text-lg font-semibold">No providers configured</CardTitle>
-							<CardDescription className="mt-2">Get started by adding your first notification provider.</CardDescription>
-							<Button onClick={() => navigate('/monitoring/providers/new')} className="mt-4">
+							<div className="space-y-2">
+								<h3 className="text-xl font-semibold">No providers configured</h3>
+								<p className="text-muted-foreground">Get started by adding your first notification provider.</p>
+							</div>
+							<Button onClick={() => navigate('/monitoring/providers/new')}>
 								Add Provider
 							</Button>
-						</CardContent>
+						</div>
 					</Card>
 				) : (
 					<div className="grid gap-4">

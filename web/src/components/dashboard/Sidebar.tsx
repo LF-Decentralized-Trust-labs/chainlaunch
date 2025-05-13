@@ -96,6 +96,12 @@ const data = {
 					icon: Settings,
 					roles: ['admin', 'manager'],
 				},
+				{
+					title: 'Audit Logs',
+					url: '/settings/audit-logs',
+					icon: FileText,
+					roles: ['admin'],
+				},
 			],
 		},
 		{

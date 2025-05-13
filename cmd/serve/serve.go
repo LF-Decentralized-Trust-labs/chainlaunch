@@ -32,6 +32,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 
+	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/chainlaunch/chainlaunch/pkg/metrics"
 	networkshttp "github.com/chainlaunch/chainlaunch/pkg/networks/http"
 	networksservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
@@ -284,6 +285,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	organizationService := fabricservice.NewOrganizationService(queries, keyManagementService, configService)
 	logger := logger.NewDefault()
 
+	auditService := audit.NewService(queries, 10)
+
 	nodeEventService := nodesservice.NewNodeEventService(queries, logger)
 	settingsService := settingsservice.NewSettingsService(queries, logger)
 	_, err = settingsService.InitializeDefaultSettings(context.Background())
@@ -435,6 +438,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	backupHandler := backuphttp.NewHandler(backupService)
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
 	authHandler := auth.NewHandler(authService)
+	auditHandler := audit.NewHandler(auditService, logger)
 	// Setup router
 	r := chi.NewRouter()
 
@@ -462,6 +466,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(auth.AuthMiddleware(authService))
+			r.Use(audit.HTTPMiddleware(auditService)) // Add audit middleware
 
 			// Mount auth routes
 			authHandler.RegisterRoutes(r)
@@ -484,6 +489,9 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 			pluginHandler.RegisterRoutes(r)
 			// Mount metrics routes
 			metricsHandler.RegisterRoutes(r)
+
+			// Mount audit routes
+			auditHandler.RegisterRoutes(r)
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(

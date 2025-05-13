@@ -1,5 +1,64 @@
 basePath: /api/v1
 definitions:
+  audit.Event:
+    properties:
+      affectedResource:
+        type: string
+      details:
+        additionalProperties: true
+        type: object
+      eventOutcome:
+        $ref: '#/definitions/audit.EventOutcome'
+      eventSource:
+        type: string
+      eventType:
+        type: string
+      id:
+        type: integer
+      requestId:
+        type: string
+      severity:
+        $ref: '#/definitions/audit.Severity'
+      sourceIp:
+        type: string
+      timestamp:
+        type: string
+      userIdentity:
+        type: string
+    type: object
+  audit.EventOutcome:
+    enum:
+    - SUCCESS
+    - FAILURE
+    - PENDING
+    type: string
+    x-enum-varnames:
+    - EventOutcomeSuccess
+    - EventOutcomeFailure
+    - EventOutcomePending
+  audit.ListLogsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/audit.Event'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total_count:
+        type: integer
+    type: object
+  audit.Severity:
+    enum:
+    - INFO
+    - WARNING
+    - CRITICAL
+    type: string
+    x-enum-varnames:
+    - SeverityInfo
+    - SeverityWarning
+    - SeverityCritical
   auth.ChangePasswordRequest:
     properties:
       current_password:
@@ -1515,35 +1574,6 @@ definitions:
     - prometheus_version
     - scrape_interval
     type: object
-  metrics.QueryResult:
-    properties:
-      data:
-        properties:
-          result:
-            items:
-              properties:
-                metric:
-                  additionalProperties:
-                    type: string
-                  type: object
-                value:
-                  description: For instant queries
-                  items: {}
-                  type: array
-                values:
-                  description: For range queries (matrix)
-                  items:
-                    items: {}
-                    type: array
-                  type: array
-              type: object
-            type: array
-          resultType:
-            type: string
-        type: object
-      status:
-        type: string
-    type: object
   models.CertificateRequest:
     properties:
       commonName:
@@ -2685,7 +2715,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/metrics.QueryResult'
+            $ref: '#/definitions/metrics.CustomQueryRequest'
         "400":
           description: Bad Request
           schema:
@@ -2775,6 +2805,119 @@ paths:
       summary: Reload Prometheus configuration
       tags:
       - metrics
+  /audit/logs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of audit logs with optional filters
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 10)'
+        in: query
+        name: page_size
+        type: integer
+      - description: Start time (RFC3339 format)
+        in: query
+        name: start
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: end
+        type: string
+      - description: Filter by event type
+        in: query
+        name: event_type
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/audit.ListLogsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List audit logs
+      tags:
+      - audit
+  /audit/logs/{id}:
+    get:
+      description: Retrieves a specific audit log by ID
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/audit.Event'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get audit log
+      tags:
+      - audit
   /auth/change-password:
     post:
       consumes:

@@ -12,6 +12,7 @@ import (
 
 	"encoding/base64"
 
+	httpchainlaunch "github.com/chainlaunch/chainlaunch/pkg/http"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/fabric"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
@@ -37,7 +38,11 @@ func NewHandler(networkService *service.NetworkService, nodeService *nodeservice
 
 // RegisterRoutes registers the network routes
 func (h *Handler) RegisterRoutes(r chi.Router) {
+	// Fabric network routes with resource middleware
 	r.Route("/networks/fabric", func(r chi.Router) {
+		// Add resource middleware for all Fabric network routes
+		r.Use(httpchainlaunch.ResourceMiddleware("fabric_network"))
+
 		r.Get("/", h.FabricNetworkList)
 		r.Post("/", h.FabricNetworkCreate)
 		r.Delete("/{id}", h.FabricNetworkDelete)
@@ -66,15 +71,17 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Post("/{id}/organization-crl", h.UpdateOrganizationCRL)
 	})
 
-	// New Besu routes
+	// Besu network routes with resource middleware
 	r.Route("/networks/besu", func(r chi.Router) {
+		// Add resource middleware for all Besu network routes
+		r.Use(httpchainlaunch.ResourceMiddleware("besu_network"))
+
 		r.Get("/", h.BesuNetworkList)
 		r.Post("/", h.BesuNetworkCreate)
 		r.Post("/import", h.ImportBesuNetwork)
 		r.Get("/{id}", h.BesuNetworkGet)
 		r.Delete("/{id}", h.BesuNetworkDelete)
 	})
-
 }
 
 // @Summary List Fabric networks

@@ -65,7 +65,9 @@ export default function AuditLogsPage() {
 								<TableHead>Method</TableHead>
 								<TableHead>Path</TableHead>
 								<TableHead>User ID</TableHead>
+								<TableHead>Session ID</TableHead>
 								<TableHead>Source</TableHead>
+								<TableHead>Security</TableHead>
 								<TableHead>Severity</TableHead>
 								<TableHead>Outcome</TableHead>
 								<TableHead>Resource</TableHead>
@@ -80,7 +82,9 @@ export default function AuditLogsPage() {
 										<TableCell>{details?.method || '-'}</TableCell>
 										<TableCell>{details?.path || '-'}</TableCell>
 										<TableCell>{log.userIdentity || '-'}</TableCell>
+										<TableCell>{details?.session_id || '-'}</TableCell>
 										<TableCell>{log.eventSource || '-'}</TableCell>
+										<TableCell>{details?.is_security_event && <Badge className="bg-red-500 text-white">Security Event</Badge>}</TableCell>
 										<TableCell>{log.severity && <Badge className={`${severityColors[log.severity]} text-white`}>{log.severity}</Badge>}</TableCell>
 										<TableCell>{log.eventOutcome && <Badge className={`${outcomeColors[log.eventOutcome]} text-white`}>{log.eventOutcome}</Badge>}</TableCell>
 										<TableCell>{log.affectedResource || '-'}</TableCell>

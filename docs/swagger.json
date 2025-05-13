@@ -6289,6 +6289,9 @@
                 "requestId": {
                     "type": "string"
                 },
+                "sessionId": {
+                    "type": "string"
+                },
                 "severity": {
                     "$ref": "#/definitions/audit.Severity"
                 },
@@ -6299,7 +6302,7 @@
                     "type": "string"
                 },
                 "userIdentity": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -6339,11 +6342,13 @@
         "audit.Severity": {
             "type": "string",
             "enum": [
+                "DEBUG",
                 "INFO",
                 "WARNING",
                 "CRITICAL"
             ],
             "x-enum-varnames": [
+                "SeverityDebug",
                 "SeverityInfo",
                 "SeverityWarning",
                 "SeverityCritical"

@@ -14,6 +14,9 @@ import (
 const (
 	// maxBodySize is the maximum size of request/response body to log (1MB)
 	maxBodySize = 1 * 1024 * 1024
+
+	// SessionCookieName is the name of the session cookie
+	SessionCookieName = "session_id"
 )
 
 // isStaticFile checks if the path is a static file
@@ -29,6 +32,27 @@ func isStaticFile(path string) bool {
 // isAPIPath checks if the path is an API endpoint
 func isAPIPath(path string) bool {
 	return strings.HasPrefix(path, "/api/")
+}
+
+// isSecurityEvent checks if the request is a security-relevant event
+func isSecurityEvent(path string, method string) bool {
+	// Authentication endpoints
+	if strings.Contains(path, "/auth") || strings.Contains(path, "/login") {
+		return true
+	}
+	// Authorization changes
+	if strings.Contains(path, "/permissions") || strings.Contains(path, "/roles") {
+		return true
+	}
+	// System configuration changes
+	if strings.Contains(path, "/config") || strings.Contains(path, "/settings") {
+		return true
+	}
+	// Security-related operations
+	if method == http.MethodDelete || method == http.MethodPut {
+		return true
+	}
+	return false
 }
 
 // HTTPMiddleware creates a middleware that logs HTTP requests and responses
@@ -47,14 +71,18 @@ func HTTPMiddleware(service *AuditService) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Generate a unique request ID
+			// Generate a unique request ID and get session ID
 			requestID := uuid.New()
+			sessionID := auth.GetSessionID(r)
+			if sessionID == "" {
+				sessionID = uuid.New().String()
+			}
 
 			// Create a response writer that captures the status code and body
 			rw := newResponseWriter(w)
 
-			// Start timing the request
-			start := time.Now()
+			// Start timing the request with UTC timestamp
+			start := time.Now().UTC()
 
 			// Process the request
 			next.ServeHTTP(rw, r)
@@ -64,12 +92,18 @@ func HTTPMiddleware(service *AuditService) func(http.Handler) http.Handler {
 
 			// Create base event details
 			details := map[string]interface{}{
-				"method":     r.Method,
-				"path":       r.URL.Path,
-				"query":      r.URL.RawQuery,
-				"user_agent": r.UserAgent(),
-				"duration":   duration.String(),
-				"status":     rw.statusCode,
+				"method":            r.Method,
+				"path":              r.URL.Path,
+				"query":             r.URL.RawQuery,
+				"user_agent":        r.UserAgent(),
+				"duration":          duration.String(),
+				"status":            rw.statusCode,
+				"session_id":        sessionID,
+				"correlation_id":    r.Header.Get("X-Correlation-ID"),
+				"timestamp_utc":     start.Format(time.RFC3339Nano),
+				"client_ip":         r.RemoteAddr,
+				"forwarded_for":     r.Header.Get("X-Forwarded-For"),
+				"is_security_event": isSecurityEvent(r.URL.Path, r.Method),
 			}
 
 			// Get request body from resource context if available
@@ -103,9 +137,11 @@ func HTTPMiddleware(service *AuditService) func(http.Handler) http.Handler {
 				details["resource_action"] = resource.Action
 			}
 
-			// Set user identity if available
+			// Set user identity and authentication method if available
 			if user, ok := auth.UserFromContext(r.Context()); ok {
 				event.UserIdentity = user.ID
+				details["auth_method"] = r.Header.Get("X-Auth-Method")
+				details["auth_provider"] = r.Header.Get("X-Auth-Provider")
 			}
 
 			// Set outcome based on status code
@@ -113,16 +149,22 @@ func HTTPMiddleware(service *AuditService) func(http.Handler) http.Handler {
 				event.EventOutcome = EventOutcomeSuccess
 			} else {
 				event.EventOutcome = EventOutcomeFailure
+				// Add failure reason for security events
+				if isSecurityEvent(r.URL.Path, r.Method) {
+					details["failure_reason"] = http.StatusText(rw.statusCode)
+				}
 			}
 
-			// Set severity based on status code
+			// Set severity based on status code and event type
 			switch {
 			case rw.statusCode >= 500:
 				event.Severity = SeverityCritical
 			case rw.statusCode >= 400:
 				event.Severity = SeverityWarning
-			default:
+			case isSecurityEvent(r.URL.Path, r.Method):
 				event.Severity = SeverityInfo
+			default:
+				event.Severity = SeverityDebug
 			}
 
 			// Log the event asynchronously

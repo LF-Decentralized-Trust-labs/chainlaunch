@@ -17,6 +17,8 @@ definitions:
         type: integer
       requestId:
         type: string
+      sessionId:
+        type: string
       severity:
         $ref: '#/definitions/audit.Severity'
       sourceIp:
@@ -24,7 +26,7 @@ definitions:
       timestamp:
         type: string
       userIdentity:
-        type: string
+        type: integer
     type: object
   audit.EventOutcome:
     enum:
@@ -51,11 +53,13 @@ definitions:
     type: object
   audit.Severity:
     enum:
+    - DEBUG
     - INFO
     - WARNING
     - CRITICAL
     type: string
     x-enum-varnames:
+    - SeverityDebug
     - SeverityInfo
     - SeverityWarning
     - SeverityCritical

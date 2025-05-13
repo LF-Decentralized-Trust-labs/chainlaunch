@@ -23,6 +23,7 @@ type AuditLog struct {
 	Details          sql.NullString `json:"details"`
 	CreatedAt        time.Time      `json:"createdAt"`
 	UpdatedAt        time.Time      `json:"updatedAt"`
+	SessionID        sql.NullString `json:"sessionId"`
 }
 
 type Backup struct {

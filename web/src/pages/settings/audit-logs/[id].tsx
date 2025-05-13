@@ -17,6 +17,7 @@ interface AuditLogDetails {
 	duration?: string
 	query?: string
 	user_agent?: string
+	session_id?: string
 	[key: string]: any
 }
 
@@ -117,6 +118,10 @@ export default function AuditLogDetailPage() {
 									<div>
 										<h3 className="text-sm font-medium text-muted-foreground">Duration</h3>
 										<p>{details.duration || '-'}</p>
+									</div>
+									<div className="grid gap-2">
+										<h3 className="text-sm font-medium">Session ID</h3>
+										<p className="text-sm text-muted-foreground">{details?.session_id || '-'}</p>
 									</div>
 								</>
 							)}

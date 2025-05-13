@@ -20,6 +20,7 @@ const (
 type Severity string
 
 const (
+	SeverityDebug    Severity = "DEBUG"
 	SeverityInfo     Severity = "INFO"
 	SeverityWarning  Severity = "WARNING"
 	SeverityCritical Severity = "CRITICAL"
@@ -38,6 +39,7 @@ type Event struct {
 	RequestID        uuid.UUID              `json:"requestId"`
 	Severity         Severity               `json:"severity"`
 	Details          map[string]interface{} `json:"details"`
+	SessionID        string                 `json:"sessionId"`
 }
 
 // Config holds the configuration for the audit service

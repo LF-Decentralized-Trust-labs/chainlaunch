@@ -63,6 +63,7 @@ func (s *AuditService) LogEvent(ctx context.Context, event Event) error {
 		RequestID:        sql.NullString{String: event.RequestID.String(), Valid: true},
 		Severity:         sql.NullString{String: string(event.Severity), Valid: true},
 		Details:          sql.NullString{String: string(details), Valid: true},
+		SessionID:        sql.NullString{String: event.SessionID, Valid: true},
 	})
 
 	return err
@@ -239,5 +240,6 @@ func (s *AuditService) GetLog(ctx context.Context, id int64) (*Event, error) {
 		RequestID:        requestID,
 		Severity:         Severity(log.Severity.String),
 		Details:          details,
+		SessionID:        log.SessionID.String,
 	}, nil
 }

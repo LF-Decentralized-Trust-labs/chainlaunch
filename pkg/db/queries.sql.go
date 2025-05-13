@@ -183,11 +183,12 @@ INSERT INTO audit_logs (
     affected_resource,
     request_id,
     severity,
-    details
+    details,
+    session_id
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
-RETURNING id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at
+RETURNING id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at, session_id
 `
 
 type CreateAuditLogParams struct {
@@ -201,6 +202,7 @@ type CreateAuditLogParams struct {
 	RequestID        sql.NullString `json:"requestId"`
 	Severity         sql.NullString `json:"severity"`
 	Details          sql.NullString `json:"details"`
+	SessionID        sql.NullString `json:"sessionId"`
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg *CreateAuditLogParams) (*AuditLog, error) {
@@ -215,6 +217,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg *CreateAuditLogParams)
 		arg.RequestID,
 		arg.Severity,
 		arg.Details,
+		arg.SessionID,
 	)
 	var i AuditLog
 	err := row.Scan(
@@ -231,6 +234,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg *CreateAuditLogParams)
 		&i.Details,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
 	)
 	return &i, err
 }
@@ -1492,7 +1496,7 @@ func (q *Queries) GetAllNodes(ctx context.Context) ([]*Node, error) {
 }
 
 const GetAuditLog = `-- name: GetAuditLog :one
-SELECT id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at FROM audit_logs
+SELECT id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at, session_id FROM audit_logs
 WHERE id = ? LIMIT 1
 `
 
@@ -1513,6 +1517,7 @@ func (q *Queries) GetAuditLog(ctx context.Context, id int64) (*AuditLog, error) 
 		&i.Details,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
 	)
 	return &i, err
 }
@@ -3234,7 +3239,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*User
 }
 
 const ListAuditLogs = `-- name: ListAuditLogs :many
-SELECT id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at FROM audit_logs
+SELECT id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at, session_id FROM audit_logs
 WHERE (? IS NULL OR timestamp >= ?)
   AND (? IS NULL OR timestamp <= ?)
   AND (? = '' OR event_type = ?)
@@ -3290,6 +3295,7 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg *ListAuditLogsParams) (
 			&i.Details,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SessionID,
 		); err != nil {
 			return nil, err
 		}

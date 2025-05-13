@@ -10,10 +10,11 @@ export type AuditEvent = {
     eventType?: string;
     id?: number;
     requestId?: string;
+    sessionId?: string;
     severity?: AuditSeverity;
     sourceIp?: string;
     timestamp?: string;
-    userIdentity?: string;
+    userIdentity?: number;
 };
 
 export type AuditEventOutcome = 'SUCCESS' | 'FAILURE' | 'PENDING';
@@ -25,7 +26,7 @@ export type AuditListLogsResponse = {
     total_count?: number;
 };
 
-export type AuditSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
+export type AuditSeverity = 'DEBUG' | 'INFO' | 'WARNING' | 'CRITICAL';
 
 export type AuthChangePasswordRequest = {
     current_password: string;

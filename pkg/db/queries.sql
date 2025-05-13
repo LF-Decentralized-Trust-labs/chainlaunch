@@ -1072,9 +1072,10 @@ INSERT INTO audit_logs (
     affected_resource,
     request_id,
     severity,
-    details
+    details,
+    session_id
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
 RETURNING *;
 

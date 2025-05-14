@@ -142,6 +142,7 @@ type KeyProviderType struct {
 	Name string `json:"name"`
 }
 
+// Network represents a network in the database
 type Network struct {
 	ID                    int64          `json:"id"`
 	Name                  string         `json:"name"`
@@ -160,6 +161,7 @@ type Network struct {
 	CurrentConfigBlockB64 sql.NullString `json:"currentConfigBlockB64"`
 }
 
+// NetworkNode represents a node in a network
 type NetworkNode struct {
 	ID        int64          `json:"id"`
 	NetworkID int64          `json:"networkId"`

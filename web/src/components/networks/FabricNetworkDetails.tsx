@@ -119,14 +119,14 @@ First, set up environment variables and pull the network configuration:
 export CHANNEL_NAME=${channelName}
 export MSP_ID=${mspId}
 export URL="${apiUrl}"
-export CHAINLAUNCH_USERNAME=admin
+export CHAINLAUNCH_USER=admin
 export CHAINLAUNCH_PASSWORD="<chainlaunch_password>"
 
 chainlaunch fabric network-config pull \\
     --network=$CHANNEL_NAME \\
     --msp-id=$MSP_ID \\
     --url=$URL \\
-    --username="$CHAINLAUNCH_USERNAME" \\
+    --username="$CHAINLAUNCH_USER" \\
     --password="$CHAINLAUNCH_PASSWORD" \\
     --output=network-config.yaml
 \`\`\`

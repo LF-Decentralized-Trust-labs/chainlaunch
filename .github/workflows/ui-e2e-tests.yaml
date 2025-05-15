@@ -71,7 +71,6 @@ jobs:
       - name: Run UI tests
         run: |
           cd web
-          bun install
           bun run test:e2e
 
       - name: Upload test results

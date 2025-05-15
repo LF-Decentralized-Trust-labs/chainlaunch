@@ -62,6 +62,8 @@ jobs:
       - name: Start the application
         run: |
           mkdir -p testdata
+          export CHAINLAUNCH_USER=admin
+          export CHAINLAUNCH_PASSWORD=admin123
           ./chainlaunch serve --db data.db &
           sleep 10
 

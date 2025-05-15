@@ -28,6 +28,8 @@ jobs:
       CYPRESS_API_URL: http://localhost:8100/api/v1
       PLAYWRIGHT_USER: admin
       PLAYWRIGHT_PASSWORD: admin123
+      CHAINLAUNCH_USER: admin
+      CHAINLAUNCH_PASSWORD: admin123
 
     steps:
       - name: Checkout code

@@ -1,79 +1,82 @@
 name: API Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - '**/*.md'
+            - 'docs/**'
 
 jobs:
-  api-tests:
-    name: Run API Tests
-    runs-on: ubuntu-latest
+    api-tests:
+        name: Run API Tests
+        runs-on: ubuntu-latest
 
-    services:
-      mailhog:
-        image: mailhog/mailhog
-        ports:
-          - 1025:1025
-          - 8025:8025
+        services:
+            mailhog:
+                image: mailhog/mailhog
+                ports:
+                    - 1025:1025
+                    - 8025:8025
 
-    env:
-      API_BASE_URL: http://localhost:8100/api/v1
-      CHAINLAUNCH_USER: admin
-      CHAINLAUNCH_PASSWORD: admin123
-      API_USERNAME: admin
-      API_PASSWORD: admin123
+        env:
+            API_BASE_URL: http://localhost:8100/api/v1
+            CHAINLAUNCH_USER: admin
+            CHAINLAUNCH_PASSWORD: admin123
+            API_USERNAME: admin
+            API_PASSWORD: admin123
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.4'
-          cache: true
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: '1.23.4'
+                  cache: true
 
-      - name: Check current user
-        run: whoami
+            - name: Check current user
+              run: whoami
 
-      - name: Install dependencies
-        run: |
-          go mod download
-          sudo apt-get update
-          sudo apt-get install -y build-essential
-      - name: Build UI
-        run: |
-          cd web
-          bun install
-          bun run build
+            - name: Install dependencies
+              run: |
+                  go mod download
+                  sudo apt-get update
+                  sudo apt-get install -y build-essential
+            - name: Build UI
+              run: |
+                  cd web
+                  bun install
+                  bun run build
 
-      - name: Build the application
-        run: |
-          go build -v -o chainlaunch ./main.go
-          chmod +x chainlaunch
+            - name: Build the application
+              run: |
+                  go build -v -o chainlaunch ./main.go
+                  chmod +x chainlaunch
 
-      - name: Start the application
-        run: |
-          mkdir -p testdata
-          export CHAINLAUNCH_USER=admin
-          export CHAINLAUNCH_PASSWORD=admin123
-          ./chainlaunch serve --db data.db &
-          sleep 10
+            - name: Start the application
+              run: |
+                  mkdir -p testdata
+                  export CHAINLAUNCH_USER=admin
+                  export CHAINLAUNCH_PASSWORD=admin123
+                  ./chainlaunch serve --port=8100 --db data.db &
+                  sleep 10
 
-      - name: Run API tests
-        run: |
-          go test -v ./e2e/...
+            - name: Run API tests
+              run: |
+                  export API_USERNAME=${CHAINLAUNCH_USER}
+                  export API_PASSWORD=${CHAINLAUNCH_PASSWORD}
+                  export API_BASE_URL=http://localhost:8100/api/v1
+                  go test -v -tags=e2e ./e2e/...
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-test-results
-          path: test-results.xml
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: api-test-results
+                  path: test-results.xml

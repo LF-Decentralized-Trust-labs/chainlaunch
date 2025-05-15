@@ -72,17 +72,17 @@ jobs:
             - name: Start server and run UI tests
               run: |
                   ./chainlaunch serve --port=8100 --db data.db &
-                  
+
                   # Wait for port 8100 to be available (60 seconds timeout)
                   timeout=60
                   while ! curl -s http://localhost:8100 > /dev/null; do
-                      if [ $timeout -le 0 ]; then
-                          echo "Timeout waiting for API to become available"
-                          exit 1
-                      fi
-                      echo "Waiting for API to become available... ($timeout seconds remaining)"
-                      sleep 1
-                      ((timeout--))
+                    if [ $timeout -le 0 ]; then
+                      echo "Timeout waiting for API to become available"
+                      exit 1
+                    fi
+                    echo "Waiting for API to become available... ($timeout seconds remaining)"
+                    sleep 1
+                    timeout=$((timeout - 1))
                   done
 
                   cd web

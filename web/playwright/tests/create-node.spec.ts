@@ -27,6 +27,11 @@ test('can login and create a Fabric node', async ({ page, baseURL }) => {
 		}
 	}
 
+	// Select deployment mode "Docker"
+	const modeSelect = page.getByRole('combobox', { name: /mode/i })
+	await modeSelect.click()
+	await page.getByRole('option', { name: /docker/i }).click()
+
 	// Node type (default is peer, skip unless you want to test orderer)
 
 	// Listen Address

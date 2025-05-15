@@ -6,9 +6,8 @@
     "node1:dev": "export PUBLIC_API_URL=http://localhost:8100 && rsbuild dev --port=3100 --config=rsbuild.dev.config.ts",
     "node2:dev": "export PUBLIC_API_URL=http://localhost:8102 && rsbuild dev --port=3102 --config=rsbuild.dev.config.ts",
     "node3:dev": "export PUBLIC_API_URL=http://localhost:8103 && rsbuild dev --port=3103 --config=rsbuild.dev.config.ts",
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "build": "rsbuild build",
+    "preview": "rsbuild preview",
     "test:e2e": "playwright test",
     "test:e2e:dev": "playwright test --ui"
   },

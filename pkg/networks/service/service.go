@@ -15,7 +15,6 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/networks/service/types"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	nodetypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
-	nodeutils "github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
 	"github.com/google/uuid"
 )
 
@@ -101,7 +100,7 @@ type ProposalSignature struct {
 type NetworkService struct {
 	db              *db.Queries
 	deployerFactory *DeployerFactory
-	nodes           *nodeservice.NodeService
+	nodeService     *nodeservice.NodeService
 	keyMgmt         *keymanagement.KeyManagementService
 	logger          *logger.Logger
 	orgService      *orgservicefabric.OrganizationService
@@ -112,7 +111,7 @@ func NewNetworkService(db *db.Queries, nodes *nodeservice.NodeService, keyMgmt *
 	return &NetworkService{
 		db:              db,
 		deployerFactory: NewDeployerFactory(db, nodes, keyMgmt, orgService),
-		nodes:           nodes,
+		nodeService:     nodes,
 		keyMgmt:         keyMgmt,
 		logger:          logger,
 		orgService:      orgService,
@@ -316,36 +315,11 @@ func (s *NetworkService) GetNetworkNodes(ctx context.Context, networkID int64) (
 
 	nodes := make([]NetworkNode, len(dbNodes))
 	for i, dbNode := range dbNodes {
-		deploymentConfig, err := nodeutils.DeserializeDeploymentConfig(dbNode.DeploymentConfig.String)
+		node, err := s.nodeService.GetNode(ctx, dbNode.NodeID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to deserialize deployment config: %w", err)
+			return nil, fmt.Errorf("failed to get node: %w", err)
 		}
-		nodeConfig, err := nodeutils.LoadNodeConfig([]byte(dbNode.NodeConfig.String))
-		if err != nil {
-			return nil, fmt.Errorf("failed to load node config: %w", err)
-		}
-		node := nodeservice.Node{
-			ID:                 dbNode.NodeID,
-			Name:               dbNode.Name,
-			BlockchainPlatform: nodetypes.BlockchainPlatform(dbNode.Platform),
-			NodeType:           nodetypes.NodeType(dbNode.NodeType.String),
-			Status:             nodetypes.NodeStatus(dbNode.Status_2),
-			Endpoint:           dbNode.Endpoint.String,
-			PublicEndpoint:     dbNode.PublicEndpoint.String,
-			NodeConfig:         nodeConfig,
-			DeploymentConfig:   deploymentConfig,
-			CreatedAt:          dbNode.CreatedAt_2,
-			UpdatedAt:          dbNode.UpdatedAt_2.Time,
-		}
-		if node.NodeType == nodetypes.NodeTypeFabricPeer {
-			if peerConfig, ok := nodeConfig.(*nodetypes.FabricPeerConfig); ok {
-				node.MSPID = peerConfig.MSPID
-			}
-		} else if node.NodeType == nodetypes.NodeTypeFabricOrderer {
-			if ordererConfig, ok := nodeConfig.(*nodetypes.FabricOrdererConfig); ok {
-				node.MSPID = ordererConfig.MSPID
-			}
-		}
+
 		nodes[i] = NetworkNode{
 			ID:        dbNode.ID,
 			NetworkID: dbNode.NetworkID,
@@ -363,14 +337,14 @@ func (s *NetworkService) GetNetworkNodes(ctx context.Context, networkID int64) (
 
 // NetworkNode represents a node in a network with its full details
 type NetworkNode struct {
-	ID        int64            `json:"id"`
-	NetworkID int64            `json:"networkId"`
-	NodeID    int64            `json:"nodeId"`
-	Status    string           `json:"status"`
-	Role      string           `json:"role"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
-	Node      nodeservice.Node `json:"node"`
+	ID        int64                     `json:"id"`
+	NetworkID int64                     `json:"networkId"`
+	NodeID    int64                     `json:"nodeId"`
+	Status    string                    `json:"status"`
+	Role      string                    `json:"role"`
+	CreatedAt time.Time                 `json:"createdAt"`
+	UpdatedAt time.Time                 `json:"updatedAt"`
+	Node      *nodeservice.NodeResponse `json:"node"`
 }
 
 // AddNodeToNetwork adds a node to the network with the specified role
@@ -382,7 +356,7 @@ func (s *NetworkService) AddNodeToNetwork(ctx context.Context, networkID, nodeID
 	}
 
 	// Get the node
-	node, err := s.nodes.GetNode(ctx, nodeID)
+	node, err := s.nodeService.GetNode(ctx, nodeID)
 	if err != nil {
 		return fmt.Errorf("failed to get node: %w", err)
 	}

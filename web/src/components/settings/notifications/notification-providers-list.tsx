@@ -60,9 +60,15 @@ export function NotificationProvidersList() {
 			form.reset()
 		},
 		onError: (error) => {
-			toast.error('Failed to send test email', {
-				description: error.response?.data?.message || 'An unknown error occurred',
-			})
+			if ((error.error as any)?.message) {
+				toast.error('Failed to send test email', {
+					description: (error.error as any).message,
+				})
+			} else {
+				toast.error('Failed to send test email', {
+					description: error.toString(),
+				})
+			}
 			refetch()
 			setTestProviderId(null)
 		},
@@ -78,9 +84,15 @@ export function NotificationProvidersList() {
 			setDeleteProviderId(null)
 		},
 		onError: (error) => {
-			toast.error('Failed to delete provider', {
-				description: error.response?.data?.message || 'An unknown error occurred',
-			})
+			if ((error.error as any)?.message) {
+				toast.error('Failed to delete provider', {
+					description: (error.error as any).message,
+				})
+			} else {
+				toast.error('Failed to delete provider', {
+					description: error.toString(),
+				})
+			}
 			setDeleteProviderId(null)
 		},
 	})
@@ -96,9 +108,9 @@ export function NotificationProvidersList() {
 
 	const handleDelete = () => {
 		if (!deleteProviderId) return
-		
+
 		deleteMutation.mutate({
-			path: { id: deleteProviderId }
+			path: { id: deleteProviderId },
 		})
 	}
 
@@ -124,9 +136,7 @@ export function NotificationProvidersList() {
 								<h3 className="text-xl font-semibold">No providers configured</h3>
 								<p className="text-muted-foreground">Get started by adding your first notification provider.</p>
 							</div>
-							<Button onClick={() => navigate('/monitoring/providers/new')}>
-								Add Provider
-							</Button>
+							<Button onClick={() => navigate('/monitoring/providers/new')}>Add Provider</Button>
 						</div>
 					</Card>
 				) : (
@@ -166,10 +176,7 @@ export function NotificationProvidersList() {
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem onClick={() => navigate(`/monitoring/providers/${provider.id}`)}>Edit</DropdownMenuItem>
 												<DropdownMenuSeparator />
-												<DropdownMenuItem 
-													className="text-destructive"
-													onClick={() => setDeleteProviderId(provider.id ?? null)}
-												>
+												<DropdownMenuItem className="text-destructive" onClick={() => setDeleteProviderId(provider.id ?? null)}>
 													Delete
 												</DropdownMenuItem>
 											</DropdownMenuContent>
@@ -263,17 +270,11 @@ export function NotificationProvidersList() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure you want to delete this provider?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete this notification provider and remove it from our servers.
-						</AlertDialogDescription>
+						<AlertDialogDescription>This action cannot be undone. This will permanently delete this notification provider and remove it from our servers.</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction 
-							onClick={handleDelete} 
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							disabled={deleteMutation.isPending}
-						>
+						<AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteMutation.isPending}>
 							{deleteMutation.isPending ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />

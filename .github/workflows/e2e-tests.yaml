@@ -37,7 +37,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Set up Go
               uses: actions/setup-go@v5
@@ -46,7 +46,14 @@ jobs:
                   cache: true
 
             - name: Setup Bun
-              uses: oven-sh/setup-bun@v1
+              uses: oven-sh/setup-bun@v2
+
+            - name: Build chainlaunch-ui
+              run: |
+                  cd web
+                  bun install
+                  export API_URL="/api"
+                  bun run build
 
             - name: Install dependencies
               run: |

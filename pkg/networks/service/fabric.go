@@ -114,12 +114,11 @@ func (s *NetworkService) getOrdererAddressAndCertForNetwork(ctx context.Context,
 	// Look for orderer in our registry
 	for _, node := range networkNodes {
 		if node.Node.NodeType == nodetypes.NodeTypeFabricOrderer {
-			ordererConfig, ok := node.Node.DeploymentConfig.(*nodetypes.FabricOrdererDeploymentConfig)
-			if !ok {
+			if node.Node.FabricOrderer == nil {
 				continue
 			}
-			ordererAddress = ordererConfig.ExternalEndpoint
-			ordererTLSCert = ordererConfig.TLSCACert
+			ordererAddress = node.Node.FabricOrderer.ExternalEndpoint
+			ordererTLSCert = node.Node.FabricOrderer.TLSCACert
 			break
 		}
 	}
@@ -334,12 +333,11 @@ func (s *NetworkService) SetAnchorPeers(ctx context.Context, networkID, organiza
 	// Look for orderer in our registry
 	for _, node := range networkNodes {
 		if node.Node.NodeType == nodetypes.NodeTypeFabricOrderer {
-			ordererConfig, ok := node.Node.DeploymentConfig.(*nodetypes.FabricOrdererDeploymentConfig)
-			if !ok {
+			if node.Node.FabricOrderer == nil {
 				continue
 			}
-			ordererAddress = ordererConfig.ExternalEndpoint
-			ordererTLSCert = ordererConfig.TLSCACert
+			ordererAddress = node.Node.FabricOrderer.ExternalEndpoint
+			ordererTLSCert = node.Node.FabricOrderer.TLSCACert
 			break
 		}
 	}

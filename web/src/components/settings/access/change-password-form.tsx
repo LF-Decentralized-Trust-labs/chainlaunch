@@ -51,7 +51,10 @@ export function ChangePasswordForm() {
 
   function onSubmit(data: FormValues) {
     changePassword.mutate({
-      body: data,
+      body: {
+        current_password: data.current_password,
+        new_password: data.new_password,
+      },
     })
   }
 

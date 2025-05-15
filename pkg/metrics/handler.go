@@ -308,7 +308,7 @@ type CustomQueryRequest struct {
 // @Produce json
 // @Param id path string true "Node ID"
 // @Param request body CustomQueryRequest true "Query parameters"
-// @Success 200 {object} CustomQueryRequest
+// @Success 200 {object} common.QueryResult
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/metrics/node/{id}/query [post]

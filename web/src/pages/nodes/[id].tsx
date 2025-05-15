@@ -142,7 +142,6 @@ export default function NodeDetailPage() {
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const [showRenewCertDialog, setShowRenewCertDialog] = useState(false)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
 
 	// Get the active tab from URL or default to 'logs'
 	const activeTab = searchParams.get('tab') || 'logs'

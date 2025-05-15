@@ -1,10 +1,10 @@
 import { GetOrganizationsByIdResponse } from '@/api/client'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
-import { Building2, ExternalLink, MoreVertical, Trash, Key } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { Building2, Key, MoreVertical, Trash } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface OrganizationItemProps {
 	organization: GetOrganizationsByIdResponse
@@ -40,7 +40,9 @@ export function OrganizationItem({ organization, onDelete }: OrganizationItemPro
 							)}
 							{organization.createdAt && (
 								<div className="flex items-center gap-1">
-									<span className="text-xs text-muted-foreground">Created <TimeAgo date={organization.createdAt} /></span>
+									<span className="text-xs text-muted-foreground">
+										Created <TimeAgo date={organization.createdAt} />
+									</span>
 								</div>
 							)}
 						</div>

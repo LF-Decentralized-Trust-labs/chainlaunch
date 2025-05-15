@@ -1,14 +1,10 @@
-import { useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { HttpNodeResponse } from '@/api/client/types.gen'
 import { MetricsCard, MetricsDataPoint } from '@/components/metrics/MetricsCard'
 import { MetricsGrid } from '@/components/metrics/MetricsGrid'
-import { useMetrics } from '@/hooks/useMetrics'
-import { getApiV1MetricsNodeById } from '@/api/client'
-import { useQuery } from '@tanstack/react-query'
-import { HttpNodeResponse } from '@/api/client/types.gen'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCustomMetrics } from '@/hooks/useCustomMetrics'
+import { useState } from 'react'
 
 interface BesuMetricsPageProps {
 	node: HttpNodeResponse

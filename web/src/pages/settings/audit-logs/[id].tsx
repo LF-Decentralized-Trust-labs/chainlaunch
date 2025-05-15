@@ -1,13 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { format } from 'date-fns'
-import { getAuditLogsById } from '@/api/client'
-import { useParams } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getAuditLogsByIdOptions } from '@/api/client/@tanstack/react-query.gen'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useQuery } from '@tanstack/react-query'
+import { format } from 'date-fns'
 import { ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { getAuditLogsByIdOptions } from '@/api/client/@tanstack/react-query.gen'
+import { useNavigate, useParams } from 'react-router-dom'
 
 interface AuditLogDetails {
 	method?: string
@@ -35,7 +33,7 @@ const outcomeColors = {
 
 export default function AuditLogDetailPage() {
 	const { id } = useParams()
-	console.log("id", id)
+	console.log('id', id)
 	const navigate = useNavigate()
 	const { data, isLoading } = useQuery({
 		...getAuditLogsByIdOptions({ path: { id: id! } }),

@@ -110,6 +110,26 @@ export type BlockTransactionWrite = {
 
 export type BlockTxType = 'MESSAGE' | 'CONFIG' | 'CONFIG_UPDATE' | 'ENDORSER_TRANSACTION' | 'ORDERER_TRANSACTION' | 'DELIVER_SEEK_INFO' | 'CHAINCODE_PACKAGE';
 
+export type CommonQueryResult = {
+    data?: {
+        result?: Array<{
+            metric?: {
+                [key: string]: string;
+            };
+            /**
+             * For instant queries
+             */
+            value?: Array<unknown>;
+            /**
+             * For range queries (matrix)
+             */
+            values?: Array<Array<unknown>>;
+        }>;
+        resultType?: string;
+    };
+    status?: string;
+};
+
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -1159,32 +1179,10 @@ export type ServiceNetworkNode = {
     createdAt?: string;
     id?: number;
     networkId?: number;
-    node?: ServiceNode;
+    node?: ServiceNodeResponse;
     nodeId?: number;
     role?: string;
     status?: string;
-    updatedAt?: string;
-};
-
-export type ServiceNode = {
-    createdAt?: string;
-    /**
-     * Node deployment configuration interface that can be one of: FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig
-     */
-    deploymentConfig?: unknown;
-    endpoint?: string;
-    errorMessage?: string;
-    id?: number;
-    mspId?: string;
-    name?: string;
-    /**
-     * Base interface for all node configurations
-     */
-    nodeConfig?: unknown;
-    nodeType?: TypesNodeType;
-    platform?: TypesBlockchainPlatform;
-    publicEndpoint?: string;
-    status?: TypesNodeStatus;
     updatedAt?: string;
 };
 
@@ -1200,6 +1198,24 @@ export type ServiceNodeDefaults = {
     mode?: ServiceMode;
     operationsListenAddress?: string;
     serviceName?: string;
+};
+
+export type ServiceNodeResponse = {
+    besuNode?: ServiceBesuNodeProperties;
+    createdAt?: string;
+    endpoint?: string;
+    errorMessage?: string;
+    fabricOrderer?: ServiceFabricOrdererProperties;
+    /**
+     * Type-specific fields
+     */
+    fabricPeer?: ServiceFabricPeerProperties;
+    id?: number;
+    name?: string;
+    nodeType?: TypesNodeType;
+    platform?: string;
+    status?: string;
+    updatedAt?: string;
 };
 
 export type ServiceNodesDefaultsResult = {
@@ -1373,8 +1389,6 @@ export type TypesMetadata = {
     name?: string;
     version?: string;
 };
-
-export type TypesNodeStatus = 'PENDING' | 'RUNNING' | 'STOPPED' | 'STOPPING' | 'STARTING' | 'UPDATING' | 'ERROR';
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
 
@@ -1633,7 +1647,7 @@ export type PostApiV1MetricsNodeByIdQueryResponses = {
     /**
      * OK
      */
-    200: MetricsCustomQueryRequest;
+    200: CommonQueryResult;
 };
 
 export type PostApiV1MetricsNodeByIdQueryResponse = PostApiV1MetricsNodeByIdQueryResponses[keyof PostApiV1MetricsNodeByIdQueryResponses];

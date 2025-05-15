@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getApiV1MetricsNodeById } from '@/api/client'
 import { HttpNodeResponse } from '@/api/client/types.gen'
 import { MetricsCard, MetricsDataPoint } from '@/components/metrics/MetricsCard'
 import { MetricsGrid } from '@/components/metrics/MetricsGrid'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCustomMetrics } from '@/hooks/useCustomMetrics'
 import { useMetricLabels } from '@/hooks/useMetricLabels'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useEffect, useState } from 'react'
 
 interface OrdererMetricsPageProps {
 	node: HttpNodeResponse

@@ -240,6 +240,35 @@ definitions:
     - ORDERER_TRANSACTION
     - DELIVER_SEEK_INFO
     - CHAINCODE_PACKAGE
+  common.QueryResult:
+    properties:
+      data:
+        properties:
+          result:
+            items:
+              properties:
+                metric:
+                  additionalProperties:
+                    type: string
+                  type: object
+                value:
+                  description: For instant queries
+                  items: {}
+                  type: array
+                values:
+                  description: For range queries (matrix)
+                  items:
+                    items: {}
+                    type: array
+                  type: array
+              type: object
+            type: array
+          resultType:
+            type: string
+        type: object
+      status:
+        type: string
+    type: object
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
     properties:
       code:
@@ -2076,43 +2105,13 @@ definitions:
       networkId:
         type: integer
       node:
-        $ref: '#/definitions/service.Node'
+        $ref: '#/definitions/service.NodeResponse'
       nodeId:
         type: integer
       role:
         type: string
       status:
         type: string
-      updatedAt:
-        type: string
-    type: object
-  service.Node:
-    properties:
-      createdAt:
-        type: string
-      deploymentConfig:
-        description: 'Node deployment configuration interface that can be one of:
-          FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig'
-      endpoint:
-        type: string
-      errorMessage:
-        type: string
-      id:
-        type: integer
-      mspId:
-        type: string
-      name:
-        type: string
-      nodeConfig:
-        description: Base interface for all node configurations
-      nodeType:
-        $ref: '#/definitions/types.NodeType'
-      platform:
-        $ref: '#/definitions/types.BlockchainPlatform'
-      publicEndpoint:
-        type: string
-      status:
-        $ref: '#/definitions/types.NodeStatus'
       updatedAt:
         type: string
     type: object
@@ -2139,6 +2138,35 @@ definitions:
       operationsListenAddress:
         type: string
       serviceName:
+        type: string
+    type: object
+  service.NodeResponse:
+    properties:
+      besuNode:
+        $ref: '#/definitions/service.BesuNodeProperties'
+      createdAt:
+        type: string
+      endpoint:
+        type: string
+      errorMessage:
+        type: string
+      fabricOrderer:
+        $ref: '#/definitions/service.FabricOrdererProperties'
+      fabricPeer:
+        allOf:
+        - $ref: '#/definitions/service.FabricPeerProperties'
+        description: Type-specific fields
+      id:
+        type: integer
+      name:
+        type: string
+      nodeType:
+        $ref: '#/definitions/types.NodeType'
+      platform:
+        type: string
+      status:
+        type: string
+      updatedAt:
         type: string
     type: object
   service.NodesDefaultsResult:
@@ -2395,24 +2423,6 @@ definitions:
       version:
         type: string
     type: object
-  types.NodeStatus:
-    enum:
-    - PENDING
-    - RUNNING
-    - STOPPED
-    - STOPPING
-    - STARTING
-    - UPDATING
-    - ERROR
-    type: string
-    x-enum-varnames:
-    - NodeStatusPending
-    - NodeStatusRunning
-    - NodeStatusStopped
-    - NodeStatusStopping
-    - NodeStatusStarting
-    - NodeStatusUpdating
-    - NodeStatusError
   types.NodeType:
     enum:
     - FABRIC_PEER
@@ -2719,7 +2729,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/metrics.CustomQueryRequest'
+            $ref: '#/definitions/common.QueryResult'
         "400":
           description: Bad Request
           schema:

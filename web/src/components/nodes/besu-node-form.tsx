@@ -45,12 +45,11 @@ interface BesuNodeFormProps {
 	hideSubmit?: boolean
 	defaultValues?: BesuNodeFormValues
 	onChange?: (values: BesuNodeFormValues) => void
-	submitText?: string
 	networkId?: number
 	submitButtonText?: string
 }
 
-export function BesuNodeForm({ onSubmit, isSubmitting, hideSubmit, defaultValues, onChange, submitText = 'Create Node', networkId, submitButtonText = 'Create Node' }: BesuNodeFormProps) {
+export function BesuNodeForm({ onSubmit, isSubmitting, hideSubmit, defaultValues, onChange, networkId, submitButtonText = 'Create Node' }: BesuNodeFormProps) {
 	const form = useForm<BesuNodeFormValues>({
 		resolver: zodResolver(besuNodeFormSchema),
 		defaultValues: {

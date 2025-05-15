@@ -264,20 +264,29 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 					hideNodeType={true}
 					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					defaults={nodeType === 'peer' ? peerDefaults : ordererDefaults}
-					defaultValues={{
-						name: form.getValues().name,
-						fabricProperties: {
-							nodeType: nodeType === 'peer' ? 'FABRIC_PEER' : 'FABRIC_ORDERER',
-							mode: 'service',
-							version: '3.1.0',
-							organizationId: organizations?.[0]?.id || 0,
-							listenAddress: '',
-							operationsListenAddress: '',
-							externalEndpoint: '',
-							domains: [],
-							addressOverrides: [],
-						},
-					}}
+					defaultValues={
+						form.getValues().configuration && Object.keys(form.getValues().configuration).length > 0
+							? {
+									name: form.getValues().name,
+									fabricProperties: {
+										...form.getValues().configuration,
+									},
+								}
+							: {
+									name: form.getValues().name,
+									fabricProperties: {
+										nodeType: nodeType === 'peer' ? 'FABRIC_PEER' : 'FABRIC_ORDERER',
+										mode: 'service',
+										version: '3.1.0',
+										organizationId: organizations?.[0]?.id || 0,
+										listenAddress: '',
+										operationsListenAddress: '',
+										externalEndpoint: '',
+										domains: [],
+										addressOverrides: [],
+									},
+								}
+					}
 					submitText="Next"
 				/>
 			)}
@@ -286,22 +295,29 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 					onSubmit={handleBesuSubmit}
 					isSubmitting={false}
 					hideSubmit={false}
-					defaultValues={{
-						name: form.getValues().name,
-						blockchainPlatform: 'BESU',
-						type: 'besu',
-						mode: 'service',
-						rpcHost: besuDefaults?.defaults?.[0]?.rpcHost?.split(':')[0] || '0.0.0.0',
-						rpcPort: besuDefaults?.defaults?.[0]?.rpcPort || 8545,
-						p2pHost: besuDefaults?.defaults?.[0]?.p2pHost?.split(':')[0] || '0.0.0.0',
-						p2pPort: besuDefaults?.defaults?.[0]?.p2pPort || 30303,
-						externalIp: besuDefaults?.defaults?.[0]?.externalIp || '0.0.0.0',
-						internalIp: besuDefaults?.defaults?.[0]?.internalIp || '0.0.0.0',
-						keyId: 0,
-						networkId: 1,
-						requestTimeout: 30,
-						environmentVariables: [],
-					}}
+					defaultValues={
+						form.getValues().configuration && Object.keys(form.getValues().configuration).length > 0
+							? {
+									...form.getValues().configuration,
+									name: form.getValues().name,
+								}
+							: {
+									name: form.getValues().name,
+									blockchainPlatform: 'BESU',
+									type: 'besu',
+									mode: 'service',
+									rpcHost: besuDefaults?.defaults?.[0]?.rpcHost?.split(':')[0] || '0.0.0.0',
+									rpcPort: besuDefaults?.defaults?.[0]?.rpcPort || 8545,
+									p2pHost: besuDefaults?.defaults?.[0]?.p2pHost?.split(':')[0] || '0.0.0.0',
+									p2pPort: besuDefaults?.defaults?.[0]?.p2pPort || 30303,
+									externalIp: besuDefaults?.defaults?.[0]?.externalIp || '0.0.0.0',
+									internalIp: besuDefaults?.defaults?.[0]?.internalIp || '0.0.0.0',
+									keyId: 0,
+									networkId: 1,
+									requestTimeout: 30,
+									environmentVariables: [],
+								}
+					}
 					submitButtonText="Next"
 				/>
 			)}
@@ -413,7 +429,6 @@ function ReviewStep({ form, onBack }: StepProps) {
 		} else {
 			throw new Error(`Unsupported blockchain platform: ${protocol}`)
 		}
-
 		createNode.mutate({
 			body: createNodeDto,
 		})

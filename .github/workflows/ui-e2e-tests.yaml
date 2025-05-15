@@ -71,7 +71,6 @@ jobs:
 
             - name: Start server and run UI tests
               run: |
-                  mkdir -p testdata
                   ./chainlaunch serve --port=8100 --db data.db &
                   sleep 10
                   cd web

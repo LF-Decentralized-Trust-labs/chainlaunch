@@ -316,7 +316,7 @@ func (s *NodeService) createNodeConfig(req CreateNodeRequest) (types.NodeConfig,
 			return &types.FabricPeerConfig{
 				BaseNodeConfig: types.BaseNodeConfig{
 					Type: "fabric-peer",
-					Mode: "service",
+					Mode: req.FabricPeer.Mode,
 				},
 				Name:                    req.FabricPeer.Name,
 				OrganizationID:          req.FabricPeer.OrganizationID,
@@ -334,7 +334,7 @@ func (s *NodeService) createNodeConfig(req CreateNodeRequest) (types.NodeConfig,
 			return &types.FabricOrdererConfig{
 				BaseNodeConfig: types.BaseNodeConfig{
 					Type: "fabric-orderer",
-					Mode: "service",
+					Mode: req.FabricOrderer.Mode,
 				},
 				Name:                    req.FabricOrderer.Name,
 				OrganizationID:          req.FabricOrderer.OrganizationID,

@@ -71,6 +71,12 @@ func HTTPMiddleware(service *AuditService) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Skip auditing for log streaming endpoints
+			if strings.Contains(r.URL.Path, "/api/v1/nodes/") && strings.HasSuffix(r.URL.Path, "/logs") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Generate a unique request ID and get session ID
 			requestID := uuid.New()
 			sessionID := auth.GetSessionID(r)

@@ -19,8 +19,7 @@ export async function login(page: Page, baseURL: string) {
 	// Wait for redirect to any page that is not /login
 	// await expect(page).not.toHaveURL(baseURL + LOGIN_PATH, { timeout: 10000 })
 	await expect(page).toHaveURL(/.*\/nodes$/, { timeout: 10000 })
-
-	await expect(page.getByRole('heading', { name: 'Nodes' })).toBeVisible({ timeout: 10000 })
+	await expect(page.getByRole('heading', { name: /^(Nodes|Create your first node)$/ })).toBeVisible({ timeout: 10000 })
 	// Optionally, check for a known element on the dashboard or authenticated page
 	// await expect(page.getByText('Organizations')).toBeVisible({ timeout: 10000 })
 }

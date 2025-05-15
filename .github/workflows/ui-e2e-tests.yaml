@@ -31,6 +31,7 @@ jobs:
             PLAYWRIGHT_PASSWORD: admin123
             CHAINLAUNCH_USER: admin
             CHAINLAUNCH_PASSWORD: admin123
+            PLAYWRIGHT_BASE_URL: http://localhost:8100
 
         steps:
             - name: Checkout code
@@ -54,8 +55,8 @@ jobs:
 
             - name: Install Playwright Browsers
               run: |
-                cd web
-                bunx playwright install --with-deps
+                  cd web
+                  bunx playwright install --with-deps
 
             - name: Install dependencies
               run: |
@@ -68,15 +69,11 @@ jobs:
                   go build -v -o chainlaunch ./main.go
                   chmod +x chainlaunch
 
-            - name: Start the application
+            - name: Start server and run UI tests
               run: |
                   mkdir -p testdata
-                  ./chainlaunch serve --db data.db &
+                  ./chainlaunch serve --port=8100 --db data.db &
                   sleep 10
-
-                  
-            - name: Run UI tests
-              run: |
                   cd web
                   bun run test:e2e
 

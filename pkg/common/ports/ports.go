@@ -115,6 +115,13 @@ func GetFreePorts(nodeType string, count int) ([]*PortAllocation, error) {
 
 // IsPortAvailable checks if a specific port is available
 func IsPortAvailable(port int) bool {
+	portMutex.Lock()
+	defer portMutex.Unlock()
+
+	if _, allocated := allocatedPorts[port]; allocated {
+		return false
+	}
+
 	addr := fmt.Sprintf(":%d", port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

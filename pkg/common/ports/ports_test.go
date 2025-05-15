@@ -2,6 +2,7 @@ package ports
 
 import (
 	"net"
+	"strconv"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestGetFreePort(t *testing.T) {
 	}
 
 	// Test that the port is actually free
-	addr := net.JoinHostPort("", string(allocation.Port))
+	addr := net.JoinHostPort("", strconv.Itoa(allocation.Port))
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		t.Errorf("Port %d is not actually free: %v", allocation.Port, err)
@@ -82,14 +83,32 @@ func TestGetFreePorts(t *testing.T) {
 }
 
 func TestIsPortAvailable(t *testing.T) {
+	// Find a free port in the range
+	portRange, err := GetPortRange("fabric-peer")
+	if err != nil {
+		t.Fatalf("Failed to get port range: %v", err)
+	}
+
+	var freePort int
+	for p := portRange.Start; p <= portRange.End; p++ {
+		if IsPortAvailable(p) {
+			freePort = p
+			break
+		}
+	}
+	if freePort == 0 {
+		t.Fatal("No free port found in range")
+	}
+
 	// Test with a free port
+	if !IsPortAvailable(freePort) {
+		t.Errorf("Port %d should be available", freePort)
+	}
+
+	// Allocate a port
 	allocation, err := GetFreePort("fabric-peer")
 	if err != nil {
 		t.Fatalf("Failed to get free port: %v", err)
-	}
-
-	if !IsPortAvailable(allocation.Port) {
-		t.Errorf("Port %d should be available", allocation.Port)
 	}
 
 	// Test with an allocated port

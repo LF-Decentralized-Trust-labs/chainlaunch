@@ -11,3 +11,7 @@ dist/
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Playwright
+playwright-report/
+playwright/.auth/

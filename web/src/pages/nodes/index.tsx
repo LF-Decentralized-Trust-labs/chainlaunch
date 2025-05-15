@@ -44,7 +44,10 @@ function getNodeActions(status: string) {
 			]
 		case 'starting':
 		case 'stopping':
-			return [] // No actions while transitioning
+			return [
+				{ label: 'Stop', action: 'stop' },
+				{ label: 'Delete', action: 'delete' },
+			] // No actions while transitioning
 		default:
 			return [
 				{ label: 'Start', action: 'start' },

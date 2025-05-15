@@ -141,6 +141,7 @@ export default function NodeDetailPage() {
 	const logsRef = useRef<HTMLTextAreaElement>(null)
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const [showRenewCertDialog, setShowRenewCertDialog] = useState(false)
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
 
 	// Get the active tab from URL or default to 'logs'
@@ -242,7 +243,7 @@ export default function NodeDetailPage() {
 					refetchEvents()
 					break
 				case 'delete':
-					await deleteNode.mutateAsync({ path: { id: node.id! } })
+					setShowDeleteDialog(true)
 					break
 				case 'renew-certificates':
 					setShowRenewCertDialog(true)
@@ -551,6 +552,30 @@ export default function NodeDetailPage() {
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction onClick={handleRenewCertificates} disabled={renewCertificates.isPending}>
 							Renew Certificates
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Node</AlertDialogTitle>
+						<AlertDialogDescription>Are you sure you want to delete this node? This action cannot be undone.</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={async () => {
+								if (node) {
+									await deleteNode.mutateAsync({ path: { id: node.id! } })
+									setShowDeleteDialog(false)
+								}
+							}}
+							disabled={deleteNode.isPending}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

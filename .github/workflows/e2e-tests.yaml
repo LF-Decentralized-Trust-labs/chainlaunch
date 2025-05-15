@@ -1,85 +1,89 @@
 name: End-to-End Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - '**/*.md'
+            - 'docs/**'
 
 jobs:
-  e2e-tests:
-    name: Run E2E Tests
-    runs-on: ubuntu-latest
-    
-    services:
-      # Mailhog for email testing
-      mailhog:
-        image: mailhog/mailhog
-        ports:
-          - 1025:1025 # SMTP server
-          - 8025:8025 # Web interface
+    e2e-tests:
+        name: Run E2E Tests
+        runs-on: ubuntu-latest
 
-    env:
-      API_BASE_URL: http://localhost:8100/api/v1
-      CYPRESS_BASE_URL: http://localhost:8100
-      CYPRESS_API_URL: http://localhost:8100/api/v1
-      CHAINLAUNCH_USER: admin
-      CHAINLAUNCH_PASSWORD: admin123
+        services:
+            # Mailhog for email testing
+            mailhog:
+                image: mailhog/mailhog
+                ports:
+                    - 1025:1025 # SMTP server
+                    - 8025:8025 # Web interface
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+        env:
+            API_BASE_URL: http://localhost:8100/api/v1
+            CYPRESS_BASE_URL: http://localhost:8100
+            CYPRESS_API_URL: http://localhost:8100/api/v1
+            CHAINLAUNCH_USER: admin
+            CHAINLAUNCH_PASSWORD: admin123
+            API_USERNAME: admin
+            API_PASSWORD: admin123
+            PLAYWRIGHT_USER: admin
+            PLAYWRIGHT_PASSWORD: admin123
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.4'
-          cache: true
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: '1.23.4'
+                  cache: true
 
-      - name: Install dependencies
-        run: |
-          go mod download
-          sudo apt-get update
-          sudo apt-get install -y build-essential
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v1
 
-      - name: Build the application
-        run: |
-          go build -v -o chainlaunch ./main.go
-          chmod +x chainlaunch
+            - name: Install dependencies
+              run: |
+                  go mod download
+                  sudo apt-get update
+                  sudo apt-get install -y build-essential
 
-      - name: Start the application
-        run: |
-          # Create test data directory
-          mkdir -p testdata
-          
-          # Start the application in the background
-          ./chainlaunch serve --db data.db &
-          sleep 10  # Wait for the application to start
+            - name: Build the application
+              run: |
+                  go build -v -o chainlaunch ./main.go
+                  chmod +x chainlaunch
 
-      - name: Run API tests
-        run: |
-          go test -v ./tests/e2e/... -tags=e2e
+            - name: Start the application
+              run: |
+                  # Create test data directory
+                  mkdir -p testdata
 
-      - name: Run UI tests
-        run: |
-          cd web
-          bun install
-          bun run test:e2e
+                  # Start the application in the background
+                  ./chainlaunch serve --db data.db &
+                  sleep 10  # Wait for the application to start
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            web/cypress/videos
-            web/cypress/screenshots
-            test-results.xml 
+            - name: Run API tests
+              run: |
+                  go test -v ./e2e/...
+
+            - name: Run UI tests
+              run: |
+                  cd web
+                  bun install
+                  bun run test:e2e
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results
+                  path: |
+                      web/cypress/videos
+                      web/cypress/screenshots
+                      test-results.xml

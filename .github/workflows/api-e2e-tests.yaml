@@ -62,16 +62,25 @@ jobs:
                   go build -v -o chainlaunch ./main.go
                   chmod +x chainlaunch
 
-            - name: Start the application
+            - name: Start the application and run tests
               run: |
                   mkdir -p testdata
                   export CHAINLAUNCH_USER=admin
                   export CHAINLAUNCH_PASSWORD=admin123
                   ./chainlaunch serve --port=8100 --db data.db &
-                  sleep 10
 
-            - name: Run API tests
-              run: |
+                  # Wait for port 8100 to be available (60 seconds timeout)
+                  timeout=60
+                  while ! curl -s http://localhost:8100/api/v1 > /dev/null; do
+                      if [ $timeout -le 0 ]; then
+                          echo "Timeout waiting for API to become available"
+                          exit 1
+                      fi
+                      echo "Waiting for API to become available... ($timeout seconds remaining)"
+                      sleep 1
+                      ((timeout--))
+                  done
+
                   export API_USERNAME=${CHAINLAUNCH_USER}
                   export API_PASSWORD=${CHAINLAUNCH_PASSWORD}
                   export API_BASE_URL=http://localhost:8100/api/v1

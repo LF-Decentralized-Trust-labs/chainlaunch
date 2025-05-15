@@ -62,6 +62,10 @@ func TestCreateNode(t *testing.T) {
 		Name:               nodeName,
 		BlockchainPlatform: "FABRIC",
 		FabricPeer: &nodetypes.FabricPeerConfig{
+			BaseNodeConfig: nodetypes.BaseNodeConfig{
+				Type: "fabric-peer",
+				Mode: "docker",
+			},
 			Name:                    peerName,
 			MSPID:                   mspID,
 			OrganizationID:          orgID,

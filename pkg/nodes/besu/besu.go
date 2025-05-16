@@ -137,9 +137,20 @@ func (b *LocalBesu) checkPrerequisites() error {
 		}
 
 	case "docker":
-		// Check Docker installation
-		if err := exec.Command("docker", "--version").Run(); err != nil {
-			return fmt.Errorf("Docker is not installed: %w", err)
+		// Check Docker installation using Docker API client
+		cli, err := client.NewClientWithOpts(
+			client.FromEnv,
+			client.WithAPIVersionNegotiation(),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Docker client: %w", err)
+		}
+		defer cli.Close()
+
+		// Ping Docker daemon to verify connectivity
+		ctx := context.Background()
+		if _, err := cli.Ping(ctx); err != nil {
+			return fmt.Errorf("Docker daemon is not running or not accessible: %w", err)
 		}
 	}
 

@@ -415,7 +415,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 				continue
 			}
 
-			logger.Infof("Added node %s (%s) to monitoring", node.Name, node.ID)
+			logger.Infof("Added node %s (%d) to monitoring", node.Name, node.ID)
 		}
 	}()
 

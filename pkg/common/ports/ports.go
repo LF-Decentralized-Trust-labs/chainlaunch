@@ -122,12 +122,18 @@ func IsPortAvailable(port int) bool {
 		return false
 	}
 
-	addr := fmt.Sprintf(":%d", port)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return false
+	addrs := []string{
+		"0.0.0.0",
+		"127.0.0.1",
 	}
-	listener.Close()
+	for _, addr := range addrs {
+		fullAddr := fmt.Sprintf("%s:%d", addr, port)
+		listener, err := net.Listen("tcp", fullAddr)
+		if err != nil {
+			return false
+		}
+		listener.Close()
+	}
 	return true
 }
 

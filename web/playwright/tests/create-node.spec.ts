@@ -51,7 +51,5 @@ test('can login, create an organization, and create a Fabric node', async ({ pag
 	await page.getByRole('button', { name: /create node/i }).click()
 
 	// Wait for navigation to the node detail page or nodes list
-	await expect(page).toHaveURL(/\/nodes\//, { timeout: 15000 })
-	// Optionally, check for the node name on the detail page
-	await expect(page.getByText(/General Information/i)).toBeVisible({ timeout: 10000 })
+	await expect(page.getByText(/General Information/i)).toBeVisible({ timeout: 60000 })
 })

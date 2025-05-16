@@ -71,7 +71,7 @@ jobs:
 
             - name: Start server and run UI tests
               run: |
-                  ./chainlaunch serve --port=8100 --db data.db &
+                  ./chainlaunch serve --data=$PWD/test-data --port=8100 --db data.db &
 
                   # Wait for port 8100 to be available (60 seconds timeout)
                   timeout=60

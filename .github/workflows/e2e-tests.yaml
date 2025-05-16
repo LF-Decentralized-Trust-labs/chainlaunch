@@ -152,6 +152,8 @@ jobs:
                   key: playwright-browsers-${{ runner.os }}-${{ hashFiles('web/package.json', 'web/bun.lockb') }}
                   restore-keys: |
                       playwright-browsers-${{ runner.os }}-
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
 
             - name: Install Playwright Browsers
               run: |

@@ -93,7 +93,8 @@ jobs:
                   export CHAINLAUNCH_PASSWORD=admin123
                   export CHAINLAUNCH_DATA=${{ github.workspace }}/test-data
                   echo "CHAINLAUNCH_DATA: $CHAINLAUNCH_DATA"
-                  ./chainlaunch serve --port=8100 --db data.db &
+                  chmod +x chainlaunch
+                  ./chainlaunch serve --data=$CHAINLAUNCH_DATA --port=8100 --db data.db &
                   # Wait for port 8100 to be available (60 seconds timeout)
                   timeout=60
                   while ! curl -s http://localhost:8100 > /dev/null; do
@@ -163,6 +164,7 @@ jobs:
             - name: Start server and run UI tests
               run: |
                   export CHAINLAUNCH_DATA=${{ github.workspace }}/test-data
+                  chmod +x chainlaunch
                   ./chainlaunch serve --data=$CHAINLAUNCH_DATA --port=8100 --db data.db &
 
                   # Wait for port 8100 to be available (60 seconds timeout)

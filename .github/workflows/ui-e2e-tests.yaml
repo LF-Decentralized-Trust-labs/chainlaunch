@@ -66,8 +66,8 @@ jobs:
             - name: Install dependencies
               run: |
                   go mod download
-                  apt-get update
-                  apt-get install -y build-essential
+                  sudo apt-get update
+                  sudo apt-get install -y build-essential
 
             - name: Build the application
               run: |

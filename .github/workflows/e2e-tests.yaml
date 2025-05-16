@@ -82,6 +82,9 @@ jobs:
             API_PASSWORD: admin123
 
         steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
             - name: Download build artifacts
               uses: actions/download-artifact@v4
               with:
@@ -145,6 +148,8 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: build-artifacts
+            - name: Checkout code
+              uses: actions/checkout@v4
 
             - name: Cache Playwright Browsers
               uses: actions/cache@v4

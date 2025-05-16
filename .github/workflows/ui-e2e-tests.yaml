@@ -15,8 +15,6 @@ jobs:
     ui-tests:
         name: Run UI Tests
         runs-on: ubuntu-latest
-        container:
-            image: node:20
         services:
             mailhog:
                 image: mailhog/mailhog

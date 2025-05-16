@@ -86,7 +86,7 @@ func TestCreateNode(t *testing.T) {
 	require.NoError(t, err)
 	fabricID := fabricCreateResp.ID
 	// Check node status
-	require.Equal(t, "RUNNING", fabricCreateResp.Status)
+	require.Equal(t, "RUNNING", fabricCreateResp.Status)	
 	// Assert that the fabric node ID is not zero
 	require.NotZero(t, fabricID, "Fabric node ID should not be zero")
 }

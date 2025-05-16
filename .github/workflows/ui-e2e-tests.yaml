@@ -57,6 +57,13 @@ jobs:
               run: |
                   cd web
                   bunx playwright install --with-deps
+            - name: Cache Playwright Browsers
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: playwright-browsers-${{ runner.os }}-${{ hashFiles('web/package.json', 'web/bun.lockb') }}
+                  restore-keys: |
+                      playwright-browsers-${{ runner.os }}-
 
             - name: Install dependencies
               run: |
@@ -71,7 +78,11 @@ jobs:
 
             - name: Start server and run UI tests
               run: |
-                  ./chainlaunch serve --data=$PWD/test-data --port=8100 --db data.db &
+                  echo "Current working directory: $(pwd)"
+                  echo "GitHub workspace: ${{ github.workspace }}"
+                  export CHAINLAUNCH_DATA=${{ github.workspace }}/test-data
+                  echo "CHAINLAUNCH_DATA: $CHAINLAUNCH_DATA"
+                  ./chainlaunch serve --data=$CHAINLAUNCH_DATA --port=8100 --db data.db &
 
                   # Wait for port 8100 to be available (60 seconds timeout)
                   timeout=60

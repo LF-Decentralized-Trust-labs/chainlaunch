@@ -111,18 +111,20 @@ function NodeTypeStep({ form, onNext, onBack }: StepProps) {
 						<FormControl>
 							<RadioGroup onValueChange={field.onChange} value={field.value} className="grid gap-4">
 								{nodeTypes.map((type) => (
-									<label
+									<button
+										type="button"
 										key={type.id}
-										className={`flex items-start p-4 gap-4 border rounded-lg cursor-pointer hover:border-primary transition-colors ${
+										onClick={() => field.onChange(type.id)}
+										className={`flex items-start w-full p-4 gap-4 border rounded-lg cursor-pointer hover:border-primary transition-colors ${
 											field.value === type.id ? 'border-primary bg-primary/5' : ''
 										}`}
 									>
 										<RadioGroupItem value={type.id} id={type.id} className="mt-1" />
-										<div>
+										<div className="text-left">
 											<h3 className="font-medium">{type.name}</h3>
 											<p className="text-sm text-muted-foreground">{type.description}</p>
 										</div>
-									</label>
+									</button>
 								))}
 							</RadioGroup>
 						</FormControl>

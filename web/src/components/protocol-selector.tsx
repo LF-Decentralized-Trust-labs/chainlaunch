@@ -28,7 +28,6 @@ interface ProtocolSelectorProps {
 	control: Control<any>
 	name: string
 }
-
 export function ProtocolSelector({ control, name }: ProtocolSelectorProps) {
 	const privateProtocols = protocols.filter((p) => p.category === 'private')
 	const publicProtocols = protocols.filter((p) => p.category === 'public')
@@ -47,21 +46,23 @@ export function ProtocolSelector({ control, name }: ProtocolSelectorProps) {
 								<h3 className="text-sm font-medium text-muted-foreground">Private Networks</h3>
 								<div className="grid grid-cols-3 gap-4">
 									{privateProtocols.map((protocol) => (
-										<label
+										<button
 											key={protocol.id}
+											type="button"
+											disabled={protocol.comingSoon}
+											onClick={() => !protocol.comingSoon && field.onChange(protocol.id)}
 											className={cn(
-												'flex items-center justify-start gap-2 rounded-lg border p-4 cursor-pointer hover:border-primary transition-colors',
+												'flex items-center justify-start gap-2 rounded-lg border p-4 hover:border-primary transition-colors text-left',
 												field.value === protocol.id && 'border-primary bg-primary/5',
-												protocol.comingSoon && 'opacity-50 cursor-not-allowed'
+												protocol.comingSoon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
 											)}
 										>
-											<RadioGroupItem value={protocol.id} id={protocol.id} className="sr-only" disabled={protocol.comingSoon} />
 											<img src={protocol.logo} alt={protocol.name} className="h-6 w-6" />
 											<span className="text-sm font-medium">
 												{protocol.name}
 												{protocol.comingSoon && <span className="ml-2 text-xs text-muted-foreground">(Coming Soon)</span>}
 											</span>
-										</label>
+										</button>
 									))}
 								</div>
 							</div>
@@ -71,21 +72,23 @@ export function ProtocolSelector({ control, name }: ProtocolSelectorProps) {
 								<h3 className="text-sm font-medium text-muted-foreground">Public Networks</h3>
 								<div className="grid grid-cols-3 gap-4">
 									{publicProtocols.map((protocol) => (
-										<label
+										<button
 											key={protocol.id}
+											type="button"
+											disabled={protocol.comingSoon}
+											onClick={() => !protocol.comingSoon && field.onChange(protocol.id)}
 											className={cn(
-												'flex items-center justify-start gap-2 rounded-lg border p-4 cursor-pointer hover:border-primary transition-colors',
+												'flex items-center justify-start gap-2 rounded-lg border p-4 hover:border-primary transition-colors text-left',
 												field.value === protocol.id && 'border-primary bg-primary/5',
-												protocol.comingSoon && 'opacity-50 cursor-not-allowed'
+												protocol.comingSoon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
 											)}
 										>
-											<RadioGroupItem value={protocol.id} id={protocol.id} className="sr-only" disabled={protocol.comingSoon} />
 											<img src={protocol.logo} alt={protocol.name} className="h-6 w-6" />
 											<span className="text-sm font-medium">
 												{protocol.name}
 												{protocol.comingSoon && <span className="ml-2 text-xs text-muted-foreground">(Coming Soon)</span>}
 											</span>
-										</label>
+										</button>
 									))}
 								</div>
 							</div>

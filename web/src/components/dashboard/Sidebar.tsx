@@ -246,11 +246,11 @@ function NavUser() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-			<SidebarMenu>
+			<SidebarMenu id="user-menu">
 				<SidebarMenuItem>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+							<SidebarMenuButton id="user-menu-trigger" size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
 								<Avatar className="h-8 w-8 rounded-lg">
 									<AvatarFallback className="rounded-lg">{user.username?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
 								</Avatar>

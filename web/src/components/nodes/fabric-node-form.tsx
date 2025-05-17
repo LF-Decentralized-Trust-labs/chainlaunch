@@ -197,7 +197,7 @@ export function FabricNodeForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>Organization</FormLabel>
-								<Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+								<Select name="organization" onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
 									<FormControl>
 										<SelectTrigger>
 											<SelectValue placeholder="Select organization" />

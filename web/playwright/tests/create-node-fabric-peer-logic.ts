@@ -1,6 +1,4 @@
-import { test, expect } from '@playwright/test'
-import { login } from './login'
-import { createOrganization } from './create-organization'
+import { Page } from '@playwright/test'
 
 const FABRIC_NODE_CREATE_PATH = '/nodes/fabric/create'
 
@@ -9,18 +7,17 @@ function uniqueSuffix() {
 	return `${Date.now()}-${Math.floor(Math.random() * 10000)}`
 }
 
-test('can login, create an organization, and create a Fabric node', async ({ page, baseURL }) => {
-	await login(page, baseURL ?? '')
-
-	// Create a unique organization
-	const UNIQUE_SUFFIX = uniqueSuffix()
-	const mspId = `test-msp-${UNIQUE_SUFFIX}`
-	const description = `Test organization created by Playwright ${UNIQUE_SUFFIX}`
-	await createOrganization(page, baseURL, { mspId, description })
-
-	// Go to Fabric node creation page
+/**
+ * Creates a Fabric node via the UI.
+ *
+ * @param page Playwright page instance
+ * @param baseURL Base URL of the app
+ * @param mspId The MSP ID of the organization to select
+ * @returns The node name used for creation
+ */
+export async function createFabricNode(page: Page, baseURL: string, mspId: string): Promise<string> {
 	await page.goto(baseURL + FABRIC_NODE_CREATE_PATH)
-	await expect(page.getByRole('heading', { name: /create fabric node/i })).toBeVisible({ timeout: 10000 })
+	await page.getByRole('heading', { name: /create fabric node/i }).waitFor({ state: 'visible', timeout: 10000 })
 
 	// Fill out the form with unique values
 	const nodeName = `test-node-${uniqueSuffix()}`
@@ -38,8 +35,6 @@ test('can login, create an organization, and create a Fabric node', async ({ pag
 	await modeSelect.click()
 	await page.getByRole('option', { name: /docker/i }).click()
 
-	// Node type (default is peer, skip unless you want to test orderer)
-
 	// Listen Address
 	await page.getByPlaceholder('e.g., 0.0.0.0:7051').fill(`0.0.0.0:${7000 + Math.floor(Math.random() * 1000)}`)
 	// Operations Address
@@ -49,7 +44,9 @@ test('can login, create an organization, and create a Fabric node', async ({ pag
 
 	// Submit
 	await page.getByRole('button', { name: /create node/i }).click()
-
+	await page.waitForLoadState('networkidle')
 	// Wait for navigation to the node detail page or nodes list
-	await expect(page.getByText(/General Information/i)).toBeVisible({ timeout: 60000 })
-})
+	await page.getByText(/General Information/i).waitFor({ state: 'visible', timeout: 60000 })
+
+	return nodeName
+}

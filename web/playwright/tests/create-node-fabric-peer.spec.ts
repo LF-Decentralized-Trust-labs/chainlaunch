@@ -5,9 +5,12 @@ import { createFabricNode } from './create-node-fabric-peer-logic'
 
 const FABRIC_NODE_CREATE_PATH = '/nodes/fabric/create'
 
-// Helper to generate unique values
+// Helper to generate unique values with cryptographically secure random numbers
 function uniqueSuffix() {
-	return `${Date.now()}-${Math.floor(Math.random() * 10000)}`
+	const bytes = new Uint8Array(4);
+	crypto.getRandomValues(bytes);
+	const randomNum = new DataView(bytes.buffer).getUint32(0) % 10000;
+	return `${Date.now()}-${randomNum}`;
 }
 
 test('can login, create an organization, and create a Fabric node', async ({ page, baseURL }) => {

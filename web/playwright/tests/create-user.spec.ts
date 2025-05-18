@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { login } from './login'
 
-// Helper to generate a unique username
+// Helper to generate a unique username with cryptographically secure random values
 function uniqueUsername() {
-  return `testuser_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const randomNum = new DataView(bytes.buffer).getUint32(0) % 10000;
+  return `testuser_${Date.now()}_${randomNum}`;
 }
 
 const USER_MANAGEMENT_PATH = '/users'

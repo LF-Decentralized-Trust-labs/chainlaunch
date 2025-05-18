@@ -2,9 +2,12 @@ import { Page } from '@playwright/test'
 
 const FABRIC_NODE_CREATE_PATH = '/nodes/fabric/create'
 
-// Helper to generate unique values
+// Helper to generate unique values with cryptographically secure random numbers
 function uniqueSuffix() {
-	return `${Date.now()}-${Math.floor(Math.random() * 10000)}`
+	const bytes = new Uint8Array(4)
+	crypto.getRandomValues(bytes)
+	const randomNum = new DataView(bytes.buffer).getUint32(0) % 10000
+	return `${Date.now()}-${randomNum}`
 }
 
 /**
@@ -35,12 +38,17 @@ export async function createFabricNode(page: Page, baseURL: string, mspId: strin
 	await modeSelect.click()
 	await page.getByRole('option', { name: /docker/i }).click()
 
-	// Listen Address
-	await page.getByPlaceholder('e.g., 0.0.0.0:7051').fill(`0.0.0.0:${7000 + Math.floor(Math.random() * 1000)}`)
-	// Operations Address
-	await page.getByPlaceholder('e.g., 0.0.0.0:9443').fill(`0.0.0.0:${9000 + Math.floor(Math.random() * 1000)}`)
-	// External Endpoint
-	await page.getByPlaceholder('e.g., peer0.org1.example.com:7051').fill(`peer0.example.com:${7000 + Math.floor(Math.random() * 1000)}`)
+	// Listen Address - use crypto.getRandomValues for secure random port
+	const listenPort = 7000 + (new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000)
+	await page.getByPlaceholder('e.g., 0.0.0.0:7051').fill(`0.0.0.0:${listenPort}`)
+
+	// Operations Address - use crypto.getRandomValues for secure random port
+	const opsPort = 9000 + (new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000)
+	await page.getByPlaceholder('e.g., 0.0.0.0:9443').fill(`0.0.0.0:${opsPort}`)
+
+	// External Endpoint - use crypto.getRandomValues for secure random port
+	const extPort = 7000 + (new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000)
+	await page.getByPlaceholder('e.g., peer0.org1.example.com:7051').fill(`peer0.example.com:${extPort}`)
 
 	// Submit
 	await page.getByRole('button', { name: /create node/i }).click()

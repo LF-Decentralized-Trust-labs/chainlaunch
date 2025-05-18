@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { login } from './login'
-
 // Helper to generate unique values
 function uniqueSuffix() {
-  return `${Date.now()}-${Math.floor(Math.random() * 10000)}`
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const randomNum = new DataView(bytes.buffer).getUint32(0) % 10000;
+  return `${Date.now()}-${randomNum}`;
 }
 
 const NODE_CREATE_PATH = '/nodes/create'
@@ -43,13 +45,17 @@ test('can create a Fabric peer node using the NodeCreationWizard', async ({ page
   const modeSelect = page.getByRole('combobox', { name: /mode/i })
   await modeSelect.click()
   await page.getByRole('option', { name: /docker/i }).click()
-
   // Listen Address
-  await page.getByPlaceholder('e.g., 0.0.0.0:7051').fill(`0.0.0.0:${7000 + Math.floor(Math.random() * 1000)}`)
+  const listenPort = 7000 + new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000
+  await page.getByPlaceholder('e.g., 0.0.0.0:7051').fill(`0.0.0.0:${listenPort}`)
+  
   // Operations Address
-  await page.getByPlaceholder('e.g., 0.0.0.0:9443').fill(`0.0.0.0:${9000 + Math.floor(Math.random() * 1000)}`)
+  const opsPort = 9000 + new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000
+  await page.getByPlaceholder('e.g., 0.0.0.0:9443').fill(`0.0.0.0:${opsPort}`)
+  
   // External Endpoint
-  await page.getByPlaceholder('e.g., peer0.org1.example.com:7051').fill(`peer0.example.com:${7000 + Math.floor(Math.random() * 1000)}`)
+  const extPort = 7000 + new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0) % 1000
+  await page.getByPlaceholder('e.g., peer0.org1.example.com:7051').fill(`peer0.example.com:${extPort}`)
 
   // Go to Review step
   await page.getByRole('button', { name: /next/i }).click()

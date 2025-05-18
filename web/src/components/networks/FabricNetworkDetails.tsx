@@ -648,9 +648,9 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 	const [selectedOrg, setSelectedOrg] = useState<{ id: number; mspId: string } | null>(null)
 
 	useEffect(() => {
-		if (fabricOrgs && fabricOrgs.length > 0 && !selectedOrg) {
+		if (fabricOrgs && fabricOrgs.items && fabricOrgs.items.length > 0 && !selectedOrg) {
 			// If found, use that org, otherwise use the first org that has both id and mspId
-			const defaultOrg = fabricOrgs.find((org) => org.id && org.mspId)
+			const defaultOrg = fabricOrgs.items.find((org) => org.id && org.mspId)
 			if (defaultOrg) {
 				setSelectedOrg({
 					id: defaultOrg.id!,
@@ -753,7 +753,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 					<div className="mb-8 space-y-2">
 						{Object.entries(channelConfig.config.data.data[0].payload.data.config.channel_group.groups.Application.groups)
 							// Only show warnings for orgs that belong to us
-							.filter(([mspId]) => fabricOrgs?.some((org) => org.mspId === mspId))
+							.filter(([mspId]) => fabricOrgs?.items?.some((org) => org.mspId === mspId))
 							.map(([mspId, orgConfig]: [string, any]) => {
 								const anchorPeers = orgConfig.values?.AnchorPeers?.value?.anchor_peers || []
 
@@ -813,7 +813,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 									<div className="space-y-4">
 										{Object.entries(channelConfig.config.data.data[0].payload.data.config.channel_group.groups.Application.groups)
 											// Only show warnings for orgs that belong to us
-											.filter(([mspId]) => fabricOrgs?.some((org) => org.mspId === mspId))
+											.filter(([mspId]) => fabricOrgs?.items?.some((org) => org.mspId === mspId))
 											.map(([mspId, orgConfig]: [string, any]) => {
 												const anchorPeers = orgConfig.values?.AnchorPeers?.value?.anchor_peers || []
 
@@ -841,7 +841,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 								{channelConfig?.config?.data?.data?.[0]?.payload?.data?.config?.channel_group?.groups?.Application?.groups &&
 									(() => {
 										const filteredOrgs = Object.entries(channelConfig.config.data.data[0].payload.data.config.channel_group.groups.Application.groups).filter(([mspId]) =>
-											fabricOrgs?.some((org) => org.mspId === mspId)
+											fabricOrgs?.items?.some((org) => org.mspId === mspId)
 										)
 
 										if (filteredOrgs.length === 0) {
@@ -856,7 +856,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 										}
 
 										return filteredOrgs.map(([mspId, orgConfig]: [string, any]) => {
-											const orgID = fabricOrgs?.find((org) => org.mspId === mspId)?.id!
+											const orgID = fabricOrgs?.items?.find((org) => org.mspId === mspId)?.id!
 											const organization = {
 												id: orgID,
 												name: mspId,
@@ -864,7 +864,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 											}
 
 											const currentAnchorPeers = orgConfig.values?.AnchorPeers?.value?.anchor_peers || []
-											const orgNodes = networkNodes?.nodes?.filter((node) => node.node?.mspId === mspId) || []
+											const orgNodes = networkNodes?.nodes?.filter((node) => node.node?.fabricPeer && node.node?.fabricPeer?.mspId === mspId) || []
 											return (
 												<AnchorPeerConfig
 													key={mspId}
@@ -931,7 +931,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 										<Select
 											value={selectedOrg?.mspId}
 											onValueChange={(mspId) => {
-												const org = fabricOrgs?.find((org) => org.mspId === mspId)
+												const org = fabricOrgs?.items?.find((org) => org.mspId === mspId)
 												if (org) {
 													setSelectedOrg({
 														id: org.id!,
@@ -944,7 +944,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 												<SelectValue placeholder="Select an organization" />
 											</SelectTrigger>
 											<SelectContent>
-												{fabricOrgs?.map((org) => (
+												{fabricOrgs?.items?.map((org) => (
 													<SelectItem key={org.id} value={org.mspId!}>
 														{org.mspId}
 													</SelectItem>
@@ -1023,7 +1023,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 						}
 						crl={
 							<div className="space-y-4">
-								<CRLManagement network={network} organizations={fabricOrgs || []} />
+								<CRLManagement network={network} organizations={fabricOrgs?.items || []} />
 							</div>
 						}
 					/>

@@ -96,7 +96,7 @@ export default function FabricCreateChannel() {
 	// Update form values when queries complete for local organizations
 	useEffect(() => {
 		if (organizations && nodes?.items) {
-			const defaultOrgs = organizations.map((org) => {
+			const defaultOrgs = organizations.items?.map((org) => {
 				const orderers = nodes.items?.filter((node) => node.platform === 'FABRIC' && node.nodeType === 'FABRIC_ORDERER' && node.fabricOrderer?.mspId === org.mspId)
 
 				return {
@@ -115,7 +115,7 @@ export default function FabricCreateChannel() {
 
 	const organizationsWithNodes = useMemo(
 		() =>
-			organizations?.map((org) => ({
+			organizations?.items?.map((org) => ({
 				...org,
 				orderers: nodes?.items?.filter((node) => node.platform === 'FABRIC' && node.nodeType === 'FABRIC_ORDERER' && node.fabricOrderer?.mspId === org.mspId) || [],
 			})) as OrganizationWithNodes[],

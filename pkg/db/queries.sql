@@ -257,7 +257,8 @@ FROM fabric_organizations fo
 LEFT JOIN keys sk ON fo.sign_key_id = sk.id
 LEFT JOIN keys tk ON fo.tls_root_key_id = tk.id
 LEFT JOIN key_providers p ON fo.provider_id = p.id
-ORDER BY fo.created_at DESC;
+ORDER BY fo.created_at DESC
+LIMIT ? OFFSET ?;
 
 
 -- name: UpdateNetworkGenesisBlock :one

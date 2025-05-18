@@ -122,7 +122,7 @@ type Querier interface {
 	ListBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) ([]*Backup, error)
 	ListBackupsByTarget(ctx context.Context, targetID int64) ([]*Backup, error)
 	ListFabricOrganizations(ctx context.Context) ([]*FabricOrganization, error)
-	ListFabricOrganizationsWithKeys(ctx context.Context) ([]*ListFabricOrganizationsWithKeysRow, error)
+	ListFabricOrganizationsWithKeys(ctx context.Context, arg *ListFabricOrganizationsWithKeysParams) ([]*ListFabricOrganizationsWithKeysRow, error)
 	ListKeyProviders(ctx context.Context) ([]*KeyProvider, error)
 	ListKeys(ctx context.Context, arg *ListKeysParams) ([]*ListKeysRow, error)
 	ListNetworkNodesByNetwork(ctx context.Context, networkID int64) ([]*NetworkNode, error)

@@ -953,7 +953,6 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		}
 		peerNodes := []nodeservice.NodeResponse{}
 		for _, node := range orgNodes {
-
 			peerNodes = append(peerNodes, node)
 			listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 				NetworkID: networkID,
@@ -1019,7 +1018,6 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		signCACert := *signKey.Certificate
 		tlsCACert := *tlsKey.Certificate
 
-		// Get orderer nodes for this organization
 		ordererNodes := []*nodeservice.NodeResponse{}
 		for _, nodeID := range org.NodeIDs {
 			node, err := d.nodes.GetNode(ctx, nodeID)

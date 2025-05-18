@@ -338,7 +338,7 @@ export function ImportNetworkForm() {
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															{organizations?.map((org) => (
+															{organizations?.items?.map((org) => (
 																<SelectItem key={org.id} value={org.id!.toString()}>
 																	{org.mspId}
 																</SelectItem>

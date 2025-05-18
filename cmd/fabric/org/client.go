@@ -56,14 +56,10 @@ func (cw *ClientWrapper) CreateOrganization(name, mspID string, providerID int64
 }
 
 // ListOrganizations lists all organizations
-func (cw *ClientWrapper) ListOrganizations() ([]client.Organization, error) {
+func (cw *ClientWrapper) ListOrganizations() (*client.PaginatedOrganizationsResponse, error) {
 	orgs, err := cw.client.ListOrganizations()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list organizations: %w", err)
-	}
-
-	if len(orgs) == 0 {
-		return nil, fmt.Errorf("no organizations found")
 	}
 
 	return orgs, nil

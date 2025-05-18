@@ -90,7 +90,7 @@ export default function BulkCreateNodesPage() {
 		...getNodesOptions(),
 	})
 
-	const selectedOrg = organizations?.find((org) => org.id?.toString() === form.watch('organization'))
+	const selectedOrg = organizations?.items?.find((org) => org.id?.toString() === form.watch('organization'))
 	const peerCount = form.watch('peerCount')
 	const ordererCount = form.watch('ordererCount')
 
@@ -313,7 +313,7 @@ export default function BulkCreateNodesPage() {
 														</SelectTrigger>
 													</FormControl>
 													<SelectContent>
-														{organizations?.map((org) => (
+														{organizations?.items?.map((org) => (
 															<SelectItem key={org.id} value={org.id?.toString() || ''}>
 																{org.mspId}
 															</SelectItem>
@@ -390,7 +390,7 @@ export default function BulkCreateNodesPage() {
 													console.log('values', values, 'onChange')
 													setNodeConfigs(newConfigs)
 												}}
-												organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
+												organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 												hideSubmit
 												hideOrganization
 												hideNodeType
@@ -409,7 +409,7 @@ export default function BulkCreateNodesPage() {
 										<dl className="space-y-4">
 											<div>
 												<dt className="text-sm font-medium text-muted-foreground">Organization</dt>
-												<dd className="mt-1">{organizations?.find((org) => org.id?.toString() === form.watch('organization'))?.mspId}</dd>
+												<dd className="mt-1">{organizations?.items?.find((org) => org.id?.toString() === form.watch('organization'))?.mspId}</dd>
 											</div>
 											<div>
 												<dt className="text-sm font-medium text-muted-foreground">Nodes to Create</dt>

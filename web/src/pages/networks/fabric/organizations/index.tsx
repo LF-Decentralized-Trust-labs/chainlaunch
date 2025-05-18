@@ -11,10 +11,19 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Pagination } from '@/components/ui/pagination'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-react'
 
 export default function OrganizationsPage() {
 	const [open, setOpen] = useState(false)
 	const [orgToDelete, setOrgToDelete] = useState<HandlerOrganizationResponse | null>(null)
+	const [currentPage, setCurrentPage] = useState(1)
+	const [selectedOrganizations, setSelectedOrganizations] = useState<HandlerOrganizationResponse[]>([])
+	const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+	const pageSize = 10
 
 	const { data: providers } = useQuery({
 		...getKeyProvidersOptions(),
@@ -25,7 +34,12 @@ export default function OrganizationsPage() {
 		isLoading,
 		refetch,
 	} = useQuery({
-		...getOrganizationsOptions({}),
+		...getOrganizationsOptions({
+			query: {
+				limit: pageSize,
+				offset: (currentPage - 1) * pageSize,
+			},
+		} as any),
 	})
 
 	const createOrganization = useMutation({
@@ -75,6 +89,40 @@ export default function OrganizationsPage() {
 	const handleDelete = (org: HandlerOrganizationResponse) => {
 		setOrgToDelete(org)
 	}
+
+	const handleSelectAll = (checked: boolean) => {
+		if (checked) {
+			setSelectedOrganizations(organizations?.items || [])
+		} else {
+			setSelectedOrganizations([])
+		}
+	}
+
+	const handleSelectOne = (org: HandlerOrganizationResponse, checked: boolean) => {
+		if (checked) {
+			setSelectedOrganizations((prev) => [...prev, org])
+		} else {
+			setSelectedOrganizations((prev) => prev.filter((o) => o.id !== org.id))
+		}
+	}
+
+	const handleBulkDelete = () => {
+		setBulkDeleteOpen(true)
+	}
+
+	const confirmBulkDelete = async () => {
+		try {
+			await Promise.all(selectedOrganizations.map((org) => deleteOrganization.mutateAsync({ path: { id: org.id! } })))
+			toast.success('Organizations deleted successfully')
+			setSelectedOrganizations([])
+			refetch()
+		} catch (error: any) {
+			toast.error('Failed to delete organizations', { description: error.message })
+		} finally {
+			setBulkDeleteOpen(false)
+		}
+	}
+
 	if (isLoading) {
 		return (
 			<div className="flex-1 p-8">
@@ -96,7 +144,7 @@ export default function OrganizationsPage() {
 		)
 	}
 
-	if (!organizations?.length) {
+	if (!organizations?.items?.length) {
 		return (
 			<div className="flex-1 p-8">
 				<div className="max-w-4xl mx-auto">
@@ -124,11 +172,44 @@ export default function OrganizationsPage() {
 					<CreateOrganizationDialog open={open} onOpenChange={setOpen} onSubmit={onSubmit} isSubmitting={createOrganization.isPending} providers={providers} />
 				</div>
 
+				{organizations?.items?.length > 0 && (
+					<div className="flex items-center px-4 py-2 border rounded-lg bg-background mb-4">
+						<Checkbox checked={selectedOrganizations.length === organizations.items.length && organizations.items.length > 0} onCheckedChange={handleSelectAll} className="mr-4" />
+						<span className="text-sm text-muted-foreground">Select All</span>
+						{selectedOrganizations.length > 0 && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant="outline" className="ml-4">
+										Bulk Actions ({selectedOrganizations.length})
+										<ChevronDown className="ml-2 h-4 w-4" />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem onClick={handleBulkDelete} className="text-destructive">
+										Delete
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+					</div>
+				)}
+
 				<div className="space-y-4">
-					{organizations?.map((org) => (
-						<OrganizationItem key={org.id} organization={org} onDelete={handleDelete} />
+					{organizations?.items?.map((org) => (
+						<OrganizationItem
+							organization={org}
+							onDelete={handleDelete}
+							checked={selectedOrganizations.some((o) => o.id === org.id)}
+							onCheckedChange={(checked) => handleSelectOne(org, !!checked)}
+						/>
 					))}
 				</div>
+
+				{organizations && typeof organizations.count === 'number' && organizations.count > pageSize && (
+					<div className="mt-8 flex justify-center">
+						<Pagination currentPage={currentPage} pageSize={pageSize} totalItems={organizations.count} onPageChange={setCurrentPage} />
+					</div>
+				)}
 			</div>
 
 			<AlertDialog open={!!orgToDelete} onOpenChange={(open) => !open && setOrgToDelete(null)}>
@@ -140,6 +221,31 @@ export default function OrganizationsPage() {
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction disabled={deleteOrganization.isPending} onClick={() => orgToDelete && deleteOrganization.mutate({ path: { id: orgToDelete.id! } })}>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Confirm Bulk Delete</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete the following organizations?
+							<ul className="list-disc pl-4 mt-2 space-y-1">
+								{selectedOrganizations.map((org) => (
+									<li key={org.id} className="text-sm">
+										{org.mspId}
+									</li>
+								))}
+							</ul>
+							<p className="text-destructive mt-2">This action cannot be undone. This will permanently delete the selected organizations and all associated keys.</p>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
 							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>

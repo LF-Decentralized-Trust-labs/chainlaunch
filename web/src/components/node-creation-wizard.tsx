@@ -176,7 +176,7 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 	console.log('besuDefaults', besuDefaults)
 
 	const handleFabricSubmit = (data: any) => {
-		const organization = organizations?.find((org) => org.id === data.fabricProperties.organizationId)
+		const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)
 
 		if (data.fabricProperties.nodeType === 'FABRIC_PEER') {
 			form.setValue('configuration', {
@@ -264,7 +264,7 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 					isSubmitting={false}
 					hideSubmit={false}
 					hideNodeType={true}
-					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
+					organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					defaults={nodeType === 'peer' ? peerDefaults : ordererDefaults}
 					defaultValues={
 						form.getValues().configuration && Object.keys(form.getValues().configuration).length > 0

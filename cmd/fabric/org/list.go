@@ -41,7 +41,7 @@ func (c *listCmd) run(out io.Writer) error {
 	table.SetNoWhiteSpace(true)
 
 	// Add data to table
-	for _, org := range orgs {
+	for _, org := range orgs.Items {
 		table.Append([]string{
 			org.MspID,
 			org.CreatedAt.Format(time.RFC3339),

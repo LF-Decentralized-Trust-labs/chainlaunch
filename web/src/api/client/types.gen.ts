@@ -191,6 +191,13 @@ export type HandlerOrganizationResponse = {
     updatedAt?: string;
 };
 
+export type HandlerPaginatedOrganizationsResponse = {
+    count?: number;
+    items?: Array<HandlerOrganizationResponse>;
+    limit?: number;
+    offset?: number;
+};
+
 export type HandlerRevokeCertificateByPemRequest = {
     /**
      * PEM encoded certificate
@@ -5054,7 +5061,16 @@ export type PostNotificationsProvidersByIdTestResponse = PostNotificationsProvid
 export type GetOrganizationsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum number of organizations to return
+         */
+        limit?: number;
+        /**
+         * Number of organizations to skip
+         */
+        offset?: number;
+    };
     url: '/organizations';
 };
 
@@ -5073,7 +5089,7 @@ export type GetOrganizationsResponses = {
     /**
      * OK
      */
-    200: Array<HandlerOrganizationResponse>;
+    200: HandlerPaginatedOrganizationsResponse;
 };
 
 export type GetOrganizationsResponse = GetOrganizationsResponses[keyof GetOrganizationsResponses];

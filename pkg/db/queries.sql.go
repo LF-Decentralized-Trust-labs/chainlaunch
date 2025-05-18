@@ -3575,7 +3575,13 @@ LEFT JOIN keys sk ON fo.sign_key_id = sk.id
 LEFT JOIN keys tk ON fo.tls_root_key_id = tk.id
 LEFT JOIN key_providers p ON fo.provider_id = p.id
 ORDER BY fo.created_at DESC
+LIMIT ? OFFSET ?
 `
+
+type ListFabricOrganizationsWithKeysParams struct {
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+}
 
 type ListFabricOrganizationsWithKeysRow struct {
 	ID              int64          `json:"id"`
@@ -3601,8 +3607,8 @@ type ListFabricOrganizationsWithKeysRow struct {
 	ProviderName    sql.NullString `json:"providerName"`
 }
 
-func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context) ([]*ListFabricOrganizationsWithKeysRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListFabricOrganizationsWithKeys)
+func (q *Queries) ListFabricOrganizationsWithKeys(ctx context.Context, arg *ListFabricOrganizationsWithKeysParams) ([]*ListFabricOrganizationsWithKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListFabricOrganizationsWithKeys, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

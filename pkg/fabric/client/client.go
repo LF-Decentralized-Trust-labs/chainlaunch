@@ -24,6 +24,7 @@ type Client struct {
 type Test = networktypes.AddNodeToNetworkRequest
 
 // Use the shared types instead of local definitions
+type PaginatedOrganizationsResponse = orgtypes.PaginatedOrganizationsResponse
 type Organization = orgtypes.OrganizationResponse
 type CreateOrganizationRequest = orgtypes.CreateOrganizationRequest
 type UpdateOrganizationRequest = orgtypes.UpdateOrganizationRequest
@@ -158,13 +159,13 @@ func (c *Client) DeleteOrganization(id int64) error {
 }
 
 // ListOrganizations retrieves all organizations
-func (c *Client) ListOrganizations() ([]Organization, error) {
+func (c *Client) ListOrganizations() (*PaginatedOrganizationsResponse, error) {
 	respBody, err := c.doRequest("GET", "/organizations", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var orgs []Organization
+	orgs := &PaginatedOrganizationsResponse{}
 	if err := json.Unmarshal(respBody, &orgs); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -179,4 +180,3 @@ func (c *Client) GetNetworkConfig(networkID int64, organizationID int64) ([]byte
 	}
 	return respBody, nil
 }
-

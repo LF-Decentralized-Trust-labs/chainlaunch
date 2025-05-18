@@ -46,7 +46,7 @@ export default function CreateFabricNodePage() {
 		let fabricOrderer: TypesFabricOrdererConfig | undefined
 
 		if (data.fabricProperties.nodeType === 'FABRIC_PEER') {
-			const organization = organizations?.find((org) => org.id === data.fabricProperties.organizationId)
+			const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)
 			fabricPeer = {
 				nodeType: 'FABRIC_PEER',
 				mode: data.fabricProperties.mode,
@@ -62,7 +62,7 @@ export default function CreateFabricNodePage() {
 				version: data.fabricProperties.version || '2.5.12',
 			} as TypesFabricPeerConfig
 		} else {
-			const organization = organizations?.find((org) => org.id === data.fabricProperties.organizationId)
+			const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)
 			fabricOrderer = {
 				nodeType: 'FABRIC_ORDERER',
 				mode: data.fabricProperties.mode,
@@ -105,7 +105,7 @@ export default function CreateFabricNodePage() {
 				<FabricNodeForm
 					onSubmit={onSubmit}
 					isSubmitting={createNode.isPending}
-					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
+					organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					defaults={nodeType === 'FABRIC_PEER' ? peerDefaults : ordererDefaults}
 					onNodeTypeChange={handleNodeTypeChange}
 				/>

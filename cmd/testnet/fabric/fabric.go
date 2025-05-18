@@ -45,6 +45,16 @@ func (r *FabricTestnetRunner) Validate() error {
 		return fmt.Errorf("--org is required for fabric")
 	}
 	// Add more validation as needed
+
+	// Ensure at least 3 orderers in total for consenters
+	totalOrderers := 0
+	for _, count := range r.Config.OrdererCounts {
+		totalOrderers += count
+	}
+	if totalOrderers < 3 {
+		return fmt.Errorf("at least 3 orderers are required in total for consenters (got %d)", totalOrderers)
+	}
+
 	return nil
 }
 

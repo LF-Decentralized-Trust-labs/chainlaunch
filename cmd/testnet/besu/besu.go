@@ -3,6 +3,7 @@ package besu
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/cmd/common"
 	"github.com/chainlaunch/chainlaunch/pkg/common/ports"
@@ -92,6 +93,12 @@ func (r *BesuTestnetRunner) Run() error {
 	netReq.Config.EpochLength = 30000
 	netReq.Config.RequestTimeout = 10
 	netReq.Config.InitialValidatorKeyIds = keyIDs
+	netReq.Config.GasLimit = "0x29b92700" // 700000000 in hex
+	netReq.Config.Difficulty = "0x1"      // numberToHex(1)
+	netReq.Config.MixHash = "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365"
+	netReq.Config.Coinbase = "0x0000000000000000000000000000000000000000"
+	netReq.Config.Timestamp = fmt.Sprintf("0x%x", time.Now().UnixMilli()) // Current Unix timestamp in hex (seconds)
+	netReq.Config.Nonce = "0x0"                                           // numberToHex(0)
 	netReq.Config.Alloc = map[string]struct {
 		Balance string `json:"balance" validate:"required,hexadecimal"`
 	}{}
@@ -118,6 +125,10 @@ func (r *BesuTestnetRunner) Run() error {
 		if err != nil {
 			return fmt.Errorf("failed to allocate P2P port for node %s: %w", nodeName, err)
 		}
+		metricsPort, err := ports.GetFreePort("besu-metrics")
+		if err != nil {
+			return fmt.Errorf("failed to allocate metrics port for node %s: %w", nodeName, err)
+		}
 		// Prepare Besu node config (service layer struct)
 		besuNodeConfig := &types.BesuNodeConfig{
 			BaseNodeConfig:  types.BaseNodeConfig{Mode: "service", Type: "besu"},
@@ -132,7 +143,7 @@ func (r *BesuTestnetRunner) Run() error {
 			Env:             map[string]string{},
 			BootNodes:       []string{},
 			MetricsEnabled:  true,
-			MetricsPort:     9545,
+			MetricsPort:     int64(metricsPort.Port),
 			MetricsProtocol: "PROMETHEUS",
 		}
 		nodeResp, err := client.CreateBesuNode(nodeName, besuNodeConfig)

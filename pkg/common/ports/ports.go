@@ -29,6 +29,10 @@ var (
 			Start: 30303,
 			End:   30403,
 		},
+		"besu-metrics": {
+			Start: 9545,
+			End:   9645,
+		},
 	}
 
 	// Mutex to protect port allocation

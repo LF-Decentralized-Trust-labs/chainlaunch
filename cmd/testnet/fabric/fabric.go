@@ -28,6 +28,7 @@ type FabricTestnetConfig struct {
 	Channels      []string
 	PeerCounts    map[string]int
 	OrdererCounts map[string]int
+	Mode          string
 }
 
 // FabricTestnetRunner encapsulates the config and logic for running and validating the Fabric testnet command
@@ -113,7 +114,7 @@ func (r *FabricTestnetRunner) Run() error {
 				Name:           nodeName,
 				OrganizationID: orgID,
 				BaseNodeConfig: types.BaseNodeConfig{
-					Mode: "service",
+					Mode: r.Config.Mode,
 				},
 				MSPID:                   org,
 				ListenAddress:           fmt.Sprintf("0.0.0.0:%d", listen.Port),
@@ -156,7 +157,7 @@ func (r *FabricTestnetRunner) Run() error {
 
 			ordererConfig := &types.FabricOrdererConfig{
 				BaseNodeConfig: types.BaseNodeConfig{
-					Mode: "service",
+					Mode: r.Config.Mode,
 				},
 				Name:                    nodeName,
 				OrganizationID:          orgID,
@@ -242,6 +243,7 @@ func NewFabricTestnetCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&runner.Config.Channels, "channels", nil, "List of channels to create (comma-separated)")
 	cmd.Flags().StringToIntVar(&runner.Config.PeerCounts, "peerCounts", nil, "Number of peers per org (e.g., Org1=2,Org2=3)")
 	cmd.Flags().StringToIntVar(&runner.Config.OrdererCounts, "ordererCounts", nil, "Number of orderers per org (e.g., Orderer1=1,Orderer2=2)")
+	cmd.Flags().StringVar(&runner.Config.Mode, "mode", "service", "Node mode (default 'service')")
 
 	return cmd
 }

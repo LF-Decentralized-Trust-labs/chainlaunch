@@ -147,7 +147,7 @@ func (s *NodeService) getBesuFromConfig(ctx context.Context, dbNode *db.Node, co
 			MinerAddress:    key.EthereumAddress,
 			ConsensusType:   "qbft", // TODO: get consensus type from network
 			BootNodes:       config.BootNodes,
-			Version:         "25.4.1", // TODO: get version from network
+			Version:         config.Version,
 			NodePrivateKey:  strings.TrimPrefix(privateKeyDecrypted, "0x"),
 			Env:             config.Env,
 			P2PHost:         config.P2PHost,

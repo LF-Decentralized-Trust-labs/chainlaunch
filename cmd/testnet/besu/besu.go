@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/cmd/common"
+	"github.com/chainlaunch/chainlaunch/pkg/common/addresses"
 	"github.com/chainlaunch/chainlaunch/pkg/common/ports"
 	"github.com/chainlaunch/chainlaunch/pkg/keymanagement/models"
 	"github.com/chainlaunch/chainlaunch/pkg/networks/http"
@@ -20,9 +21,11 @@ func generateShortUUID() string {
 
 // BesuTestnetConfig holds the parameters for creating a Besu testnet
 type BesuTestnetConfig struct {
-	Name   string
-	Nodes  int
-	Prefix string
+	Name    string
+	Nodes   int
+	Prefix  string
+	Mode    string
+	Version string
 }
 
 // BesuTestnetRunner encapsulates the config and logic for running and validating the Besu testnet command
@@ -42,6 +45,9 @@ func (r *BesuTestnetRunner) Validate() error {
 	if r.Config.Nodes < 4 {
 		return fmt.Errorf("--nodes must be at least 4 for QBFT consensus")
 	}
+	if r.Config.Mode != "docker" && r.Config.Mode != "service" {
+		return fmt.Errorf("--mode must be either 'docker' or 'service'")
+	}
 	return nil
 }
 
@@ -54,6 +60,11 @@ func (r *BesuTestnetRunner) Run() error {
 	client, err := common.NewClientFromEnv()
 	if err != nil {
 		return fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	externalIP, err := addresses.GetExternalIP()
+	if err != nil {
+		return fmt.Errorf("failed to get external IP: %w", err)
 	}
 
 	// 1. Create all keys and collect their IDs
@@ -97,8 +108,8 @@ func (r *BesuTestnetRunner) Run() error {
 	netReq.Config.Difficulty = "0x1"      // numberToHex(1)
 	netReq.Config.MixHash = "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365"
 	netReq.Config.Coinbase = "0x0000000000000000000000000000000000000000"
-	netReq.Config.Timestamp = fmt.Sprintf("0x%x", time.Now().UnixMilli()) // Current Unix timestamp in hex (seconds)
-	netReq.Config.Nonce = "0x0"                                           // numberToHex(0)
+	netReq.Config.Timestamp = fmt.Sprintf("0x%x", time.Now().Unix()) // Current Unix timestamp in hex (seconds)
+	netReq.Config.Nonce = "0x0"                                      // numberToHex(0)
 	netReq.Config.Alloc = map[string]struct {
 		Balance string `json:"balance" validate:"required,hexadecimal"`
 	}{}
@@ -112,6 +123,7 @@ func (r *BesuTestnetRunner) Run() error {
 	// 3. Create each Besu node, using the corresponding key
 	fmt.Printf("Creating %d Besu nodes...\n", r.Config.Nodes)
 	nodeIDs := []int64{}
+	var firstNodeEnode string
 	for i := 0; i < r.Config.Nodes; i++ {
 		nodeName := nodeNames[i]
 		keyID := keyIDs[i]
@@ -129,28 +141,38 @@ func (r *BesuTestnetRunner) Run() error {
 		if err != nil {
 			return fmt.Errorf("failed to allocate metrics port for node %s: %w", nodeName, err)
 		}
+
+		bootNodes := []string{}
+		if i > 0 {
+			bootNodes = []string{firstNodeEnode}
+		}
+
 		// Prepare Besu node config (service layer struct)
 		besuNodeConfig := &types.BesuNodeConfig{
-			BaseNodeConfig:  types.BaseNodeConfig{Mode: "service", Type: "besu"},
-			NetworkID:       netResp.ID,
+			BaseNodeConfig:  types.BaseNodeConfig{Mode: r.Config.Mode, Type: "besu"},
+			NetworkID:       int64(netResp.ID),
 			KeyID:           keyID,
 			P2PPort:         uint(p2pPort.Port),
 			RPCPort:         uint(rpcPort.Port),
 			P2PHost:         "0.0.0.0",
 			RPCHost:         "0.0.0.0",
-			ExternalIP:      "127.0.0.1",
-			InternalIP:      "127.0.0.1",
+			ExternalIP:      externalIP,
+			InternalIP:      externalIP,
 			Env:             map[string]string{},
-			BootNodes:       []string{},
+			BootNodes:       bootNodes,
 			MetricsEnabled:  true,
 			MetricsPort:     int64(metricsPort.Port),
 			MetricsProtocol: "PROMETHEUS",
+			Version:         r.Config.Version,
 		}
 		nodeResp, err := client.CreateBesuNode(nodeName, besuNodeConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create besu node %s: %w", nodeName, err)
 		}
-		fmt.Printf("    Besu node created: ID %d\n", nodeResp.ID)
+		if i == 0 {
+			firstNodeEnode = nodeResp.BesuNode.EnodeURL
+		}
+		fmt.Printf("    Node created ID: %d\n", nodeResp.ID)
 		nodeIDs = append(nodeIDs, nodeResp.ID)
 	}
 
@@ -177,6 +199,8 @@ func NewBesuTestnetCmd() *cobra.Command {
 	cmd.Flags().StringVar(&runner.Config.Name, "name", "", "Name of the testnet (required)")
 	cmd.Flags().IntVar(&runner.Config.Nodes, "nodes", 1, "Number of nodes (default 1)")
 	cmd.Flags().StringVar(&runner.Config.Prefix, "prefix", "besu", "Prefix for node names")
+	cmd.Flags().StringVar(&runner.Config.Mode, "mode", "service", "Node mode (service or docker)")
+	cmd.Flags().StringVar(&runner.Config.Version, "version", "25.5.0", "Besu version (default 25.5.0)")
 
 	return cmd
 }

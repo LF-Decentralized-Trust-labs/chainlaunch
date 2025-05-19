@@ -343,6 +343,7 @@ type BesuNodeConfig struct {
 	MetricsEnabled  bool              `json:"metricsEnabled"`
 	MetricsPort     int64             `json:"metricsPort"`
 	MetricsProtocol string            `json:"metricsProtocol"`
+	Version         string            `json:"version"`
 }
 
 // Add this new type for storage

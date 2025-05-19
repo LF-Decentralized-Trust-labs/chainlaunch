@@ -1,5 +1,5 @@
 import { getNodesDefaultsBesuNode, postKeys } from '@/api/client'
-import { getKeyProvidersOptions, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
+import { getKeyProvidersOptions, getNodesDefaultsBesuNodeOptions, postNetworksBesuMutation, postNodesMutation } from '@/api/client/@tanstack/react-query.gen'
 import { BesuNodeForm, BesuNodeFormValues } from '@/components/nodes/besu-node-form'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -83,6 +83,7 @@ export default function BulkCreateBesuNetworkPage() {
 		}
 		return 'nodes'
 	})
+
 	const [validatorKeys, setValidatorKeys] = useState<{ id: number; name: string; publicKey: string; ethereumAddress: string }[]>(() => {
 		if (typeof window !== 'undefined') {
 			const savedKeys = localStorage.getItem('besuBulkCreateKeys')
@@ -103,12 +104,8 @@ export default function BulkCreateBesuNetworkPage() {
 		total: number
 		currentNode: string | null
 	}>({ current: 0, total: 0, currentNode: null })
-	// const [nodeConfigs, setNodeConfigs] = useState<BesuNodeFormValues[]>(() => {
-	// 	const savedConfigs = localStorage.getItem('besuBulkCreateNodeConfigs')
-	// 	return savedConfigs ? JSON.parse(savedConfigs) : []
-	// })
+
 	const [nodeConfigs, setNodeConfigs] = useState<BesuNodeFormValues[]>([])
-	console.log('nodeConfigs', nodeConfigs)
 	const { data: providersData } = useQuery({
 		...getKeyProvidersOptions({}),
 	})
@@ -213,7 +210,7 @@ export default function BulkCreateBesuNetworkPage() {
 					const newNodeConfigs = Array.from({ length: numberOfNodes }).map((_, index) => {
 						const defaultNode = besuDefaultNodes.data.defaults![index]!
 
-						const { p2pHost, p2pPort, rpcHost, rpcPort, externalIp, internalIp } = defaultNode
+						const { p2pHost, p2pPort, rpcHost, rpcPort, metricsPort, externalIp, internalIp } = defaultNode
 						let bootNodes = ''
 						if (index > 0 && validatorKeys[0]?.publicKey) {
 							// For all nodes after the first one, use the first node as bootnode
@@ -236,7 +233,7 @@ export default function BulkCreateBesuNetworkPage() {
 							rpcHost: rpcHost,
 							rpcPort: Number(rpcPort),
 							metricsHost: '127.0.0.1',
-							metricsPort: 9545 + index,
+							metricsPort,
 							bootNodes: bootNodes,
 							requestTimeout: 30,
 						} as BesuNodeFormValues

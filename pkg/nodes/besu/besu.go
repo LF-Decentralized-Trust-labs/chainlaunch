@@ -91,12 +91,13 @@ func (b *LocalBesu) Start() (interface{}, error) {
 
 	// Build command and environment
 	cmd := b.buildCommand(dataDir, genesisPath, configDir)
-	env := b.buildEnvironment()
 
 	switch b.mode {
 	case "service":
+		env := b.buildEnvironment()
 		return b.startService(cmd, env, dirPath, configDir)
 	case "docker":
+		env := b.buildDockerEnvironment()
 		return b.startDocker(env, dataDir, configDir)
 	default:
 		return nil, fmt.Errorf("invalid mode: %s", b.mode)
@@ -227,6 +228,21 @@ func (b *LocalBesu) buildEnvironment() map[string]string {
 		javaBinPath := filepath.Join(javaHome, "bin")
 		env["PATH"] = javaBinPath + string(os.PathListSeparator) + currentPath
 	}
+
+	return env
+}
+
+// buildDockerEnvironment builds the environment variables for Besu in Docker
+func (b *LocalBesu) buildDockerEnvironment() map[string]string {
+	env := make(map[string]string)
+
+	// Add custom environment variables from opts
+	for k, v := range b.opts.Env {
+		env[k] = v
+	}
+
+	// Add Java options
+	env["JAVA_OPTS"] = "-Xmx4g"
 
 	return env
 }
@@ -415,10 +431,6 @@ func (b *LocalBesu) installBesuMacOS() error {
 	}
 
 	return nil
-}
-
-func (b *LocalBesu) getLogPath() string {
-	return b.GetStdOutPath()
 }
 
 // TailLogs tails the logs of the besu service

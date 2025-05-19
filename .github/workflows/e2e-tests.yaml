@@ -100,6 +100,9 @@ jobs:
             - name: Create Besu testnet
               run: |
                   chmod +x chainlaunch
+                  export CHAINLAUNCH_USER=admin
+                  export CHAINLAUNCH_PASSWORD=admin123
+                  export CHAINLAUNCH_API_URL=http://localhost:8100/api/v1
                   ./chainlaunch testnet besu --name mynet --nodes 4 --prefix besu-test --mode=docker
             - name: Wait for Besu block number >= 5
               run: |

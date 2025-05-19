@@ -99,7 +99,7 @@ jobs:
               with:
                   name: build-artifacts
 
-            - name: Start the application and run API tests
+            - name: Start the application and verify API is available
               run: |
                   echo "CHAINLAUNCH_DATA: $CHAINLAUNCH_DATA"
                   chmod +x chainlaunch
@@ -232,6 +232,23 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: build-artifacts
+            - name: Start the application and verify API is available
+              run: |
+                  echo "CHAINLAUNCH_DATA: $CHAINLAUNCH_DATA"
+                  chmod +x chainlaunch
+                  ./chainlaunch serve --data=$CHAINLAUNCH_DATA --port=8100 --db data.db &
+                  # Wait for port 8100 to be available (60 seconds timeout)
+                  timeout=60
+                  while ! curl -s http://localhost:8100 > /dev/null; do
+                    if [ $timeout -le 0 ]; then
+                      echo "Timeout waiting for API to become available"
+                      exit 1
+                    fi
+                    echo "Waiting for API to become available... ($timeout seconds remaining)"
+                    sleep 1
+                    timeout=$((timeout - 1))
+                  done
+
             - name: Create Fabric testnet
               run: |
                   ./chainlaunch testnet fabric --name mynet --org "Org1MSP123" --peerOrgs "Org1MSP123" --ordererOrgs "OrdererOrg123" --channels mychannel --peerCounts "Org1MSP123=2" --ordererCounts "OrdererOrg123=3"

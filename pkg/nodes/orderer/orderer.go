@@ -141,19 +141,19 @@ func (o *LocalOrderer) Start() (interface{}, error) {
 
 	// Build command and environment
 	cmd := ordererBinary
-	env := o.buildOrdererEnvironment(mspConfigPath)
 
 	o.logger.Debug("Starting orderer",
 		"mode", o.mode,
 		"cmd", cmd,
-		"env", env,
 		"dirPath", dirPath,
 	)
 
 	switch o.mode {
 	case "service":
+		env := o.buildOrdererEnvironment(mspConfigPath)
 		return o.startService(cmd, env, dirPath)
 	case "docker":
+		env := o.buildDockerOrdererEnvironment(mspConfigPath)
 		return o.startDocker(env, mspConfigPath, dataConfigPath)
 	default:
 		return nil, fmt.Errorf("invalid mode: %s", o.mode)
@@ -206,6 +206,49 @@ func (o *LocalOrderer) buildOrdererEnvironment(mspConfigPath string) map[string]
 	env["ORDERER_GENERAL_TLS_CERTIFICATE"] = filepath.Join(mspConfigPath, "tls.crt")
 	env["ORDERER_GENERAL_TLS_PRIVATEKEY"] = filepath.Join(mspConfigPath, "tls.key")
 	env["ORDERER_GENERAL_TLS_ROOTCAS"] = filepath.Join(mspConfigPath, "tlscacerts/cacert.pem")
+	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminListenAddress
+	env["ORDERER_GENERAL_LISTENADDRESS"] = strings.Split(o.opts.ListenAddress, ":")[0]
+	env["ORDERER_OPERATIONS_LISTENADDRESS"] = o.opts.OperationsListenAddress
+	env["ORDERER_GENERAL_LOCALMSPID"] = o.mspID
+	env["ORDERER_GENERAL_LISTENPORT"] = strings.Split(o.opts.ListenAddress, ":")[1]
+	env["ORDERER_ADMIN_TLS_ENABLED"] = "true"
+	env["ORDERER_CHANNELPARTICIPATION_ENABLED"] = "true"
+	env["ORDERER_GENERAL_BOOTSTRAPMETHOD"] = "none"
+	env["ORDERER_GENERAL_GENESISPROFILE"] = "initial"
+	env["ORDERER_GENERAL_LEDGERTYPE"] = "file"
+	env["FABRIC_LOGGING_SPEC"] = "info"
+	env["ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED"] = "false"
+	env["ORDERER_GENERAL_TLS_ENABLED"] = "true"
+	env["ORDERER_METRICS_PROVIDER"] = "prometheus"
+	env["ORDERER_OPERATIONS_TLS_ENABLED"] = "false"
+
+	return env
+}
+
+// buildDockerOrdererEnvironment builds the environment variables for the orderer in docker mode
+func (o *LocalOrderer) buildDockerOrdererEnvironment(mspConfigPath string) map[string]string {
+	env := make(map[string]string)
+
+	// Add custom environment variables from opts
+	for k, v := range o.opts.Env {
+		env[k] = v
+	}
+
+	// Add required environment variables with docker paths
+	env["FABRIC_CFG_PATH"] = "/etc/hyperledger/fabric/msp"
+	env["ORDERER_ADMIN_TLS_CLIENTROOTCAS"] = "/etc/hyperledger/fabric/msp/tlscacerts/cacert.pem"
+	env["ORDERER_ADMIN_TLS_PRIVATEKEY"] = "/etc/hyperledger/fabric/msp/tls.key"
+	env["ORDERER_ADMIN_TLS_CERTIFICATE"] = "/etc/hyperledger/fabric/msp/tls.crt"
+	env["ORDERER_ADMIN_TLS_ROOTCAS"] = "/etc/hyperledger/fabric/msp/tlscacerts/cacert.pem"
+	env["ORDERER_FILELEDGER_LOCATION"] = "/var/hyperledger/production/data"
+	env["ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE"] = "/etc/hyperledger/fabric/msp/tls.crt"
+	env["ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY"] = "/etc/hyperledger/fabric/msp/tls.key"
+	env["ORDERER_GENERAL_CLUSTER_ROOTCAS"] = "/etc/hyperledger/fabric/msp/tlscacerts/cacert.pem"
+	env["ORDERER_GENERAL_LOCALMSPDIR"] = "/etc/hyperledger/fabric/msp"
+	env["ORDERER_GENERAL_TLS_CLIENTROOTCAS"] = "/etc/hyperledger/fabric/msp/tlscacerts/cacert.pem"
+	env["ORDERER_GENERAL_TLS_CERTIFICATE"] = "/etc/hyperledger/fabric/msp/tls.crt"
+	env["ORDERER_GENERAL_TLS_PRIVATEKEY"] = "/etc/hyperledger/fabric/msp/tls.key"
+	env["ORDERER_GENERAL_TLS_ROOTCAS"] = "/etc/hyperledger/fabric/msp/tlscacerts/cacert.pem"
 	env["ORDERER_ADMIN_LISTENADDRESS"] = o.opts.AdminListenAddress
 	env["ORDERER_GENERAL_LISTENADDRESS"] = strings.Split(o.opts.ListenAddress, ":")[0]
 	env["ORDERER_OPERATIONS_LISTENADDRESS"] = o.opts.OperationsListenAddress
@@ -280,11 +323,10 @@ func (o *LocalOrderer) TailLogs(ctx context.Context, tail int, follow bool) (<-c
 					}
 					return
 				}
-				cleanLine := strings.TrimRight(string(payload), "\r\n")
 				select {
 				case <-ctx.Done():
 					return
-				case logChan <- cleanLine:
+				case logChan <- string(payload):
 				}
 			}
 		}()

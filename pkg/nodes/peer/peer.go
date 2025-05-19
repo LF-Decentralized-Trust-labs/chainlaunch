@@ -1261,14 +1261,19 @@ func (p *LocalPeer) startDocker(env map[string]string, mspConfigPath, dataConfig
 			Target: "/var/hyperledger/production",
 		},
 	}
+	containerConfig := &container.Config{
+		Image:        imageName,
+		Cmd:          []string{"peer", "node", "start"},
+		Env:          mapToEnvSlice(env),
+		ExposedPorts: map[nat.Port]struct{}{},
+	}
+	for port := range portBindings {
+		containerConfig.ExposedPorts[port] = struct{}{}
+	}
 
 	// Create container
 	resp, err := cli.ContainerCreate(context.Background(),
-		&container.Config{
-			Image: imageName,
-			Cmd:   []string{"peer", "node", "start"},
-			Env:   mapToEnvSlice(env),
-		},
+		containerConfig,
 		&container.HostConfig{
 			PortBindings: portBindings,
 			Mounts:       mounts,
@@ -2106,8 +2111,6 @@ func (p *LocalPeer) TailLogs(ctx context.Context, tail int, follow bool) (<-chan
 					return
 				}
 
-				// Strip trailing newlines to avoid double line breaks
-				// cleanLine := strings.TrimRight(string(payload), "\r\n")
 				select {
 				case <-ctx.Done():
 					return

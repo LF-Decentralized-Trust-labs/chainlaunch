@@ -484,11 +484,10 @@ func (b *LocalBesu) TailLogs(ctx context.Context, tail int, follow bool) (<-chan
 					}
 					return
 				}
-				cleanLine := strings.TrimRight(string(payload), "\r\n")
 				select {
 				case <-ctx.Done():
 					return
-				case logChan <- cleanLine:
+				case logChan <- string(payload):
 				}
 			}
 		}()

@@ -69,6 +69,7 @@ jobs:
                   key: ${{ runner.os }}-chainlaunch-bin-${{ hashFiles('**/*.go', '**/go.sum', '**/go.mod') }}
 
             - name: Build the application
+              if: steps.cache-binary.outputs.cache-hit != 'true'
               run: |
                   go build -v -o chainlaunch ./main.go
                   chmod +x chainlaunch

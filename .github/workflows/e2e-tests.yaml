@@ -265,12 +265,19 @@ jobs:
                   echo "Joined all peers and orderers to the channel"
             - name: Test get a block from the channel
               run: |
-                  export NETWORK_ID=$(chainlaunch networks fabric list --output=json | jq -r '.networks[0].id')
-                  curl -X 'GET' \
+                  export NETWORK_ID=$(./chainlaunch networks fabric list --output=json | jq -r '.networks[0].id')
+                  response=$(curl -s -w "%{http_code}" -X 'GET' \
                     "http://localhost:8100/api/v1/networks/fabric/$NETWORK_ID/blocks/0" \
                     -H 'accept: application/json' \
-                    -u "$CHAINLAUNCH_USER:$CHAINLAUNCH_PASSWORD"
-                  echo "Got a block from the channel"
+                    -u "$CHAINLAUNCH_USER:$CHAINLAUNCH_PASSWORD")
+                  status_code=${response: -3}
+                  response_body=${response:0:-3}
+                  if [ "$status_code" -ne 200 ]; then
+                    echo "Error: Expected status code 200, got $status_code"
+                    echo "Response body: $response_body"
+                    exit 1
+                  fi
+                  echo "Got a block from the channel with status code 200"
             - name: Show Fabric containers and logs (debug)
               if: always()
               run: |

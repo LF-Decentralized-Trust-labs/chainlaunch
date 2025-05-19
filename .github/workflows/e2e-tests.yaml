@@ -122,15 +122,75 @@ jobs:
                   
                   # Wait for nodes to start producing blocks (up to 90 seconds)
                   for i in {1..90}; do
-                    resp=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545)
-                    block_hex=$(echo "$resp" | jq -r .result)
-                    if [ "$block_hex" != "null" ]; then
-                      block_num=$((16#${block_hex:2}))
-                      echo "Current block: $block_num"
-                      if [ "$block_num" -ge 5 ]; then
-                        echo "Besu node has reached block >= 5"
-                        exit 0
-                      fi
+                    # Make the curl request and capture both stdout and stderr
+                    if ! resp=$(curl -s -f -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 2>&1); then
+                      curl_status=$?
+                      case $curl_status in
+                        56)
+                          echo "Connection refused to node (status: $curl_status). Retrying..."
+                          ;;
+                        7)
+                          echo "Failed to connect to host (status: $curl_status). Retrying..."
+                          ;;
+                        28)
+                          echo "Operation timed out (status: $curl_status). Retrying..."
+                          ;;
+                        22)
+                          echo "HTTP response code indicated error (status: $curl_status). Retrying..."
+                          ;;
+                        *)
+                          echo "Curl failed with status $curl_status: $resp. Retrying..."
+                          ;;
+                      esac
+                      sleep 1
+                      continue
+                    fi
+
+                    # Check for empty response
+                    if [ -z "$resp" ]; then
+                      echo "Empty response received from node"
+                      sleep 1
+                      continue
+                    fi
+
+                    # Parse the response with error handling
+                    if ! block_hex=$(echo "$resp" | jq -r .result 2>/dev/null); then
+                      echo "Failed to parse JSON response: $resp"
+                      sleep 1
+                      continue
+                    fi
+
+                    # Check for JSON-RPC errors
+                    if error=$(echo "$resp" | jq -r .error 2>/dev/null) && [ "$error" != "null" ]; then
+                      echo "JSON-RPC error received: $error"
+                      sleep 1
+                      continue
+                    fi
+
+                    if [ "$block_hex" = "null" ] || [ -z "$block_hex" ]; then
+                      echo "Invalid block number received"
+                      sleep 1
+                      continue
+                    fi
+
+                    # Validate hex format
+                    if [[ ! "$block_hex" =~ ^0x[0-9a-fA-F]+$ ]]; then
+                      echo "Invalid hex format received: $block_hex"
+                      sleep 1
+                      continue
+                    fi
+
+                    # Convert hex to decimal with error handling
+                    if ! block_num=$((16#${block_hex:2})) 2>/dev/null; then
+                      echo "Failed to convert block number from hex: $block_hex"
+                      sleep 1
+                      continue
+                    fi
+
+                    echo "Current block: $block_num"
+                    if [ "$block_num" -ge 5 ]; then
+                      echo "Besu node has reached block >= 5"
+                      exit 0
                     fi
                     sleep 1
                   done

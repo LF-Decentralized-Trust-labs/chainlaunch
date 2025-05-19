@@ -3895,6 +3895,52 @@ func (q *Queries) ListNetworks(ctx context.Context) ([]*Network, error) {
 	return items, nil
 }
 
+const ListNetworksByPlatform = `-- name: ListNetworksByPlatform :many
+SELECT id, name, network_id, platform, status, description, config, deployment_config, exposed_ports, domain, created_at, created_by, updated_at, genesis_block_b64, current_config_block_b64 FROM networks
+WHERE
+  (CASE WHEN COALESCE(CAST(?1 AS TEXT), '') = '' THEN 1 ELSE platform = ?1 END)
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListNetworksByPlatform(ctx context.Context, platform string) ([]*Network, error) {
+	rows, err := q.db.QueryContext(ctx, ListNetworksByPlatform, platform)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Network{}
+	for rows.Next() {
+		var i Network
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NetworkID,
+			&i.Platform,
+			&i.Status,
+			&i.Description,
+			&i.Config,
+			&i.DeploymentConfig,
+			&i.ExposedPorts,
+			&i.Domain,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.GenesisBlockB64,
+			&i.CurrentConfigBlockB64,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListNodeEvents = `-- name: ListNodeEvents :many
 SELECT id, node_id, event_type, description, data, status, created_at FROM node_events
 WHERE node_id = ?

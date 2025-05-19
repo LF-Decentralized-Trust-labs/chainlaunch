@@ -87,10 +87,10 @@ jobs:
         runs-on: ubuntu-latest
         needs: build
         env:
-          CHAINLAUNCH_USER: admin
-          CHAINLAUNCH_PASSWORD: admin123
-          CHAINLAUNCH_DATA: ${{ github.workspace }}/test-data
-          CHAINLAUNCH_API_URL: http://localhost:8100/api/v1
+            CHAINLAUNCH_USER: admin
+            CHAINLAUNCH_PASSWORD: admin123
+            CHAINLAUNCH_DATA: ${{ github.workspace }}/test-data
+            CHAINLAUNCH_API_URL: http://localhost:8100/api/v1
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -205,21 +205,21 @@ jobs:
                     fi
                     sleep 1
                   done
-                  
+
                   echo "Timeout waiting for blocks to be produced"
                   exit 1
             - name: Show Besu containers and logs (always)
               if: always()
               run: |
-                echo "==== besu list nodes ===="
-                ./chainlaunch besu list
-                echo "==== docker ps ===="
-                docker ps -a || true
-                echo "==== docker logs (besu containers) ===="
-                for cid in $(docker ps -a --filter "name=besu-test" --format "{{.ID}}" ); do
-                  echo "--- Logs for container $cid ---"
-                  docker logs $cid || true
-                done
+                  echo "==== besu list nodes ===="
+                  ./chainlaunch besu list
+                  echo "==== docker ps ===="
+                  docker ps -a || true
+                  echo "==== docker logs (besu containers) ===="
+                  for cid in $(docker ps -a --filter "name=besu-test" --format "{{.ID}}" ); do
+                    echo "--- Logs for container $cid ---"
+                    docker logs $cid || true
+                  done
 
     testnet-fabric:
         name: Create Fabric Testnet
@@ -232,14 +232,37 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: build-artifacts
-            - name: Create Fabric testnet (placeholder)
+            - name: Create Fabric testnet
               run: |
-                  echo "Fabric testnet creation step - to be implemented"
+                  ./chainlaunch testnet fabric --name mynet --org "Org1MSP123" --peerOrgs "Org1MSP123" --ordererOrgs "OrdererOrg123" --channels mychannel --peerCounts "Org1MSP123=2" --ordererCounts "OrdererOrg123=3"
+            - name: Join all peers and orderers to the channel
+              run: |
+                  export NETWORK_ID=$(chainlaunch networks fabric list --output=json | jq -r '.networks[0].id')
+                  ./chainlaunch networks fabric join-all --network-id $NETWORK_ID
+                  ./chainlaunch networks fabric join-all-orderers --network-id $NETWORK_ID
+                  echo "Joined all peers and orderers to the channel"
+            - name: Test get a block from the channel
+              run: |
+                  curl -X 'GET' \
+                    'http://localhost:8100/api/v1/networks/fabric/$NETWORK_ID/blocks/0' \
+                    -H 'accept: application/json' \
+                    -u "$CHAINLAUNCH_USER:$CHAINLAUNCH_PASSWORD"
+                  echo "Got a block from the channel"
+            - name: Show Fabric containers and logs (debug)
+              if: always()
+              run: |
+                  echo "==== docker ps ===="
+                  docker ps -a || true
+                  echo "==== docker logs (fabric containers) ===="
+                  for cid in $(docker ps -a --filter "name=fabric" --format "{{.ID}}" ); do
+                    echo "--- Logs for container $cid ---"
+                    docker logs $cid || true
+                  done
 
     api-e2e:
         name: Run API E2E Tests
         runs-on: ubuntu-latest
-        needs: [build, testnet-besu, testnet-fabric]
+        needs: [build]
 
         services:
             mailhog:

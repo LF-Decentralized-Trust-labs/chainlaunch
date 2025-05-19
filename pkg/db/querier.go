@@ -128,6 +128,7 @@ type Querier interface {
 	ListNetworkNodesByNetwork(ctx context.Context, networkID int64) ([]*NetworkNode, error)
 	ListNetworkNodesByNode(ctx context.Context, nodeID int64) ([]*NetworkNode, error)
 	ListNetworks(ctx context.Context) ([]*Network, error)
+	ListNetworksByPlatform(ctx context.Context, platform string) ([]*Network, error)
 	ListNodeEvents(ctx context.Context, arg *ListNodeEventsParams) ([]*NodeEvent, error)
 	ListNodeEventsByType(ctx context.Context, arg *ListNodeEventsByTypeParams) ([]*NodeEvent, error)
 	ListNodes(ctx context.Context, arg *ListNodesParams) ([]*Node, error)

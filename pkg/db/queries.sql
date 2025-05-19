@@ -10,6 +10,13 @@ WHERE id = ? LIMIT 1;
 SELECT * FROM networks
 ORDER BY created_at DESC;
 
+
+-- name: ListNetworksByPlatform :many
+SELECT * FROM networks
+WHERE
+  (CASE WHEN COALESCE(CAST(@platform AS TEXT), '') = '' THEN 1 ELSE platform = @platform END)
+ORDER BY created_at DESC;
+
 -- name: CreateNetwork :one
 INSERT INTO networks (
     name, platform, status, description, config,

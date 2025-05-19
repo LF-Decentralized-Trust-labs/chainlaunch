@@ -1,6 +1,7 @@
 package orderer
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 type listCmd struct {
 	page   int
 	limit  int
+	output string // "tsv" or "json"
 	logger *logger.Logger
 }
 
@@ -29,20 +31,31 @@ func (c *listCmd) run(out io.Writer) error {
 		return fmt.Errorf("failed to list orderer nodes: %w", err)
 	}
 
-	// Print nodes in table format
-	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', tabwriter.TabIndent)
-	fmt.Fprintln(w, "ID\tNAME\tSTATUS\tENDPOINT")
-	for _, node := range nodes.Items {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", node.ID, node.Name, node.Status, node.Endpoint)
+	switch c.output {
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(nodes.Items); err != nil {
+			return fmt.Errorf("failed to encode orderer nodes as JSON: %w", err)
+		}
+		return nil
+	case "tsv":
+		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', tabwriter.TabIndent)
+		fmt.Fprintln(w, "ID\tNAME\tSTATUS\tENDPOINT")
+		for _, node := range nodes.Items {
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", node.ID, node.Name, node.Status, node.Endpoint)
+		}
+		w.Flush()
+		return nil
+	default:
+		return fmt.Errorf("unsupported output type: %s (must be 'tsv' or 'json')", c.output)
 	}
-	w.Flush()
-
-	return nil
 }
 
 // NewListCmd returns the list orderers command
 func NewListCmd(logger *logger.Logger) *cobra.Command {
 	c := &listCmd{
+		output: "tsv",
 		logger: logger,
 	}
 
@@ -58,6 +71,7 @@ func NewListCmd(logger *logger.Logger) *cobra.Command {
 	flags := cmd.Flags()
 	flags.IntVar(&c.page, "page", 1, "Page number")
 	flags.IntVar(&c.limit, "limit", 10, "Number of items per page")
+	flags.StringVar(&c.output, "output", "tsv", "Output type: tsv or json")
 
 	return cmd
 }

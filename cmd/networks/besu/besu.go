@@ -16,6 +16,7 @@ func NewBesuCmd(logger *logger.Logger) *cobra.Command {
 	rootCmd.AddCommand(
 		newCreateCmd(logger),
 		newUpdateCmd(logger),
+		NewListCmd(logger),
 	)
 
 	return rootCmd

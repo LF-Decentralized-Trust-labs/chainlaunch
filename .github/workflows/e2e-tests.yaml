@@ -119,7 +119,18 @@ jobs:
               run: |
                   # Create a new Besu testnet
                   ./chainlaunch testnet besu --name mynet --nodes 4 --prefix besu-test --mode=docker
-                  
+                  # Wait for port 8545 to be available (60 seconds timeout)
+                  timeout=60
+                  while ! curl -s http://localhost:8545 > /dev/null; do
+                    if [ $timeout -le 0 ]; then
+                      echo "Timeout waiting for Besu node to become available"
+                      exit 1
+                    fi
+                    echo "Waiting for Besu node to become available... ($timeout seconds remaining)"
+                    sleep 1
+                    timeout=$((timeout - 1))
+                  done
+
                   # Wait for nodes to start producing blocks (up to 90 seconds)
                   for i in {1..90}; do
                     # Make the curl request and capture both stdout and stderr

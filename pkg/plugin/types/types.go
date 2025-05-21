@@ -32,20 +32,34 @@ type DockerCompose struct {
 	Contents string `json:"contents" yaml:"contents"`
 }
 
+// XSourceType defines the possible values for x-source
+type XSourceType string
+
+const (
+	XSourceFabricPeer    XSourceType = "fabric-peer"
+	XSourceKey           XSourceType = "key"
+	XSourceFabricOrg     XSourceType = "fabric-org"
+	XSourceFabricNetwork XSourceType = "fabric-network"
+	XSourceFabricKey     XSourceType = "fabric-key"
+)
+
 // Parameters defines the plugin parameters schema
 type Parameters struct {
 	Schema     string                   `json:"$schema" yaml:"$schema"`
 	Type       string                   `json:"type" yaml:"type"`
 	Properties map[string]ParameterSpec `json:"properties" yaml:"properties"`
 	Required   []string                 `json:"required" yaml:"required"`
+	// XSource defines the source type for plugin parameters
+	// Can be one of: fabric-peer, key, fabric-org, fabric-network
 }
 
 // ParameterSpec defines a single parameter specification
 type ParameterSpec struct {
-	Type        string   `json:"type" yaml:"type"`
-	Description string   `json:"description" yaml:"description"`
-	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
-	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Type        string      `json:"type" yaml:"type"`
+	Description string      `json:"description" yaml:"description"`
+	Default     string      `json:"default,omitempty" yaml:"default,omitempty"`
+	Enum        []string    `json:"enum,omitempty" yaml:"enum,omitempty"`
+	XSource     XSourceType `json:"x-source,omitempty" yaml:"x-source,omitempty"`
 }
 
 // DeploymentStatus represents the status of a plugin deployment
@@ -127,4 +141,40 @@ func (p *Plugin) Validate() error {
 	}
 
 	return nil
+}
+
+// FabricPeerDetails represents the details of a Fabric peer
+type FabricPeerDetails struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	ExternalEndpoint string `json:"externalEndpoint"`
+	TLSCert          string `json:"tlsCert"`
+	MspID            string `json:"mspId"`
+	OrgID            int64  `json:"orgId"`
+}
+
+// FabricOrgDetails represents the details of a Fabric organization
+type FabricOrgDetails struct {
+	ID          int64  `json:"id"`
+	MspID       string `json:"mspId"`
+	Description string `json:"description"`
+}
+
+// KeyDetails represents the details of a key
+type KeyDetails struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+}
+
+// FabricKeyDetails represents the details of a Fabric key
+type FabricKeyDetails struct {
+	KeyID       int64  `json:"keyId"`
+	OrgID       int64  `json:"orgId"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	MspID       string `json:"mspId"`
+	Certificate string `json:"certificate"`
 }

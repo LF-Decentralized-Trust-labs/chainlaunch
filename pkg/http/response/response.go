@@ -62,6 +62,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	case *errors.AppError:
 		response = Response{
 			Message: e.Message,
+			Data:    e.Details,
 		}
 
 		// Map error types to HTTP status codes

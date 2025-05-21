@@ -6786,6 +6786,15 @@
         "handler.OrganizationResponse": {
             "type": "object",
             "properties": {
+                "adminSignKeyId": {
+                    "type": "integer"
+                },
+                "adminTlsKeyId": {
+                    "type": "integer"
+                },
+                "clientSignKeyId": {
+                    "type": "integer"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -9525,6 +9534,9 @@
                     "description": "@Description The type of node (fabric-peer, fabric-orderer, besu)",
                     "type": "string",
                     "example": "fabric-peer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -9798,6 +9810,9 @@
                 },
                 "type": {
                     "type": "string"
+                },
+                "x-source": {
+                    "$ref": "#/definitions/types.XSourceType"
                 }
             }
         },
@@ -9834,6 +9849,23 @@
                     "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters"
                 }
             }
+        },
+        "types.XSourceType": {
+            "type": "string",
+            "enum": [
+                "fabric-peer",
+                "key",
+                "fabric-org",
+                "fabric-network",
+                "fabric-key"
+            ],
+            "x-enum-varnames": [
+                "XSourceFabricPeer",
+                "XSourceKey",
+                "XSourceFabricOrg",
+                "XSourceFabricNetwork",
+                "XSourceFabricKey"
+            ]
         },
         "url.URL": {
             "type": "object",

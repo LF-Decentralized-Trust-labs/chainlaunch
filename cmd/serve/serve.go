@@ -420,8 +420,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	}()
 
 	// Initialize plugin store and manager
-	pluginStore := plugin.NewSQLStore(queries)
-	pluginManager, err := plugin.NewPluginManager(filepath.Join(dataPath, "plugins"))
+	pluginStore := plugin.NewSQLStore(queries, nodesService)
+	pluginManager, err := plugin.NewPluginManager(filepath.Join(dataPath, "plugins"), queries, nodesService, keyManagementService, logger)
 	if err != nil {
 		log.Fatal("Failed to initialize plugin manager:", err)
 	}

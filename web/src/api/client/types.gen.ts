@@ -178,6 +178,9 @@ export type HandlerDeleteRevokedCertificateRequest = {
 };
 
 export type HandlerOrganizationResponse = {
+    adminSignKeyId?: number;
+    adminTlsKeyId?: number;
+    clientSignKeyId?: number;
     createdAt?: string;
     description?: string;
     id?: number;
@@ -1274,6 +1277,7 @@ export type TypesBesuNodeConfig = {
      * @Description The type of node (fabric-peer, fabric-orderer, besu)
      */
     type?: string;
+    version?: string;
 };
 
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
@@ -1419,6 +1423,7 @@ export type TypesParameterSpec = {
     description?: string;
     enum?: Array<string>;
     type?: string;
+    'x-source'?: TypesXSourceType;
 };
 
 export type TypesService = {
@@ -1433,6 +1438,8 @@ export type TypesSpec = {
     dockerCompose?: TypesDockerCompose;
     parameters?: GithubComChainlaunchChainlaunchPkgPluginTypesParameters;
 };
+
+export type TypesXSourceType = 'fabric-peer' | 'key' | 'fabric-org' | 'fabric-network' | 'fabric-key';
 
 export type UrlUrl = {
     /**

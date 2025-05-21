@@ -31,11 +31,14 @@ type OrganizationResponse struct {
 	UpdatedAt       time.Time `json:"updatedAt"`
 	ProviderID      int64     `json:"providerId"`
 	ProviderName    string    `json:"providerName,omitempty"`
+	AdminTlsKeyID   int64     `json:"adminTlsKeyId,omitempty"`
+	AdminSignKeyID  int64     `json:"adminSignKeyId,omitempty"`
+	ClientSignKeyID int64     `json:"clientSignKeyId,omitempty"`
 }
 
 // Convert service DTO to HTTP response
 func toOrganizationResponse(dto *service.OrganizationDTO) *OrganizationResponse {
-	return &OrganizationResponse{
+	resp := &OrganizationResponse{
 		ID:              dto.ID,
 		MspID:           dto.MspID,
 		Description:     dto.Description.String,
@@ -48,4 +51,16 @@ func toOrganizationResponse(dto *service.OrganizationDTO) *OrganizationResponse 
 		ProviderID:      dto.ProviderID,
 		ProviderName:    dto.ProviderName,
 	}
+
+	if dto.AdminTlsKeyID.Valid {
+		resp.AdminTlsKeyID = dto.AdminTlsKeyID.Int64
+	}
+	if dto.AdminSignKeyID.Valid {
+		resp.AdminSignKeyID = dto.AdminSignKeyID.Int64
+	}
+	if dto.ClientSignKeyID.Valid {
+		resp.ClientSignKeyID = dto.ClientSignKeyID.Int64
+	}
+
+	return resp
 }

@@ -35,7 +35,7 @@ export function YamlViewer({ yaml, label, className }: YamlViewerProps) {
 						<Button variant="ghost" size="icon" className="absolute right-2 top-2" onClick={copyToClipboard}>
 							<Copy className="h-4 w-4" />
 						</Button>
-						<pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap break-all">{stringify(yaml)}</pre>
+						<pre className="text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap break-all max-h-[70vh] overflow-y-auto">{stringify(yaml)}</pre>
 					</div>
 				</DialogContent>
 			</Dialog>

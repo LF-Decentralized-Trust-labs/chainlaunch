@@ -159,6 +159,9 @@ func toOrganizationListDTO(org *db.ListFabricOrganizationsWithKeysRow) *Organiza
 		UpdatedAt:       org.UpdatedAt.Time,
 		ProviderID:      org.ProviderID.Int64,
 		ProviderName:    providerName,
+		AdminTlsKeyID:   org.AdminTlsKeyID,
+		AdminSignKeyID:  org.AdminSignKeyID,
+		ClientSignKeyID: org.ClientSignKeyID,
 	}
 }
 

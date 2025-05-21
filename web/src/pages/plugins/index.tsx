@@ -45,7 +45,7 @@ const PluginsPage = () => {
 
 			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 				{!plugins?.length ? (
-					<Card className="flex flex-col items-center justify-center py-16">
+					<Card className="flex flex-col items-center justify-center py-16 col-span-1 sm:col-span-2 lg:col-span-3">
 						<div className="flex flex-col items-center gap-4 text-center">
 							<div className="rounded-full bg-muted p-4">
 								<svg

@@ -283,6 +283,33 @@ func (r *FabricTestnetRunner) Run() error {
 	}
 
 	fmt.Printf("Fabric testnet created successfully! Network ID: %d\n", networkResp.ID)
+
+	// Join all peers to the network
+	peerResults, peerErrs := client.JoinAllPeersToFabricNetwork(networkResp.ID)
+	for _, resp := range peerResults {
+		fmt.Printf("Peer joined network %d successfully. Network ID: %d, Status: %s\n", networkResp.ID, resp.ID, resp.Status)
+	}
+	if len(peerErrs) > 0 {
+		fmt.Println("Errors occurred while joining some peers:")
+		for _, err := range peerErrs {
+			fmt.Printf("  %v\n", err)
+		}
+		// Optionally: return fmt.Errorf("some peers failed to join the network")
+	}
+
+	// Join all orderers to the network
+	ordererResults, ordererErrs := client.JoinAllOrderersToFabricNetwork(networkResp.ID)
+	for _, resp := range ordererResults {
+		fmt.Printf("Orderer joined network %d successfully. Network ID: %d, Status: %s\n", networkResp.ID, resp.ID, resp.Status)
+	}
+	if len(ordererErrs) > 0 {
+		fmt.Println("Errors occurred while joining some orderers:")
+		for _, err := range ordererErrs {
+			fmt.Printf("  %v\n", err)
+		}
+		// Optionally: return fmt.Errorf("some orderers failed to join the network")
+	}
+
 	return nil
 }
 

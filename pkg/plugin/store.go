@@ -22,6 +22,10 @@ type Store interface {
 	UpdateDeploymentStatus(ctx context.Context, name string, status string) error
 	GetDeploymentMetadata(ctx context.Context, name string) (map[string]interface{}, error)
 	GetDeploymentStatus(ctx context.Context, name string) (string, error)
+	ListKeyStoreIDs(ctx context.Context) ([]string, error)
+	ListFabricOrgs(ctx context.Context) ([]string, error)
+	ListKeyStoreOptions(ctx context.Context) ([]types.OptionItem, error)
+	ListFabricOrgOptions(ctx context.Context) ([]types.OptionItem, error)
 }
 
 // Service represents a docker-compose service
@@ -334,4 +338,46 @@ func (s *SQLStore) GetDeploymentStatus(ctx context.Context, name string) (string
 		return "", fmt.Errorf("failed to get deployment status: %w", err)
 	}
 	return status.String, nil
+}
+
+// ListKeyStoreIDs fetches valid key IDs for x-source validation
+func (s *SQLStore) ListKeyStoreIDs(ctx context.Context) ([]string, error) {
+	// TODO: Query your DB for available key IDs
+	return []string{"key1", "key2"}, nil
+}
+
+// ListFabricOrgs fetches valid Fabric orgs for x-source validation
+func (s *SQLStore) ListFabricOrgs(ctx context.Context) ([]string, error) {
+	// TODO: Query your DB for available Fabric orgs
+	return []string{"orga", "orgb"}, nil
+}
+
+func (s *SQLStore) ListKeyStoreOptions(ctx context.Context) ([]types.OptionItem, error) {
+	rows, err := s.queries.ListKeys(ctx, &db.ListKeysParams{Limit: 100, Offset: 0})
+	if err != nil {
+		return nil, err
+	}
+	opts := make([]types.OptionItem, len(rows))
+	for i, row := range rows {
+		opts[i] = types.OptionItem{
+			Label: row.Name,                  // Show key name as label
+			Value: fmt.Sprintf("%d", row.ID), // Use key ID as value
+		}
+	}
+	return opts, nil
+}
+
+func (s *SQLStore) ListFabricOrgOptions(ctx context.Context) ([]types.OptionItem, error) {
+	rows, err := s.queries.ListFabricOrganizations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	opts := make([]types.OptionItem, len(rows))
+	for i, row := range rows {
+		opts[i] = types.OptionItem{
+			Label: row.MspID,                 // Show MSP ID as label (or row.Description.String if you want description)
+			Value: fmt.Sprintf("%d", row.ID), // Use org ID as value
+		}
+	}
+	return opts, nil
 }

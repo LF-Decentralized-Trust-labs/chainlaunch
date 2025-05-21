@@ -333,7 +333,7 @@ export default function NodeDetailPage() {
 	}
 
 	if (error) {
-		return <div>Error loading node: {(error as any).error.message}</div>
+		return <div>Error loading node: {(error as any)?.error?.message || error.message}</div>
 	}
 	if (!node) {
 		return <div>Node not found</div>

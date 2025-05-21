@@ -17,6 +17,13 @@ import { toast } from 'sonner'
 
 type BulkAction = 'start' | 'stop' | 'restart' | 'delete'
 
+const ACTION_VERBS = {
+	start: { present: 'start', progressive: 'starting', past: 'started' },
+	stop: { present: 'stop', progressive: 'stopping', past: 'stopped' },
+	restart: { present: 'restart', progressive: 'restarting', past: 'restarted' },
+	delete: { present: 'delete', progressive: 'deleting', past: 'deleted' },
+} as const
+
 interface BulkActionDetails {
 	action: BulkAction
 	nodes: HttpNodeResponse[]
@@ -113,28 +120,27 @@ export default function NodesPage() {
 				nodes: selectedNodes,
 			})
 		} else {
-			try {
-				const actionMutation = {
-					start: startNodeBulk,
-					stop: stopNodeBulk,
-					restart: restartNodeBulk,
-				}[action]
-
-				await Promise.all(
-					selectedNodes.map((node) =>
-						actionMutation.mutateAsync({
-							path: { id: node.id! },
-						})
-					)
+			const actionMutation = {
+				start: startNodeBulk,
+				stop: stopNodeBulk,
+				restart: restartNodeBulk,
+			}[action]
+			const promise = Promise.all(
+				selectedNodes.map((node) =>
+					actionMutation.mutateAsync({
+						path: { id: node.id! },
+					})
 				)
-				toast.success(`Successfully ${action}ed selected nodes`)
-				setSelectedNodes([])
-				refetch()
-			} catch (error: any) {
-				toast.error(`Failed to ${action} nodes`, {
-					description: error.message,
-				})
-			}
+			)
+			await toast.promise(promise, {
+				loading: `${ACTION_VERBS[action].progressive} ${selectedNodes.length} node${selectedNodes.length > 1 ? 's' : ''}...`,
+				success: `Successfully ${ACTION_VERBS[action].past} ${selectedNodes.length} node${selectedNodes.length > 1 ? 's' : ''}`,
+				error: (error: any) => `Failed to ${ACTION_VERBS[action].present} nodes: ${error.message}`,
+			})
+			await promise
+
+			setSelectedNodes([])
+			refetch()
 		}
 	}
 
@@ -148,25 +154,26 @@ export default function NodesPage() {
 			restart: restartNodeBulk,
 			delete: deleteNodeBulk,
 		}[action]
-
-		try {
-			await Promise.all(
-				nodes.map((node) =>
-					actionMutation.mutateAsync({
-						path: { id: node.id! },
-					})
-				)
+		const promise = Promise.all(
+			nodes.map((node) =>
+				actionMutation.mutateAsync({
+					path: { id: node.id! },
+				})
 			)
-			toast.success(`Successfully ${action}ed selected nodes`)
-			setSelectedNodes([])
-			refetch()
-		} catch (error: any) {
-			toast.error(`Failed to ${action} nodes`, {
-				description: error.message,
-			})
-		} finally {
-			setBulkActionDetails(null)
-		}
+		)
+		await toast.promise(
+			promise,
+			{
+				loading: `${ACTION_VERBS[action].progressive} ${nodes.length} node${nodes.length > 1 ? 's' : ''}...`,
+				success: `Successfully ${ACTION_VERBS[action].past} ${nodes.length} node${nodes.length > 1 ? 's' : ''}`,
+				error: (error: any) => `Failed to ${ACTION_VERBS[action].present} nodes: ${error.message}`,
+			}
+		)
+		await promise
+
+		setSelectedNodes([])
+		refetch()
+		setBulkActionDetails(null)
 	}
 
 	const handleNodeAction = async (nodeId: number, action: string) => {

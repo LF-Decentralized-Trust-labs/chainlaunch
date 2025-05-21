@@ -2,6 +2,7 @@ package fabric
 
 import (
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/chainlaunch/chainlaunch/cmd/common"
@@ -16,6 +17,41 @@ import (
 
 func generateShortUUID() string {
 	return shortuuid.New()[0:5]
+}
+
+// getExternalIP returns the first non-loopback IPv4 address found on the host
+func getExternalIP() (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not an ipv4 address
+			}
+			return ip.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no external IP found")
 }
 
 // FabricTestnetConfig holds the parameters for creating a Fabric testnet
@@ -120,6 +156,17 @@ func (r *FabricTestnetRunner) Run() error {
 				return fmt.Errorf("failed to allocate operations port for peer %s: %w", nodeName, err)
 			}
 
+			// Determine external endpoint based on mode
+			externalIP := "127.0.0.1"
+			if r.Config.Mode == "docker" {
+				hostIP, err := getExternalIP()
+				if err == nil {
+					externalIP = hostIP
+				} else {
+					// fallback to 127.0.0.1 if error
+				}
+			}
+
 			peerConfig := &types.FabricPeerConfig{
 				Name:           nodeName,
 				OrganizationID: orgID,
@@ -131,8 +178,8 @@ func (r *FabricTestnetRunner) Run() error {
 				ChaincodeAddress:        fmt.Sprintf("0.0.0.0:%d", chaincode.Port),
 				EventsAddress:           fmt.Sprintf("0.0.0.0:%d", events.Port),
 				OperationsListenAddress: fmt.Sprintf("0.0.0.0:%d", operations.Port),
-				ExternalEndpoint:        fmt.Sprintf("127.0.0.1:%d", listen.Port),
-				DomainNames:             []string{},
+				ExternalEndpoint:        fmt.Sprintf("%s:%d", externalIP, listen.Port),
+				DomainNames:             []string{externalIP},
 				Env:                     map[string]string{},
 				Version:                 "3.1.0",
 				AddressOverrides:        []types.AddressOverride{},
@@ -165,6 +212,17 @@ func (r *FabricTestnetRunner) Run() error {
 				return fmt.Errorf("failed to allocate operations port for orderer %s: %w", nodeName, err)
 			}
 
+			// Determine external endpoint based on mode
+			externalIP := "127.0.0.1"
+			if r.Config.Mode == "docker" {
+				hostIP, err := getExternalIP()
+				if err == nil {
+					externalIP = hostIP
+				} else {
+					// fallback to 127.0.0.1 if error
+				}
+			}
+
 			ordererConfig := &types.FabricOrdererConfig{
 				BaseNodeConfig: types.BaseNodeConfig{
 					Mode: r.Config.Mode,
@@ -175,8 +233,8 @@ func (r *FabricTestnetRunner) Run() error {
 				ListenAddress:           fmt.Sprintf("0.0.0.0:%d", listen.Port),
 				AdminAddress:            fmt.Sprintf("0.0.0.0:%d", admin.Port),
 				OperationsListenAddress: fmt.Sprintf("0.0.0.0:%d", operations.Port),
-				ExternalEndpoint:        fmt.Sprintf("127.0.0.1:%d", listen.Port),
-				DomainNames:             []string{},
+				ExternalEndpoint:        fmt.Sprintf("%s:%d", externalIP, listen.Port),
+				DomainNames:             []string{externalIP},
 				Env:                     map[string]string{},
 				Version:                 "3.1.0",
 				AddressOverrides:        []types.AddressOverride{},

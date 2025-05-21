@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,9 @@ import (
 	"github.com/docker/cli/cli/flags"
 	cmdCompose "github.com/docker/compose/v2/cmd/compose"
 	"github.com/docker/compose/v2/pkg/api"
+
+	"bytes"
+	"text/template"
 
 	"github.com/docker/compose/v2/pkg/compose"
 	"gopkg.in/yaml.v3"
@@ -68,8 +72,61 @@ func (pm *PluginManager) LoadPlugin(filePath string) (*plugintypes.Plugin, error
 	return &plugin, nil
 }
 
+// validateXSourceParameters validates x-source parameters using the store's fetchers
+func validateXSourceParameters(ctx context.Context, plugin *plugintypes.Plugin, parameters map[string]interface{}, store Store) error {
+	schemaData, err := json.Marshal(plugin.Spec.Parameters)
+	if err != nil {
+		return fmt.Errorf("failed to marshal parameters schema: %w", err)
+	}
+	xSourceFields, err := plugintypes.ExtractXSourceFields(schemaData)
+	if err != nil {
+		return fmt.Errorf("failed to extract x-source fields: %w", err)
+	}
+	for _, field := range xSourceFields {
+		value, ok := parameters[field.Name]
+		if !ok && field.Required {
+			return fmt.Errorf("missing required x-source parameter: %s", field.Name)
+		}
+		if ok {
+			strVal, ok := value.(string)
+			if !ok {
+				return fmt.Errorf("x-source parameter %s must be a string", field.Name)
+			}
+			fetcher := func(xSource string) []string {
+				switch xSource {
+				case "keyStore":
+					opts, _ := store.ListKeyStoreOptions(ctx)
+					values := make([]string, len(opts))
+					for i, o := range opts {
+						values[i] = o.Value
+					}
+					return values
+				case "fabricOrgs":
+					opts, _ := store.ListFabricOrgOptions(ctx)
+					values := make([]string, len(opts))
+					for i, o := range opts {
+						values[i] = o.Value
+					}
+					return values
+				}
+				return nil
+			}
+			if !plugintypes.ValidateXSourceValue(field, strVal, fetcher) {
+				return fmt.Errorf("invalid value for x-source parameter %s: %s", field.Name, strVal)
+			}
+		}
+	}
+	return nil
+}
+
 // DeployPlugin deploys a plugin using docker-compose
 func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.Plugin, parameters map[string]interface{}, store Store) error {
+	// Validate x-source parameters before deployment
+	if err := validateXSourceParameters(ctx, plugin, parameters, store); err != nil {
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
+		return fmt.Errorf("x-source parameter validation failed: %w", err)
+	}
+
 	// Update plugin status to deploying
 	if err := store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "deploying"); err != nil {
 		return fmt.Errorf("failed to update deployment status: %w", err)
@@ -84,9 +141,21 @@ func (pm *PluginManager) DeployPlugin(ctx context.Context, plugin *plugintypes.P
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Write the docker-compose contents to a file
+	// Render the docker-compose contents as a Go template
+	var renderedCompose bytes.Buffer
+	tmpl, err := template.New("docker-compose").Parse(plugin.Spec.DockerCompose.Contents)
+	if err != nil {
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
+		return fmt.Errorf("failed to parse docker-compose template: %w", err)
+	}
+	if err := tmpl.Execute(&renderedCompose, parameters); err != nil {
+		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
+		return fmt.Errorf("failed to render docker-compose template: %w", err)
+	}
+
+	// Write the rendered docker-compose contents to a file
 	composePath := filepath.Join(tempDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(plugin.Spec.DockerCompose.Contents), 0644); err != nil {
+	if err := os.WriteFile(composePath, renderedCompose.Bytes(), 0644); err != nil {
 		// Update status to failed
 		_ = store.UpdateDeploymentStatus(ctx, plugin.Metadata.Name, "failed")
 		return fmt.Errorf("failed to write docker-compose file: %w", err)

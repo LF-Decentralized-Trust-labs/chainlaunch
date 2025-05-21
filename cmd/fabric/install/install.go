@@ -76,9 +76,6 @@ func (c *installCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkConfig, o
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read user private key for user %s and org %s", userID, org)
 	}
-	// Log certificate and private key PEM content for debugging
-	c.logger.Infof("User certificate for %s in org %s: %s", userID, org, user.Cert.PEM)
-	c.logger.Infof("User private key for %s in org %s: %s", userID, org, user.Key.PEM)
 	userIdentity, err := identity.NewPrivateKeySigningIdentity(org, userCert, userPrivateKey)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to create user identity for user %s and org %s", userID, org)
@@ -126,7 +123,6 @@ func (c installCmd) start() error {
 	}
 	_ = pkg
 	packageID := chaincode.GetPackageID(label, pkg)
-	c.logger.Infof("packageID: %s", packageID)
 
 	// Load network configs
 	networkConfigs := make([]*networkconfig.NetworkConfig, len(c.organizations))
@@ -156,69 +152,6 @@ func (c installCmd) start() error {
 			}
 			networkConfigs[i] = nc
 		}
-	}
-	// Log debug information about the installation parameters
-	c.logger.Infof("Debug information for chaincode installation:")
-	c.logger.Infof("Chaincode: %s", c.chaincode)
-	c.logger.Infof("Channel: %s", c.channel)
-	c.logger.Infof("Package ID: %s", packageID)
-
-	// Log organizations
-	c.logger.Infof("Organizations (%d):", len(c.organizations))
-	for i, org := range c.organizations {
-		c.logger.Infof("  [%d] %s", i, org)
-	}
-
-	// Log network configs
-	c.logger.Infof("Network configs (%d):", len(c.networkConfigs))
-	for i, configPath := range c.networkConfigs {
-		c.logger.Infof("  [%d] %s", i, configPath)
-	}
-
-	// Log users
-	c.logger.Infof("Users (%d):", len(c.users))
-	for i, user := range c.users {
-		c.logger.Infof("  [%d] %s", i, user)
-	}
-
-	// Log detailed network configuration information
-	for i, nc := range networkConfigs {
-		orgName := ""
-		if i < len(c.organizations) {
-			orgName = c.organizations[i]
-		}
-		c.logger.Infof("Network config [%d] details for org %s:", i, orgName)
-
-		if orgName != "" {
-			if orgConfig, ok := nc.Organizations[orgName]; ok {
-				c.logger.Infof("  MSPID: %s", orgConfig.MSPID)
-				c.logger.Infof("  Peers (%d):", len(orgConfig.Peers))
-				for j, peerID := range orgConfig.Peers {
-					if peerConfig, ok := nc.Peers[peerID]; ok {
-						c.logger.Infof("    [%d] %s - URL: %s", j, peerID, peerConfig.URL)
-					} else {
-						c.logger.Infof("    [%d] %s - Not found in peers configuration", j, peerID)
-					}
-				}
-				c.logger.Infof("  Users (%d):", len(orgConfig.Users))
-				for userName := range orgConfig.Users {
-					c.logger.Infof("    %s", userName)
-				}
-			} else {
-				c.logger.Infof("  Organization %s not found in network config", orgName)
-			}
-		}
-	}
-
-	// Log other parameters
-	c.logger.Infof("Chaincode address: %s", c.chaincodeAddress)
-	c.logger.Infof("Signature policy: %s", c.signaturePolicy)
-	c.logger.Infof("Local mode: %v", c.local)
-	if c.pdcFile != "" {
-		c.logger.Infof("PDC file: %s", c.pdcFile)
-	}
-	if c.metaInfPath != "" {
-		c.logger.Infof("META-INF path: %s", c.metaInfPath)
 	}
 
 	// Install chaincode in peers

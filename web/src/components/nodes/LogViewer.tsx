@@ -7,6 +7,7 @@ interface LogViewerProps {
 	onScroll: (isScrolledToBottom: boolean) => void
 	onLoadMore?: () => void
 	isLoading?: boolean
+	autoScroll?: boolean
 }
 
 const converter = new Convert({
@@ -23,22 +24,39 @@ const formatLogs = (logs: string) => {
 	return sanitized
 }
 
-export function LogViewer({ logs, onScroll, onLoadMore, isLoading = false }: LogViewerProps) {
+export function LogViewer({ logs, onScroll, onLoadMore, isLoading = false, autoScroll = true }: LogViewerProps) {
 	const logsRef = useRef<HTMLPreElement>(null)
 	const lastScrollHeight = useRef<number>(0)
+	const isUserScrolling = useRef<boolean>(false)
 
 	useEffect(() => {
-		if (logsRef.current && lastScrollHeight.current) {
-			const newScrollHeight = logsRef.current.scrollHeight
+		if (!logsRef.current) return
+
+		const logsElement = logsRef.current
+		const { scrollHeight, clientHeight, scrollTop } = logsElement
+		const isScrolledToBottom = scrollHeight - clientHeight <= scrollTop + 150
+
+		// If we're loading more logs from the top
+		if (lastScrollHeight.current) {
+			const newScrollHeight = scrollHeight
 			const scrollDiff = newScrollHeight - lastScrollHeight.current
-			logsRef.current.scrollTop += scrollDiff
+			logsElement.scrollTop += scrollDiff
+			lastScrollHeight.current = 0
+			return
 		}
-	}, [logs])
+
+		// Auto-scroll to bottom for new logs if user hasn't scrolled up
+		if ((autoScroll && isScrolledToBottom) || !isUserScrolling.current) {
+			logsElement.scrollTop = scrollHeight
+		}
+	}, [logs, autoScroll])
 
 	const handleScroll = (e: React.UIEvent<HTMLPreElement>) => {
 		const target = e.target as HTMLPreElement
-
 		const isScrolledToBottom = target.scrollHeight - target.clientHeight <= target.scrollTop + 150
+
+		// Update user scrolling state
+		isUserScrolling.current = !isScrolledToBottom
 		onScroll(isScrolledToBottom)
 
 		if (target.scrollTop === 0 && onLoadMore) {

@@ -318,29 +318,25 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	// Create deployment metadata
-	deploymentMetadata := map[string]interface{}{
-		"parameters":   parameters,
-		"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(),
-		"created_at":   time.Now().UTC(),
-	}
-
-	if err := h.store.UpdateDeploymentMetadata(r.Context(), name, deploymentMetadata); err != nil {
-		return errors.NewInternalError("failed to save deployment metadata", err, nil)
-	}
-
-	if err := h.store.UpdateDeploymentStatus(r.Context(), name, "deploying"); err != nil {
-		return errors.NewInternalError("failed to update deployment status", err, nil)
-	}
-
+	// Deploy plugin (x-source validation is handled in DeployPlugin)
 	if err := h.pm.DeployPlugin(r.Context(), plugin, parameters, h.store); err != nil {
+		if strings.Contains(err.Error(), "x-source parameter validation failed") {
+			return errors.NewValidationError("invalid x-source parameter", map[string]interface{}{
+				"detail": err.Error(),
+				"code":   "INVALID_XSOURCE_PARAMETER",
+			})
+		}
 		_ = h.store.UpdateDeploymentStatus(r.Context(), name, "failed")
 		return errors.NewInternalError("failed to deploy plugin", err, nil)
 	}
 
 	return response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"status":   "deploying",
-		"metadata": deploymentMetadata,
+		"status": "deploying",
+		"metadata": map[string]interface{}{
+			"parameters":   parameters,
+			"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(),
+			"created_at":   time.Now().UTC(),
+		},
 	})
 }
 

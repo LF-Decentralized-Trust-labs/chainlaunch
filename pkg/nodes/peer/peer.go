@@ -1585,12 +1585,6 @@ func (p *LocalPeer) RenewCertificates(peerDeploymentConfig *nodetypes.FabricPeer
 		return fmt.Errorf("failed to write renewed certificates: %w", err)
 	}
 
-	// Restart the peer
-	_, err = p.Start()
-	if err != nil {
-		return fmt.Errorf("failed to restart peer after certificate renewal: %w", err)
-	}
-
 	p.logger.Info("Successfully renewed peer certificates", "peerID", p.opts.ID)
 	p.logger.Info("Restarting peer after certificate renewal")
 	// Stop the peer before renewing certificates
@@ -1995,6 +1989,18 @@ const configYamlContent = `NodeOUs:
     OrganizationalUnitIdentifier: orderer
 `
 
+type CoreTemplateData struct {
+	PeerID                  string
+	ListenAddress           string
+	ChaincodeAddress        string
+	ExternalEndpoint        string
+	DataPath                string
+	MSPID                   string
+	ExternalBuilderPath     string
+	OperationsListenAddress string
+	AddressOverrides        []AddressOverridePath
+}
+
 // writeConfigFiles writes the config.yaml and core.yaml files
 func (p *LocalPeer) writeConfigFiles(mspConfigPath, dataConfigPath string) error {
 	// Write config.yaml
@@ -2005,30 +2011,33 @@ func (p *LocalPeer) writeConfigFiles(mspConfigPath, dataConfigPath string) error
 	if err != nil {
 		return fmt.Errorf("failed to convert address overrides: %w", err)
 	}
-
-	// Define template data
-	data := struct {
-		PeerID                  string
-		ListenAddress           string
-		ChaincodeAddress        string
-		ExternalEndpoint        string
-		DataPath                string
-		MSPID                   string
-		ExternalBuilderPath     string
-		OperationsListenAddress string
-		AddressOverrides        []AddressOverridePath
-	}{
-		PeerID:                  p.opts.ID,
-		ListenAddress:           p.opts.ListenAddress,
-		ChaincodeAddress:        p.opts.ChaincodeAddress,
-		ExternalEndpoint:        p.opts.ExternalEndpoint,
-		DataPath:                dataConfigPath,
-		MSPID:                   p.mspID,
-		ExternalBuilderPath:     filepath.Join(mspConfigPath, "ccaas"),
-		OperationsListenAddress: p.opts.OperationsListenAddress,
-		AddressOverrides:        convertedOverrides,
+	var data CoreTemplateData
+	if p.mode == "docker" {
+		data = CoreTemplateData{
+			PeerID:                  p.opts.ID,
+			ListenAddress:           p.opts.ListenAddress,
+			ChaincodeAddress:        p.opts.ChaincodeAddress,
+			ExternalEndpoint:        p.opts.ExternalEndpoint,
+			DataPath:                "/var/hyperledger/production",
+			ExternalBuilderPath:     "/opt/hyperledger/ccaas_builder",
+			OperationsListenAddress: p.opts.OperationsListenAddress,
+			AddressOverrides:        convertedOverrides,
+			MSPID:                   p.mspID,
+		}
+	} else {
+		// Define template data
+		data = CoreTemplateData{
+			PeerID:                  p.opts.ID,
+			ListenAddress:           p.opts.ListenAddress,
+			ChaincodeAddress:        p.opts.ChaincodeAddress,
+			ExternalEndpoint:        p.opts.ExternalEndpoint,
+			DataPath:                dataConfigPath,
+			MSPID:                   p.mspID,
+			ExternalBuilderPath:     filepath.Join(mspConfigPath, "ccaas"),
+			OperationsListenAddress: p.opts.OperationsListenAddress,
+			AddressOverrides:        convertedOverrides,
+		}
 	}
-
 	// Create template
 	tmpl, err := template.New("core.yaml").Parse(coreYamlTemplate)
 	if err != nil {
@@ -3040,28 +3049,34 @@ func (p *LocalPeer) SynchronizeConfig(deployConfig *nodetypes.FabricPeerDeployme
 		return fmt.Errorf("failed to convert address overrides: %w", err)
 	}
 
-	// Define template data
-	data := struct {
-		PeerID                  string
-		ListenAddress           string
-		ChaincodeAddress        string
-		ExternalEndpoint        string
-		DataPath                string
-		MSPID                   string
-		ExternalBuilderPath     string
-		OperationsListenAddress string
-		AddressOverrides        []AddressOverridePath
-	}{
-		PeerID:                  p.opts.ID,
-		ListenAddress:           deployConfig.ListenAddress,
-		ChaincodeAddress:        deployConfig.ChaincodeAddress,
-		ExternalEndpoint:        deployConfig.ExternalEndpoint,
-		DataPath:                dataConfigPath,
-		MSPID:                   deployConfig.MSPID,
-		ExternalBuilderPath:     filepath.Join(mspConfigPath, "ccaas"),
-		OperationsListenAddress: deployConfig.OperationsListenAddress,
-		AddressOverrides:        convertedOverrides,
+	var data CoreTemplateData
+	if p.mode == "docker" {
+		data = CoreTemplateData{
+			PeerID:                  p.opts.ID,
+			ListenAddress:           p.opts.ListenAddress,
+			ChaincodeAddress:        p.opts.ChaincodeAddress,
+			ExternalEndpoint:        p.opts.ExternalEndpoint,
+			DataPath:                "/var/hyperledger/production",
+			ExternalBuilderPath:     "/opt/hyperledger/ccaas_builder",
+			OperationsListenAddress: p.opts.OperationsListenAddress,
+			AddressOverrides:        convertedOverrides,
+			MSPID:                   p.mspID,
+		}
+	} else {
+		// Define template data
+		data = CoreTemplateData{
+			PeerID:                  p.opts.ID,
+			ListenAddress:           p.opts.ListenAddress,
+			ChaincodeAddress:        p.opts.ChaincodeAddress,
+			ExternalEndpoint:        p.opts.ExternalEndpoint,
+			DataPath:                dataConfigPath,
+			MSPID:                   p.mspID,
+			ExternalBuilderPath:     filepath.Join(mspConfigPath, "ccaas"),
+			OperationsListenAddress: p.opts.OperationsListenAddress,
+			AddressOverrides:        convertedOverrides,
+		}
 	}
+
 	// Create template
 	tmpl, err := template.New("core.yaml").Parse(coreYamlTemplate)
 	if err != nil {

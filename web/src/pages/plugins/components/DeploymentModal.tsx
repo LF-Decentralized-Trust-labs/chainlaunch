@@ -1,18 +1,17 @@
+import { getNodesOptions, getOrganizationsOptions } from '@/api/client/@tanstack/react-query.gen'
+import { getKeysById } from '@/api/client/sdk.gen'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
-import { getKeysOptions, getOrganizationsOptions, getNodesOptions } from '@/api/client/@tanstack/react-query.gen'
-import { getKeysById } from '@/api/client/sdk.gen'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GetOrganizationsResponse, HandlerOrganizationResponse } from '@/api/client'
 
 interface DeploymentModalProps {
 	isOpen: boolean
@@ -25,14 +24,19 @@ type FormValues = {
 	[key: string]: number | number[] | string | boolean | Record<string, any>
 }
 
+interface FabricKeySelectValue {
+	keyId: number
+	orgId: number
+}
+
 interface FabricKeySelectProps {
-	value?: number
-	onChange: (value: number) => void
+	value?: FabricKeySelectValue
+	onChange: (value: FabricKeySelectValue) => void
 	disabled?: boolean
 }
 
 const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) => {
-	const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null)
+	const [selectedOrgId, setSelectedOrgId] = useState<number | null>(value?.orgId ?? null)
 	const [selectedKeys, setSelectedKeys] = useState<Array<{ id: number; name: string; description?: string; algorithm?: string; keySize?: number; curve?: string }>>([])
 	const [isLoading, setIsLoading] = useState(false)
 
@@ -57,7 +61,6 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 			setSelectedKeys([])
 			return
 		}
-
 		setIsLoading(true)
 		try {
 			const keyDetails = await Promise.all(
@@ -75,7 +78,6 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 			)
 			setSelectedKeys(keyDetails)
 		} catch (error) {
-			console.error('Error fetching key details:', error)
 			setSelectedKeys([])
 		} finally {
 			setIsLoading(false)
@@ -88,9 +90,23 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 		}
 	}, [fetchKeyDetails, selectedOrgId, keyIds])
 
+	// When org changes, reset key selection
+	useEffect(() => {
+		if (selectedOrgId !== value?.orgId) {
+			onChange({ orgId: selectedOrgId ?? 0, keyId: 0 })
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedOrgId])
+
 	return (
 		<div className="space-y-4">
-			<Select value={selectedOrgId?.toString()} onValueChange={(val) => setSelectedOrgId(Number(val))} disabled={disabled}>
+			<Select
+				value={selectedOrgId?.toString()}
+				onValueChange={(val) => {
+					setSelectedOrgId(Number(val))
+				}}
+				disabled={disabled}
+			>
 				<SelectTrigger>
 					<SelectValue placeholder="Select an organization" />
 				</SelectTrigger>
@@ -105,7 +121,15 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 				</SelectContent>
 			</Select>
 
-			<Select value={value?.toString()} onValueChange={(val) => onChange(Number(val))} disabled={disabled || !selectedOrgId || isLoading}>
+			<Select
+				value={value?.keyId ? value.keyId.toString() : undefined}
+				onValueChange={(val) => {
+					if (selectedOrgId) {
+						onChange({ orgId: selectedOrgId, keyId: Number(val) })
+					}
+				}}
+				disabled={disabled || !selectedOrgId || isLoading}
+			>
 				<SelectTrigger>
 					<SelectValue placeholder={isLoading ? 'Loading keys...' : selectedOrgId ? 'Select a key' : 'Select an organization first'} />
 				</SelectTrigger>
@@ -158,7 +182,7 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 						schema[key] = z.number()
 						break
 					case 'fabric-key':
-						schema[key] = z.number()
+						schema[key] = z.object({ keyId: z.number(), orgId: z.number() })
 						break
 					case 'fabric-peer':
 						if (value.type === 'array') {
@@ -236,7 +260,17 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
-		defaultValues: {},
+		defaultValues: parameters
+			? Object.fromEntries(
+				Object.entries(parameters.properties || {}).map(([key, value]: [string, any]) => {
+					if (value['x-source'] === 'fabric-key') {
+						return [key, { keyId: 0, orgId: 0 }]
+					}
+					// You can add more default value logic for other types if needed
+					return [key, undefined]
+				})
+			)
+			: {},
 	})
 
 	const onSubmit = (values: FormValues) => {
@@ -298,7 +332,10 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 											{parameters.required?.includes(key) && <span className="text-red-500 ml-1">*</span>}
 										</FormLabel>
 										<FormControl>
-											<FabricKeySelect value={field.value as number} onChange={field.onChange} />
+											<FabricKeySelect
+												value={field.value as { keyId: number; orgId: number }}
+												onChange={field.onChange}
+											/>
 										</FormControl>
 										{value.description && <p className="text-sm text-muted-foreground">{value.description}</p>}
 										<FormMessage />
@@ -394,12 +431,9 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 								/>
 							)
 						}
-					default:
-						return null
 				}
-			}
-
-			// Handle regular form fields
+			} 
+			// Default rendering for normal fields
 			return (
 				<FormField
 					key={key}
@@ -437,21 +471,20 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="sm:max-w-[425px] max-h-screen overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Deploy Plugin</DialogTitle>
+					<DialogTitle>Deployment</DialogTitle>
 				</DialogHeader>
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+				<div className="grid gap-4 py-4">
+					<Form {...form}>
 						{renderFormFields()}
-						<DialogFooter>
-							<Button type="button" variant="outline" onClick={onClose}>
-								Cancel
-							</Button>
-							<Button type="submit">Deploy</Button>
-						</DialogFooter>
-					</form>
-				</Form>
+					</Form>
+				</div>
+				<DialogFooter>
+					<Button type="submit" onClick={() => onSubmit(form.getValues())}>
+						Deploy
+					</Button>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	)

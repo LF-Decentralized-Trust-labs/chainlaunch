@@ -1,7 +1,7 @@
 import { deletePluginsByNameMutation, getPluginsOptions } from '@/api/client/@tanstack/react-query.gen'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -43,9 +43,9 @@ const PluginsPage = () => {
 				</Button>
 			</div>
 
-			<div className="grid gap-4">
+			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 				{!plugins?.length ? (
-					<Card className="flex flex-col items-center justify-center py-16">
+					<Card className="flex flex-col items-center justify-center py-16 col-span-1 sm:col-span-2 lg:col-span-3">
 						<div className="flex flex-col items-center gap-4 text-center">
 							<div className="rounded-full bg-muted p-4">
 								<svg
@@ -77,9 +77,9 @@ const PluginsPage = () => {
 					</Card>
 				) : (
 					plugins.map((plugin) => (
-						<Card key={plugin.metadata?.name}>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<div className="flex items-center gap-2">
+						<Card key={plugin.metadata?.name} className="flex flex-col justify-between h-full">
+							<CardHeader className="pb-2">
+								<div className="flex items-center gap-2 mb-2">
 									<CardTitle className="text-lg">
 										<Link to={`/plugins/${plugin.metadata?.name}`} className="hover:text-primary transition-colors">
 											{plugin.metadata?.name}
@@ -91,10 +91,13 @@ const PluginsPage = () => {
 										}`}
 									/>
 								</div>
+								<CardDescription className="line-clamp-2 min-h-[2.5rem]">{(plugin.metadata as any)?.description || 'No description provided.'}</CardDescription>
+							</CardHeader>
+							<div className="flex justify-end px-6 pb-4">
 								<Button variant="destructive" size="icon" onClick={() => setPluginToDelete(plugin.metadata?.name || null)}>
 									<Trash2 className="h-4 w-4" />
 								</Button>
-							</CardHeader>
+							</div>
 						</Card>
 					))
 				)}

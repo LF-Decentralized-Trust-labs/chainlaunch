@@ -87,7 +87,7 @@ const PluginDetailPage = () => {
 			{
 				loading: 'Deploying plugin...',
 				success: 'Plugin deployed successfully',
-				error: (e) => `Failed to deploy plugin: ${(e as any).error.message}`,
+				error: (e) => `Failed to deploy plugin: ${(e as any)?.data?.detail || (e as any)?.message}`,
 			}
 		)
 	}

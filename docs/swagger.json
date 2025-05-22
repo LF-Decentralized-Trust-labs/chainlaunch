@@ -22,6 +22,541 @@
     "host": "localhost:8100",
     "basePath": "/api/v1",
     "paths": {
+        "/api/v1/metrics/deploy": {
+            "post": {
+                "description": "Deploys a new Prometheus instance with the specified configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Deploy a new Prometheus instance",
+                "parameters": [
+                    {
+                        "description": "Prometheus deployment configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metrics.DeployPrometheusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}": {
+            "get": {
+                "description": "Retrieves metrics for a specific node by ID and optional PromQL query",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get metrics for a specific node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PromQL query to filter metrics",
+                        "name": "query",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}/label/{label}/values": {
+            "get": {
+                "description": "Retrieves all values for a specific label, optionally filtered by metric matches and node ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get label values for a specific label",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Label name",
+                        "name": "label",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "description": "Metric matches (e.g. {__name__=\\",
+                        "name": "match",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Label values",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}/query": {
+            "post": {
+                "description": "Execute a custom Prometheus query with optional time range",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Execute custom Prometheus query",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Query parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metrics.CustomQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/common.QueryResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/node/{id}/range": {
+            "get": {
+                "description": "Retrieves metrics for a specific node within a specified time range",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get metrics for a specific node with time range",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PromQL query",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339 format)",
+                        "name": "start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339 format)",
+                        "name": "end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Step duration (e.g. 1m, 5m, 1h)",
+                        "name": "step",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Metrics data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/reload": {
+            "post": {
+                "description": "Triggers a reload of the Prometheus configuration to pick up any changes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Reload Prometheus configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/metrics/status": {
+            "get": {
+                "description": "Returns the current status of the Prometheus instance including version, port, and configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get Prometheus status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/audit/logs": {
+            "get": {
+                "description": "Retrieves a paginated list of audit logs with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "audit"
+                ],
+                "summary": "List audit logs",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default: 10)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339 format)",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339 format)",
+                        "name": "end",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by event type",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "user_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/audit.ListLogsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/audit/logs/{id}": {
+            "get": {
+                "description": "Retrieves a specific audit log by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "audit"
+                ],
+                "summary": "Get audit log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Log ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/audit.Event"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/change-password": {
             "post": {
                 "security": [
@@ -3702,6 +4237,66 @@
                 }
             }
         },
+        "/nodes/{id}/channels/{channelID}/chaincodes": {
+            "get": {
+                "description": "Retrieves all committed chaincodes for a specific channel on a Fabric peer node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Nodes"
+                ],
+                "summary": "Get committed chaincodes for a Fabric peer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Channel ID",
+                        "name": "channelID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/http.ChaincodeResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{id}/events": {
             "get": {
                 "description": "Get a paginated list of events for a specific node",
@@ -4274,14 +4869,27 @@
                     "Organizations"
                 ],
                 "summary": "List all Fabric organizations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Maximum number of organizations to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of organizations to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/handler.OrganizationResponse"
-                            }
+                            "$ref": "#/definitions/handler.PaginatedOrganizationsResponse"
                         }
                     },
                     "500": {
@@ -5170,6 +5778,53 @@
                 }
             }
         },
+        "/plugins/{name}/resume": {
+            "post": {
+                "description": "Resume a previously deployed plugin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plugins"
+                ],
+                "summary": "Resume a plugin deployment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plugin name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/plugins/{name}/services": {
             "get": {
                 "description": "Get all services defined in the plugin's docker-compose configuration",
@@ -5758,6 +6413,96 @@
         }
     },
     "definitions": {
+        "audit.Event": {
+            "type": "object",
+            "properties": {
+                "affectedResource": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "eventOutcome": {
+                    "$ref": "#/definitions/audit.EventOutcome"
+                },
+                "eventSource": {
+                    "type": "string"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "severity": {
+                    "$ref": "#/definitions/audit.Severity"
+                },
+                "sourceIp": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "userIdentity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "audit.EventOutcome": {
+            "type": "string",
+            "enum": [
+                "SUCCESS",
+                "FAILURE",
+                "PENDING"
+            ],
+            "x-enum-varnames": [
+                "EventOutcomeSuccess",
+                "EventOutcomeFailure",
+                "EventOutcomePending"
+            ]
+        },
+        "audit.ListLogsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/audit.Event"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "audit.Severity": {
+            "type": "string",
+            "enum": [
+                "DEBUG",
+                "INFO",
+                "WARNING",
+                "CRITICAL"
+            ],
+            "x-enum-varnames": [
+                "SeverityDebug",
+                "SeverityInfo",
+                "SeverityWarning",
+                "SeverityCritical"
+            ]
+        },
         "auth.ChangePasswordRequest": {
             "type": "object",
             "required": [
@@ -6022,6 +6767,86 @@
                 "CHAINCODE_PACKAGE"
             ]
         },
+        "common.QueryResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "metric": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "value": {
+                                        "description": "For instant queries",
+                                        "type": "array",
+                                        "items": {}
+                                    },
+                                    "values": {
+                                        "description": "For range queries (matrix)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "resultType": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status": {
+            "type": "object",
+            "properties": {
+                "deployment_mode": {
+                    "description": "DeploymentMode is the current deployment mode",
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Error is any error that occurred while getting the status",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Port is the port Prometheus is listening on",
+                    "type": "integer"
+                },
+                "scrape_interval": {
+                    "description": "ScrapeInterval is the current scrape interval",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "started_at": {
+                    "description": "StartedAt is when the instance was started",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the current status of the Prometheus instance (e.g. \"running\", \"stopped\", \"not_deployed\")",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version is the version of Prometheus being used",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -6134,6 +6959,15 @@
         "handler.OrganizationResponse": {
             "type": "object",
             "properties": {
+                "adminSignKeyId": {
+                    "type": "integer"
+                },
+                "adminTlsKeyId": {
+                    "type": "integer"
+                },
+                "clientSignKeyId": {
+                    "type": "integer"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -6166,6 +7000,26 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "handler.PaginatedOrganizationsResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.OrganizationResponse"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
                 }
             }
         },
@@ -6494,6 +7348,29 @@
                     "type": "integer"
                 },
                 "previousBlockHash": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.ChaincodeResponse": {
+            "type": "object",
+            "properties": {
+                "endorsementPlugin": {
+                    "type": "string"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "validationPlugin": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -7560,6 +8437,12 @@
                 "internalIp": {
                     "type": "string"
                 },
+                "metricsEnabled": {
+                    "type": "boolean"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
                 "networkId": {
                     "type": "integer"
                 },
@@ -7841,6 +8724,49 @@
                             "$ref": "#/definitions/notifications.ProviderType"
                         }
                     ]
+                }
+            }
+        },
+        "metrics.CustomQueryRequest": {
+            "type": "object",
+            "required": [
+                "query"
+            ],
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                },
+                "step": {
+                    "type": "string"
+                }
+            }
+        },
+        "metrics.DeployPrometheusRequest": {
+            "type": "object",
+            "required": [
+                "deployment_mode",
+                "prometheus_port",
+                "prometheus_version",
+                "scrape_interval"
+            ],
+            "properties": {
+                "deployment_mode": {
+                    "type": "string"
+                },
+                "prometheus_port": {
+                    "type": "integer"
+                },
+                "prometheus_version": {
+                    "type": "string"
+                },
+                "scrape_interval": {
+                    "type": "integer"
                 }
             }
         },
@@ -8301,14 +9227,7 @@
         "response.ErrorResponse": {
             "type": "object",
             "properties": {
-                "details": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "message": {
-                    "type": "string"
-                },
-                "type": {
+                "error": {
                     "type": "string"
                 }
             }
@@ -8317,11 +9236,8 @@
             "type": "object",
             "properties": {
                 "data": {},
-                "error": {
-                    "$ref": "#/definitions/response.ErrorResponse"
-                },
-                "success": {
-                    "type": "boolean"
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -8338,6 +9254,19 @@
                     "type": "string"
                 },
                 "internalIp": {
+                    "type": "string"
+                },
+                "metricsEnabled": {
+                    "description": "Metrics configuration",
+                    "type": "boolean"
+                },
+                "metricsHost": {
+                    "type": "string"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
                     "type": "string"
                 },
                 "mode": {
@@ -8377,6 +9306,19 @@
                 },
                 "keyId": {
                     "type": "integer"
+                },
+                "metricsEnabled": {
+                    "description": "Metrics configuration",
+                    "type": "boolean"
+                },
+                "metricsHost": {
+                    "type": "string"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
+                    "type": "string"
                 },
                 "mode": {
                     "type": "string"
@@ -8553,7 +9495,7 @@
                     "type": "integer"
                 },
                 "node": {
-                    "$ref": "#/definitions/service.Node"
+                    "$ref": "#/definitions/service.NodeResponse"
                 },
                 "nodeId": {
                     "type": "integer"
@@ -8563,50 +9505,6 @@
                 },
                 "status": {
                     "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "service.Node": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "deploymentConfig": {
-                    "description": "Node deployment configuration interface that can be one of: FabricPeerDeploymentConfig, FabricOrdererDeploymentConfig, or BesuNodeDeploymentConfig"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "errorMessage": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "mspId": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nodeConfig": {
-                    "description": "Base interface for all node configurations"
-                },
-                "nodeType": {
-                    "$ref": "#/definitions/types.NodeType"
-                },
-                "platform": {
-                    "$ref": "#/definitions/types.BlockchainPlatform"
-                },
-                "publicEndpoint": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/types.NodeStatus"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -8647,6 +9545,52 @@
                     "type": "string"
                 },
                 "serviceName": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NodeResponse": {
+            "type": "object",
+            "properties": {
+                "besuNode": {
+                    "$ref": "#/definitions/service.BesuNodeProperties"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "fabricOrderer": {
+                    "$ref": "#/definitions/service.FabricOrdererProperties"
+                },
+                "fabricPeer": {
+                    "description": "Type-specific fields",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/service.FabricPeerProperties"
+                        }
+                    ]
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodeType": {
+                    "$ref": "#/definitions/types.NodeType"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -8705,6 +9649,29 @@
                 }
             }
         },
+        "time.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
+        },
         "types.AddressOverride": {
             "type": "object",
             "properties": {
@@ -8753,6 +9720,15 @@
                 "keyId": {
                     "type": "integer"
                 },
+                "metricsEnabled": {
+                    "type": "boolean"
+                },
+                "metricsPort": {
+                    "type": "integer"
+                },
+                "metricsProtocol": {
+                    "type": "string"
+                },
                 "mode": {
                     "description": "@Description The deployment mode (service or docker)",
                     "type": "string",
@@ -8777,6 +9753,9 @@
                     "description": "@Description The type of node (fabric-peer, fabric-orderer, besu)",
                     "type": "string",
                     "example": "fabric-peer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -8826,6 +9805,44 @@
             "properties": {
                 "contents": {
                     "type": "string"
+                }
+            }
+        },
+        "types.Documentation": {
+            "type": "object",
+            "properties": {
+                "examples": {
+                    "description": "Examples contains example configurations and usage",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Example"
+                    }
+                },
+                "readme": {
+                    "description": "README contains the main documentation for the plugin",
+                    "type": "string"
+                },
+                "troubleshooting": {
+                    "description": "Troubleshooting contains common issues and their solutions",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.TroubleshootingItem"
+                    }
+                }
+            }
+        },
+        "types.Example": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },
@@ -8990,34 +10007,31 @@
         "types.Metadata": {
             "type": "object",
             "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
+                },
+                "repository": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "version": {
                     "type": "string"
                 }
             }
-        },
-        "types.NodeStatus": {
-            "type": "string",
-            "enum": [
-                "PENDING",
-                "RUNNING",
-                "STOPPED",
-                "STOPPING",
-                "STARTING",
-                "UPDATING",
-                "ERROR"
-            ],
-            "x-enum-varnames": [
-                "NodeStatusPending",
-                "NodeStatusRunning",
-                "NodeStatusStopped",
-                "NodeStatusStopping",
-                "NodeStatusStarting",
-                "NodeStatusUpdating",
-                "NodeStatusError"
-            ]
         },
         "types.NodeType": {
             "type": "string",
@@ -9071,6 +10085,9 @@
                 },
                 "type": {
                     "type": "string"
+                },
+                "x-source": {
+                    "$ref": "#/definitions/types.XSourceType"
                 }
             }
         },
@@ -9103,10 +10120,44 @@
                 "dockerCompose": {
                     "$ref": "#/definitions/types.DockerCompose"
                 },
+                "documentation": {
+                    "$ref": "#/definitions/types.Documentation"
+                },
                 "parameters": {
                     "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters"
                 }
             }
+        },
+        "types.TroubleshootingItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "problem": {
+                    "type": "string"
+                },
+                "solution": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.XSourceType": {
+            "type": "string",
+            "enum": [
+                "fabric-peer",
+                "key",
+                "fabric-org",
+                "fabric-network",
+                "fabric-key"
+            ],
+            "x-enum-varnames": [
+                "XSourceFabricPeer",
+                "XSourceKey",
+                "XSourceFabricOrg",
+                "XSourceFabricNetwork",
+                "XSourceFabricKey"
+            ]
         },
         "url.URL": {
             "type": "object",

@@ -1,16 +1,19 @@
 package org
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"text/tabwriter"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
 type listCmd struct {
+	output string // "tsv" or "json"
 	logger *logger.Logger
 }
 
@@ -23,39 +26,36 @@ func (c *listCmd) run(out io.Writer) error {
 		return err
 	}
 
-	// Create table writer
-	table := tablewriter.NewWriter(out)
-	table.SetHeader([]string{"MSP ID", "Created At", "Description"})
-
-	// Configure table style
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetCenterSeparator("")
-	table.SetColumnSeparator("")
-	table.SetRowSeparator("-")
-	table.SetHeaderLine(true)
-	table.SetBorder(false)
-	table.SetTablePadding("\t")
-	table.SetNoWhiteSpace(true)
-
-	// Add data to table
-	for _, org := range orgs {
-		table.Append([]string{
-			org.MspID,
-			org.CreatedAt.Format(time.RFC3339),
-			org.Description,
-		})
+	switch c.output {
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(orgs.Items); err != nil {
+			return fmt.Errorf("failed to encode organizations as JSON: %w", err)
+		}
+		return nil
+	case "tsv":
+		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "MSP ID\tCreated At\tDescription")
+		fmt.Fprintln(w, "------\t----------\t-----------")
+		for _, org := range orgs.Items {
+			fmt.Fprintf(w, "%s\t%s\t%s\n",
+				org.MspID,
+				org.CreatedAt.Format(time.RFC3339),
+				org.Description,
+			)
+		}
+		w.Flush()
+		return nil
+	default:
+		return fmt.Errorf("unsupported output type: %s (must be 'tsv' or 'json')", c.output)
 	}
-
-	table.Render()
-	return nil
 }
 
 // NewListCmd returns the list organizations command
 func NewListCmd(logger *logger.Logger) *cobra.Command {
 	c := &listCmd{
+		output: "tsv",
 		logger: logger,
 	}
 
@@ -67,6 +67,9 @@ func NewListCmd(logger *logger.Logger) *cobra.Command {
 			return c.run(os.Stdout)
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&c.output, "output", "tsv", "Output type: tsv or json")
 
 	return cmd
 }

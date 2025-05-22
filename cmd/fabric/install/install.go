@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
-	"google.golang.org/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"io"
 	"strings"
@@ -32,7 +32,7 @@ import (
 type installCmd struct {
 	chaincode        string
 	channel          string
-	networkConfig    string
+	networkConfigs   []string
 	users            []string
 	organizations    []string
 	signaturePolicy  string
@@ -64,10 +64,14 @@ func (c *installCmd) getPeerAndIdentityForOrg(nc *networkconfig.NetworkConfig, o
 	if !ok {
 		return nil, nil, fmt.Errorf("user %s not found in network config", userID)
 	}
+
+	// Get user certificate
 	userCert, err := gwidentity.CertificateFromPEM([]byte(user.Cert.PEM))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read user certificate for user %s and org %s", userID, org)
 	}
+
+	// Get user private key
 	userPrivateKey, err := gwidentity.PrivateKeyFromPEM([]byte(user.Key.PEM))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read user private key for user %s and org %s", userID, org)
@@ -119,28 +123,40 @@ func (c installCmd) start() error {
 	}
 	_ = pkg
 	packageID := chaincode.GetPackageID(label, pkg)
-	c.logger.Infof("packageID: %s", packageID)
-	nc, err := networkconfig.LoadFromFile(c.networkConfig)
-	if err != nil {
-		return err
+
+	// Load network configs
+	networkConfigs := make([]*networkconfig.NetworkConfig, len(c.organizations))
+	if len(c.networkConfigs) == 0 {
+		return fmt.Errorf("at least one network config file is required")
 	}
 
-	// // install chaincode in peers
-	// configBackend := config.FromFile(c.networkConfig)
+	// If only one config is provided, use it for all organizations
+	if len(c.networkConfigs) == 1 {
+		nc, err := networkconfig.LoadFromFile(c.networkConfigs[0])
+		if err != nil {
+			return err
+		}
+		for i := range c.organizations {
+			networkConfigs[i] = nc
+		}
+	} else {
+		// If multiple configs are provided, validate the count matches organizations
+		if len(c.networkConfigs) != len(c.organizations) {
+			return fmt.Errorf("number of network configs (%d) must match number of organizations (%d)", len(c.networkConfigs), len(c.organizations))
+		}
+		// Load each config
+		for i, configPath := range c.networkConfigs {
+			nc, err := networkconfig.LoadFromFile(configPath)
+			if err != nil {
+				return fmt.Errorf("failed to load network config %s: %w", configPath, err)
+			}
+			networkConfigs[i] = nc
+		}
+	}
 
-	// clientsMap := map[string]*resmgmt.Client{}
-	// sdk, err := fabsdk.New(configBackend)
-	// if err != nil {
-	// 	return err
-	// }
-	// for idx, mspID := range c.organizations {
-	// 	clientContext := sdk.Context(fabsdk.WithUser(c.users[idx]), fabsdk.WithOrg(mspID))
-	// 	clientsMap[mspID], err = resmgmt.New(clientContext)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	// Install chaincode in peers
 	for idx, org := range c.organizations {
+		nc := networkConfigs[idx]
 		orgConfig, ok := nc.Organizations[org]
 		if !ok {
 			return fmt.Errorf("organization %s not found in network config", org)
@@ -168,10 +184,6 @@ func (c installCmd) start() error {
 		}
 	}
 
-	// sp, err := policydsl.FromString(c.signaturePolicy)
-	// if err != nil {
-	// 	return err
-	// }
 	applicationPolicy, err := chaincode.NewApplicationPolicy(c.signaturePolicy, "")
 	if err != nil {
 		return err
@@ -181,6 +193,7 @@ func (c installCmd) start() error {
 	sequence := 1
 	allOrgGateways := []*chaincode.Gateway{}
 	for idx, org := range c.organizations {
+		nc := networkConfigs[idx]
 		orgConfig, ok := nc.Organizations[org]
 		if !ok {
 			return fmt.Errorf("organization %s not found in network config", org)
@@ -208,7 +221,6 @@ func (c installCmd) start() error {
 
 	var collections []*pb.CollectionConfig
 	if c.pdcFile != "" {
-		//
 		pdcBytes, err := ioutil.ReadFile(c.pdcFile)
 		if err != nil {
 			return err
@@ -277,18 +289,6 @@ func (c installCmd) start() error {
 		c.logger.Infof("Chaincode already committed, version=%s sequence=%d", version, sequence)
 	}
 	c.logger.Infof("Should commit=%v", shouldCommit)
-	// // approve chaincode in orgs
-	// approveCCRequest := resmgmt.LifecycleApproveCCRequest{
-	// 	Name:              label,
-	// 	Version:           version,
-	// 	PackageID:         packageID,
-	// 	Sequence:          int64(sequence),
-	// 	CollectionConfig:  collections,
-	// 	EndorsementPlugin: "escc",
-	// 	ValidationPlugin:  "vscc",
-	// 	SignaturePolicy:   sp,
-	// 	InitRequired:      false,
-	// }
 
 	chaincodeDef := &chaincode.Definition{
 		ChannelName:       c.channel,
@@ -305,17 +305,17 @@ func (c installCmd) start() error {
 	for idx, gateway := range allOrgGateways {
 		err := gateway.Approve(ctx, chaincodeDef)
 		if err != nil {
-			c.logger.Errorf("Error when approving chaincode: %v", err)
-			return err
+			if strings.Contains(err.Error(), "redefine uncommitted") {
+				c.logger.Infof("Chaincode already committed, org=%s", c.organizations[idx])
+			} else {
+				c.logger.Errorf("Error when approving chaincode: %v", err)
+				return err
+			}
 		}
-		if err != nil && !strings.Contains(err.Error(), "redefine uncommitted") {
-			c.logger.Errorf("Error when approving chaincode: %v", err)
-			return err
-		}
+
 		c.logger.Infof("Chaincode approved, org=%s", c.organizations[idx])
 	}
 	if shouldCommit {
-
 		// commit chaincode in orgs
 		err := firstGateway.Commit(
 			ctx,
@@ -326,7 +326,6 @@ func (c installCmd) start() error {
 			return err
 		}
 		c.logger.Infof("Chaincode committed")
-
 	}
 
 	if c.envFile != "" {
@@ -546,7 +545,7 @@ func NewInstallCmd(logger *logger.Logger) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&c.chaincode, "chaincode", "", "chaincode name within the channel")
 	f.StringVar(&c.channel, "channel", "", "Channel name")
-	f.StringVar(&c.networkConfig, "config", "", "Network config file")
+	f.StringArrayVar(&c.networkConfigs, "config", []string{}, "Network config files (one per organization, if only one is provided it will be used for all organizations)")
 	f.StringVar(&c.signaturePolicy, "policy", "", "Signature policy for the chaincode")
 	f.StringArrayVarP(&c.organizations, "organizations", "o", []string{}, "Organizations to connect to ")
 	f.StringArrayVarP(&c.users, "users", "u", []string{}, "Users to use")

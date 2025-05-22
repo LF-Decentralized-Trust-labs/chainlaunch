@@ -32,7 +32,6 @@ export function CertificateDecoder({ pem }: CertificateDecoderProps) {
 			const days = Math.ceil((cert.notAfter.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 			return days
 		}
-		console.log('cert', cert)
 		const isCA = cert.extensions.some((ext) => ext.type === '2.5.29.19' && (ext as any).ca)
 
 		return (

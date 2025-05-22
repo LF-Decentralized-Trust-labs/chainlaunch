@@ -2,12 +2,21 @@ package orderer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"text/template"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
+	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
 
 // startService starts the orderer as a system service
@@ -251,14 +260,130 @@ func (o *LocalOrderer) execSystemctl(command string, args ...string) error {
 	return nil
 }
 
-// startDocker starts the orderer in a docker container
-func (o *LocalOrderer) startDocker(env map[string]string, mspConfigPath, dataConfigPath string) (*StartDockerResponse, error) {
-	// TODO: Implement docker mode
-	return nil, fmt.Errorf("docker mode not implemented")
+// getContainerName returns the docker container name for the orderer
+func (o *LocalOrderer) getContainerName() string {
+	return strings.ReplaceAll(strings.ToLower(o.opts.ID), " ", "-")
 }
 
-// stopDocker stops the orderer docker container
+// startDocker starts the orderer in a docker container
+func (o *LocalOrderer) startDocker(env map[string]string, mspConfigPath, dataConfigPath string) (*StartDockerResponse, error) {
+	cli, err := dockerclient.NewClientWithOpts(
+		dockerclient.FromEnv,
+		dockerclient.WithAPIVersionNegotiation(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+	defer cli.Close()
+
+	// Pull the image first
+	imageName := fmt.Sprintf("hyperledger/fabric-orderer:%s", o.opts.Version)
+	reader, err := cli.ImagePull(context.Background(), imageName, image.PullOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull image %s: %w", imageName, err)
+	}
+	defer reader.Close()
+	io.Copy(io.Discard, reader) // Wait for pull to complete
+
+	containerName := o.getContainerName()
+
+	// Helper to extract port from address (host:port or just :port)
+	extractPort := func(addr string) string {
+		parts := strings.Split(addr, ":")
+		if len(parts) > 1 {
+			return parts[len(parts)-1]
+		}
+		return addr
+	}
+
+	listenPort := extractPort(o.opts.ListenAddress)
+	adminPort := extractPort(o.opts.AdminListenAddress)
+	operationsPort := extractPort(o.opts.OperationsListenAddress)
+
+	// Configure port bindings
+	portBindings := map[nat.Port][]nat.PortBinding{
+		nat.Port(listenPort):     {{HostIP: "0.0.0.0", HostPort: listenPort}},
+		nat.Port(adminPort):      {{HostIP: "0.0.0.0", HostPort: adminPort}},
+		nat.Port(operationsPort): {{HostIP: "0.0.0.0", HostPort: operationsPort}},
+	}
+
+	// Configure volume bindings
+	mounts := []mount.Mount{
+		{
+			Type:   mount.TypeBind,
+			Source: mspConfigPath,
+			Target: "/etc/hyperledger/fabric/msp",
+		},
+		{
+			Type:   mount.TypeBind,
+			Source: dataConfigPath,
+			Target: "/var/hyperledger/production",
+		},
+	}
+	containerConfig := &container.Config{
+		Image:        imageName,
+		Cmd:          []string{"orderer"},
+		Env:          mapToEnvSlice(env),
+		ExposedPorts: map[nat.Port]struct{}{},
+	}
+	for port := range portBindings {
+		containerConfig.ExposedPorts[port] = struct{}{}
+	}
+	// Create container
+	resp, err := cli.ContainerCreate(context.Background(),
+		containerConfig,
+		&container.HostConfig{
+			PortBindings: portBindings,
+			Mounts:       mounts,
+		},
+		nil,
+		nil,
+		containerName,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create container: %w", err)
+	}
+
+	// Start container
+	if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return &StartDockerResponse{
+		Mode:          "docker",
+		ContainerName: containerName,
+	}, nil
+}
+
+func mapToEnvSlice(m map[string]string) []string {
+	var env []string
+	for k, v := range m {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	return env
+}
+
 func (o *LocalOrderer) stopDocker() error {
-	// TODO: Implement docker mode
-	return fmt.Errorf("docker mode not implemented")
+	containerName := o.getContainerName()
+
+	cli, err := dockerclient.NewClientWithOpts(
+		dockerclient.FromEnv,
+		dockerclient.WithAPIVersionNegotiation(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+	defer cli.Close()
+
+	ctx := context.Background()
+
+	// Stop and remove container
+	if err := cli.ContainerRemove(ctx, containerName, container.RemoveOptions{
+		Force: true,
+	}); err != nil {
+		o.logger.Warn("Failed to remove docker container", "error", err)
+		// Don't return error as container might not exist
+	}
+
+	return nil
 }

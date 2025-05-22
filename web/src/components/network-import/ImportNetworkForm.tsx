@@ -133,7 +133,6 @@ export function ImportNetworkForm() {
 		setError(null)
 
 		if (data.networkType === 'fabric') {
-			console.log('data.fabricImport', data.fabricImport)
 			if (data.fabricImport.importMethod === 'genesis') {
 				if (!data.fabricImport.genesisBlock) {
 					setError('Genesis block is required')
@@ -338,7 +337,7 @@ export function ImportNetworkForm() {
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															{organizations?.map((org) => (
+															{organizations?.items?.map((org) => (
 																<SelectItem key={org.id} value={org.id!.toString()}>
 																	{org.mspId}
 																</SelectItem>

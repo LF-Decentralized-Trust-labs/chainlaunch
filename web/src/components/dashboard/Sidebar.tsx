@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
-import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, FileText, Globe, Key, LogOut, Network, Puzzle, Server, Settings, Share2 } from 'lucide-react'
+import { BadgeCheck, Bell, Building, ChevronsUpDown, DatabaseBackup, FileText, Globe, Key, LogOut, Network, Puzzle, Server, Settings, Share2, User, BarChart3 } from 'lucide-react'
 ;('use client')
 
 // import { Project } from '@/api/client'
@@ -10,17 +10,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../../../public/logo.svg'
 import { ProBadge } from '../pro/ProBadge'
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from '../ui/alert-dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog'
 import { Avatar, AvatarFallback } from '../ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
 
@@ -41,6 +31,11 @@ const data = {
 					title: 'Nodes',
 					url: '/nodes',
 					icon: Server,
+				},
+				{
+					title: 'Analytics',
+					url: '/platform/analytics',
+					icon: BarChart3,
 				},
 				{
 					title: 'Plugins',
@@ -95,6 +90,12 @@ const data = {
 					url: '/settings/general',
 					icon: Settings,
 					roles: ['admin', 'manager'],
+				},
+				{
+					title: 'Audit Logs',
+					url: '/settings/audit-logs',
+					icon: FileText,
+					roles: ['admin'],
 				},
 			],
 		},
@@ -250,11 +251,11 @@ function NavUser() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-			<SidebarMenu>
+			<SidebarMenu id="user-menu">
 				<SidebarMenuItem>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+							<SidebarMenuButton id="user-menu-trigger" size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
 								<Avatar className="h-8 w-8 rounded-lg">
 									<AvatarFallback className="rounded-lg">{user.username?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
 								</Avatar>
@@ -276,6 +277,12 @@ function NavUser() {
 								</div>
 							</DropdownMenuLabel>
 							<DropdownMenuSeparator />
+							<DropdownMenuItem asChild>
+								<Link to="/account">
+									<User className="mr-2 h-4 w-4" />
+									Account
+								</Link>
+							</DropdownMenuItem>
 							<DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => setLoggedOutOpen(true)}>
 								<LogOut className="mr-2 h-4 w-4" />
 								Log out

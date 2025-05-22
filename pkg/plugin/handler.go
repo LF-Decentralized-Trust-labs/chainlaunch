@@ -49,6 +49,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 			r.Delete("/", response.Middleware(h.deletePlugin))
 			r.Post("/deploy", response.Middleware(h.deployPlugin))
 			r.Post("/stop", response.Middleware(h.stopPlugin))
+			r.Post("/resume", response.Middleware(h.resumePlugin))
 			r.Get("/status", response.Middleware(h.getPluginStatus))
 			r.Get("/deployment-status", response.Middleware(h.getDeploymentStatus))
 			r.Get("/services", response.Middleware(h.getDockerComposeServices))
@@ -318,29 +319,25 @@ func (h *Handler) deployPlugin(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	// Create deployment metadata
-	deploymentMetadata := map[string]interface{}{
-		"parameters":   parameters,
-		"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(),
-		"created_at":   time.Now().UTC(),
-	}
-
-	if err := h.store.UpdateDeploymentMetadata(r.Context(), name, deploymentMetadata); err != nil {
-		return errors.NewInternalError("failed to save deployment metadata", err, nil)
-	}
-
-	if err := h.store.UpdateDeploymentStatus(r.Context(), name, "deploying"); err != nil {
-		return errors.NewInternalError("failed to update deployment status", err, nil)
-	}
-
+	// Deploy plugin (x-source validation is handled in DeployPlugin)
 	if err := h.pm.DeployPlugin(r.Context(), plugin, parameters, h.store); err != nil {
+		if strings.Contains(err.Error(), "x-source parameter validation failed") {
+			return errors.NewValidationError("invalid x-source parameter", map[string]interface{}{
+				"detail": err.Error(),
+				"code":   "INVALID_XSOURCE_PARAMETER",
+			})
+		}
 		_ = h.store.UpdateDeploymentStatus(r.Context(), name, "failed")
 		return errors.NewInternalError("failed to deploy plugin", err, nil)
 	}
 
 	return response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"status":   "deploying",
-		"metadata": deploymentMetadata,
+		"status": "deploying",
+		"metadata": map[string]interface{}{
+			"parameters":   parameters,
+			"project_name": plugin.Metadata.Name + "-" + generateRandomSuffix(),
+			"created_at":   time.Now().UTC(),
+		},
 	})
 }
 
@@ -482,4 +479,37 @@ func (h *Handler) getDockerComposeServices(w http.ResponseWriter, r *http.Reques
 	}
 
 	return response.WriteJSON(w, http.StatusOK, services)
+}
+
+// @Summary Resume a plugin deployment
+// @Description Resume a previously deployed plugin
+// @Tags Plugins
+// @Accept json
+// @Produce json
+// @Param name path string true "Plugin name"
+// @Success 200 {object} map[string]string
+// @Failure 404 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /plugins/{name}/resume [post]
+func (h *Handler) resumePlugin(w http.ResponseWriter, r *http.Request) error {
+	name := chi.URLParam(r, "name")
+	plugin, err := h.store.GetPlugin(r.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
+	}
+
+	if err := h.pm.ResumePlugin(r.Context(), plugin, h.store); err != nil {
+		return errors.NewInternalError("failed to resume plugin", err, nil)
+	}
+
+	return response.WriteJSON(w, http.StatusOK, map[string]string{
+		"status": "resumed",
+	})
 }

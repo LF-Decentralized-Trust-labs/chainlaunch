@@ -23,6 +23,7 @@ type createCmd struct {
 	keyID      int64
 	bootNodes  []string
 	networkID  int64
+	version    string
 	logger     *logger.Logger
 }
 
@@ -116,6 +117,7 @@ func (c *createCmd) run(out *os.File) error {
 		Env:        envVars,
 		KeyID:      c.keyID,
 		BootNodes:  c.bootNodes,
+		Version:    c.version,
 	}
 
 	// Create node
@@ -165,6 +167,7 @@ func NewCreateCmd(logger *logger.Logger) *cobra.Command {
 	flags.StringSliceVar(&c.bootNodes, "boot-nodes", []string{}, "Boot nodes")
 	flags.Int64Var(&c.networkID, "network-id", 0, "Network ID")
 	flags.StringVar(&c.name, "name", "", "Name")
+	flags.StringVar(&c.version, "version", "25.5.0", "Version")
 	// Mark all flags as required
 	cmd.MarkFlagRequired("p2p-port")
 	cmd.MarkFlagRequired("rpc-port")

@@ -3,6 +3,7 @@ package besu
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +45,10 @@ func (b *LocalBesu) createVolume(ctx context.Context, cli *client.Client, name s
 // startDocker starts the besu node in a docker container
 func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string) (*StartDockerResponse, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
@@ -64,7 +68,18 @@ func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string
 	// Prepare container configuration
 	containerName := b.getContainerName()
 	imageName := fmt.Sprintf("hyperledger/besu:%s", b.opts.Version)
+	// Pull the image
+	reader, err := cli.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull image %s: %w", imageName, err)
+	}
+	defer reader.Close()
 
+	// Wait for the pull to complete
+	_, err = io.Copy(io.Discard, reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read image pull response: %w", err)
+	}
 	// Create port bindings
 	portBindings := nat.PortMap{
 		nat.Port(fmt.Sprintf("%s/tcp", b.opts.RPCPort)): []nat.PortBinding{
@@ -76,12 +91,15 @@ func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string
 		nat.Port(fmt.Sprintf("%s/udp", b.opts.P2PPort)): []nat.PortBinding{
 			{HostIP: "0.0.0.0", HostPort: b.opts.P2PPort},
 		},
+		nat.Port(fmt.Sprintf("%d/tcp", b.opts.MetricsPort)): []nat.PortBinding{
+			{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", b.opts.MetricsPort)},
+		},
 	}
 
 	// Create container config
 	config := &container.Config{
 		Image:        imageName,
-		Cmd:          b.buildDockerBesuCommand("/opt/besu/data", "/opt/besu/config"),
+		Cmd:          b.buildDockerBesuArgs("/opt/besu/data", "/opt/besu/config"),
 		Env:          formatEnvForDocker(env),
 		ExposedPorts: nat.PortSet{},
 	}
@@ -143,7 +161,10 @@ func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string
 // stopDocker stops the besu docker container
 func (b *LocalBesu) stopDocker() error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
@@ -190,28 +211,29 @@ func formatEnvForDocker(env map[string]string) []string {
 }
 
 // buildBesuCommand builds the command arguments for Besu
-func (b *LocalBesu) buildDockerBesuCommand(dataPath, configPath string) []string {
+func (b *LocalBesu) buildDockerBesuArgs(dataPath, configPath string) []string {
 	cmd := []string{
-		"besu",
-		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
 		fmt.Sprintf("--data-path=%s", dataPath),
 		fmt.Sprintf("--genesis-file=%s", filepath.Join(configPath, "genesis.json")),
 		"--rpc-http-enabled",
-		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
-		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
-		"--rpc-http-api=ADMIN,ETH,NET,PERM,QBFT,WEB3,TXPOOL",
-		"--host-allowlist=*",
-		"--miner-enabled",
-		fmt.Sprintf("--miner-coinbase=%s", b.opts.MinerAddress),
-		"--min-gas-price=1000000000",
+		"--rpc-http-api=ETH,NET,QBFT",
 		"--rpc-http-cors-origins=all",
-		fmt.Sprintf("--node-private-key-file=%s", filepath.Join(configPath, "key")),
-		fmt.Sprintf("--p2p-host=%s", b.opts.ListenAddress),
 		"--rpc-http-host=0.0.0.0",
+		fmt.Sprintf("--rpc-http-port=%s", b.opts.RPCPort),
+		"--min-gas-price=1000000000",
+		fmt.Sprintf("--network-id=%d", b.opts.ChainID),
+		"--host-allowlist=*",
+		fmt.Sprintf("--node-private-key-file=%s", filepath.Join(configPath, "key")),
+		fmt.Sprintf("--metrics-enabled=%t", b.opts.MetricsEnabled),
+		"--metrics-host=0.0.0.0",
+		fmt.Sprintf("--metrics-port=%d", b.opts.MetricsPort),
+		fmt.Sprintf("--metrics-protocol=%s", b.opts.MetricsProtocol),
+		"--p2p-enabled=true",
+		fmt.Sprintf("--p2p-host=%s", b.opts.P2PHost),
+		fmt.Sprintf("--p2p-port=%s", b.opts.P2PPort),
+		"--nat-method=NONE",
 		"--discovery-enabled=true",
-		"--sync-mode=FULL",
-		"--revert-reason-enabled=true",
-		"--validator-priority-enabled=true",
+		"--profile=ENTERPRISE",
 	}
 
 	// Add bootnodes if specified

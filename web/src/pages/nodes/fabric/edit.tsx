@@ -1,7 +1,6 @@
-import { getNodesByIdOptions, getNodesDefaultsFabricPeerOptions, getOrganizationsOptions, putNodesByIdMutation } from '@/api/client/@tanstack/react-query.gen'
-import { TypesAddressOverride } from '@/api/client/types.gen'
+import { getNodesByIdOptions, getOrganizationsOptions, putNodesByIdMutation } from '@/api/client/@tanstack/react-query.gen'
 import { FabricNodeForm } from '@/components/nodes/fabric-node-form'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -57,7 +56,7 @@ export default function EditFabricNodePage() {
 	})
 
 	const onSubmit = (data: FabricNodeFormValues) => {
-		const organization = organizations?.find((org) => org.id === data.fabricProperties.organizationId)
+		const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)
 
 		if (data.fabricProperties.nodeType === 'FABRIC_PEER') {
 			const fabricPeer = {
@@ -196,7 +195,7 @@ export default function EditFabricNodePage() {
 				<FabricNodeForm
 					onSubmit={onSubmit}
 					isSubmitting={updateNode.isPending}
-					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
+					organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					hideNodeType={true}
 					submitText="Update Node"
 					defaultValues={defaultValues}

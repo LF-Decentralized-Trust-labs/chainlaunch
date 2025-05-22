@@ -64,6 +64,13 @@ type RevokedCertificateDTO struct {
 	Reason         int64     `json:"reason"`
 }
 
+// PaginationParams represents pagination input for listing organizations
+// You may want to move this to a shared location if used elsewhere
+type PaginationParams struct {
+	Limit  int64
+	Offset int64
+}
+
 type OrganizationService struct {
 	queries       *db.Queries
 	keyManagement *keymanagement.KeyManagementService
@@ -152,10 +159,18 @@ func toOrganizationListDTO(org *db.ListFabricOrganizationsWithKeysRow) *Organiza
 		UpdatedAt:       org.UpdatedAt.Time,
 		ProviderID:      org.ProviderID.Int64,
 		ProviderName:    providerName,
+		AdminTlsKeyID:   org.AdminTlsKeyID,
+		AdminSignKeyID:  org.AdminSignKeyID,
+		ClientSignKeyID: org.ClientSignKeyID,
 	}
 }
 
 func (s *OrganizationService) CreateOrganization(ctx context.Context, params CreateOrganizationParams) (*OrganizationDTO, error) {
+	// Uniqueness check by MSP ID
+	if existing, _ := s.queries.GetFabricOrganizationByMSPID(ctx, params.MspID); existing != nil && existing.ID != 0 {
+		return nil, fmt.Errorf("organization with MSP ID '%s' already exists", params.MspID)
+	}
+
 	description := fmt.Sprintf("Sign key for organization %s", params.MspID)
 	curve := models.ECCurveP256
 	// Create SIGN key
@@ -438,8 +453,11 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id int64) 
 	return nil
 }
 
-func (s *OrganizationService) ListOrganizations(ctx context.Context) ([]OrganizationDTO, error) {
-	orgs, err := s.queries.ListFabricOrganizationsWithKeys(ctx)
+func (s *OrganizationService) ListOrganizations(ctx context.Context, params PaginationParams) ([]OrganizationDTO, error) {
+	orgs, err := s.queries.ListFabricOrganizationsWithKeys(ctx, &db.ListFabricOrganizationsWithKeysParams{
+		Limit:  params.Limit,
+		Offset: params.Offset,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list organizations: %w", err)
 	}

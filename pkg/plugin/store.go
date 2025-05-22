@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
+	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 )
 
@@ -22,6 +24,16 @@ type Store interface {
 	UpdateDeploymentStatus(ctx context.Context, name string, status string) error
 	GetDeploymentMetadata(ctx context.Context, name string) (map[string]interface{}, error)
 	GetDeploymentStatus(ctx context.Context, name string) (string, error)
+	ListKeyStoreIDs(ctx context.Context) ([]string, error)
+	ListFabricOrgs(ctx context.Context) ([]string, error)
+	ListKeyStoreOptions(ctx context.Context) ([]types.OptionItem, error)
+	ListFabricOrgOptions(ctx context.Context) ([]types.OptionItem, error)
+	ListFabricKeyOptions(ctx context.Context) ([]types.OptionItem, error)
+	// New methods for fetching details
+	GetFabricPeerDetails(ctx context.Context, id string) (*types.FabricPeerDetails, error)
+	GetFabricOrgDetails(ctx context.Context, id string) (*types.FabricOrgDetails, error)
+	GetKeyDetails(ctx context.Context, id string) (*types.KeyDetails, error)
+	GetFabricKeyDetails(ctx context.Context, keyIdString string, orgIdString string) (*types.FabricKeyDetails, error)
 }
 
 // Service represents a docker-compose service
@@ -49,13 +61,15 @@ type ServiceStatus struct {
 
 // SQLStore implements the Store interface using SQL database
 type SQLStore struct {
-	queries *db.Queries
+	queries     *db.Queries
+	nodeService *nodeservice.NodeService
 }
 
 // NewSQLStore creates a new SQL store
-func NewSQLStore(db *db.Queries) *SQLStore {
+func NewSQLStore(db *db.Queries, nodeService *nodeservice.NodeService) *SQLStore {
 	return &SQLStore{
-		queries: db,
+		queries:     db,
+		nodeService: nodeService,
 	}
 }
 
@@ -334,4 +348,175 @@ func (s *SQLStore) GetDeploymentStatus(ctx context.Context, name string) (string
 		return "", fmt.Errorf("failed to get deployment status: %w", err)
 	}
 	return status.String, nil
+}
+
+// ListKeyStoreIDs fetches valid key IDs for x-source validation
+func (s *SQLStore) ListKeyStoreIDs(ctx context.Context) ([]string, error) {
+	// TODO: Query your DB for available key IDs
+	return []string{"key1", "key2"}, nil
+}
+
+// ListFabricOrgs fetches valid Fabric orgs for x-source validation
+func (s *SQLStore) ListFabricOrgs(ctx context.Context) ([]string, error) {
+	// TODO: Query your DB for available Fabric orgs
+	return []string{"orga", "orgb"}, nil
+}
+
+func (s *SQLStore) ListKeyStoreOptions(ctx context.Context) ([]types.OptionItem, error) {
+	rows, err := s.queries.ListKeys(ctx, &db.ListKeysParams{Limit: 100, Offset: 0})
+	if err != nil {
+		return nil, err
+	}
+	opts := make([]types.OptionItem, len(rows))
+	for i, row := range rows {
+		opts[i] = types.OptionItem{
+			Label: row.Name,                  // Show key name as label
+			Value: fmt.Sprintf("%d", row.ID), // Use key ID as value
+		}
+	}
+	return opts, nil
+}
+
+func (s *SQLStore) ListFabricOrgOptions(ctx context.Context) ([]types.OptionItem, error) {
+	rows, err := s.queries.ListFabricOrganizations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	opts := make([]types.OptionItem, len(rows))
+	for i, row := range rows {
+		opts[i] = types.OptionItem{
+			Label: row.MspID,                 // Show MSP ID as label (or row.Description.String if you want description)
+			Value: fmt.Sprintf("%d", row.ID), // Use org ID as value
+		}
+	}
+	return opts, nil
+}
+
+// GetFabricPeerDetails retrieves details for a Fabric peer
+func (s *SQLStore) GetFabricPeerDetails(ctx context.Context, id string) (*types.FabricPeerDetails, error) {
+	peerID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid peer ID format: %w", err)
+	}
+
+	peer, err := s.nodeService.GetNode(ctx, peerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+	if peer.FabricPeer == nil {
+		return nil, fmt.Errorf("peer is not a Fabric peer")
+	}
+
+	return &types.FabricPeerDetails{
+		ID:               id,
+		Name:             peer.Name,
+		ExternalEndpoint: peer.FabricPeer.ExternalEndpoint,
+		TLSCert:          peer.FabricPeer.TLSCert,
+		MspID:            peer.FabricPeer.MSPID,
+		OrgID:            peer.FabricPeer.OrganizationID,
+	}, nil
+}
+
+// GetFabricOrgDetails retrieves details for a Fabric org
+func (s *SQLStore) GetFabricOrgDetails(ctx context.Context, id string) (*types.FabricOrgDetails, error) {
+	orgID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid org ID format: %w", err)
+	}
+
+	org, err := s.queries.GetFabricOrganization(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get org: %w", err)
+	}
+
+	return &types.FabricOrgDetails{
+		ID:          orgID,
+		MspID:       org.MspID,
+		Description: org.Description.String,
+	}, nil
+}
+
+// GetKeyDetails retrieves details for a key
+func (s *SQLStore) GetKeyDetails(ctx context.Context, id string) (*types.KeyDetails, error) {
+	keyID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid key ID format: %w", err)
+	}
+
+	key, err := s.queries.GetKey(ctx, keyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	return &types.KeyDetails{
+		ID:          keyID,
+		Name:        key.Name,
+		Type:        key.Algorithm,
+		Description: key.Description.String,
+	}, nil
+}
+
+// GetFabricKeyDetails retrieves details for a Fabric key
+func (s *SQLStore) GetFabricKeyDetails(ctx context.Context, keyIdString string, orgIdString string) (*types.FabricKeyDetails, error) {
+	keyID, err := strconv.ParseInt(keyIdString, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid key ID format: %w", err)
+	}
+	orgID, err := strconv.ParseInt(orgIdString, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid org ID format: %w", err)
+	}
+	key, err := s.queries.GetKey(ctx, keyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
+	// Get the organization details for this key
+	org, err := s.queries.GetFabricOrganization(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization for key: %w", err)
+	}
+
+	return &types.FabricKeyDetails{
+		KeyID:       keyID,
+		Name:        key.Name,
+		Type:        key.Algorithm,
+		Description: key.Description.String,
+		MspID:       org.MspID,
+		Certificate: key.Certificate.String,
+	}, nil
+}
+
+func (s *SQLStore) ListFabricKeyOptions(ctx context.Context) ([]types.OptionItem, error) {
+	// Get all keys that have certificates (which are likely to be Fabric keys)
+	rows, err := s.queries.ListKeys(ctx, &db.ListKeysParams{Limit: 100, Offset: 0})
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all Fabric organizations
+	orgs, err := s.queries.ListFabricOrganizations(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map of org IDs to MSP IDs for quick lookup
+	orgMap := make(map[int64]string)
+	for _, org := range orgs {
+		orgMap[org.ID] = org.MspID
+	}
+
+	// Create options for each key-org combination
+	var opts []types.OptionItem
+	for _, key := range rows {
+		if key.Certificate.Valid {
+			for orgID, mspID := range orgMap {
+				opts = append(opts, types.OptionItem{
+					Label: fmt.Sprintf("%s (%s)", key.Name, mspID),
+					Value: fmt.Sprintf("%d:%d", key.ID, orgID),
+				})
+			}
+		}
+	}
+	return opts, nil
 }

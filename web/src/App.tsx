@@ -53,6 +53,10 @@ import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
 import NewPluginPage from './pages/plugins/new'
 import UsersPage from './pages/users'
+import AccountPage from './pages/account'
+import AuditLogsPage from '@/pages/settings/audit-logs'
+import AuditLogDetailPage from '@/pages/settings/audit-logs/[id]'
+import AnalyticsPage from './pages/platform/analytics'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -82,6 +86,7 @@ const App = () => {
 												<Routes>
 													<Route path="/">
 														<Route path="/" element={<Navigate to="/nodes" replace />} />
+														<Route path="account" element={<AccountPage />} />
 														<Route path="nodes" element={<NodesPage />} />
 														<Route path="smart-contracts" element={<SmartContractsPage />} />
 														<Route path="monitoring" element={<MonitoringPage />} />
@@ -122,6 +127,9 @@ const App = () => {
 														<Route path="plugins/new" element={<NewPluginPage />} />
 														<Route path="plugins/:name" element={<PluginDetailPage />} />
 														<Route path="users" element={<UsersPage />} />
+														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
+														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
+														<Route path="platform/analytics" element={<AnalyticsPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

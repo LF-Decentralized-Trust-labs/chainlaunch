@@ -1,14 +1,3 @@
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { FormProvider, useForm } from 'react-hook-form'
-import { useState } from 'react'
-import { ProtocolSelector } from './protocol-selector'
-import { ChevronRight, ChevronLeft, Server } from 'lucide-react'
-import { FabricNodeForm } from './nodes/fabric-node-form'
-import { BesuNodeForm } from './nodes/besu-node-form'
-import { useQuery, useMutation } from '@tanstack/react-query'
 import {
 	getNodesDefaultsBesuNodeOptions,
 	getNodesDefaultsFabricOrdererOptions,
@@ -16,9 +5,20 @@ import {
 	getOrganizationsOptions,
 	postNodesMutation,
 } from '@/api/client/@tanstack/react-query.gen'
-import { toast } from 'sonner'
+import { HttpCreateNodeRequest, TypesBlockchainPlatform, TypesFabricOrdererConfig, TypesFabricPeerConfig } from '@/api/client/types.gen'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { ChevronLeft, ChevronRight, Server } from 'lucide-react'
+import { useState } from 'react'
+import { FormProvider, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { HttpCreateNodeRequest, TypesBlockchainPlatform, TypesFabricPeerConfig, TypesFabricOrdererConfig } from '@/api/client/types.gen'
+import { toast } from 'sonner'
+import { BesuNodeForm } from './nodes/besu-node-form'
+import { FabricNodeForm } from './nodes/fabric-node-form'
+import { ProtocolSelector } from './protocol-selector'
 
 interface NodeCreationForm {
 	protocol: string
@@ -111,18 +111,20 @@ function NodeTypeStep({ form, onNext, onBack }: StepProps) {
 						<FormControl>
 							<RadioGroup onValueChange={field.onChange} value={field.value} className="grid gap-4">
 								{nodeTypes.map((type) => (
-									<label
+									<button
+										type="button"
 										key={type.id}
-										className={`flex items-start p-4 gap-4 border rounded-lg cursor-pointer hover:border-primary transition-colors ${
+										onClick={() => field.onChange(type.id)}
+										className={`flex items-start w-full p-4 gap-4 border rounded-lg cursor-pointer hover:border-primary transition-colors ${
 											field.value === type.id ? 'border-primary bg-primary/5' : ''
 										}`}
 									>
 										<RadioGroupItem value={type.id} id={type.id} className="mt-1" />
-										<div>
+										<div className="text-left">
 											<h3 className="font-medium">{type.name}</h3>
 											<p className="text-sm text-muted-foreground">{type.description}</p>
 										</div>
-									</label>
+									</button>
 								))}
 							</RadioGroup>
 						</FormControl>
@@ -163,7 +165,6 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 		...getNodesDefaultsFabricOrdererOptions(),
 		enabled: protocol === 'fabric' && nodeType === 'orderer',
 	})
-	console.log('protocol', protocol)
 	// Besu queries
 	const { data: besuDefaults } = useQuery({
 		...getNodesDefaultsBesuNodeOptions({
@@ -171,10 +172,9 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 		}),
 		enabled: protocol === 'besu',
 	})
-	console.log('besuDefaults', besuDefaults)
 
 	const handleFabricSubmit = (data: any) => {
-		const organization = organizations?.find((org) => org.id === data.fabricProperties.organizationId)
+		const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)
 
 		if (data.fabricProperties.nodeType === 'FABRIC_PEER') {
 			form.setValue('configuration', {
@@ -262,22 +262,31 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 					isSubmitting={false}
 					hideSubmit={false}
 					hideNodeType={true}
-					organizations={organizations?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
+					organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}
 					defaults={nodeType === 'peer' ? peerDefaults : ordererDefaults}
-					defaultValues={{
-						name: form.getValues().name,
-						fabricProperties: {
-							nodeType: nodeType === 'peer' ? 'FABRIC_PEER' : 'FABRIC_ORDERER',
-							mode: 'service',
-							version: '3.1.0',
-							organizationId: organizations?.[0]?.id || 0,
-							listenAddress: '',
-							operationsListenAddress: '',
-							externalEndpoint: '',
-							domains: [],
-							addressOverrides: [],
-						},
-					}}
+					defaultValues={
+						form.getValues().configuration && Object.keys(form.getValues().configuration).length > 0
+							? {
+									name: form.getValues().name,
+									fabricProperties: {
+										...form.getValues().configuration,
+									},
+								}
+							: {
+									name: form.getValues().name,
+									fabricProperties: {
+										nodeType: nodeType === 'peer' ? 'FABRIC_PEER' : 'FABRIC_ORDERER',
+										mode: 'service',
+										version: '3.1.0',
+										organizationId: organizations?.[0]?.id || 0,
+										listenAddress: '',
+										operationsListenAddress: '',
+										externalEndpoint: '',
+										domains: [],
+										addressOverrides: [],
+									},
+								}
+					}
 					submitText="Next"
 				/>
 			)}
@@ -286,23 +295,30 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 					onSubmit={handleBesuSubmit}
 					isSubmitting={false}
 					hideSubmit={false}
-					defaultValues={{
-						name: form.getValues().name,
-						blockchainPlatform: 'BESU',
-						type: 'besu',
-						mode: 'service',
-						rpcHost: besuDefaults?.defaults?.[0]?.rpcHost?.split(':')[0] || '0.0.0.0',
-						rpcPort: besuDefaults?.defaults?.[0]?.rpcPort || 8545,
-						p2pHost: besuDefaults?.defaults?.[0]?.p2pHost?.split(':')[0] || '0.0.0.0',
-						p2pPort: besuDefaults?.defaults?.[0]?.p2pPort || 30303,
-						externalIp: besuDefaults?.defaults?.[0]?.externalIp || '0.0.0.0',
-						internalIp: besuDefaults?.defaults?.[0]?.internalIp || '0.0.0.0',
-						keyId: 0,
-						networkId: 1,
-						requestTimeout: 30,
-						environmentVariables: [],
-					}}
-					submitText="Next"
+					defaultValues={
+						form.getValues().configuration && Object.keys(form.getValues().configuration).length > 0
+							? {
+									...form.getValues().configuration,
+									name: form.getValues().name,
+								}
+							: {
+									name: form.getValues().name,
+									blockchainPlatform: 'BESU',
+									type: 'besu',
+									mode: 'service',
+									rpcHost: besuDefaults?.defaults?.[0]?.rpcHost?.split(':')[0] || '0.0.0.0',
+									rpcPort: besuDefaults?.defaults?.[0]?.rpcPort || 8545,
+									p2pHost: besuDefaults?.defaults?.[0]?.p2pHost?.split(':')[0] || '0.0.0.0',
+									p2pPort: besuDefaults?.defaults?.[0]?.p2pPort || 30303,
+									externalIp: besuDefaults?.defaults?.[0]?.externalIp || '0.0.0.0',
+									internalIp: besuDefaults?.defaults?.[0]?.internalIp || '0.0.0.0',
+									keyId: 0,
+									networkId: 1,
+									requestTimeout: 30,
+									environmentVariables: [],
+								}
+					}
+					submitButtonText="Next"
 				/>
 			)}
 
@@ -413,7 +429,6 @@ function ReviewStep({ form, onBack }: StepProps) {
 		} else {
 			throw new Error(`Unsupported blockchain platform: ${protocol}`)
 		}
-
 		createNode.mutate({
 			body: createNodeDto,
 		})
@@ -443,22 +458,22 @@ function ReviewStep({ form, onBack }: StepProps) {
 						{Object.entries(formData.configuration || {}).map(([key, value]) => {
 							// Skip rendering objects or arrays directly to prevent recursion
 							// and potential rendering issues
-							let displayValue;
-							
+							let displayValue
+
 							if (value === undefined || value === null || value === '') {
-								displayValue = <span className="text-muted-foreground italic">No value provided</span>;
+								displayValue = <span className="text-muted-foreground italic">No value provided</span>
 							} else if (typeof value === 'object') {
-								displayValue = JSON.stringify(value);
+								displayValue = JSON.stringify(value)
 							} else {
-								displayValue = String(value);
+								displayValue = String(value)
 							}
-							
+
 							return (
 								<div key={key} className="grid grid-cols-3 gap-4">
 									<dt className="text-sm font-medium text-muted-foreground">{key}</dt>
 									<dd className="col-span-2 text-sm">{displayValue}</dd>
 								</div>
-							);
+							)
 						})}
 					</dl>
 				</div>
@@ -513,7 +528,7 @@ export function NodeCreationWizard() {
 		<div className="max-w-4xl mx-auto">
 			<div className="mb-8">
 				<div className="flex items-center justify-center space-x-12">
-					{steps.map((s, i) => (
+					{steps.map((_, i) => (
 						<div key={i} className={`flex items-center ${i < steps.length - 1 ? 'after:content-[""] after:block after:w-24 after:h-px after:bg-border after:ml-12' : ''}`}>
 							<div
 								className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${

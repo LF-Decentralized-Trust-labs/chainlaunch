@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
@@ -40,6 +41,22 @@ type RevokeCertificateByPEMRequest struct {
 // DeleteRevokedCertificateRequest represents the request to delete a revoked certificate by serial number
 type DeleteRevokedCertificateRequest struct {
 	SerialNumber string `json:"serialNumber"` // Hex string of the serial number
+}
+
+// PaginatedOrganizationsResponse represents a paginated list of organizations for HTTP response
+// swagger:model PaginatedOrganizationsResponse
+type PaginatedOrganizationsResponse struct {
+	Items  []*OrganizationResponse `json:"items"`
+	Limit  int64                   `json:"limit"`
+	Offset int64                   `json:"offset"`
+	Count  int                     `json:"count"`
+}
+
+// ListOrganizationsQuery represents the query parameters for listing organizations
+// swagger:model ListOrganizationsQuery
+type ListOrganizationsQuery struct {
+	Limit  int64 `form:"limit" json:"limit" query:"limit" example:"20"`
+	Offset int64 `form:"offset" json:"offset" query:"offset" example:"0"`
 }
 
 // RegisterRoutes registers the organization routes
@@ -91,6 +108,12 @@ func (h *OrganizationHandler) CreateOrganization(w http.ResponseWriter, r *http.
 
 	org, err := h.service.CreateOrganization(r.Context(), params)
 	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			return errors.NewValidationError("organization already exists", map[string]interface{}{
+				"detail": err.Error(),
+				"code":   "ORGANIZATION_ALREADY_EXISTS",
+			})
+		}
 		return errors.NewInternalError("failed to create organization", err, nil)
 	}
 
@@ -227,11 +250,43 @@ func (h *OrganizationHandler) DeleteOrganization(w http.ResponseWriter, r *http.
 // @Tags Organizations
 // @Accept json
 // @Produce json
-// @Success 200 {array} OrganizationResponse
+// @Param limit query int false "Maximum number of organizations to return" default(20)
+// @Param offset query int false "Number of organizations to skip" default(0)
+// @Success 200 {object} PaginatedOrganizationsResponse
 // @Failure 500 {object} map[string]string
 // @Router /organizations [get]
 func (h *OrganizationHandler) ListOrganizations(w http.ResponseWriter, r *http.Request) error {
-	orgs, err := h.service.ListOrganizations(r.Context())
+	// Parse pagination query params
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	var (
+		limit  int64 = 20 // default limit
+		offset int64 = 0
+		err    error
+	)
+	if limitStr != "" {
+		limit, err = strconv.ParseInt(limitStr, 10, 64)
+		if err != nil || limit <= 0 {
+			return errors.NewValidationError("invalid limit parameter", map[string]interface{}{
+				"detail": "limit must be a positive integer",
+				"code":   "INVALID_LIMIT",
+			})
+		}
+	}
+	if offsetStr != "" {
+		offset, err = strconv.ParseInt(offsetStr, 10, 64)
+		if err != nil || offset < 0 {
+			return errors.NewValidationError("invalid offset parameter", map[string]interface{}{
+				"detail": "offset must be a non-negative integer",
+				"code":   "INVALID_OFFSET",
+			})
+		}
+	}
+
+	orgs, err := h.service.ListOrganizations(r.Context(), service.PaginationParams{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		return errors.NewInternalError("failed to list organizations", err, nil)
 	}
@@ -241,7 +296,15 @@ func (h *OrganizationHandler) ListOrganizations(w http.ResponseWriter, r *http.R
 		orgResponses[i] = toOrganizationResponse(&org)
 	}
 
-	return response.WriteJSON(w, http.StatusOK, orgResponses)
+	// Optionally, you can return pagination info in the response
+	resp := PaginatedOrganizationsResponse{
+		Items:  orgResponses,
+		Limit:  limit,
+		Offset: offset,
+		Count:  len(orgResponses),
+	}
+
+	return response.WriteJSON(w, http.StatusOK, resp)
 }
 
 // @Summary Revoke a certificate using its serial number

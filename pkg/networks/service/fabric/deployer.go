@@ -953,7 +953,6 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		}
 		peerNodes := []nodeservice.NodeResponse{}
 		for _, node := range orgNodes {
-
 			peerNodes = append(peerNodes, node)
 			listCreateNetworkNodes = append(listCreateNetworkNodes, &db.CreateNetworkNodeParams{
 				NetworkID: networkID,
@@ -1019,7 +1018,6 @@ func (d *FabricDeployer) CreateGenesisBlock(networkID int64, config interface{})
 		signCACert := *signKey.Certificate
 		tlsCACert := *tlsKey.Certificate
 
-		// Get orderer nodes for this organization
 		ordererNodes := []*nodeservice.NodeResponse{}
 		for _, nodeID := range org.NodeIDs {
 			node, err := d.nodes.GetNode(ctx, nodeID)
@@ -2558,8 +2556,8 @@ func (d *FabricDeployer) MapBlock(blk *cb.Block) (*block.Block, error) {
 	return blockResponse, nil
 }
 
-// GetBlockTransactions retrieves all transactions from a specific block
-func (d *FabricDeployer) GetBlockTransactions(ctx context.Context, networkID int64, blockNum uint64) (*block.Block, error) {
+// GetBlock retrieves all transactions from a specific block
+func (d *FabricDeployer) GetBlock(ctx context.Context, networkID int64, blockNum uint64) (*block.Block, error) {
 	// Get network details
 	network, err := d.db.GetNetwork(ctx, networkID)
 	if err != nil {

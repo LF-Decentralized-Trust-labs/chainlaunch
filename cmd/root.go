@@ -10,10 +10,13 @@ import (
 	"github.com/chainlaunch/chainlaunch/cmd/keymanagement"
 	"github.com/chainlaunch/chainlaunch/cmd/networks"
 	"github.com/chainlaunch/chainlaunch/cmd/serve"
+	"github.com/chainlaunch/chainlaunch/cmd/testnet"
 	"github.com/chainlaunch/chainlaunch/cmd/version"
 	"github.com/chainlaunch/chainlaunch/config"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/spf13/cobra"
+	// Add this import for the testnet command
+	// import "lfdt-chainlaunch/cmd/testnet"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -33,5 +36,8 @@ func NewRootCmd(configCMD config.ConfigCMD) *cobra.Command {
 	rootCmd.AddCommand(besu.NewBesuCmd(logger))
 	rootCmd.AddCommand(networks.NewNetworksCmd(logger))
 	rootCmd.AddCommand(keymanagement.NewKeyManagementCmd())
+	rootCmd.AddCommand(testnet.NewTestnetCmd())
+	// In the function where rootCmd is defined and commands are added:
+	// rootCmd.AddCommand(testnet.NewTestnetCmd())
 	return rootCmd
 }

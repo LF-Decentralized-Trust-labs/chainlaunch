@@ -5746,6 +5746,42 @@ export type GetPluginsByNameDeploymentStatusResponses = {
 
 export type GetPluginsByNameDeploymentStatusResponse = GetPluginsByNameDeploymentStatusResponses[keyof GetPluginsByNameDeploymentStatusResponses];
 
+export type PostPluginsByNameResumeData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/plugins/{name}/resume';
+};
+
+export type PostPluginsByNameResumeErrors = {
+    /**
+     * Not Found
+     */
+    404: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostPluginsByNameResumeError = PostPluginsByNameResumeErrors[keyof PostPluginsByNameResumeErrors];
+
+export type PostPluginsByNameResumeResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostPluginsByNameResumeResponse = PostPluginsByNameResumeResponses[keyof PostPluginsByNameResumeResponses];
+
 export type GetPluginsByNameServicesData = {
     body?: never;
     path: {

@@ -133,7 +133,6 @@ export function ImportNetworkForm() {
 		setError(null)
 
 		if (data.networkType === 'fabric') {
-			console.log('data.fabricImport', data.fabricImport)
 			if (data.fabricImport.importMethod === 'genesis') {
 				if (!data.fabricImport.genesisBlock) {
 					setError('Genesis block is required')

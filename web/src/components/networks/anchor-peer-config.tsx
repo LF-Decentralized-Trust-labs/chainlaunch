@@ -37,7 +37,6 @@ function parseEndpoint(endpoint: string): { host: string; port: number } | null 
 export function AnchorPeerConfig({ organization, peers, currentAnchorPeers, onUpdateAnchorPeers }: AnchorPeerConfigProps) {
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [selectedPeerIds, setSelectedPeerIds] = useState<Set<string>>(new Set())
-	console.log('peers', peers)
 	const availablePeers = peers.filter((peer) => {
 		if (peer.node?.nodeType !== 'FABRIC_PEER' || peer.status !== 'joined') {
 			return false
@@ -73,8 +72,6 @@ export function AnchorPeerConfig({ organization, peers, currentAnchorPeers, onUp
 		const endpoint = parseEndpoint(peer.node!.fabricPeer!.externalEndpoint!)
 		return !currentAnchorPeers.some((ap) => ap.host === endpoint?.host && ap.port === endpoint?.port)
 	})
-	console.log('availableToAdd', availableToAdd)
-	console.log('availablePeers', availablePeers)
 	return (
 		<Card className="p-4">
 			<div className="flex items-center justify-between mb-4">

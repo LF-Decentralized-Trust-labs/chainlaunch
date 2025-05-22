@@ -292,7 +292,6 @@ export default function BulkCreateBesuNetworkPage() {
 				publicKey: key.data!.publicKey!,
 				ethereumAddress: key.data!.ethereumAddress!,
 			}))
-			console.log('newValidatorKeys', newValidatorKeys)
 			setValidatorKeys(newValidatorKeys)
 			setCreationProgress({ current: 0, total: 0, currentNode: null })
 			return newValidatorKeys

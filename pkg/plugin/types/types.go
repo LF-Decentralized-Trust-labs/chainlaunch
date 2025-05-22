@@ -17,14 +17,20 @@ type Plugin struct {
 
 // Metadata contains plugin metadata
 type Metadata struct {
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version" yaml:"version"`
+	Name        string   `json:"name" yaml:"name"`
+	Version     string   `json:"version" yaml:"version"`
+	Description string   `json:"description" yaml:"description"`
+	Author      string   `json:"author" yaml:"author"`
+	Tags        []string `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Repository  string   `json:"repository,omitempty" yaml:"repository,omitempty"`
+	License     string   `json:"license,omitempty" yaml:"license,omitempty"`
 }
 
 // Spec contains the plugin specification
 type Spec struct {
 	DockerCompose DockerCompose `json:"dockerCompose" yaml:"dockerCompose"`
 	Parameters    Parameters    `json:"parameters" yaml:"parameters"`
+	Documentation Documentation `json:"documentation" yaml:"documentation"`
 }
 
 // DockerCompose contains the docker-compose configuration
@@ -177,4 +183,30 @@ type FabricKeyDetails struct {
 	Description string `json:"description"`
 	MspID       string `json:"mspId"`
 	Certificate string `json:"certificate"`
+}
+
+// Documentation contains plugin documentation information
+type Documentation struct {
+	// README contains the main documentation for the plugin
+	README string `json:"readme" yaml:"readme"`
+	// SwaggerPath is the path to the swagger documentation if available
+	SwaggerPath string `json:"swaggerPath,omitempty" yaml:"swaggerPath,omitempty"`
+	// Examples contains example configurations and usage
+	Examples []Example `json:"examples,omitempty" yaml:"examples,omitempty"`
+	// Troubleshooting contains common issues and their solutions
+	Troubleshooting []TroubleshootingItem `json:"troubleshooting,omitempty" yaml:"troubleshooting,omitempty"`
+}
+
+// Example represents a usage example for the plugin
+type Example struct {
+	Name        string                 `json:"name" yaml:"name"`
+	Description string                 `json:"description" yaml:"description"`
+	Parameters  map[string]interface{} `json:"parameters" yaml:"parameters"`
+}
+
+// TroubleshootingItem represents a common issue and its solution
+type TroubleshootingItem struct {
+	Problem     string `json:"problem" yaml:"problem"`
+	Solution    string `json:"solution" yaml:"solution"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 }

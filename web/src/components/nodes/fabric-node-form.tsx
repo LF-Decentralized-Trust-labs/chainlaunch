@@ -146,8 +146,6 @@ export function FabricNodeForm({
 		<Form {...form}>
 			<form
 				onSubmit={form.handleSubmit(onSubmit, (errors) => {
-					console.log(errors)
-
 					// Function to recursively extract error messages
 					const extractErrorMessages = (obj: any, path = ''): string[] => {
 						if (!obj) return []

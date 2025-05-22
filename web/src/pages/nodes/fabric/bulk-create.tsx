@@ -387,7 +387,6 @@ export default function BulkCreateNodesPage() {
 												onChange={(values) => {
 													const newConfigs = [...nodeConfigs]
 													newConfigs[index] = { ...values, name: config.name }
-													console.log('values', values, 'onChange')
 													setNodeConfigs(newConfigs)
 												}}
 												organizations={organizations?.items?.map((org) => ({ id: org.id!, name: org.mspId! })) || []}

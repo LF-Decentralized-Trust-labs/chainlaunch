@@ -165,7 +165,6 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 		...getNodesDefaultsFabricOrdererOptions(),
 		enabled: protocol === 'fabric' && nodeType === 'orderer',
 	})
-	console.log('protocol', protocol)
 	// Besu queries
 	const { data: besuDefaults } = useQuery({
 		...getNodesDefaultsBesuNodeOptions({
@@ -173,7 +172,6 @@ function ConfigurationStep({ form, onNext, onBack }: StepProps) {
 		}),
 		enabled: protocol === 'besu',
 	})
-	console.log('besuDefaults', besuDefaults)
 
 	const handleFabricSubmit = (data: any) => {
 		const organization = organizations?.items?.find((org) => org.id === data.fabricProperties.organizationId)

@@ -5689,6 +5689,53 @@
                 }
             }
         },
+        "/plugins/{name}/resume": {
+            "post": {
+                "description": "Resume a previously deployed plugin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plugins"
+                ],
+                "summary": "Resume a plugin deployment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plugin name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/plugins/{name}/services": {
             "get": {
                 "description": "Get all services defined in the plugin's docker-compose configuration",

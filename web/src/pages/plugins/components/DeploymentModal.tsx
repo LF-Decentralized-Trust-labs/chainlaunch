@@ -41,8 +41,6 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 	})
 	// Get the selected organization
 	const selectedOrg = useMemo(() => organizations?.items?.find((org) => org.id === selectedOrgId), [organizations, selectedOrgId])
-	console.log('selectedOrgId', selectedOrgId)
-	console.log('selectedOrg', selectedOrg)	
 	// Get key IDs for the selected organization
 	const keyIds = useMemo(() => {
 		if (!selectedOrg) return []
@@ -55,7 +53,6 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 
 	// Fetch key details when organization changes
 	const fetchKeyDetails = useCallback(async () => {
-		console.log('fetchKeyDetails', keyIds)
 		if (!keyIds.length) {
 			setSelectedKeys([])
 			return
@@ -86,8 +83,6 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 	}, [keyIds])
 
 	useEffect(() => {
-		console.log('selectedOrgId', selectedOrgId)
-		console.log('keyIds', keyIds)
 		if (selectedOrgId && keyIds.length > 0) {
 			fetchKeyDetails()
 		}

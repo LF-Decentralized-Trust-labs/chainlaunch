@@ -3,6 +3,7 @@ import {
 	getPluginsByNameOptions,
 	getPluginsByNameServicesOptions,
 	postPluginsByNameDeployMutation,
+	postPluginsByNameResumeMutation,
 	postPluginsByNameStopMutation,
 } from '@/api/client/@tanstack/react-query.gen'
 import { YamlViewer } from '@/components/plugins/YamlViewer'
@@ -64,6 +65,14 @@ const PluginDetailPage = () => {
 			refetchServices()
 		},
 	})
+	const resumeMutation = useMutation({
+		...postPluginsByNameResumeMutation(),
+		onSuccess: () => {
+			refetch()
+			refetchStatus()
+			refetchServices()
+		},
+	})
 
 	if (isLoading) return <div className="container p-8">Loading...</div>
 	if (!plugin) return <div className="container p-8">Plugin not found</div>
@@ -95,6 +104,12 @@ const PluginDetailPage = () => {
 						Back
 					</Button>
 					<YamlViewer yaml={plugin} label="View YAML" />
+					{status?.status === 'stopped' && (
+						<Button onClick={() => resumeMutation.mutateAsync({ path: { name: name! } })}>
+							<Play className="mr-2 h-4 w-4" />
+							Resume
+						</Button>
+					)}
 					{status?.status !== 'deployed' ? (
 						<Button onClick={() => setIsDeployModalOpen(true)}>
 							<Play className="mr-2 h-4 w-4" />
@@ -129,9 +144,17 @@ const PluginDetailPage = () => {
 					<CardTitle>Status</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="flex items-center gap-2">
-						<div className={`w-3 h-3 rounded-full ${status?.status === 'deployed' ? 'bg-green-500' : status?.status === 'Stopped' ? 'bg-red-500' : 'bg-yellow-500'}`} />
-						<span className="capitalize">{status?.status || 'Unknown'}</span>
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<div className={`w-3 h-3 rounded-full ${status?.status === 'deployed' ? 'bg-green-500' : status?.status === 'Stopped' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+							<span className="capitalize">{status?.status || 'Unknown'}</span>
+						</div>
+						{status?.status === 'Stopped' && (
+							<Button size="sm" onClick={() => setIsDeployModalOpen(true)}>
+								<Play className="mr-2 h-4 w-4" />
+								Resume
+							</Button>
+						)}
 					</div>
 				</CardContent>
 			</Card>

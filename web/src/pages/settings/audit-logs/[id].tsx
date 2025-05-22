@@ -33,7 +33,6 @@ const outcomeColors = {
 
 export default function AuditLogDetailPage() {
 	const { id } = useParams()
-	console.log('id', id)
 	const navigate = useNavigate()
 	const { data, isLoading } = useQuery({
 		...getAuditLogsByIdOptions({ path: { id: id! } }),

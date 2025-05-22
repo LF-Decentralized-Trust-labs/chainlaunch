@@ -9636,6 +9636,44 @@
                 }
             }
         },
+        "types.Documentation": {
+            "type": "object",
+            "properties": {
+                "examples": {
+                    "description": "Examples contains example configurations and usage",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Example"
+                    }
+                },
+                "readme": {
+                    "description": "README contains the main documentation for the plugin",
+                    "type": "string"
+                },
+                "troubleshooting": {
+                    "description": "Troubleshooting contains common issues and their solutions",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.TroubleshootingItem"
+                    }
+                }
+            }
+        },
+        "types.Example": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
         "types.FabricOrdererConfig": {
             "type": "object",
             "required": [
@@ -9797,8 +9835,26 @@
         "types.Metadata": {
             "type": "object",
             "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
+                },
+                "repository": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "version": {
                     "type": "string"
@@ -9892,8 +9948,25 @@
                 "dockerCompose": {
                     "$ref": "#/definitions/types.DockerCompose"
                 },
+                "documentation": {
+                    "$ref": "#/definitions/types.Documentation"
+                },
                 "parameters": {
                     "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters"
+                }
+            }
+        },
+        "types.TroubleshootingItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "problem": {
+                    "type": "string"
+                },
+                "solution": {
+                    "type": "string"
                 }
             }
         },

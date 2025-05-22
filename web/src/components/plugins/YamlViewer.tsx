@@ -7,12 +7,11 @@ import { stringify } from 'yaml'
 
 interface YamlViewerProps {
 	yaml: any
-	label: string
-	className?: string
+	dialogOpen: boolean
+	setDialogOpen: (open: boolean) => void
 }
 
-export function YamlViewer({ yaml, label, className }: YamlViewerProps) {
-	const [dialogOpen, setDialogOpen] = useState(false)
+export function YamlViewer({ yaml, dialogOpen, setDialogOpen }: YamlViewerProps) {
 
 	const copyToClipboard = () => {
 		const yamlString = stringify(yaml)
@@ -22,10 +21,6 @@ export function YamlViewer({ yaml, label, className }: YamlViewerProps) {
 
 	return (
 		<>
-			<Button variant="ghost" size="sm" onClick={() => setDialogOpen(true)} className={className}>
-				{label}
-			</Button>
-
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
 				<DialogContent className="max-w-3xl">
 					<DialogHeader>

@@ -131,7 +131,14 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 				disabled={disabled || !selectedOrgId || isLoading}
 			>
 				<SelectTrigger>
-					<SelectValue placeholder={isLoading ? 'Loading keys...' : selectedOrgId ? 'Select a key' : 'Select an organization first'} />
+					{selectedKeys.length > 0 ? (
+						<div className="text-left">
+							<div className="font-medium">{selectedKeys[0].name}</div>
+							<div className="text-xs text-muted-foreground">
+								{selectedKeys[0].description} • {selectedKeys[0].algorithm}
+							</div>
+						</div>
+					) : 'Select a key'}
 				</SelectTrigger>
 				<SelectContent>
 					<ScrollArea className="h-[200px]">

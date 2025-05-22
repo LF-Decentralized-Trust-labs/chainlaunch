@@ -189,8 +189,6 @@ type FabricKeyDetails struct {
 type Documentation struct {
 	// README contains the main documentation for the plugin
 	README string `json:"readme" yaml:"readme"`
-	// SwaggerPath is the path to the swagger documentation if available
-	SwaggerPath string `json:"swaggerPath,omitempty" yaml:"swaggerPath,omitempty"`
 	// Examples contains example configurations and usage
 	Examples []Example `json:"examples,omitempty" yaml:"examples,omitempty"`
 	// Troubleshooting contains common issues and their solutions

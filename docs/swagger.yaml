@@ -2318,6 +2318,32 @@ definitions:
       contents:
         type: string
     type: object
+  types.Documentation:
+    properties:
+      examples:
+        description: Examples contains example configurations and usage
+        items:
+          $ref: '#/definitions/types.Example'
+        type: array
+      readme:
+        description: README contains the main documentation for the plugin
+        type: string
+      troubleshooting:
+        description: Troubleshooting contains common issues and their solutions
+        items:
+          $ref: '#/definitions/types.TroubleshootingItem'
+        type: array
+    type: object
+  types.Example:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+    type: object
   types.FabricOrdererConfig:
     properties:
       addressOverrides:
@@ -2439,8 +2465,20 @@ definitions:
     type: object
   types.Metadata:
     properties:
+      author:
+        type: string
+      description:
+        type: string
+      license:
+        type: string
       name:
         type: string
+      repository:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
       version:
         type: string
     type: object
@@ -2504,8 +2542,19 @@ definitions:
     properties:
       dockerCompose:
         $ref: '#/definitions/types.DockerCompose'
+      documentation:
+        $ref: '#/definitions/types.Documentation'
       parameters:
         $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_plugin_types.Parameters'
+    type: object
+  types.TroubleshootingItem:
+    properties:
+      description:
+        type: string
+      problem:
+        type: string
+      solution:
+        type: string
     type: object
   types.XSourceType:
     enum:

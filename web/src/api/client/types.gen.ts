@@ -1298,6 +1298,29 @@ export type TypesDockerCompose = {
     contents?: string;
 };
 
+export type TypesDocumentation = {
+    /**
+     * Examples contains example configurations and usage
+     */
+    examples?: Array<TypesExample>;
+    /**
+     * README contains the main documentation for the plugin
+     */
+    readme?: string;
+    /**
+     * Troubleshooting contains common issues and their solutions
+     */
+    troubleshooting?: Array<TypesTroubleshootingItem>;
+};
+
+export type TypesExample = {
+    description?: string;
+    name?: string;
+    parameters?: {
+        [key: string]: unknown;
+    };
+};
+
 export type TypesFabricOrdererConfig = {
     /**
      * @Description Address overrides for the orderer
@@ -1397,7 +1420,12 @@ export type TypesFabricPeerConfig = {
 };
 
 export type TypesMetadata = {
+    author?: string;
+    description?: string;
+    license?: string;
     name?: string;
+    repository?: string;
+    tags?: Array<string>;
     version?: string;
 };
 
@@ -1436,7 +1464,14 @@ export type TypesService = {
 
 export type TypesSpec = {
     dockerCompose?: TypesDockerCompose;
+    documentation?: TypesDocumentation;
     parameters?: GithubComChainlaunchChainlaunchPkgPluginTypesParameters;
+};
+
+export type TypesTroubleshootingItem = {
+    description?: string;
+    problem?: string;
+    solution?: string;
 };
 
 export type TypesXSourceType = 'fabric-peer' | 'key' | 'fabric-org' | 'fabric-network' | 'fabric-key';

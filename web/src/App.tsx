@@ -56,6 +56,7 @@ import UsersPage from './pages/users'
 import AccountPage from './pages/account'
 import AuditLogsPage from '@/pages/settings/audit-logs'
 import AuditLogDetailPage from '@/pages/settings/audit-logs/[id]'
+import AnalyticsPage from './pages/platform/analytics'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -128,6 +129,7 @@ const App = () => {
 														<Route path="users" element={<UsersPage />} />
 														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
+														<Route path="platform/analytics" element={<AnalyticsPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

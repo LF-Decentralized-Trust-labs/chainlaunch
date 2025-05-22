@@ -269,6 +269,32 @@ definitions:
       status:
         type: string
     type: object
+  github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status:
+    properties:
+      deployment_mode:
+        description: DeploymentMode is the current deployment mode
+        type: string
+      error:
+        description: Error is any error that occurred while getting the status
+        type: string
+      port:
+        description: Port is the port Prometheus is listening on
+        type: integer
+      scrape_interval:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: ScrapeInterval is the current scrape interval
+      started_at:
+        description: StartedAt is when the instance was started
+        type: string
+      status:
+        description: Status is the current status of the Prometheus instance (e.g.
+          "running", "stopped", "not_deployed")
+        type: string
+      version:
+        description: Version is the version of Prometheus being used
+        type: string
+    type: object
   github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse:
     properties:
       code:
@@ -601,6 +627,21 @@ definitions:
       height:
         type: integer
       previousBlockHash:
+        type: string
+    type: object
+  http.ChaincodeResponse:
+    properties:
+      endorsementPlugin:
+        type: string
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      sequence:
+        type: integer
+      validationPlugin:
+        type: string
+      version:
         type: string
     type: object
   http.ChannelConfigResponse:
@@ -2223,6 +2264,26 @@ definitions:
       peerTemplateCMD:
         type: string
     type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
   types.AddressOverride:
     properties:
       from:
@@ -2903,6 +2964,26 @@ paths:
               type: string
             type: object
       summary: Reload Prometheus configuration
+      tags:
+      - metrics
+  /api/v1/metrics/status:
+    get:
+      description: Returns the current status of the Prometheus instance including
+        version, port, and configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Prometheus status
       tags:
       - metrics
   /audit/logs:
@@ -5321,6 +5402,47 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get channels for a Fabric node
+      tags:
+      - Nodes
+  /nodes/{id}/channels/{channelID}/chaincodes:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all committed chaincodes for a specific channel on a
+        Fabric peer node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Channel ID
+        in: path
+        name: channelID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.ChaincodeResponse'
+            type: array
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get committed chaincodes for a Fabric peer
       tags:
       - Nodes
   /nodes/{id}/events:

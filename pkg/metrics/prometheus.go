@@ -417,8 +417,129 @@ func NewPrometheusManager(config *common.Config, db *db.Queries, nodeService *no
 }
 
 // Reload reloads the Prometheus configuration
-func (pm *PrometheusManager) Reload(ctx context.Context) error {
-	return pm.deployer.Reload(ctx)
+func (d *DockerPrometheusDeployer) Reload(ctx context.Context) error {
+	containerName := "chainlaunch-prometheus"
+
+	// Get peer nodes from the database
+	peerNodes, err := d.getPeerNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get peer nodes: %w", err)
+	}
+
+	// Get orderer nodes from the database
+	ordererNodes, err := d.getOrdererNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get orderer nodes: %w", err)
+	}
+
+	// Get Besu nodes from the database
+	besuNodes, err := d.getBesuNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Besu nodes: %w", err)
+	}
+
+	// Generate new config with peer targets
+	config := &PrometheusConfig{
+		Global: GlobalConfig{
+			ScrapeInterval: d.config.ScrapeInterval.String(),
+		},
+		ScrapeConfigs: []ScrapeConfig{
+			{
+				JobName: "prometheus",
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{"localhost:9090"},
+					},
+				},
+			},
+		},
+	}
+
+	// Add peer node targets
+	if len(peerNodes) > 0 {
+		for _, node := range peerNodes {
+			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
+			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
+				JobName: jobName,
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{node.OperationAddress},
+					},
+				},
+			})
+		}
+	}
+
+	// Add orderer node targets
+	if len(ordererNodes) > 0 {
+		for _, node := range ordererNodes {
+			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
+			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
+				JobName: jobName,
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{node.OperationAddress},
+					},
+				},
+			})
+		}
+	}
+
+	// Add Besu node targets
+	if len(besuNodes) > 0 {
+		for _, node := range besuNodes {
+			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
+			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
+				JobName: jobName,
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{node.OperationAddress},
+					},
+				},
+			})
+		}
+	}
+
+	// Marshal config to YAML
+	configData, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Create config file in the config volume
+	configPath := "/etc/prometheus/prometheus.yml"
+	_, err = d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
+		Cmd: []string{"sh", "-c", fmt.Sprintf("echo '%s' > %s", string(configData), configPath)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %w", err)
+	}
+
+	// Execute the exec command
+	execID, err := d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
+		Cmd: []string{"sh", "-c", fmt.Sprintf("echo '%s' > %s", string(configData), configPath)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create exec command: %w", err)
+	}
+
+	if err := d.client.ContainerExecStart(ctx, execID.ID, container.ExecStartOptions{}); err != nil {
+		return fmt.Errorf("failed to start exec command: %w", err)
+	}
+
+	// Reload Prometheus configuration
+	reloadExecID, err := d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
+		Cmd: []string{"wget", "-q", "--post-data", "reload", "http://localhost:9090/-/reload"},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create reload command: %w", err)
+	}
+
+	if err := d.client.ContainerExecStart(ctx, reloadExecID.ID, container.ExecStartOptions{}); err != nil {
+		return fmt.Errorf("failed to start reload command: %w", err)
+	}
+
+	return nil
 }
 
 // Start starts the Prometheus instance
@@ -559,128 +680,51 @@ func (pm *PrometheusManager) GetLabelValues(ctx context.Context, labelName strin
 	return pm.client.GetLabelValues(ctx, labelName, matches)
 }
 
-// Reload reloads the Prometheus configuration
-func (d *DockerPrometheusDeployer) Reload(ctx context.Context) error {
+// GetStatus returns the current status of the Prometheus instance
+func (pm *PrometheusManager) GetStatus(ctx context.Context) (*common.Status, error) {
+	status := &common.Status{
+		Status: "not_deployed",
+	}
+
+	// Try to get container status
 	containerName := "chainlaunch-prometheus"
+	dockerDeployer, ok := pm.deployer.(*DockerPrometheusDeployer)
+	if !ok {
+		return nil, fmt.Errorf("deployer is not a DockerPrometheusDeployer")
+	}
 
-	// Get peer nodes from the database
-	peerNodes, err := d.getPeerNodes(ctx)
+	container, err := dockerDeployer.client.ContainerInspect(ctx, containerName)
 	if err != nil {
-		return fmt.Errorf("failed to get peer nodes: %w", err)
-	}
-
-	// Get orderer nodes from the database
-	ordererNodes, err := d.getOrdererNodes(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get orderer nodes: %w", err)
-	}
-
-	// Get Besu nodes from the database
-	besuNodes, err := d.getBesuNodes(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get Besu nodes: %w", err)
-	}
-
-	// Generate new config with peer targets
-	config := &PrometheusConfig{
-		Global: GlobalConfig{
-			ScrapeInterval: d.config.ScrapeInterval.String(),
-		},
-		ScrapeConfigs: []ScrapeConfig{
-			{
-				JobName: "prometheus",
-				StaticConfigs: []StaticConfig{
-					{
-						Targets: []string{"localhost:9090"},
-					},
-				},
-			},
-		},
-	}
-
-	// Add peer node targets
-	if len(peerNodes) > 0 {
-		for _, node := range peerNodes {
-			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
-			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
-				JobName: jobName,
-				StaticConfigs: []StaticConfig{
-					{
-						Targets: []string{node.OperationAddress},
-					},
-				},
-			})
+		if client.IsErrNotFound(err) {
+			return status, nil
 		}
+		return nil, fmt.Errorf("failed to inspect container: %w", err)
 	}
 
-	// Add orderer node targets
-	if len(ordererNodes) > 0 {
-		for _, node := range ordererNodes {
-			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
-			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
-				JobName: jobName,
-				StaticConfigs: []StaticConfig{
-					{
-						Targets: []string{node.OperationAddress},
-					},
-				},
-			})
-		}
-	}
-
-	// Add Besu node targets
-	if len(besuNodes) > 0 {
-		for _, node := range besuNodes {
-			jobName := slugify(fmt.Sprintf("%s-%s", node.ID, node.Name))
-			config.ScrapeConfigs = append(config.ScrapeConfigs, ScrapeConfig{
-				JobName: jobName,
-				StaticConfigs: []StaticConfig{
-					{
-						Targets: []string{node.OperationAddress},
-					},
-				},
-			})
-		}
-	}
-
-	// Marshal config to YAML
-	configData, err := yaml.Marshal(config)
+	// Container exists, get its status
+	status.Status = container.State.Status
+	startedAt, err := time.Parse(time.RFC3339, container.State.StartedAt)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		status.Error = fmt.Sprintf("failed to parse start time: %v", err)
+	} else {
+		status.StartedAt = &startedAt
 	}
 
-	// Create config file in the config volume
-	configPath := "/etc/prometheus/prometheus.yml"
-	_, err = d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
-		Cmd: []string{"sh", "-c", fmt.Sprintf("echo '%s' > %s", string(configData), configPath)},
-	})
+	// Get configuration from database
+	config, err := dockerDeployer.db.GetPrometheusConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create config file: %w", err)
+		status.Error = fmt.Sprintf("failed to get configuration: %v", err)
+		return status, nil
 	}
 
-	// Execute the exec command
-	execID, err := d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
-		Cmd: []string{"sh", "-c", fmt.Sprintf("echo '%s' > %s", string(configData), configPath)},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create exec command: %w", err)
-	}
+	// Add configuration details
+	status.Version = strings.TrimPrefix(config.DockerImage, "prom/prometheus:")
+	status.Port = int(config.PrometheusPort)
+	status.ScrapeInterval = time.Duration(config.ScrapeInterval) * time.Second
+	status.DeploymentMode = config.DeploymentMode
 
-	if err := d.client.ContainerExecStart(ctx, execID.ID, container.ExecStartOptions{}); err != nil {
-		return fmt.Errorf("failed to start exec command: %w", err)
-	}
-
-	// Reload Prometheus configuration
-	reloadExecID, err := d.client.ContainerExecCreate(ctx, containerName, container.ExecOptions{
-		Cmd: []string{"wget", "-q", "--post-data", "reload", "http://localhost:9090/-/reload"},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create reload command: %w", err)
-	}
-
-	if err := d.client.ContainerExecStart(ctx, reloadExecID.ID, container.ExecStartOptions{}); err != nil {
-		return fmt.Errorf("failed to start reload command: %w", err)
-	}
-
-	return nil
+	return status, nil
+}
+func (pm *PrometheusManager) Reload(ctx context.Context) error {
+	return pm.deployer.Reload(ctx)
 }

@@ -54,7 +54,7 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 		if (selectedOrg.clientSignKeyId) ids.push(selectedOrg.clientSignKeyId)
 		return ids
 	}, [selectedOrg])
-
+	const selectedKey = useMemo(() => selectedKeys.find((key) => key.id === value?.keyId), [selectedKeys, value])
 	// Fetch key details when organization changes
 	const fetchKeyDetails = useCallback(async () => {
 		if (!keyIds.length) {
@@ -131,14 +131,16 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 				disabled={disabled || !selectedOrgId || isLoading}
 			>
 				<SelectTrigger>
-					{selectedKeys.length > 0 ? (
+					{selectedKey ? (
 						<div className="text-left">
-							<div className="font-medium">{selectedKeys[0].name}</div>
+							<div className="font-medium">{selectedKey.name}</div>
 							<div className="text-xs text-muted-foreground">
-								{selectedKeys[0].description} • {selectedKeys[0].algorithm}
+								{selectedKey.description} • {selectedKey.algorithm}
 							</div>
 						</div>
-					) : 'Select a key'}
+					) : (
+						'Select a key'
+					)}
 				</SelectTrigger>
 				<SelectContent>
 					<ScrollArea className="h-[200px]">
@@ -269,14 +271,14 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 		resolver: zodResolver(formSchema),
 		defaultValues: parameters
 			? Object.fromEntries(
-				Object.entries(parameters.properties || {}).map(([key, value]: [string, any]) => {
-					if (value['x-source'] === 'fabric-key') {
-						return [key, { keyId: 0, orgId: 0 }]
-					}
-					// You can add more default value logic for other types if needed
-					return [key, undefined]
-				})
-			)
+					Object.entries(parameters.properties || {}).map(([key, value]: [string, any]) => {
+						if (value['x-source'] === 'fabric-key') {
+							return [key, { keyId: 0, orgId: 0 }]
+						}
+						// You can add more default value logic for other types if needed
+						return [key, undefined]
+					})
+			  )
 			: {},
 	})
 
@@ -339,10 +341,7 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 											{parameters.required?.includes(key) && <span className="text-red-500 ml-1">*</span>}
 										</FormLabel>
 										<FormControl>
-											<FabricKeySelect
-												value={field.value as { keyId: number; orgId: number }}
-												onChange={field.onChange}
-											/>
+											<FabricKeySelect value={field.value as { keyId: number; orgId: number }} onChange={field.onChange} />
 										</FormControl>
 										{value.description && <p className="text-sm text-muted-foreground">{value.description}</p>}
 										<FormMessage />
@@ -439,7 +438,7 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 							)
 						}
 				}
-			} 
+			}
 			// Default rendering for normal fields
 			return (
 				<FormField
@@ -483,9 +482,7 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 					<DialogTitle>Deployment</DialogTitle>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
-					<Form {...form}>
-						{renderFormFields()}
-					</Form>
+					<Form {...form}>{renderFormFields()}</Form>
 				</div>
 				<DialogFooter>
 					<Button type="submit" onClick={() => onSubmit(form.getValues())}>

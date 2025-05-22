@@ -153,3 +153,8 @@ func (s *service) QueryRange(ctx context.Context, nodeID int64, query string, st
 
 	return s.manager.QueryRange(ctx, query, start, end, step)
 }
+
+// GetStatus returns the current status of the Prometheus instance
+func (s *service) GetStatus(ctx context.Context) (*common.Status, error) {
+	return s.manager.GetStatus(ctx)
+}

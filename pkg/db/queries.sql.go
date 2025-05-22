@@ -2897,8 +2897,7 @@ func (q *Queries) GetPlugin(ctx context.Context, name string) (*Plugin, error) {
 }
 
 const GetPrometheusConfig = `-- name: GetPrometheusConfig :one
-SELECT id, prometheus_port, data_dir, config_dir, container_name, scrape_interval, evaluation_interval, deployment_mode, docker_image, docker_network, docker_restart_policy, docker_extra_args, created_at, updated_at FROM prometheus_config
-WHERE id = 1
+SELECT id, prometheus_port, data_dir, config_dir, container_name, scrape_interval, evaluation_interval, deployment_mode, docker_image, docker_network, docker_restart_policy, docker_extra_args, created_at, updated_at FROM prometheus_config WHERE id = 1
 `
 
 func (q *Queries) GetPrometheusConfig(ctx context.Context) (*PrometheusConfig, error) {

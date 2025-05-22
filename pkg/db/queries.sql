@@ -1032,8 +1032,7 @@ SELECT * FROM sessions
 WHERE token = ?;
 
 -- name: GetPrometheusConfig :one
-SELECT * FROM prometheus_config
-WHERE id = 1;
+SELECT * FROM prometheus_config WHERE id = 1;
 
 -- name: UpdatePrometheusConfig :one
 UPDATE prometheus_config

@@ -60,6 +60,7 @@ func (h *NodeHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/logs", h.TailLogs)
 		r.Get("/{id}/events", response.Middleware(h.GetNodeEvents))
 		r.Get("/{id}/channels", response.Middleware(h.GetNodeChannels))
+		r.Get("/{id}/channels/{channelID}/chaincodes", response.Middleware(h.GetNodeChaincodes))
 		r.Post("/{id}/certificates/renew", response.Middleware(h.RenewCertificates))
 		r.Put("/{id}", response.Middleware(h.UpdateNode))
 	})
@@ -911,4 +912,67 @@ func (h *NodeHandler) updateFabricOrderer(w http.ResponseWriter, r *http.Request
 	}
 
 	return response.WriteJSON(w, http.StatusOK, toNodeResponse(updatedNode))
+}
+
+// GetNodeChaincodes godoc
+// @Summary Get committed chaincodes for a Fabric peer
+// @Description Retrieves all committed chaincodes for a specific channel on a Fabric peer node
+// @Tags Nodes
+// @Accept json
+// @Produce json
+// @Param id path int true "Node ID"
+// @Param channelID path string true "Channel ID"
+// @Success 200 {array} ChaincodeResponse
+// @Failure 400 {object} response.ErrorResponse "Validation error"
+// @Failure 404 {object} response.ErrorResponse "Node not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /nodes/{id}/channels/{channelID}/chaincodes [get]
+func (h *NodeHandler) GetNodeChaincodes(w http.ResponseWriter, r *http.Request) error {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid node ID", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	channelID := chi.URLParam(r, "channelID")
+	if channelID == "" {
+		return errors.NewValidationError("channel ID is required", nil)
+	}
+
+	chaincodes, err := h.service.GetFabricChaincodes(r.Context(), id, channelID)
+	if err != nil {
+		if err == service.ErrNotFound {
+			return errors.NewNotFoundError("node not found", nil)
+		}
+		if err == service.ErrInvalidNodeType {
+			return errors.NewValidationError("node is not a Fabric peer", nil)
+		}
+		return errors.NewInternalError("failed to get chaincodes", err, nil)
+	}
+
+	// Convert chaincodes to response format
+	chaincodeResponses := make([]ChaincodeResponse, len(chaincodes))
+	for i, cc := range chaincodes {
+		chaincodeResponses[i] = ChaincodeResponse{
+			Name:              cc.Name,
+			Version:           cc.Version,
+			Sequence:          cc.Sequence,
+			EndorsementPlugin: cc.EndorsementPlugin,
+			ValidationPlugin:  cc.ValidationPlugin,
+			InitRequired:      cc.InitRequired,
+		}
+	}
+
+	return response.WriteJSON(w, http.StatusOK, chaincodeResponses)
+}
+
+// ChaincodeResponse represents a committed chaincode in the response
+type ChaincodeResponse struct {
+	Name              string `json:"name"`
+	Version           string `json:"version"`
+	Sequence          int64  `json:"sequence"`
+	EndorsementPlugin string `json:"endorsementPlugin"`
+	ValidationPlugin  string `json:"validationPlugin"`
+	InitRequired      bool   `json:"initRequired"`
 }

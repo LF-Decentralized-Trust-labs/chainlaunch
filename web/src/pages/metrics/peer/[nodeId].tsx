@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCustomMetrics } from '@/hooks/useCustomMetrics'
 import { useMetricLabels } from '@/hooks/useMetricLabels'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface PeerMetricsPageProps {
 	node: HttpNodeResponse
@@ -18,7 +18,7 @@ function filterNaN(data: MetricsDataPoint[] | undefined): MetricsDataPoint[] {
 
 export default function PeerMetricsPage({ node }: PeerMetricsPageProps) {
 	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
-	const [selectedChannel, setSelectedChannel] = useState<string>('demo')
+	const [selectedChannel, setSelectedChannel] = useState<string>()
 	const [selectedTimeRangeLabel, setSelectedTimeRangeLabel] = useState('Last 1 hour')
 
 	const timeRanges = [
@@ -33,6 +33,12 @@ export default function PeerMetricsPage({ node }: PeerMetricsPageProps) {
 		metric: 'ledger_blockchain_height',
 		label: 'channel',
 	})
+	useEffect(() => {
+		if (!selectedChannel && channels && channels.length > 0) {
+			setSelectedChannel(channels[0])
+		}
+	}, [selectedChannel, channels])
+
 
 	// Blockchain Metrics
 	const { data: blockHeightData } = useCustomMetrics({

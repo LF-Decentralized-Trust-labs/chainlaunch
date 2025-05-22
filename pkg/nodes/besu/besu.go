@@ -439,7 +439,7 @@ func (b *LocalBesu) TailLogs(ctx context.Context, tail int, follow bool) (<-chan
 
 	if b.mode == "docker" {
 		slugifiedID := strings.ReplaceAll(strings.ToLower(b.opts.ID), " ", "-")
-		containerName := slugifiedID // Adjust if you have a helper for container name
+		containerName := fmt.Sprintf("besu-%s", slugifiedID) // Adjust if you have a helper for container name
 		go func() {
 			defer close(logChan)
 			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())

@@ -130,6 +130,37 @@ export type CommonQueryResult = {
     status?: string;
 };
 
+export type GithubComChainlaunchChainlaunchPkgMetricsCommonStatus = {
+    /**
+     * DeploymentMode is the current deployment mode
+     */
+    deployment_mode?: string;
+    /**
+     * Error is any error that occurred while getting the status
+     */
+    error?: string;
+    /**
+     * Port is the port Prometheus is listening on
+     */
+    port?: number;
+    /**
+     * ScrapeInterval is the current scrape interval
+     */
+    scrape_interval?: TimeDuration;
+    /**
+     * StartedAt is when the instance was started
+     */
+    started_at?: string;
+    /**
+     * Status is the current status of the Prometheus instance (e.g. "running", "stopped", "not_deployed")
+     */
+    status?: string;
+    /**
+     * Version is the version of Prometheus being used
+     */
+    version?: string;
+};
+
 export type GithubComChainlaunchChainlaunchPkgNetworksHttpErrorResponse = {
     code?: number;
     error?: string;
@@ -322,6 +353,15 @@ export type HttpChainInfoResponse = {
     currentBlockHash?: string;
     height?: number;
     previousBlockHash?: string;
+};
+
+export type HttpChaincodeResponse = {
+    endorsementPlugin?: string;
+    initRequired?: boolean;
+    name?: string;
+    sequence?: number;
+    validationPlugin?: string;
+    version?: string;
 };
 
 export type HttpChannelConfigResponse = {
@@ -1247,6 +1287,8 @@ export type ServiceSettingConfig = {
     peerTemplateCMD?: string;
 };
 
+export type TimeDuration = -9223372036854776000 | 9223372036854776000 | 1 | 1000 | 1000000 | 1000000000 | 60000000000 | 3600000000000;
+
 export type TypesAddressOverride = {
     from?: string;
     tlsCACert?: string;
@@ -1786,6 +1828,33 @@ export type PostApiV1MetricsReloadResponses = {
 };
 
 export type PostApiV1MetricsReloadResponse = PostApiV1MetricsReloadResponses[keyof PostApiV1MetricsReloadResponses];
+
+export type GetApiV1MetricsStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/metrics/status';
+};
+
+export type GetApiV1MetricsStatusErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetApiV1MetricsStatusError = GetApiV1MetricsStatusErrors[keyof GetApiV1MetricsStatusErrors];
+
+export type GetApiV1MetricsStatusResponses = {
+    /**
+     * OK
+     */
+    200: GithubComChainlaunchChainlaunchPkgMetricsCommonStatus;
+};
+
+export type GetApiV1MetricsStatusResponse = GetApiV1MetricsStatusResponses[keyof GetApiV1MetricsStatusResponses];
 
 export type GetAuditLogsData = {
     body?: never;
@@ -4682,6 +4751,48 @@ export type GetNodesByIdChannelsResponses = {
 };
 
 export type GetNodesByIdChannelsResponse = GetNodesByIdChannelsResponses[keyof GetNodesByIdChannelsResponses];
+
+export type GetNodesByIdChannelsByChannelIdChaincodesData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: number;
+        /**
+         * Channel ID
+         */
+        channelID: string;
+    };
+    query?: never;
+    url: '/nodes/{id}/channels/{channelID}/chaincodes';
+};
+
+export type GetNodesByIdChannelsByChannelIdChaincodesErrors = {
+    /**
+     * Validation error
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Node not found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type GetNodesByIdChannelsByChannelIdChaincodesError = GetNodesByIdChannelsByChannelIdChaincodesErrors[keyof GetNodesByIdChannelsByChannelIdChaincodesErrors];
+
+export type GetNodesByIdChannelsByChannelIdChaincodesResponses = {
+    /**
+     * OK
+     */
+    200: Array<HttpChaincodeResponse>;
+};
+
+export type GetNodesByIdChannelsByChannelIdChaincodesResponse = GetNodesByIdChannelsByChannelIdChaincodesResponses[keyof GetNodesByIdChannelsByChannelIdChaincodesResponses];
 
 export type GetNodesByIdEventsData = {
     body?: never;

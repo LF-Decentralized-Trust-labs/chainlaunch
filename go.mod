@@ -125,6 +125,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/hyperledger/fabric-protos-go v0.3.7 // indirect
 	github.com/in-toto/in-toto-golang v0.9.0 // indirect
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf // indirect
 	github.com/ipfs/boxo v0.12.0 // indirect

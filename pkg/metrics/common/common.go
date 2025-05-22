@@ -52,6 +52,9 @@ type Service interface {
 
 	// QueryRange executes a PromQL query with a time range for a specific node
 	QueryRange(ctx context.Context, nodeID int64, query string, start, end time.Time, step time.Duration) (*QueryResult, error)
+
+	// GetStatus returns the current status of the Prometheus instance
+	GetStatus(ctx context.Context) (*Status, error)
 }
 
 // QueryResult represents the result of a Prometheus query
@@ -67,4 +70,22 @@ type QueryResult struct {
 			Values [][]interface{} `json:"values,omitempty"`
 		} `json:"result"`
 	} `json:"data"`
+}
+
+// Status represents the current status of the Prometheus instance
+type Status struct {
+	// Status is the current status of the Prometheus instance (e.g. "running", "stopped", "not_deployed")
+	Status string `json:"status"`
+	// Version is the version of Prometheus being used
+	Version string `json:"version,omitempty"`
+	// Port is the port Prometheus is listening on
+	Port int `json:"port,omitempty"`
+	// ScrapeInterval is the current scrape interval
+	ScrapeInterval time.Duration `json:"scrape_interval,omitempty"`
+	// DeploymentMode is the current deployment mode
+	DeploymentMode string `json:"deployment_mode,omitempty"`
+	// StartedAt is when the instance was started
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	// Error is any error that occurred while getting the status
+	Error string `json:"error,omitempty"`
 }

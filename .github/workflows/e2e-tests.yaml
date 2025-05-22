@@ -257,12 +257,6 @@ jobs:
             - name: Create Fabric testnet
               run: |
                   ./chainlaunch testnet fabric --name mynet --org "Org1MSP123" --peerOrgs "Org1MSP123" --ordererOrgs "OrdererOrg123" --channels mychannel --peerCounts "Org1MSP123=2" --ordererCounts "OrdererOrg123=3" --mode=docker
-            - name: Join all peers and orderers to the channel
-              run: |
-                  export NETWORK_ID=$(./chainlaunch networks fabric list --output=json | jq -r '.networks[0].id')
-                  ./chainlaunch networks fabric join-all --network-id $NETWORK_ID
-                  ./chainlaunch networks fabric join-all-orderers --network-id $NETWORK_ID
-                  echo "Joined all peers and orderers to the channel"
             - name: Test get a block from the channel
               run: |
                   export NETWORK_ID=$(./chainlaunch networks fabric list --output=json | jq -r '.networks[0].id')

@@ -19,6 +19,7 @@ import (
 
 	// add sprig/v3
 	"github.com/Masterminds/sprig/v3"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/channel"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/network"
@@ -27,6 +28,7 @@ import (
 	gwidentity "github.com/hyperledger/fabric-gateway/pkg/identity"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
@@ -3131,4 +3133,31 @@ func (p *LocalPeer) convertAddressOverrides(mspConfigPath string, overrides []no
 	}
 
 	return convertedOverrides, nil
+}
+
+func (p *LocalPeer) GetCommittedChaincodes(ctx context.Context, channelID string) ([]*lifecycle.QueryChaincodeDefinitionsResult_ChaincodeDefinition, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+	defer peerConn.Close()
+
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+
+	peer := chaincode.NewGateway(peerConn, adminIdentity)
+	committedChaincodes, err := peer.QueryCommitted(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query committed chaincodes: %w", err)
+	}
+
+	return committedChaincodes.GetChaincodeDefinitions(), nil
 }

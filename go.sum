@@ -347,6 +347,8 @@ github.com/hyperledger/fabric-config v0.3.0 h1:FS5/dc9GAniljP6RYxQRG92AaiBVoN2vT
 github.com/hyperledger/fabric-config v0.3.0/go.mod h1:kSevTn78K83Suc++JsEo7Nt1tYIPqDajW+ORz3OhWlg=
 github.com/hyperledger/fabric-gateway v1.5.0 h1:JChlqtJNm2479Q8YWJ6k8wwzOiu2IRrV3K8ErsQmdTU=
 github.com/hyperledger/fabric-gateway v1.5.0/go.mod h1:v13OkXAp7pKi4kh6P6epn27SyivRbljr8Gkfy8JlbtM=
+github.com/hyperledger/fabric-protos-go v0.3.7 h1:4Dp6esioyrbHaRZY8HcQG/ZN6ABPXcVEmGZWJlKc9mE=
+github.com/hyperledger/fabric-protos-go v0.3.7/go.mod h1:F+MmFQ9mnJzxB9Gus13XMoXrSJbIK/2QJOanEUZ5zoo=
 github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3 h1:Xpd6fzG/KjAOHJsq7EQXY2l+qi/y8muxBaY7R6QWABk=
 github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3/go.mod h1:2pq0ui6ZWA0cC8J+eCErgnMDCS1kPOEYVY+06ZAK0qE=
 github.com/in-toto/in-toto-golang v0.9.0 h1:tHny7ac4KgtsfrG6ybU8gVOZux2H8jN05AXJ9EBM1XU=

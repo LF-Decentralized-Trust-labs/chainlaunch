@@ -26,6 +26,8 @@ type BesuTestnetConfig struct {
 	Prefix  string
 	Mode    string
 	Version string
+	// Initial account balances in wei (hex format)
+	InitialBalances map[string]string
 }
 
 // BesuTestnetRunner encapsulates the config and logic for running and validating the Besu testnet command
@@ -110,9 +112,24 @@ func (r *BesuTestnetRunner) Run() error {
 	netReq.Config.Coinbase = "0x0000000000000000000000000000000000000000"
 	netReq.Config.Timestamp = fmt.Sprintf("0x%x", time.Now().Unix()) // Current Unix timestamp in hex (seconds)
 	netReq.Config.Nonce = "0x0"                                      // numberToHex(0)
-	netReq.Config.Alloc = map[string]struct {
-		Balance string `json:"balance" validate:"required,hexadecimal"`
-	}{}
+
+	// Set initial account balances if provided
+	if r.Config.InitialBalances != nil {
+		netReq.Config.Alloc = make(map[string]struct {
+			Balance string `json:"balance" validate:"required,hexadecimal"`
+		})
+		for address, balance := range r.Config.InitialBalances {
+			netReq.Config.Alloc[address] = struct {
+				Balance string `json:"balance" validate:"required,hexadecimal"`
+			}{
+				Balance: balance,
+			}
+		}
+	} else {
+		netReq.Config.Alloc = map[string]struct {
+			Balance string `json:"balance" validate:"required,hexadecimal"`
+		}{}
+	}
 
 	netResp, err := client.CreateBesuNetwork(netReq)
 	if err != nil {
@@ -182,7 +199,9 @@ func (r *BesuTestnetRunner) Run() error {
 
 func NewBesuTestnetCmd() *cobra.Command {
 	runner := &BesuTestnetRunner{
-		Config: BesuTestnetConfig{},
+		Config: BesuTestnetConfig{
+			InitialBalances: make(map[string]string),
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -201,6 +220,7 @@ func NewBesuTestnetCmd() *cobra.Command {
 	cmd.Flags().StringVar(&runner.Config.Prefix, "prefix", "besu", "Prefix for node names")
 	cmd.Flags().StringVar(&runner.Config.Mode, "mode", "service", "Node mode (service or docker)")
 	cmd.Flags().StringVar(&runner.Config.Version, "version", "25.5.0", "Besu version (default 25.5.0)")
+	cmd.Flags().StringToStringVar(&runner.Config.InitialBalances, "initial-balance", map[string]string{}, "Initial account balances in wei (hex format), e.g. '0x1234...=0x1000000000000000000'")
 
 	return cmd
 }

@@ -41,6 +41,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/node/{id}/label/{label}/values", h.GetLabelValues)
 		r.Get("/node/{id}/range", h.GetNodeMetricsRange)
 		r.Post("/node/{id}/query", h.CustomQuery)
+		r.Get("/status", h.GetStatus)
 	})
 }
 
@@ -364,4 +365,25 @@ func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
+}
+
+// GetStatus returns the current status of the Prometheus instance
+// @Summary Get Prometheus status
+// @Description Returns the current status of the Prometheus instance including version, port, and configuration
+// @Tags metrics
+// @Produce json
+// @Success 200 {object} common.Status
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/metrics/status [get]
+func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := h.service.GetStatus(r.Context())
+	if err != nil {
+		h.logger.Error("Failed to get Prometheus status", "error", err)
+		http.Error(w, "Failed to get Prometheus status", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(status)
 }

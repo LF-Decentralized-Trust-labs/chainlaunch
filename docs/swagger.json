@@ -357,6 +357,35 @@
                 }
             }
         },
+        "/api/v1/metrics/status": {
+            "get": {
+                "description": "Returns the current status of the Prometheus instance including version, port, and configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get Prometheus status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/audit/logs": {
             "get": {
                 "description": "Retrieves a paginated list of audit logs with optional filters",
@@ -4208,6 +4237,66 @@
                 }
             }
         },
+        "/nodes/{id}/channels/{channelID}/chaincodes": {
+            "get": {
+                "description": "Retrieves all committed chaincodes for a specific channel on a Fabric peer node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Nodes"
+                ],
+                "summary": "Get committed chaincodes for a Fabric peer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Channel ID",
+                        "name": "channelID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/http.ChaincodeResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{id}/events": {
             "get": {
                 "description": "Get a paginated list of events for a specific node",
@@ -6721,6 +6810,43 @@
                 }
             }
         },
+        "github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status": {
+            "type": "object",
+            "properties": {
+                "deployment_mode": {
+                    "description": "DeploymentMode is the current deployment mode",
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Error is any error that occurred while getting the status",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Port is the port Prometheus is listening on",
+                    "type": "integer"
+                },
+                "scrape_interval": {
+                    "description": "ScrapeInterval is the current scrape interval",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "started_at": {
+                    "description": "StartedAt is when the instance was started",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the current status of the Prometheus instance (e.g. \"running\", \"stopped\", \"not_deployed\")",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version is the version of Prometheus being used",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_chainlaunch_chainlaunch_pkg_networks_http.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -7222,6 +7348,29 @@
                     "type": "integer"
                 },
                 "previousBlockHash": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.ChaincodeResponse": {
+            "type": "object",
+            "properties": {
+                "endorsementPlugin": {
+                    "type": "string"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "validationPlugin": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -9499,6 +9648,29 @@
                     "type": "string"
                 }
             }
+        },
+        "time.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
         },
         "types.AddressOverride": {
             "type": "object",

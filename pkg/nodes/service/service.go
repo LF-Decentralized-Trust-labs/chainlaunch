@@ -24,6 +24,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 )
 
 // NodeService handles business logic for node management
@@ -1136,6 +1137,18 @@ type Channel struct {
 	Name      string    `json:"name"`
 	BlockNum  int64     `json:"blockNum"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (s *NodeService) GetFabricChaincodes(ctx context.Context, id int64, channelID string) ([]*lifecycle.QueryChaincodeDefinitionsResult_ChaincodeDefinition, error) {
+	peer, err := s.GetFabricPeer(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+	committedChaincodes, err := peer.GetCommittedChaincodes(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get committed chaincodes: %w", err)
+	}
+	return committedChaincodes, nil
 }
 
 // GetNodeChannels retrieves the list of channels for a Fabric node

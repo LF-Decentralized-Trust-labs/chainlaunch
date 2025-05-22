@@ -40,17 +40,19 @@ func (c *listCmd) run(out *os.File) error {
 	case "tsv":
 		// Create tab writer
 		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tName\tType\tStatus\tEndpoint")
-		fmt.Fprintln(w, "--\t----\t----\t------\t--------")
+		fmt.Fprintln(w, "ID\tName\tType\tStatus\tRPC\tMetrics\tP2P")
+		fmt.Fprintln(w, "--\t----\t----\t------\t----\t----\t----")
 
 		// Print nodes
 		for _, node := range nodes.Items {
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				node.ID,
 				node.Name,
 				node.NodeType,
 				node.Status,
-				node.Endpoint,
+				fmt.Sprintf("%s:%d", node.BesuNode.RPCHost, node.BesuNode.RPCPort),
+				fmt.Sprintf("%s:%d", node.BesuNode.MetricsHost, node.BesuNode.MetricsPort),
+				fmt.Sprintf("%s:%d", node.BesuNode.P2PHost, node.BesuNode.P2PPort),
 			)
 		}
 

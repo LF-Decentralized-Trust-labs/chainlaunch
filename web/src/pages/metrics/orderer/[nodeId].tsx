@@ -17,7 +17,7 @@ function filterNaN(data: MetricsDataPoint[] | undefined): MetricsDataPoint[] {
 
 export default function OrdererMetricsPage({ node }: OrdererMetricsPageProps) {
 	const [timeRange, setTimeRange] = useState({ start: Date.now() - 3600000, end: Date.now() })
-	const [selectedChannel, setSelectedChannel] = useState<string>('')
+	const [selectedChannel, setSelectedChannel] = useState<string>()
 	const [selectedTimeRangeLabel, setSelectedTimeRangeLabel] = useState('Last 1 hour')
 
 	const timeRanges = [

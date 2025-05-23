@@ -269,6 +269,12 @@ func (s *SQLStore) DeletePlugin(ctx context.Context, name string) error {
 
 // UpdatePlugin updates an existing plugin
 func (s *SQLStore) UpdatePlugin(ctx context.Context, plugin *types.Plugin) error {
+	// Get existing plugin to preserve deployment status
+	existingPlugin, err := s.GetPlugin(ctx, plugin.Metadata.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get existing plugin: %w", err)
+	}
+
 	metadataJSON, err := json.Marshal(plugin.Metadata)
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
@@ -289,6 +295,12 @@ func (s *SQLStore) UpdatePlugin(ctx context.Context, plugin *types.Plugin) error
 	if err != nil {
 		return fmt.Errorf("failed to update plugin: %w", err)
 	}
+
+	// Preserve deployment status
+	if existingPlugin.DeploymentStatus != nil {
+		plugin.DeploymentStatus = existingPlugin.DeploymentStatus
+	}
+
 	return nil
 }
 

@@ -181,6 +181,22 @@ func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) error {
 		})
 	}
 
+	// Get existing plugin to validate it exists
+	existingPlugin, err := h.store.GetPlugin(r.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
+	}
+
+	// Preserve deployment status
+	plugin.DeploymentStatus = existingPlugin.DeploymentStatus
+
 	if err := h.validate.Struct(plugin); err != nil {
 		validationErrors := make(map[string]string)
 		for _, err := range err.(validator.ValidationErrors) {

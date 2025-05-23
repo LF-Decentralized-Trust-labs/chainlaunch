@@ -51,6 +51,7 @@ import EditBesuNodePage from './pages/nodes/besu/edit'
 import CreateNodePage from './pages/nodes/create'
 import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
+import EditPluginPage from './pages/plugins/[name]/edit'
 import NewPluginPage from './pages/plugins/new'
 import UsersPage from './pages/users'
 import AccountPage from './pages/account'
@@ -126,6 +127,7 @@ const App = () => {
 														<Route path="plugins" element={<PluginsPage />} />
 														<Route path="plugins/new" element={<NewPluginPage />} />
 														<Route path="plugins/:name" element={<PluginDetailPage />} />
+														<Route path="plugins/:name/edit" element={<EditPluginPage />} />
 														<Route path="users" element={<UsersPage />} />
 														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />

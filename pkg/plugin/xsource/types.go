@@ -13,6 +13,7 @@ const (
 	FabricPeer XSourceType = "fabric-peer"
 	FabricOrg  XSourceType = "fabric-org"
 	KeyStore   XSourceType = "keyStore"
+	File       XSourceType = "file"
 )
 
 // VolumeMount represents a volume mount configuration

@@ -2521,6 +2521,20 @@ definitions:
     - name
     - organizationId
     type: object
+  types.LabelValuesResponse:
+    properties:
+      data:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+    type: object
+  types.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
   types.Metadata:
     properties:
       author:
@@ -2538,6 +2552,12 @@ definitions:
           type: string
         type: array
       version:
+        type: string
+    type: object
+  types.MetricsDataResponse:
+    properties:
+      data: {}
+      status:
         type: string
     type: object
   types.NodeType:
@@ -3908,9 +3928,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/types.MessageResponse'
         "400":
           description: Bad Request
           schema:
@@ -3990,8 +4008,7 @@ paths:
         "200":
           description: Label values
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/types.LabelValuesResponse'
         "400":
           description: Bad request
           schema:
@@ -4081,8 +4098,7 @@ paths:
         "200":
           description: Metrics data
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/types.MetricsDataResponse'
         "400":
           description: Bad request
           schema:
@@ -4106,9 +4122,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/types.MessageResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -4147,9 +4161,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/types.MessageResponse'
         "500":
           description: Internal Server Error
           schema:

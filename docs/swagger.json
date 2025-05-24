@@ -1804,10 +1804,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/types.MessageResponse"
                         }
                     },
                     "400": {
@@ -1924,8 +1921,7 @@
                     "200": {
                         "description": "Label values",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/types.LabelValuesResponse"
                         }
                     },
                     "400": {
@@ -2058,8 +2054,7 @@
                     "200": {
                         "description": "Metrics data",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/types.MetricsDataResponse"
                         }
                     },
                     "400": {
@@ -2093,10 +2088,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/types.MessageResponse"
                         }
                     },
                     "500": {
@@ -2154,10 +2146,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/types.MessageResponse"
                         }
                     },
                     "500": {
@@ -10032,6 +10021,28 @@
                 }
             }
         },
+        "types.LabelValuesResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "types.Metadata": {
             "type": "object",
             "properties": {
@@ -10057,6 +10068,15 @@
                     }
                 },
                 "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.MetricsDataResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "status": {
                     "type": "string"
                 }
             }

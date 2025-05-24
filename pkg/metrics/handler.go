@@ -47,7 +47,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // @Accept json
 // @Produce json
 // @Param request body types.DeployPrometheusRequest true "Prometheus deployment configuration"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} types.MessageResponse
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /metrics/deploy [post]
@@ -72,7 +72,7 @@ func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Prometheus deployed successfully"})
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus deployed successfully"})
 }
 
 // GetNodeMetrics retrieves metrics for a specific node
@@ -118,7 +118,7 @@ func (h *Handler) GetNodeMetrics(w http.ResponseWriter, r *http.Request) {
 // @Description Triggers a reload of the Prometheus configuration to pick up any changes
 // @Tags metrics
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} types.MessageResponse
 // @Failure 500 {object} map[string]string
 // @Router /metrics/reload [post]
 func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Prometheus configuration reloaded successfully"})
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus configuration reloaded successfully"})
 }
 
 // @Summary Get label values for a specific label
@@ -141,7 +141,7 @@ func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
 // @Param id path string true "Node ID"
 // @Param label path string true "Label name"
 // @Param match query array false "Metric matches (e.g. {__name__=\"metric_name\"})"
-// @Success 200 {object} map[string]interface{} "Label values"
+// @Success 200 {object} types.LabelValuesResponse "Label values"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Router /metrics/node/{id}/label/{label}/values [get]
@@ -175,9 +175,9 @@ func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"data":   values,
+	json.NewEncoder(w).Encode(types.LabelValuesResponse{
+		Status: "success",
+		Data:   values,
 	})
 }
 
@@ -191,7 +191,7 @@ func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 // @Param start query string true "Start time (RFC3339 format)"
 // @Param end query string true "End time (RFC3339 format)"
 // @Param step query string true "Step duration (e.g. 1m, 5m, 1h)"
-// @Success 200 {object} map[string]interface{} "Metrics data"
+// @Success 200 {object} types.MetricsDataResponse "Metrics data"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Router /metrics/node/{id}/range [get]
@@ -264,9 +264,9 @@ func (h *Handler) GetNodeMetricsRange(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"data":   metrics,
+	json.NewEncoder(w).Encode(types.MetricsDataResponse{
+		Status: "success",
+		Data:   metrics,
 	})
 }
 
@@ -362,7 +362,7 @@ func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 // @Description Stops and removes the Prometheus instance
 // @Tags metrics
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} types.MessageResponse
 // @Failure 500 {object} map[string]string
 // @Router /metrics/undeploy [post]
 func (h *Handler) UndeployPrometheus(w http.ResponseWriter, r *http.Request) {
@@ -373,5 +373,5 @@ func (h *Handler) UndeployPrometheus(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Prometheus undeployed successfully"})
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus undeployed successfully"})
 }

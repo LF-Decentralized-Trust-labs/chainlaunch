@@ -962,20 +962,6 @@ export type HttpUpdateProviderRequest = {
     type: 'SMTP';
 };
 
-export type MetricsCustomQueryRequest = {
-    end?: string;
-    query: string;
-    start?: string;
-    step?: string;
-};
-
-export type MetricsDeployPrometheusRequest = {
-    deployment_mode: string;
-    prometheus_port: number;
-    prometheus_version: string;
-    scrape_interval: number;
-};
-
 export type ModelsCertificateRequest = {
     commonName: string;
     country?: Array<string>;
@@ -1323,6 +1309,19 @@ export type TypesBesuNodeConfig = {
 };
 
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
+
+export type TypesCustomQueryRequest = {
+    end?: string;
+    query: string;
+    start?: string;
+    step?: string;
+};
+
+export type TypesDeployPrometheusRequest = {
+    prometheus_port: number;
+    prometheus_version: string;
+    scrape_interval: number;
+};
 
 export type TypesDeploymentStatus = {
     error?: string;
@@ -2871,7 +2870,7 @@ export type PostMetricsDeployData = {
     /**
      * Prometheus deployment configuration
      */
-    body: MetricsDeployPrometheusRequest;
+    body: TypesDeployPrometheusRequest;
     path?: never;
     query?: never;
     url: '/metrics/deploy';
@@ -3003,7 +3002,7 @@ export type PostMetricsNodeByIdQueryData = {
     /**
      * Query parameters
      */
-    body: MetricsCustomQueryRequest;
+    body: TypesCustomQueryRequest;
     path: {
         /**
          * Node ID

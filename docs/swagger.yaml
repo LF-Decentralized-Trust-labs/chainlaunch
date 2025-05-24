@@ -1638,35 +1638,6 @@ definitions:
     - name
     - type
     type: object
-  metrics.CustomQueryRequest:
-    properties:
-      end:
-        type: string
-      query:
-        type: string
-      start:
-        type: string
-      step:
-        type: string
-    required:
-    - query
-    type: object
-  metrics.DeployPrometheusRequest:
-    properties:
-      deployment_mode:
-        type: string
-      prometheus_port:
-        type: integer
-      prometheus_version:
-        type: string
-      scrape_interval:
-        type: integer
-    required:
-    - deployment_mode
-    - prometheus_port
-    - prometheus_version
-    - scrape_interval
-    type: object
   models.CertificateRequest:
     properties:
       commonName:
@@ -2354,6 +2325,32 @@ definitions:
     x-enum-varnames:
     - PlatformFabric
     - PlatformBesu
+  types.CustomQueryRequest:
+    properties:
+      end:
+        type: string
+      query:
+        type: string
+      start:
+        type: string
+      step:
+        type: string
+    required:
+    - query
+    type: object
+  types.DeployPrometheusRequest:
+    properties:
+      prometheus_port:
+        type: integer
+      prometheus_version:
+        type: string
+      scrape_interval:
+        type: integer
+    required:
+    - prometheus_port
+    - prometheus_version
+    - scrape_interval
+    type: object
   types.DeploymentStatus:
     properties:
       error:
@@ -2738,254 +2735,6 @@ info:
   title: ChainLaunch API
   version: "1.0"
 paths:
-  /api/v1/metrics/deploy:
-    post:
-      consumes:
-      - application/json
-      description: Deploys a new Prometheus instance with the specified configuration
-      parameters:
-      - description: Prometheus deployment configuration
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/metrics.DeployPrometheusRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Deploy a new Prometheus instance
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}:
-    get:
-      description: Retrieves metrics for a specific node by ID and optional PromQL
-        query
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: PromQL query to filter metrics
-        in: query
-        name: query
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get metrics for a specific node
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/label/{label}/values:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves all values for a specific label, optionally filtered
-        by metric matches and node ID
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Label name
-        in: path
-        name: label
-        required: true
-        type: string
-      - description: Metric matches (e.g. {__name__=\
-        in: query
-        name: match
-        type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Label values
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get label values for a specific label
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/query:
-    post:
-      consumes:
-      - application/json
-      description: Execute a custom Prometheus query with optional time range
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Query parameters
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/metrics.CustomQueryRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/common.QueryResult'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Execute custom Prometheus query
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/range:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves metrics for a specific node within a specified time range
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: PromQL query
-        in: query
-        name: query
-        required: true
-        type: string
-      - description: Start time (RFC3339 format)
-        in: query
-        name: start
-        required: true
-        type: string
-      - description: End time (RFC3339 format)
-        in: query
-        name: end
-        required: true
-        type: string
-      - description: Step duration (e.g. 1m, 5m, 1h)
-        in: query
-        name: step
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Metrics data
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get metrics for a specific node with time range
-      tags:
-      - metrics
-  /api/v1/metrics/reload:
-    post:
-      description: Triggers a reload of the Prometheus configuration to pick up any
-        changes
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Reload Prometheus configuration
-      tags:
-      - metrics
-  /api/v1/metrics/status:
-    get:
-      description: Returns the current status of the Prometheus instance including
-        version, port, and configuration
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status'
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get Prometheus status
-      tags:
-      - metrics
   /audit/logs:
     get:
       consumes:
@@ -4141,6 +3890,275 @@ paths:
       summary: Filter keys by algorithm and curve
       tags:
       - Keys
+  /metrics/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploys a new Prometheus instance with the specified configuration
+      parameters:
+      - description: Prometheus deployment configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.DeployPrometheusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deploy a new Prometheus instance
+      tags:
+      - metrics
+  /metrics/node/{id}:
+    get:
+      description: Retrieves metrics for a specific node by ID and optional PromQL
+        query
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: PromQL query to filter metrics
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get metrics for a specific node
+      tags:
+      - metrics
+  /metrics/node/{id}/label/{label}/values:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all values for a specific label, optionally filtered
+        by metric matches and node ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Label name
+        in: path
+        name: label
+        required: true
+        type: string
+      - description: Metric matches (e.g. {__name__=\
+        in: query
+        name: match
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Label values
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get label values for a specific label
+      tags:
+      - metrics
+  /metrics/node/{id}/query:
+    post:
+      consumes:
+      - application/json
+      description: Execute a custom Prometheus query with optional time range
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Query parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.CustomQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.QueryResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Execute custom Prometheus query
+      tags:
+      - metrics
+  /metrics/node/{id}/range:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves metrics for a specific node within a specified time range
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: PromQL query
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: Start time (RFC3339 format)
+        in: query
+        name: start
+        required: true
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: end
+        required: true
+        type: string
+      - description: Step duration (e.g. 1m, 5m, 1h)
+        in: query
+        name: step
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Metrics data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get metrics for a specific node with time range
+      tags:
+      - metrics
+  /metrics/reload:
+    post:
+      description: Triggers a reload of the Prometheus configuration to pick up any
+        changes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reload Prometheus configuration
+      tags:
+      - metrics
+  /metrics/status:
+    get:
+      description: Returns the current status of the Prometheus instance including
+        version, port, and configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Prometheus status
+      tags:
+      - metrics
+  /metrics/undeploy:
+    post:
+      description: Stops and removes the Prometheus instance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Undeploy Prometheus instance
+      tags:
+      - metrics
   /networks/besu:
     get:
       description: Get a paginated list of Besu networks

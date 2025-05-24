@@ -12,3 +12,4 @@ test-instance
 *.db
 decode_extradata
 .artifacts
+.cursor

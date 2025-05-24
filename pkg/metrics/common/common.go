@@ -13,8 +13,6 @@ type Config struct {
 	PrometheusPort int
 	// ScrapeInterval is the interval between scrapes
 	ScrapeInterval time.Duration
-	// DeploymentMode specifies how Prometheus is deployed (currently only supports "docker")
-	DeploymentMode string
 }
 
 // DefaultConfig returns a Config with sensible default values
@@ -23,7 +21,6 @@ func DefaultConfig() *Config {
 		PrometheusVersion: "v3.3.1",
 		PrometheusPort:    9090,
 		ScrapeInterval:    15 * time.Second,
-		DeploymentMode:    "docker",
 	}
 }
 

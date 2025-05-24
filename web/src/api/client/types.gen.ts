@@ -1570,292 +1570,6 @@ export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 
 
 export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
 
-export type PostApiV1MetricsDeployData = {
-    /**
-     * Prometheus deployment configuration
-     */
-    body: MetricsDeployPrometheusRequest;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/deploy';
-};
-
-export type PostApiV1MetricsDeployErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsDeployError = PostApiV1MetricsDeployErrors[keyof PostApiV1MetricsDeployErrors];
-
-export type PostApiV1MetricsDeployResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsDeployResponse = PostApiV1MetricsDeployResponses[keyof PostApiV1MetricsDeployResponses];
-
-export type GetApiV1MetricsNodeByIdData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query?: {
-        /**
-         * PromQL query to filter metrics
-         */
-        query?: string;
-    };
-    url: '/api/v1/metrics/node/{id}';
-};
-
-export type GetApiV1MetricsNodeByIdErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdError = GetApiV1MetricsNodeByIdErrors[keyof GetApiV1MetricsNodeByIdErrors];
-
-export type GetApiV1MetricsNodeByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdResponse = GetApiV1MetricsNodeByIdResponses[keyof GetApiV1MetricsNodeByIdResponses];
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-        /**
-         * Label name
-         */
-        label: string;
-    };
-    query?: {
-        /**
-         * Metric matches (e.g. {__name__=\
-         */
-        match?: Array<unknown>;
-    };
-    url: '/api/v1/metrics/node/{id}/label/{label}/values';
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesErrors = {
-    /**
-     * Bad request
-     */
-    400: {
-        [key: string]: unknown;
-    };
-    /**
-     * Internal server error
-     */
-    500: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesError = GetApiV1MetricsNodeByIdLabelByLabelValuesErrors[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesErrors];
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponses = {
-    /**
-     * Label values
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponse = GetApiV1MetricsNodeByIdLabelByLabelValuesResponses[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesResponses];
-
-export type PostApiV1MetricsNodeByIdQueryData = {
-    /**
-     * Query parameters
-     */
-    body: MetricsCustomQueryRequest;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/metrics/node/{id}/query';
-};
-
-export type PostApiV1MetricsNodeByIdQueryErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsNodeByIdQueryError = PostApiV1MetricsNodeByIdQueryErrors[keyof PostApiV1MetricsNodeByIdQueryErrors];
-
-export type PostApiV1MetricsNodeByIdQueryResponses = {
-    /**
-     * OK
-     */
-    200: CommonQueryResult;
-};
-
-export type PostApiV1MetricsNodeByIdQueryResponse = PostApiV1MetricsNodeByIdQueryResponses[keyof PostApiV1MetricsNodeByIdQueryResponses];
-
-export type GetApiV1MetricsNodeByIdRangeData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query: {
-        /**
-         * PromQL query
-         */
-        query: string;
-        /**
-         * Start time (RFC3339 format)
-         */
-        start: string;
-        /**
-         * End time (RFC3339 format)
-         */
-        end: string;
-        /**
-         * Step duration (e.g. 1m, 5m, 1h)
-         */
-        step: string;
-    };
-    url: '/api/v1/metrics/node/{id}/range';
-};
-
-export type GetApiV1MetricsNodeByIdRangeErrors = {
-    /**
-     * Bad request
-     */
-    400: {
-        [key: string]: unknown;
-    };
-    /**
-     * Internal server error
-     */
-    500: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdRangeError = GetApiV1MetricsNodeByIdRangeErrors[keyof GetApiV1MetricsNodeByIdRangeErrors];
-
-export type GetApiV1MetricsNodeByIdRangeResponses = {
-    /**
-     * Metrics data
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdRangeResponse = GetApiV1MetricsNodeByIdRangeResponses[keyof GetApiV1MetricsNodeByIdRangeResponses];
-
-export type PostApiV1MetricsReloadData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/reload';
-};
-
-export type PostApiV1MetricsReloadErrors = {
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsReloadError = PostApiV1MetricsReloadErrors[keyof PostApiV1MetricsReloadErrors];
-
-export type PostApiV1MetricsReloadResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsReloadResponse = PostApiV1MetricsReloadResponses[keyof PostApiV1MetricsReloadResponses];
-
-export type GetApiV1MetricsStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/status';
-};
-
-export type GetApiV1MetricsStatusErrors = {
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type GetApiV1MetricsStatusError = GetApiV1MetricsStatusErrors[keyof GetApiV1MetricsStatusErrors];
-
-export type GetApiV1MetricsStatusResponses = {
-    /**
-     * OK
-     */
-    200: GithubComChainlaunchChainlaunchPkgMetricsCommonStatus;
-};
-
-export type GetApiV1MetricsStatusResponse = GetApiV1MetricsStatusResponses[keyof GetApiV1MetricsStatusResponses];
-
 export type GetAuditLogsData = {
     body?: never;
     path?: never;
@@ -3152,6 +2866,321 @@ export type PostKeysByKeyIdSignResponses = {
 };
 
 export type PostKeysByKeyIdSignResponse = PostKeysByKeyIdSignResponses[keyof PostKeysByKeyIdSignResponses];
+
+export type PostMetricsDeployData = {
+    /**
+     * Prometheus deployment configuration
+     */
+    body: MetricsDeployPrometheusRequest;
+    path?: never;
+    query?: never;
+    url: '/metrics/deploy';
+};
+
+export type PostMetricsDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsDeployError = PostMetricsDeployErrors[keyof PostMetricsDeployErrors];
+
+export type PostMetricsDeployResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsDeployResponse = PostMetricsDeployResponses[keyof PostMetricsDeployResponses];
+
+export type GetMetricsNodeByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * PromQL query to filter metrics
+         */
+        query?: string;
+    };
+    url: '/metrics/node/{id}';
+};
+
+export type GetMetricsNodeByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetMetricsNodeByIdError = GetMetricsNodeByIdErrors[keyof GetMetricsNodeByIdErrors];
+
+export type GetMetricsNodeByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdResponse = GetMetricsNodeByIdResponses[keyof GetMetricsNodeByIdResponses];
+
+export type GetMetricsNodeByIdLabelByLabelValuesData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+        /**
+         * Label name
+         */
+        label: string;
+    };
+    query?: {
+        /**
+         * Metric matches (e.g. {__name__=\
+         */
+        match?: Array<unknown>;
+    };
+    url: '/metrics/node/{id}/label/{label}/values';
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesError = GetMetricsNodeByIdLabelByLabelValuesErrors[keyof GetMetricsNodeByIdLabelByLabelValuesErrors];
+
+export type GetMetricsNodeByIdLabelByLabelValuesResponses = {
+    /**
+     * Label values
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesResponse = GetMetricsNodeByIdLabelByLabelValuesResponses[keyof GetMetricsNodeByIdLabelByLabelValuesResponses];
+
+export type PostMetricsNodeByIdQueryData = {
+    /**
+     * Query parameters
+     */
+    body: MetricsCustomQueryRequest;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/metrics/node/{id}/query';
+};
+
+export type PostMetricsNodeByIdQueryErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsNodeByIdQueryError = PostMetricsNodeByIdQueryErrors[keyof PostMetricsNodeByIdQueryErrors];
+
+export type PostMetricsNodeByIdQueryResponses = {
+    /**
+     * OK
+     */
+    200: CommonQueryResult;
+};
+
+export type PostMetricsNodeByIdQueryResponse = PostMetricsNodeByIdQueryResponses[keyof PostMetricsNodeByIdQueryResponses];
+
+export type GetMetricsNodeByIdRangeData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * PromQL query
+         */
+        query: string;
+        /**
+         * Start time (RFC3339 format)
+         */
+        start: string;
+        /**
+         * End time (RFC3339 format)
+         */
+        end: string;
+        /**
+         * Step duration (e.g. 1m, 5m, 1h)
+         */
+        step: string;
+    };
+    url: '/metrics/node/{id}/range';
+};
+
+export type GetMetricsNodeByIdRangeErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdRangeError = GetMetricsNodeByIdRangeErrors[keyof GetMetricsNodeByIdRangeErrors];
+
+export type GetMetricsNodeByIdRangeResponses = {
+    /**
+     * Metrics data
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdRangeResponse = GetMetricsNodeByIdRangeResponses[keyof GetMetricsNodeByIdRangeResponses];
+
+export type PostMetricsReloadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/reload';
+};
+
+export type PostMetricsReloadErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsReloadError = PostMetricsReloadErrors[keyof PostMetricsReloadErrors];
+
+export type PostMetricsReloadResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsReloadResponse = PostMetricsReloadResponses[keyof PostMetricsReloadResponses];
+
+export type GetMetricsStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/status';
+};
+
+export type GetMetricsStatusErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetMetricsStatusError = GetMetricsStatusErrors[keyof GetMetricsStatusErrors];
+
+export type GetMetricsStatusResponses = {
+    /**
+     * OK
+     */
+    200: GithubComChainlaunchChainlaunchPkgMetricsCommonStatus;
+};
+
+export type GetMetricsStatusResponse = GetMetricsStatusResponses[keyof GetMetricsStatusResponses];
+
+export type PostMetricsUndeployData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/undeploy';
+};
+
+export type PostMetricsUndeployErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsUndeployError = PostMetricsUndeployErrors[keyof PostMetricsUndeployErrors];
+
+export type PostMetricsUndeployResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsUndeployResponse = PostMetricsUndeployResponses[keyof PostMetricsUndeployResponses];
 
 export type GetNetworksBesuData = {
     body?: never;

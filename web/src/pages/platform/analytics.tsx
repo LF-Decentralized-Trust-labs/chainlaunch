@@ -1,4 +1,4 @@
-import { getApiV1MetricsStatusOptions, getNodesOptions, postApiV1MetricsDeployMutation } from '@/api/client/@tanstack/react-query.gen'
+import { getMetricsStatusOptions, getNodesOptions, postMetricsDeployMutation } from '@/api/client/@tanstack/react-query.gen'
 import { HttpNodeResponse, MetricsDeployPrometheusRequest } from '@/api/client/types.gen'
 import { BesuIcon } from '@/components/icons/besu-icon'
 import { FabricIcon } from '@/components/icons/fabric-icon'
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Activity, BarChart3, Loader2, Plus } from 'lucide-react'
+import { BarChart3, Loader2, Plus } from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -21,7 +21,6 @@ import OrdererMetricsPage from '../metrics/orderer/[nodeId]'
 import PeerMetricsPage from '../metrics/peer/[nodeId]'
 
 const prometheusSetupSchema = z.object({
-	deployment_mode: z.enum(['standalone', 'cluster']),
 	prometheus_port: z.number().min(1).max(65535),
 	prometheus_version: z.string(),
 	scrape_interval: z.number().min(1),
@@ -36,15 +35,14 @@ export default function AnalyticsPage() {
 	const form = useForm<PrometheusSetupForm>({
 		resolver: zodResolver(prometheusSetupSchema),
 		defaultValues: {
-			deployment_mode: 'standalone',
 			prometheus_port: 9090,
-			prometheus_version: 'v2.45.0',
+			prometheus_version: 'v3.4.0',
 			scrape_interval: 15,
 		},
 	})
 
 	const { data: prometheusStatus, isLoading: isStatusLoading } = useQuery({
-		...getApiV1MetricsStatusOptions({}),
+		...getMetricsStatusOptions({}),
 	})
 
 	const { data: nodes } = useQuery({
@@ -61,7 +59,7 @@ export default function AnalyticsPage() {
 		}
 	}, [nodes])
 	const deployPrometheus = useMutation({
-		...postApiV1MetricsDeployMutation(),
+		...postMetricsDeployMutation(),
 		onSuccess: () => {
 			toast.success('Prometheus deployed successfully')
 			setIsSetupDialogOpen(false)
@@ -76,7 +74,6 @@ export default function AnalyticsPage() {
 
 	const onSubmit = (data: PrometheusSetupForm) => {
 		const request: MetricsDeployPrometheusRequest = {
-			deployment_mode: data.deployment_mode,
 			prometheus_port: data.prometheus_port,
 			prometheus_version: data.prometheus_version,
 			scrape_interval: data.scrape_interval,
@@ -120,27 +117,6 @@ export default function AnalyticsPage() {
 								</DialogHeader>
 								<Form {...form}>
 									<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-										<FormField
-											control={form.control}
-											name="deployment_mode"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Deployment Mode</FormLabel>
-													<Select onValueChange={field.onChange} defaultValue={field.value}>
-														<FormControl>
-															<SelectTrigger>
-																<SelectValue placeholder="Select deployment mode" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectItem value="standalone">Standalone</SelectItem>
-															<SelectItem value="cluster">Cluster</SelectItem>
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
 										<FormField
 											control={form.control}
 											name="prometheus_port"

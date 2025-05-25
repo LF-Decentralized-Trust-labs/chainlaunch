@@ -10,6 +10,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 )
 
 // Handler handles HTTP requests for smart contract deployment
@@ -38,9 +39,9 @@ func NewHandler(auditService *audit.AuditService, logger *logger.Logger, besuDep
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/sc/fabric", func(r chi.Router) {
 		r.Post("/deploy", response.Middleware(h.DeployFabricChaincode))
-		r.Post("/install", response.Middleware(h.InstallFabricChaincode))
-		r.Post("/approve", response.Middleware(h.ApproveFabricChaincode))
-		r.Post("/commit", response.Middleware(h.CommitFabricChaincode))
+		r.Post("/peer/{peerId}/chaincode/install", response.Middleware(h.InstallFabricChaincode))
+		r.Post("/peer/{peerId}/chaincode/approve", response.Middleware(h.ApproveFabricChaincode))
+		r.Post("/peer/{peerId}/chaincode/commit", response.Middleware(h.CommitFabricChaincode))
 	})
 	r.Route("/sc/besu", func(r chi.Router) {
 		r.Post("/deploy", response.Middleware(h.DeployBesuContract))
@@ -143,18 +144,32 @@ func (h *Handler) DeployFabricChaincode(w http.ResponseWriter, r *http.Request) 
 	return response.WriteJSON(w, http.StatusOK, resp)
 }
 
+// Add a stub for peer lookup by ID
+func GetPeerByID(peerId string) (*chaincode.Peer, error) {
+	// TODO: Implement actual peer lookup logic
+	return nil, nil
+}
+
+// Add a stub for converting a peer to a gateway
+func PeerToGateway(peer *chaincode.Peer) (*chaincode.Gateway, error) {
+	// TODO: Implement actual conversion logic
+	return nil, nil
+}
+
 // InstallFabricChaincode handles Fabric chaincode install requests
 // @Summary Install Fabric chaincode
 // @Description Install a chaincode package on a Fabric peer
 // @Tags SmartContracts
 // @Accept json
 // @Produce json
+// @Param peerId path string true "Peer ID"
 // @Param request body FabricInstallRequest true "Fabric chaincode install parameters"
 // @Success 200 {object} FabricInstallResponse
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /sc/fabric/install [post]
+// @Router /sc/fabric/peer/{peerId}/chaincode/install [post]
 func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	peerId := chi.URLParam(r, "peerId")
 	var req FabricInstallRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Invalid Fabric install request body", "error", err)
@@ -174,8 +189,19 @@ func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request)
 			"errors": validationErrors,
 		})
 	}
+	// Lookup peer by ID and set on params
+	peer, err := GetPeerByID(peerId)
+	if err != nil || peer == nil {
+		h.logger.Error("Peer not found", "peerId", peerId)
+		return errors.NewValidationError("peer not found", map[string]interface{}{
+			"detail": "Peer not found",
+			"code":   "PEER_NOT_FOUND",
+		})
+	}
+	params := FabricChaincodeInstallParams(req)
+	params.Peer = peer
 	reporter := NewInMemoryDeploymentStatusReporter()
-	result, err := InstallChaincode(FabricChaincodeInstallParams(req), reporter)
+	result, err := InstallChaincode(params, reporter)
 	if err != nil {
 		h.logger.Error("Fabric chaincode install failed", "error", err)
 		return errors.NewInternalError("install failed", err, nil)
@@ -194,12 +220,14 @@ func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request)
 // @Tags SmartContracts
 // @Accept json
 // @Produce json
+// @Param peerId path string true "Peer ID"
 // @Param request body FabricApproveRequest true "Fabric chaincode approve parameters"
 // @Success 200 {object} FabricApproveResponse
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /sc/fabric/approve [post]
+// @Router /sc/fabric/peer/{peerId}/chaincode/approve [post]
 func (h *Handler) ApproveFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	peerId := chi.URLParam(r, "peerId")
 	var req FabricApproveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Invalid Fabric approve request body", "error", err)
@@ -219,8 +247,27 @@ func (h *Handler) ApproveFabricChaincode(w http.ResponseWriter, r *http.Request)
 			"errors": validationErrors,
 		})
 	}
+	// Lookup peer by ID and set Gateway on params
+	peer, err := GetPeerByID(peerId)
+	if err != nil || peer == nil {
+		h.logger.Error("Peer not found", "peerId", peerId)
+		return errors.NewValidationError("peer not found", map[string]interface{}{
+			"detail": "Peer not found",
+			"code":   "PEER_NOT_FOUND",
+		})
+	}
+	gateway, err := PeerToGateway(peer)
+	if err != nil || gateway == nil {
+		h.logger.Error("Gateway not found for peer", "peerId", peerId)
+		return errors.NewValidationError("gateway not found", map[string]interface{}{
+			"detail": "Gateway not found for peer",
+			"code":   "GATEWAY_NOT_FOUND",
+		})
+	}
+	params := FabricChaincodeApproveParams(req)
+	params.Gateway = gateway
 	reporter := NewInMemoryDeploymentStatusReporter()
-	result, err := ApproveChaincode(FabricChaincodeApproveParams(req), reporter)
+	result, err := ApproveChaincode(params, reporter)
 	if err != nil {
 		h.logger.Error("Fabric chaincode approve failed", "error", err)
 		return errors.NewInternalError("approve failed", err, nil)
@@ -239,12 +286,14 @@ func (h *Handler) ApproveFabricChaincode(w http.ResponseWriter, r *http.Request)
 // @Tags SmartContracts
 // @Accept json
 // @Produce json
+// @Param peerId path string true "Peer ID"
 // @Param request body FabricCommitRequest true "Fabric chaincode commit parameters"
 // @Success 200 {object} FabricCommitResponse
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
-// @Router /sc/fabric/commit [post]
+// @Router /sc/fabric/peer/{peerId}/chaincode/commit [post]
 func (h *Handler) CommitFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	peerId := chi.URLParam(r, "peerId")
 	var req FabricCommitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Invalid Fabric commit request body", "error", err)
@@ -264,8 +313,27 @@ func (h *Handler) CommitFabricChaincode(w http.ResponseWriter, r *http.Request) 
 			"errors": validationErrors,
 		})
 	}
+	// Lookup peer by ID and set Gateway on params
+	peer, err := GetPeerByID(peerId)
+	if err != nil || peer == nil {
+		h.logger.Error("Peer not found", "peerId", peerId)
+		return errors.NewValidationError("peer not found", map[string]interface{}{
+			"detail": "Peer not found",
+			"code":   "PEER_NOT_FOUND",
+		})
+	}
+	gateway, err := PeerToGateway(peer)
+	if err != nil || gateway == nil {
+		h.logger.Error("Gateway not found for peer", "peerId", peerId)
+		return errors.NewValidationError("gateway not found", map[string]interface{}{
+			"detail": "Gateway not found for peer",
+			"code":   "GATEWAY_NOT_FOUND",
+		})
+	}
+	params := FabricChaincodeCommitParams(req)
+	params.Gateway = gateway
 	reporter := NewInMemoryDeploymentStatusReporter()
-	result, err := CommitChaincode(FabricChaincodeCommitParams(req), reporter)
+	result, err := CommitChaincode(params, reporter)
 	if err != nil {
 		h.logger.Error("Fabric chaincode commit failed", "error", err)
 		return errors.NewInternalError("commit failed", err, nil)

@@ -240,6 +240,127 @@ definitions:
     - ORDERER_TRANSACTION
     - DELIVER_SEEK_INFO
     - CHAINCODE_PACKAGE
+  chainlaunchdeploy.BesuDeployRequest:
+    properties:
+      abi:
+        description: Contract ABI (JSON string)
+        type: string
+      bytecode:
+        description: Compiled contract bytecode
+        items:
+          type: integer
+        type: array
+      chainID:
+        description: Chain ID for the target network
+        type: integer
+      constructorArgs:
+        description: Constructor arguments for the contract
+        items: {}
+        type: array
+      rpcurl:
+        description: RPC endpoint for Besu node
+        type: string
+      solidityCode:
+        description: (Optional) Solidity source code (for reference)
+        type: string
+    type: object
+  chainlaunchdeploy.BesuDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.DeploymentResult:
+    properties:
+      chaincodeID:
+        description: For Fabric
+        type: string
+      contractAddress:
+        description: For EVM
+        type: string
+      error: {}
+      logs:
+        type: string
+      success:
+        type: boolean
+      transactionHash:
+        description: For EVM
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeApproveParams:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      packageID:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeCommitParams:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeInstallParams:
+    properties:
+      label:
+        description: Chaincode label
+        type: string
+      packageBytes:
+        description: Chaincode package bytes
+        items:
+          type: integer
+        type: array
+    type: object
+  chainlaunchdeploy.FabricDeployRequest:
+    properties:
+      approveParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeApproveParams'
+      commitParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeCommitParams'
+      installParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeInstallParams'
+    type: object
+  chainlaunchdeploy.FabricDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
   common.QueryResult:
     properties:
       data:
@@ -1912,6 +2033,15 @@ definitions:
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+  plugin.AvailablePluginsResponse:
+    properties:
+      last_updated:
+        type: string
+      plugins:
+        items:
+          $ref: '#/definitions/registry.PluginMetadata'
+        type: array
+    type: object
   plugin.ServiceStatus:
     properties:
       config:
@@ -1953,6 +2083,39 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  registry.PluginMetadata:
+    properties:
+      author:
+        type: string
+      created:
+        type: string
+      description:
+        type: string
+      downloads:
+        type: integer
+      hash:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      license:
+        type: string
+      name:
+        type: string
+      rating:
+        type: number
+      source:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      updated:
+        type: string
+      version:
+        type: string
     type: object
   response.ErrorResponse:
     properties:
@@ -6720,6 +6883,104 @@ paths:
       summary: Stop a plugin deployment
       tags:
       - Plugins
+  /plugins/available:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all available plugins from configured GitHub repositories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugin.AvailablePluginsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List available plugins from GitHub sources
+      tags:
+      - Plugins
+  /plugins/available/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a refresh of the available plugins cache from GitHub sources
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugin.AvailablePluginsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Refresh available plugins
+      tags:
+      - Plugins
+  /sc/besu/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a smart contract to a Besu (EVM) network
+      parameters:
+      - description: Besu contract deployment parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.BesuDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.BesuDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Besu smart contract
+      tags:
+      - SmartContracts
+  /sc/fabric/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a chaincode to a Fabric network (install, approve, commit)
+      parameters:
+      - description: Fabric chaincode deployment parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Fabric chaincode
+      tags:
+      - SmartContracts
   /settings:
     get:
       description: Get the default setting's details

@@ -10,6 +10,7 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
+	"github.com/chainlaunch/chainlaunch/pkg/plugin/registry"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 )
 
@@ -531,4 +532,93 @@ func (s *SQLStore) ListFabricKeyOptions(ctx context.Context) ([]types.OptionItem
 		}
 	}
 	return opts, nil
+}
+
+// RegistryStore aggregates plugins from the SQL store and the plugin registry
+// It implements Store and can be used in the handler to support all sources
+
+type RegistryStore struct {
+	SQLStore *SQLStore
+	Registry *registry.Registry
+}
+
+func NewRegistryStore(sqlStore *SQLStore, reg *registry.Registry) *RegistryStore {
+	return &RegistryStore{
+		SQLStore: sqlStore,
+		Registry: reg,
+	}
+}
+
+func (s *RegistryStore) CreatePlugin(ctx context.Context, plugin *types.Plugin) error {
+	return s.SQLStore.CreatePlugin(ctx, plugin)
+}
+
+func (s *RegistryStore) GetPlugin(ctx context.Context, name string) (*types.Plugin, error) {
+	// Only fetch from SQLStore (installed plugins)
+	return s.SQLStore.GetPlugin(ctx, name)
+}
+
+func (s *RegistryStore) ListPlugins(ctx context.Context) ([]*types.Plugin, error) {
+	// Only fetch from SQLStore (installed plugins)
+	return s.SQLStore.ListPlugins(ctx)
+}
+
+func (s *RegistryStore) DeletePlugin(ctx context.Context, name string) error {
+	return s.SQLStore.DeletePlugin(ctx, name)
+}
+
+func (s *RegistryStore) UpdatePlugin(ctx context.Context, plugin *types.Plugin) error {
+	return s.SQLStore.UpdatePlugin(ctx, plugin)
+}
+
+func (s *RegistryStore) GetDeploymentMetadata(ctx context.Context, name string) (map[string]interface{}, error) {
+	return s.SQLStore.GetDeploymentMetadata(ctx, name)
+}
+
+func (s *RegistryStore) GetDeploymentStatus(ctx context.Context, name string) (string, error) {
+	return s.SQLStore.GetDeploymentStatus(ctx, name)
+}
+
+func (s *RegistryStore) GetFabricKeyDetails(ctx context.Context, keyIdString string, orgIdString string) (*types.FabricKeyDetails, error) {
+	return s.SQLStore.GetFabricKeyDetails(ctx, keyIdString, orgIdString)
+}
+
+func (s *RegistryStore) GetFabricPeerDetails(ctx context.Context, id string) (*types.FabricPeerDetails, error) {
+	return s.SQLStore.GetFabricPeerDetails(ctx, id)
+}
+
+func (s *RegistryStore) GetFabricOrgDetails(ctx context.Context, id string) (*types.FabricOrgDetails, error) {
+	return s.SQLStore.GetFabricOrgDetails(ctx, id)
+}
+
+func (s *RegistryStore) ListKeyStoreIDs(ctx context.Context) ([]string, error) {
+	return s.SQLStore.ListKeyStoreIDs(ctx)
+}
+
+func (s *RegistryStore) ListFabricOrgs(ctx context.Context) ([]string, error) {
+	return s.SQLStore.ListFabricOrgs(ctx)
+}
+
+func (s *RegistryStore) ListKeyStoreOptions(ctx context.Context) ([]types.OptionItem, error) {
+	return s.SQLStore.ListKeyStoreOptions(ctx)
+}
+
+func (s *RegistryStore) ListFabricOrgOptions(ctx context.Context) ([]types.OptionItem, error) {
+	return s.SQLStore.ListFabricOrgOptions(ctx)
+}
+
+func (s *RegistryStore) ListFabricKeyOptions(ctx context.Context) ([]types.OptionItem, error) {
+	return s.SQLStore.ListFabricKeyOptions(ctx)
+}
+
+func (s *RegistryStore) GetKeyDetails(ctx context.Context, id string) (*types.KeyDetails, error) {
+	return s.SQLStore.GetKeyDetails(ctx, id)
+}
+
+func (s *RegistryStore) UpdateDeploymentMetadata(ctx context.Context, name string, metadata map[string]interface{}) error {
+	return s.SQLStore.UpdateDeploymentMetadata(ctx, name, metadata)
+}
+
+func (s *RegistryStore) UpdateDeploymentStatus(ctx context.Context, name string, status string) error {
+	return s.SQLStore.UpdateDeploymentStatus(ctx, name, status)
 }

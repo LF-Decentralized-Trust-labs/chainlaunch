@@ -5558,6 +5558,64 @@
                 }
             }
         },
+        "/plugins/available": {
+            "get": {
+                "description": "Get a list of all available plugins from configured GitHub repositories",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plugins"
+                ],
+                "summary": "List available plugins from GitHub sources",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugin.AvailablePluginsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/available/refresh": {
+            "post": {
+                "description": "Triggers a refresh of the available plugins cache from GitHub sources",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plugins"
+                ],
+                "summary": "Refresh available plugins",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/plugin.AvailablePluginsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/plugins/{name}": {
             "get": {
                 "description": "Get a specific plugin by name",
@@ -5965,6 +6023,98 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/besu/deploy": {
+            "post": {
+                "description": "Deploy a smart contract to a Besu (EVM) network",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Deploy Besu smart contract",
+                "parameters": [
+                    {
+                        "description": "Besu contract deployment parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.BesuDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.BesuDeployResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/deploy": {
+            "post": {
+                "description": "Deploy a chaincode to a Fabric network (install, approve, commit)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Deploy Fabric chaincode",
+                "parameters": [
+                    {
+                        "description": "Fabric chaincode deployment parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricDeployResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -6787,6 +6937,184 @@
                 "DELIVER_SEEK_INFO",
                 "CHAINCODE_PACKAGE"
             ]
+        },
+        "chainlaunchdeploy.BesuDeployRequest": {
+            "type": "object",
+            "properties": {
+                "abi": {
+                    "description": "Contract ABI (JSON string)",
+                    "type": "string"
+                },
+                "bytecode": {
+                    "description": "Compiled contract bytecode",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "chainID": {
+                    "description": "Chain ID for the target network",
+                    "type": "integer"
+                },
+                "constructorArgs": {
+                    "description": "Constructor arguments for the contract",
+                    "type": "array",
+                    "items": {}
+                },
+                "rpcurl": {
+                    "description": "RPC endpoint for Besu node",
+                    "type": "string"
+                },
+                "solidityCode": {
+                    "description": "(Optional) Solidity source code (for reference)",
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.BesuDeployResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.DeploymentResult": {
+            "type": "object",
+            "properties": {
+                "chaincodeID": {
+                    "description": "For Fabric",
+                    "type": "string"
+                },
+                "contractAddress": {
+                    "description": "For EVM",
+                    "type": "string"
+                },
+                "error": {},
+                "logs": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "transactionHash": {
+                    "description": "For EVM",
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricChaincodeApproveParams": {
+            "type": "object",
+            "properties": {
+                "channelID": {
+                    "type": "string"
+                },
+                "collectionsConfig": {
+                    "description": "Serialized CollectionConfigPackage",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "packageID": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricChaincodeCommitParams": {
+            "type": "object",
+            "properties": {
+                "channelID": {
+                    "type": "string"
+                },
+                "collectionsConfig": {
+                    "description": "Serialized CollectionConfigPackage",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricChaincodeInstallParams": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "description": "Chaincode label",
+                    "type": "string"
+                },
+                "packageBytes": {
+                    "description": "Chaincode package bytes",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricDeployRequest": {
+            "type": "object",
+            "properties": {
+                "approveParams": {
+                    "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeApproveParams"
+                },
+                "commitParams": {
+                    "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeCommitParams"
+                },
+                "installParams": {
+                    "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeInstallParams"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricDeployResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
         },
         "common.QueryResult": {
             "type": "object",
@@ -9139,6 +9467,20 @@
                 "ProviderTypeSMTP"
             ]
         },
+        "plugin.AvailablePluginsResponse": {
+            "type": "object",
+            "properties": {
+                "last_updated": {
+                    "type": "string"
+                },
+                "plugins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/registry.PluginMetadata"
+                    }
+                }
+            }
+        },
         "plugin.ServiceStatus": {
             "type": "object",
             "properties": {
@@ -9199,6 +9541,56 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "registry.PluginMetadata": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "downloads": {
+                    "type": "integer"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "license": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },

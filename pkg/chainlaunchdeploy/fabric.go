@@ -1,12 +1,15 @@
 package chainlaunchdeploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/google/uuid"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 )
 
 // fabricDeployerAudit is a helper for audit logging in Fabric deployments
@@ -78,10 +81,16 @@ func InstallChaincode(params FabricChaincodeInstallParams, reporter DeploymentSt
 		"label":  params.Label,
 		"result": "Chaincode installed (stub)",
 	})
+	pkg := params.PackageBytes
+	result, err := params.Peer.Install(ctx, bytes.NewReader(pkg))
+	if err != nil {
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+
 	reporter.ReportStatus(DeploymentStatusUpdate{
 		DeploymentID: deploymentID,
 		Status:       StatusSuccess,
-		Message:      "Chaincode installed successfully",
+		Message:      fmt.Sprintf("Chaincode installed successfully %s", result.PackageId),
 	})
 	return DeploymentResult{Success: true, Logs: "Chaincode installed (stub)"}, nil
 }
@@ -119,6 +128,40 @@ func ApproveChaincode(params FabricChaincodeApproveParams, reporter DeploymentSt
 		Status:       StatusRunning,
 		Message:      "Approving chaincode...",
 	})
+	applicationPolicy, err := chaincode.NewApplicationPolicy(params.EndorsementPolicy, "")
+	if err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_APPROVE_VALIDATION_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+	chaincodeDef := &chaincode.Definition{
+		ChannelName:       params.ChannelID,
+		PackageID:         params.PackageID,
+		Name:              params.Name,
+		Version:           params.Version,
+		EndorsementPlugin: "escc",
+		ValidationPlugin:  "vscc",
+		Sequence:          int64(params.Sequence),
+		InitRequired:      false,
+		Collections:       nil,
+		ApplicationPolicy: applicationPolicy,
+	}
+	err = params.Gateway.Approve(ctx, chaincodeDef)
+	if err != nil {
+		if strings.Contains(err.Error(), "redefine uncommitted") {
+			logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_APPROVE_SUCCESS", audit.EventOutcomeSuccess, deploymentID, map[string]interface{}{
+				"name":    params.Name,
+				"version": params.Version,
+				"result":  "Chaincode approved (stub)",
+			})
+		} else {
+			logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_APPROVE_VALIDATION_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{
+				"error": err.Error(),
+			})
+			return DeploymentResult{Success: false, Error: err}, err
+		}
+	}
 	// TODO: Implement approve logic using fabric-admin-sdk
 	logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_APPROVE_SUCCESS", audit.EventOutcomeSuccess, deploymentID, map[string]interface{}{
 		"name":    params.Name,
@@ -166,6 +209,32 @@ func CommitChaincode(params FabricChaincodeCommitParams, reporter DeploymentStat
 		Status:       StatusRunning,
 		Message:      "Committing chaincode...",
 	})
+	applicationPolicy, err := chaincode.NewApplicationPolicy(params.EndorsementPolicy, "")
+	if err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_COMMIT_VALIDATION_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+
+	chaincodeDef := &chaincode.Definition{
+		ChannelName:       params.ChannelID,
+		Name:              params.Name,
+		Version:           params.Version,
+		EndorsementPlugin: "escc",
+		ValidationPlugin:  "vscc",
+		Sequence:          int64(params.Sequence),
+		InitRequired:      false,
+		Collections:       nil,
+		ApplicationPolicy: applicationPolicy,
+	}
+	err = params.Gateway.Commit(ctx, chaincodeDef)
+	if err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_COMMIT_VALIDATION_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
 	// TODO: Implement commit logic using fabric-admin-sdk
 	logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_COMMIT_SUCCESS", audit.EventOutcomeSuccess, deploymentID, map[string]interface{}{
 		"name":    params.Name,
@@ -249,4 +318,48 @@ func DeployChaincode(params FabricChaincodeDeployParams, reporter DeploymentStat
 		Message:      "Chaincode deployed successfully",
 	})
 	return DeploymentResult{Success: true, Logs: "Chaincode deployed (stub)"}, nil
+}
+
+type fabricDeployer struct{}
+
+// NewFabricDeployer returns a new instance of the Fabric deployer
+func NewFabricDeployer() Deployer {
+	return &fabricDeployer{}
+}
+
+// Install installs a chaincode package on a Fabric peer
+func (d *fabricDeployer) Install(params FabricChaincodeInstallParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return InstallChaincode(params, reporter)
+}
+
+// Approve approves a chaincode definition for an organization
+func (d *fabricDeployer) Approve(params FabricChaincodeApproveParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return ApproveChaincode(params, reporter)
+}
+
+// Commit commits a chaincode definition to the channel
+func (d *fabricDeployer) Commit(params FabricChaincodeCommitParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return CommitChaincode(params, reporter)
+}
+
+// DeployFabricContract implements the Deployer interface for Fabric
+func (d *fabricDeployer) DeployFabricContract(params FabricChaincodeDeployParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	installResult, err := d.Install(params.InstallParams, reporter)
+	if err != nil {
+		return installResult, err
+	}
+	approveResult, err := d.Approve(params.ApproveParams, reporter)
+	if err != nil {
+		return approveResult, err
+	}
+	commitResult, err := d.Commit(params.CommitParams, reporter)
+	if err != nil {
+		return commitResult, err
+	}
+	return commitResult, nil
+}
+
+// DeployEVMContract is not supported for fabricDeployer
+func (d *fabricDeployer) DeployEVMContract(params EVMParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return DeploymentResult{Success: false, Error: fmt.Errorf("DeployEVMContract not supported for Fabric")}, fmt.Errorf("DeployEVMContract not supported for Fabric")
 }

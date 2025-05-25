@@ -3,6 +3,7 @@ package chainlaunchdeploy
 import (
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 )
 
 // EVMParams defines the parameters required for EVM (e.g., Besu) smart contract deployment.
@@ -19,12 +20,14 @@ type EVMParams struct {
 
 // FabricChaincodeInstallParams defines parameters for chaincode installation.
 type FabricChaincodeInstallParams struct {
+	Peer         *chaincode.Peer
 	PackageBytes []byte // Chaincode package bytes
 	Label        string // Chaincode label
 }
 
 // FabricChaincodeApproveParams defines parameters for chaincode approval.
 type FabricChaincodeApproveParams struct {
+	Gateway           *chaincode.Gateway
 	Name              string
 	Version           string
 	Sequence          int64
@@ -37,6 +40,7 @@ type FabricChaincodeApproveParams struct {
 
 // FabricChaincodeCommitParams defines parameters for chaincode commit.
 type FabricChaincodeCommitParams struct {
+	Gateway           *chaincode.Gateway
 	Name              string
 	Version           string
 	Sequence          int64
@@ -66,6 +70,7 @@ type DeploymentResult struct {
 // Deployer defines the public interface for the deployment module.
 type Deployer interface {
 	DeployEVMContract(params EVMParams, reporter DeploymentStatusReporter) (DeploymentResult, error)
+	DeployFabricContract(params FabricChaincodeDeployParams, reporter DeploymentStatusReporter) (DeploymentResult, error)
 }
 
 // DeployerWithAudit extends Deployer with audit logging capability
@@ -132,4 +137,33 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return e.Message
+}
+
+type defaultDeployer struct{}
+
+func NewDefaultDeployer() *defaultDeployer {
+	return &defaultDeployer{}
+}
+
+func (d *defaultDeployer) DeployEVMContract(params EVMParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return NewDeployer().DeployEVMContract(params, reporter)
+}
+
+func (d *defaultDeployer) DeployFabricContract(params FabricChaincodeDeployParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	// Install
+	installResult, err := InstallChaincode(params.InstallParams, reporter)
+	if err != nil {
+		return installResult, err
+	}
+	// Approve
+	approveResult, err := ApproveChaincode(params.ApproveParams, reporter)
+	if err != nil {
+		return approveResult, err
+	}
+	// Commit
+	commitResult, err := CommitChaincode(params.CommitParams, reporter)
+	if err != nil {
+		return commitResult, err
+	}
+	return commitResult, nil
 }

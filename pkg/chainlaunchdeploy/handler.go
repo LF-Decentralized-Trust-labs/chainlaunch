@@ -38,6 +38,9 @@ func NewHandler(auditService *audit.AuditService, logger *logger.Logger, besuDep
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/sc/fabric", func(r chi.Router) {
 		r.Post("/deploy", response.Middleware(h.DeployFabricChaincode))
+		r.Post("/install", response.Middleware(h.InstallFabricChaincode))
+		r.Post("/approve", response.Middleware(h.ApproveFabricChaincode))
+		r.Post("/commit", response.Middleware(h.CommitFabricChaincode))
 	})
 	r.Route("/sc/besu", func(r chi.Router) {
 		r.Post("/deploy", response.Middleware(h.DeployBesuContract))
@@ -49,6 +52,34 @@ type FabricDeployRequest FabricChaincodeDeployParams
 
 // FabricDeployResponse represents the response for Fabric chaincode deployment
 type FabricDeployResponse struct {
+	Status  string           `json:"status"`
+	Message string           `json:"message"`
+	Result  DeploymentResult `json:"result"`
+}
+
+// FabricInstallRequest represents the request body for Fabric chaincode install
+// (separate from service struct for HTTP layer)
+type FabricInstallRequest FabricChaincodeInstallParams
+
+type FabricInstallResponse struct {
+	Status  string           `json:"status"`
+	Message string           `json:"message"`
+	Result  DeploymentResult `json:"result"`
+}
+
+// FabricApproveRequest represents the request body for Fabric chaincode approve
+type FabricApproveRequest FabricChaincodeApproveParams
+
+type FabricApproveResponse struct {
+	Status  string           `json:"status"`
+	Message string           `json:"message"`
+	Result  DeploymentResult `json:"result"`
+}
+
+// FabricCommitRequest represents the request body for Fabric chaincode commit
+type FabricCommitRequest FabricChaincodeCommitParams
+
+type FabricCommitResponse struct {
 	Status  string           `json:"status"`
 	Message string           `json:"message"`
 	Result  DeploymentResult `json:"result"`
@@ -107,6 +138,141 @@ func (h *Handler) DeployFabricChaincode(w http.ResponseWriter, r *http.Request) 
 	resp := FabricDeployResponse{
 		Status:  "success",
 		Message: "Chaincode deployed successfully",
+		Result:  result,
+	}
+	return response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// InstallFabricChaincode handles Fabric chaincode install requests
+// @Summary Install Fabric chaincode
+// @Description Install a chaincode package on a Fabric peer
+// @Tags SmartContracts
+// @Accept json
+// @Produce json
+// @Param request body FabricInstallRequest true "Fabric chaincode install parameters"
+// @Success 200 {object} FabricInstallResponse
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /sc/fabric/install [post]
+func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	var req FabricInstallRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Invalid Fabric install request body", "error", err)
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
+	}
+	if err := h.validate.Struct(req); err != nil {
+		validationErrors := make(map[string]string)
+		for _, err := range err.(validator.ValidationErrors) {
+			validationErrors[err.Field()] = err.Tag()
+		}
+		return errors.NewValidationError("validation failed", map[string]interface{}{
+			"detail": "Request validation failed",
+			"code":   "VALIDATION_ERROR",
+			"errors": validationErrors,
+		})
+	}
+	reporter := NewInMemoryDeploymentStatusReporter()
+	result, err := InstallChaincode(FabricChaincodeInstallParams(req), reporter)
+	if err != nil {
+		h.logger.Error("Fabric chaincode install failed", "error", err)
+		return errors.NewInternalError("install failed", err, nil)
+	}
+	resp := FabricInstallResponse{
+		Status:  "success",
+		Message: "Chaincode installed successfully",
+		Result:  result,
+	}
+	return response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ApproveFabricChaincode handles Fabric chaincode approve requests
+// @Summary Approve Fabric chaincode
+// @Description Approve a chaincode definition for an organization
+// @Tags SmartContracts
+// @Accept json
+// @Produce json
+// @Param request body FabricApproveRequest true "Fabric chaincode approve parameters"
+// @Success 200 {object} FabricApproveResponse
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /sc/fabric/approve [post]
+func (h *Handler) ApproveFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	var req FabricApproveRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Invalid Fabric approve request body", "error", err)
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
+	}
+	if err := h.validate.Struct(req); err != nil {
+		validationErrors := make(map[string]string)
+		for _, err := range err.(validator.ValidationErrors) {
+			validationErrors[err.Field()] = err.Tag()
+		}
+		return errors.NewValidationError("validation failed", map[string]interface{}{
+			"detail": "Request validation failed",
+			"code":   "VALIDATION_ERROR",
+			"errors": validationErrors,
+		})
+	}
+	reporter := NewInMemoryDeploymentStatusReporter()
+	result, err := ApproveChaincode(FabricChaincodeApproveParams(req), reporter)
+	if err != nil {
+		h.logger.Error("Fabric chaincode approve failed", "error", err)
+		return errors.NewInternalError("approve failed", err, nil)
+	}
+	resp := FabricApproveResponse{
+		Status:  "success",
+		Message: "Chaincode approved successfully",
+		Result:  result,
+	}
+	return response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// CommitFabricChaincode handles Fabric chaincode commit requests
+// @Summary Commit Fabric chaincode
+// @Description Commit a chaincode definition to the channel
+// @Tags SmartContracts
+// @Accept json
+// @Produce json
+// @Param request body FabricCommitRequest true "Fabric chaincode commit parameters"
+// @Success 200 {object} FabricCommitResponse
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /sc/fabric/commit [post]
+func (h *Handler) CommitFabricChaincode(w http.ResponseWriter, r *http.Request) error {
+	var req FabricCommitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Invalid Fabric commit request body", "error", err)
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"detail": err.Error(),
+			"code":   "INVALID_REQUEST_BODY",
+		})
+	}
+	if err := h.validate.Struct(req); err != nil {
+		validationErrors := make(map[string]string)
+		for _, err := range err.(validator.ValidationErrors) {
+			validationErrors[err.Field()] = err.Tag()
+		}
+		return errors.NewValidationError("validation failed", map[string]interface{}{
+			"detail": "Request validation failed",
+			"code":   "VALIDATION_ERROR",
+			"errors": validationErrors,
+		})
+	}
+	reporter := NewInMemoryDeploymentStatusReporter()
+	result, err := CommitChaincode(FabricChaincodeCommitParams(req), reporter)
+	if err != nil {
+		h.logger.Error("Fabric chaincode commit failed", "error", err)
+		return errors.NewInternalError("commit failed", err, nil)
+	}
+	resp := FabricCommitResponse{
+		Status:  "success",
+		Message: "Chaincode committed successfully",
 		Result:  result,
 	}
 	return response.WriteJSON(w, http.StatusOK, resp)

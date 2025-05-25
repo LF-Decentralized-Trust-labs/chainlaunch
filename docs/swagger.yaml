@@ -240,6 +240,10 @@ definitions:
     - ORDERER_TRANSACTION
     - DELIVER_SEEK_INFO
     - CHAINCODE_PACKAGE
+  chaincode.Gateway:
+    type: object
+  chaincode.Peer:
+    type: object
   chainlaunchdeploy.BesuDeployRequest:
     properties:
       abi:
@@ -290,6 +294,39 @@ definitions:
         description: For EVM
         type: string
     type: object
+  chainlaunchdeploy.FabricApproveRequest:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      packageID:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricApproveResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
   chainlaunchdeploy.FabricChaincodeApproveParams:
     properties:
       channelID:
@@ -301,6 +338,8 @@ definitions:
         type: array
       endorsementPolicy:
         type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
       initRequired:
         type: boolean
       name:
@@ -323,6 +362,8 @@ definitions:
         type: array
       endorsementPolicy:
         type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
       initRequired:
         type: boolean
       name:
@@ -342,6 +383,39 @@ definitions:
         items:
           type: integer
         type: array
+      peer:
+        $ref: '#/definitions/chaincode.Peer'
+    type: object
+  chainlaunchdeploy.FabricCommitRequest:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricCommitResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
     type: object
   chainlaunchdeploy.FabricDeployRequest:
     properties:
@@ -353,6 +427,28 @@ definitions:
         $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeInstallParams'
     type: object
   chainlaunchdeploy.FabricDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricInstallRequest:
+    properties:
+      label:
+        description: Chaincode label
+        type: string
+      packageBytes:
+        description: Chaincode package bytes
+        items:
+          type: integer
+        type: array
+      peer:
+        $ref: '#/definitions/chaincode.Peer'
+    type: object
+  chainlaunchdeploy.FabricInstallResponse:
     properties:
       message:
         type: string
@@ -6951,6 +7047,66 @@ paths:
       summary: Deploy Besu smart contract
       tags:
       - SmartContracts
+  /sc/fabric/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a chaincode definition for an organization
+      parameters:
+      - description: Fabric chaincode approve parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricApproveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricApproveResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Approve Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/commit:
+    post:
+      consumes:
+      - application/json
+      description: Commit a chaincode definition to the channel
+      parameters:
+      - description: Fabric chaincode commit parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricCommitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricCommitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Commit Fabric chaincode
+      tags:
+      - SmartContracts
   /sc/fabric/deploy:
     post:
       consumes:
@@ -6979,6 +7135,36 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Deploy Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/install:
+    post:
+      consumes:
+      - application/json
+      description: Install a chaincode package on a Fabric peer
+      parameters:
+      - description: Fabric chaincode install parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricInstallRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricInstallResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Install Fabric chaincode
       tags:
       - SmartContracts
   /settings:

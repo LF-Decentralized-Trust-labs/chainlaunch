@@ -6082,6 +6082,98 @@
                 }
             }
         },
+        "/sc/fabric/approve": {
+            "post": {
+                "description": "Approve a chaincode definition for an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Approve Fabric chaincode",
+                "parameters": [
+                    {
+                        "description": "Fabric chaincode approve parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/commit": {
+            "post": {
+                "description": "Commit a chaincode definition to the channel",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Commit Fabric chaincode",
+                "parameters": [
+                    {
+                        "description": "Fabric chaincode commit parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/sc/fabric/deploy": {
             "post": {
                 "description": "Deploy a chaincode to a Fabric network (install, approve, commit)",
@@ -6111,6 +6203,52 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/chainlaunchdeploy.FabricDeployResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/install": {
+            "post": {
+                "description": "Install a chaincode package on a Fabric peer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Install Fabric chaincode",
+                "parameters": [
+                    {
+                        "description": "Fabric chaincode install parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricInstallRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricInstallResponse"
                         }
                     },
                     "400": {
@@ -6938,6 +7076,12 @@
                 "CHAINCODE_PACKAGE"
             ]
         },
+        "chaincode.Gateway": {
+            "type": "object"
+        },
+        "chaincode.Peer": {
+            "type": "object"
+        },
         "chainlaunchdeploy.BesuDeployRequest": {
             "type": "object",
             "properties": {
@@ -7009,6 +7153,56 @@
                 }
             }
         },
+        "chainlaunchdeploy.FabricApproveRequest": {
+            "type": "object",
+            "properties": {
+                "channelID": {
+                    "type": "string"
+                },
+                "collectionsConfig": {
+                    "description": "Serialized CollectionConfigPackage",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
+                "gateway": {
+                    "$ref": "#/definitions/chaincode.Gateway"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "packageID": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricApproveResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "chainlaunchdeploy.FabricChaincodeApproveParams": {
             "type": "object",
             "properties": {
@@ -7024,6 +7218,9 @@
                 },
                 "endorsementPolicy": {
                     "type": "string"
+                },
+                "gateway": {
+                    "$ref": "#/definitions/chaincode.Gateway"
                 },
                 "initRequired": {
                     "type": "boolean"
@@ -7058,6 +7255,9 @@
                 "endorsementPolicy": {
                     "type": "string"
                 },
+                "gateway": {
+                    "$ref": "#/definitions/chaincode.Gateway"
+                },
                 "initRequired": {
                     "type": "boolean"
                 },
@@ -7085,6 +7285,56 @@
                     "items": {
                         "type": "integer"
                     }
+                },
+                "peer": {
+                    "$ref": "#/definitions/chaincode.Peer"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricCommitRequest": {
+            "type": "object",
+            "properties": {
+                "channelID": {
+                    "type": "string"
+                },
+                "collectionsConfig": {
+                    "description": "Serialized CollectionConfigPackage",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
+                "gateway": {
+                    "$ref": "#/definitions/chaincode.Gateway"
+                },
+                "initRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricCommitResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -7103,6 +7353,39 @@
             }
         },
         "chainlaunchdeploy.FabricDeployResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricInstallRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "description": "Chaincode label",
+                    "type": "string"
+                },
+                "packageBytes": {
+                    "description": "Chaincode package bytes",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "peer": {
+                    "$ref": "#/definitions/chaincode.Peer"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricInstallResponse": {
             "type": "object",
             "properties": {
                 "message": {

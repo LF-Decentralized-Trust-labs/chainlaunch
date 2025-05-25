@@ -20,6 +20,11 @@ type evmDeployer struct {
 	auditService *audit.AuditService
 }
 
+// DeployFabricContract implements DeployerWithAudit.
+func (d *evmDeployer) DeployFabricContract(params FabricChaincodeDeployParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	return DeploymentResult{Success: false, Error: errors.New("not implemented")}, nil
+}
+
 // SetAuditService sets the audit service for logging deployment events
 func (d *evmDeployer) SetAuditService(auditService *audit.AuditService) {
 	d.auditService = auditService

@@ -432,9 +432,9 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	regConfig := &pluginregistry.RegistryConfig{
 		Sources: []pluginregistry.RegistrySource{
 			{
-				Name:    "github-public-plugins",
+				Name:    "plugin-hlf-api",
 				Type:    "github",
-				URL:     "https://github.com/octocat/Hello-World", // Example public repo
+				URL:     "https://github.com/kfsoftware/plugin-hlf-api", // Example public repo
 				Enabled: true,
 			},
 		},

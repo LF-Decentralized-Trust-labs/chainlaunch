@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"archive/zip"
 	"io/ioutil"
@@ -56,11 +57,8 @@ func (s *GitHubSource) List() ([]PluginMetadata, error) {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		if !(strings.HasSuffix(f.Name, ".yaml") || strings.HasSuffix(f.Name, ".yml")) {
-			continue
-		}
-		// Only consider files in root or plugins/ directory
-		if !(strings.Count(f.Name, "/") <= 1 || strings.HasPrefix(f.Name, "plugins/")) {
+		filename := filepath.Base(f.Name)
+		if !(filename == "plugin.yaml" || filename == "plugin.yml") {
 			continue
 		}
 		file, err := f.Open()
@@ -80,8 +78,18 @@ func (s *GitHubSource) List() ([]PluginMetadata, error) {
 			Name:        p.Metadata.Name,
 			Version:     p.Metadata.Version,
 			Description: p.Metadata.Description,
+			Tags:        p.Metadata.Tags,
+			Author:      p.Metadata.Author,
+			License:     p.Metadata.License,
 			Source:      s.repoURL,
+			Hash:        "",
+			Rating:      0,
+			Downloads:   0,
+			Created:     time.Time{},
+			Updated:     time.Time{},
+			Labels:      map[string]string{},
 		})
+		break
 	}
 	return plugins, nil
 }

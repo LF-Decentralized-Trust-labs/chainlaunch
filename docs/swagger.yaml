@@ -2202,6 +2202,8 @@ definitions:
         type: string
       rating:
         type: number
+      raw_yaml:
+        type: string
       source:
         type: string
       tags:
@@ -7047,66 +7049,6 @@ paths:
       summary: Deploy Besu smart contract
       tags:
       - SmartContracts
-  /sc/fabric/approve:
-    post:
-      consumes:
-      - application/json
-      description: Approve a chaincode definition for an organization
-      parameters:
-      - description: Fabric chaincode approve parameters
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chainlaunchdeploy.FabricApproveRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/chainlaunchdeploy.FabricApproveResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: Approve Fabric chaincode
-      tags:
-      - SmartContracts
-  /sc/fabric/commit:
-    post:
-      consumes:
-      - application/json
-      description: Commit a chaincode definition to the channel
-      parameters:
-      - description: Fabric chaincode commit parameters
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chainlaunchdeploy.FabricCommitRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/chainlaunchdeploy.FabricCommitResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: Commit Fabric chaincode
-      tags:
-      - SmartContracts
   /sc/fabric/deploy:
     post:
       consumes:
@@ -7137,12 +7079,87 @@ paths:
       summary: Deploy Fabric chaincode
       tags:
       - SmartContracts
-  /sc/fabric/install:
+  /sc/fabric/peer/{peerId}/chaincode/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a chaincode definition for an organization
+      parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: Fabric chaincode approve parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricApproveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricApproveResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Approve Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/peer/{peerId}/chaincode/commit:
+    post:
+      consumes:
+      - application/json
+      description: Commit a chaincode definition to the channel
+      parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: Fabric chaincode commit parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricCommitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricCommitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Commit Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/peer/{peerId}/chaincode/install:
     post:
       consumes:
       - application/json
       description: Install a chaincode package on a Fabric peer
       parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
       - description: Fabric chaincode install parameters
         in: body
         name: request

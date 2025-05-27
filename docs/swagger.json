@@ -6082,98 +6082,6 @@
                 }
             }
         },
-        "/sc/fabric/approve": {
-            "post": {
-                "description": "Approve a chaincode definition for an organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SmartContracts"
-                ],
-                "summary": "Approve Fabric chaincode",
-                "parameters": [
-                    {
-                        "description": "Fabric chaincode approve parameters",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sc/fabric/commit": {
-            "post": {
-                "description": "Commit a chaincode definition to the channel",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SmartContracts"
-                ],
-                "summary": "Commit Fabric chaincode",
-                "parameters": [
-                    {
-                        "description": "Fabric chaincode commit parameters",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/sc/fabric/deploy": {
             "post": {
                 "description": "Deploy a chaincode to a Fabric network (install, approve, commit)",
@@ -6220,7 +6128,113 @@
                 }
             }
         },
-        "/sc/fabric/install": {
+        "/sc/fabric/peer/{peerId}/chaincode/approve": {
+            "post": {
+                "description": "Approve a chaincode definition for an organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Approve Fabric chaincode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Peer ID",
+                        "name": "peerId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fabric chaincode approve parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricApproveResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/peer/{peerId}/chaincode/commit": {
+            "post": {
+                "description": "Commit a chaincode definition to the channel",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Commit Fabric chaincode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Peer ID",
+                        "name": "peerId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fabric chaincode commit parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricCommitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/peer/{peerId}/chaincode/install": {
             "post": {
                 "description": "Install a chaincode package on a Fabric peer",
                 "consumes": [
@@ -6234,6 +6248,13 @@
                 ],
                 "summary": "Install Fabric chaincode",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Peer ID",
+                        "name": "peerId",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Fabric chaincode install parameters",
                         "name": "request",
@@ -9859,6 +9880,9 @@
                 },
                 "rating": {
                     "type": "number"
+                },
+                "raw_yaml": {
+                    "type": "string"
                 },
                 "source": {
                     "type": "string"

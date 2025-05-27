@@ -88,6 +88,7 @@ func (s *GitHubSource) List() ([]PluginMetadata, error) {
 			Created:     time.Time{},
 			Updated:     time.Time{},
 			Labels:      map[string]string{},
+			RawYAML:     string(data),
 		})
 		break
 	}

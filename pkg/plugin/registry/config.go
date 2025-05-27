@@ -56,6 +56,7 @@ type PluginMetadata struct {
 	Created     time.Time         `json:"created" yaml:"created"`
 	Updated     time.Time         `json:"updated" yaml:"updated"`
 	Labels      map[string]string `json:"labels" yaml:"labels"`
+	RawYAML     string            `json:"raw_yaml" yaml:"raw_yaml"`
 }
 
 // AvailablePluginsCache caches available plugins from GitHub sources

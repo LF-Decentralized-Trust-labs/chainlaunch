@@ -1815,6 +1815,28 @@ func (q *Queries) GetDeploymentStatus(ctx context.Context, name string) (sql.Nul
 	return deployment_status, err
 }
 
+const GetFabricChaincodeBySlug = `-- name: GetFabricChaincodeBySlug :one
+SELECT id, name, slug, package_id, docker_image, host_port, container_port, status, created_at, updated_at FROM fabric_chaincodes WHERE slug = ? LIMIT 1
+`
+
+func (q *Queries) GetFabricChaincodeBySlug(ctx context.Context, slug string) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricChaincodeBySlug, slug)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.PackageID,
+		&i.DockerImage,
+		&i.HostPort,
+		&i.ContainerPort,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const GetFabricOrganization = `-- name: GetFabricOrganization :one
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 WHERE id = ? LIMIT 1
@@ -3237,6 +3259,48 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*User
 	return &i, err
 }
 
+const InsertFabricChaincode = `-- name: InsertFabricChaincode :one
+INSERT INTO fabric_chaincodes (name, slug, package_id, docker_image, host_port, container_port, status)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, slug, package_id, docker_image, host_port, container_port, status, created_at, updated_at
+`
+
+type InsertFabricChaincodeParams struct {
+	Name          string         `json:"name"`
+	Slug          string         `json:"slug"`
+	PackageID     string         `json:"packageId"`
+	DockerImage   string         `json:"dockerImage"`
+	HostPort      sql.NullString `json:"hostPort"`
+	ContainerPort sql.NullString `json:"containerPort"`
+	Status        string         `json:"status"`
+}
+
+func (q *Queries) InsertFabricChaincode(ctx context.Context, arg *InsertFabricChaincodeParams) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, InsertFabricChaincode,
+		arg.Name,
+		arg.Slug,
+		arg.PackageID,
+		arg.DockerImage,
+		arg.HostPort,
+		arg.ContainerPort,
+		arg.Status,
+	)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.PackageID,
+		&i.DockerImage,
+		&i.HostPort,
+		&i.ContainerPort,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const ListAuditLogs = `-- name: ListAuditLogs :many
 SELECT id, timestamp, event_source, user_identity, source_ip, event_type, event_outcome, affected_resource, request_id, severity, details, created_at, updated_at, session_id FROM audit_logs
 WHERE (? IS NULL OR timestamp >= ?)
@@ -3502,6 +3566,44 @@ func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]*B
 			&i.ErrorMessage,
 			&i.CreatedAt,
 			&i.NotificationSent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListFabricChaincodes = `-- name: ListFabricChaincodes :many
+SELECT id, name, slug, package_id, docker_image, host_port, container_port, status, created_at, updated_at FROM fabric_chaincodes ORDER BY created_at DESC
+`
+
+func (q *Queries) ListFabricChaincodes(ctx context.Context) ([]*FabricChaincode, error) {
+	rows, err := q.db.QueryContext(ctx, ListFabricChaincodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincode{}
+	for rows.Next() {
+		var i FabricChaincode
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.PackageID,
+			&i.DockerImage,
+			&i.HostPort,
+			&i.ContainerPort,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -4777,6 +4879,47 @@ type UpdateDeploymentStatusParams struct {
 func (q *Queries) UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateDeploymentStatus, arg.DeploymentStatus, arg.Name)
 	return err
+}
+
+const UpdateFabricChaincodeBySlug = `-- name: UpdateFabricChaincodeBySlug :one
+UPDATE fabric_chaincodes
+SET docker_image = ?, package_id = ?, host_port = ?, container_port = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+WHERE slug = ?
+RETURNING id, name, slug, package_id, docker_image, host_port, container_port, status, created_at, updated_at
+`
+
+type UpdateFabricChaincodeBySlugParams struct {
+	DockerImage   string         `json:"dockerImage"`
+	PackageID     string         `json:"packageId"`
+	HostPort      sql.NullString `json:"hostPort"`
+	ContainerPort sql.NullString `json:"containerPort"`
+	Status        string         `json:"status"`
+	Slug          string         `json:"slug"`
+}
+
+func (q *Queries) UpdateFabricChaincodeBySlug(ctx context.Context, arg *UpdateFabricChaincodeBySlugParams) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, UpdateFabricChaincodeBySlug,
+		arg.DockerImage,
+		arg.PackageID,
+		arg.HostPort,
+		arg.ContainerPort,
+		arg.Status,
+		arg.Slug,
+	)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.PackageID,
+		&i.DockerImage,
+		&i.HostPort,
+		&i.ContainerPort,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
 }
 
 const UpdateFabricOrganization = `-- name: UpdateFabricOrganization :one

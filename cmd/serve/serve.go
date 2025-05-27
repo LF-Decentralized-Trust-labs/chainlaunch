@@ -473,7 +473,8 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	// --- Smart contract deployment handler (Fabric & Besu) ---
 	// Import the EVM deployer constructor
 	besuDeployer := chainlaunchdeploy.NewDeployerWithAudit(auditService)
-	scHandler := chainlaunchdeploy.NewHandler(auditService, logger, besuDeployer, nodesService)
+	chaincodeService := chainlaunchdeploy.NewChaincodeService(queries)
+	scHandler := chainlaunchdeploy.NewHandler(auditService, logger, besuDeployer, nodesService, chaincodeService)
 
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)

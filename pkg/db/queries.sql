@@ -1105,3 +1105,20 @@ WHERE (? IS NULL OR timestamp >= ?)
   AND (? IS NULL OR timestamp <= ?)
   AND (? = '' OR event_type = ?)
   AND (? = '' OR user_identity = ?);
+
+-- name: InsertFabricChaincode :one
+INSERT INTO fabric_chaincodes (name, slug, package_id, docker_image, host_port, container_port, status)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: UpdateFabricChaincodeBySlug :one
+UPDATE fabric_chaincodes
+SET docker_image = ?, package_id = ?, host_port = ?, container_port = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+WHERE slug = ?
+RETURNING *;
+
+-- name: GetFabricChaincodeBySlug :one
+SELECT * FROM fabric_chaincodes WHERE slug = ? LIMIT 1;
+
+-- name: ListFabricChaincodes :many
+SELECT * FROM fabric_chaincodes ORDER BY created_at DESC;

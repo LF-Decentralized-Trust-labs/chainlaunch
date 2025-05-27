@@ -73,6 +73,19 @@ type BlockchainPlatform struct {
 	Name string `json:"name"`
 }
 
+type FabricChaincode struct {
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"`
+	Slug          string         `json:"slug"`
+	PackageID     string         `json:"packageId"`
+	DockerImage   string         `json:"dockerImage"`
+	HostPort      sql.NullString `json:"hostPort"`
+	ContainerPort sql.NullString `json:"containerPort"`
+	Status        string         `json:"status"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
+}
+
 type FabricOrganization struct {
 	ID              int64          `json:"id"`
 	MspID           string         `json:"mspId"`

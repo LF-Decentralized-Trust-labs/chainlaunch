@@ -6082,6 +6082,35 @@
                 }
             }
         },
+        "/sc/fabric/chaincodes": {
+            "get": {
+                "description": "List all Fabric chaincodes deployed via Docker",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "List deployed Fabric chaincodes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.ListFabricChaincodesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/sc/fabric/deploy": {
             "post": {
                 "description": "Deploy a chaincode to a Fabric network (install, approve, commit)",
@@ -6111,6 +6140,52 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/chainlaunchdeploy.FabricDeployResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/docker-deploy": {
+            "post": {
+                "description": "Deploy a chaincode to a Fabric network using a Docker image, package ID, and port mapping. If host_port is empty, a free port is chosen. If container_port is empty, defaults to 7052.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Deploy Fabric chaincode with Docker image",
+                "parameters": [
+                    {
+                        "description": "Fabric chaincode Docker deployment parameters (host_port: optional, container_port: optional, defaults to 7052)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployResponse"
                         }
                     },
                     "400": {
@@ -7283,6 +7358,54 @@
                 }
             }
         },
+        "chainlaunchdeploy.FabricChaincodeDockerDeployRequest": {
+            "type": "object",
+            "required": [
+                "docker_image",
+                "name",
+                "package_id"
+            ],
+            "properties": {
+                "container_port": {
+                    "description": "optional, defaults to 7052",
+                    "type": "string"
+                },
+                "docker_image": {
+                    "type": "string"
+                },
+                "host_port": {
+                    "description": "optional, if empty a free port is chosen",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "package_id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "optional, for updates",
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.FabricChaincodeDockerDeployResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DeploymentResult"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "chainlaunchdeploy.FabricChaincodeInstallParams": {
             "type": "object",
             "properties": {
@@ -7399,6 +7522,17 @@
                 }
             }
         },
+        "chainlaunchdeploy.ListFabricChaincodesResponse": {
+            "type": "object",
+            "properties": {
+                "chaincodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.FabricChaincode"
+                    }
+                }
+            }
+        },
         "common.QueryResult": {
             "type": "object",
             "properties": {
@@ -7438,6 +7572,41 @@
                     }
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.FabricChaincode": {
+            "type": "object",
+            "properties": {
+                "containerPort": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "dockerImage": {
+                    "type": "string"
+                },
+                "hostPort": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "packageId": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -10302,6 +10471,18 @@
                 },
                 "peerTemplateCMD": {
                     "type": "string"
+                }
+            }
+        },
+        "sql.NullString": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if String is not NULL",
+                    "type": "boolean"
                 }
             }
         },

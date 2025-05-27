@@ -4,10 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 )
@@ -320,6 +328,204 @@ func DeployChaincode(params FabricChaincodeDeployParams, reporter DeploymentStat
 	return DeploymentResult{Success: true, Logs: "Chaincode deployed (stub)"}, nil
 }
 
+// DockerChaincodeDeployer encapsulates Docker logic for chaincode deployment
+// (inspired by the robust pattern from the provided example)
+type DockerChaincodeDeployer struct {
+	client *client.Client
+}
+
+// NewDockerChaincodeDeployer creates a new DockerChaincodeDeployer
+func NewDockerChaincodeDeployer() (*DockerChaincodeDeployer, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	return &DockerChaincodeDeployer{client: cli}, nil
+}
+
+// findFreePort finds an available port on the host
+func findFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve TCP addr: %v", err)
+	}
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to listen on TCP port: %v", err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+// pullImageIfNeeded pulls the Docker image if not present locally
+func (d *DockerChaincodeDeployer) pullImageIfNeeded(ctx context.Context, imageName string) error {
+	_, _, err := d.client.ImageInspectWithRaw(ctx, imageName)
+	if err == nil {
+		return nil // Image exists locally
+	}
+	reader, err := d.client.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to pull image %s: %v", imageName, err)
+	}
+	defer reader.Close()
+	_, err = io.Copy(io.Discard, reader)
+	if err != nil {
+		return fmt.Errorf("error while pulling image: %v", err)
+	}
+	return nil
+}
+
+// sanitizeContainerName replaces any character not in [a-zA-Z0-9_.-] with '-'
+func sanitizeContainerName(name string) string {
+	re := regexp.MustCompile(`[^a-zA-Z0-9_.-]`)
+	return re.ReplaceAllString(name, "-")
+}
+
+// Deploy deploys a chaincode container using Docker
+func (d *DockerChaincodeDeployer) Deploy(params FabricChaincodeDockerDeployParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	ctx := context.Background()
+	deploymentID := fmt.Sprintf("docker-%s-%s", params.DockerImage, params.PackageID)
+	logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_START", audit.EventOutcomePending, deploymentID, map[string]interface{}{
+		"dockerImage":   params.DockerImage,
+		"packageID":     params.PackageID,
+		"hostPort":      params.HostPort,
+		"containerPort": params.ContainerPort,
+	})
+	reporter.ReportStatus(DeploymentStatusUpdate{
+		DeploymentID: deploymentID,
+		Status:       StatusPending,
+		Message:      "Chaincode Docker deployment pending",
+	})
+
+	// Pull image if needed
+	if err := d.pullImageIfNeeded(ctx, params.DockerImage); err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{"error": err.Error()})
+		reporter.ReportStatus(DeploymentStatusUpdate{
+			DeploymentID: deploymentID,
+			Status:       StatusFailed,
+			Message:      "Failed to pull Docker image",
+			Error:        err,
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+
+	// Determine host port
+	hostPort := params.HostPort
+	if hostPort == "" {
+		freePort, err := findFreePort()
+		if err != nil {
+			logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{"error": err.Error()})
+			reporter.ReportStatus(DeploymentStatusUpdate{
+				DeploymentID: deploymentID,
+				Status:       StatusFailed,
+				Message:      "Failed to find free port",
+				Error:        err,
+			})
+			return DeploymentResult{Success: false, Error: err}, err
+		}
+		hostPort = strconv.Itoa(freePort)
+	}
+
+	// Determine container port
+	containerPort := params.ContainerPort
+	if containerPort == "" {
+		containerPort = "7052"
+	}
+
+	safePackageID := sanitizeContainerName(params.PackageID)
+	containerName := fmt.Sprintf("chaincode-%s-%s", safePackageID, hostPort)
+	// Remove existing container if it exists
+	containers, err := d.client.ContainerList(ctx, container.ListOptions{All: true})
+	if err == nil {
+		for _, c := range containers {
+			for _, name := range c.Names {
+				if name == "/"+containerName {
+					_ = d.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true})
+				}
+			}
+		}
+	}
+
+	env := []string{
+		fmt.Sprintf("CHAINCODE_PACKAGE_ID=%s", params.PackageID),
+	}
+	exposedPort := nat.Port(fmt.Sprintf("%s/tcp", containerPort))
+	config := &container.Config{
+		Image:        params.DockerImage,
+		Env:          env,
+		ExposedPorts: nat.PortSet{exposedPort: struct{}{}},
+		Cmd:          []string{},
+	}
+	hostConfig := &container.HostConfig{
+		PortBindings: nat.PortMap{
+			exposedPort: []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: hostPort}},
+		},
+	}
+
+	resp, err := d.client.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
+	if err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{"error": err.Error()})
+		reporter.ReportStatus(DeploymentStatusUpdate{
+			DeploymentID: deploymentID,
+			Status:       StatusFailed,
+			Message:      "Failed to create Docker container",
+			Error:        err,
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+
+	if err := d.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_FAILED", audit.EventOutcomeFailure, deploymentID, map[string]interface{}{"error": err.Error()})
+		reporter.ReportStatus(DeploymentStatusUpdate{
+			DeploymentID: deploymentID,
+			Status:       StatusFailed,
+			Message:      "Failed to start Docker container",
+			Error:        err,
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+
+	logFabricAuditEvent(ctx, "FABRIC_CHAINCODE_DOCKER_DEPLOY_SUCCESS", audit.EventOutcomeSuccess, deploymentID, map[string]interface{}{
+		"dockerImage":   params.DockerImage,
+		"packageID":     params.PackageID,
+		"hostPort":      hostPort,
+		"containerPort": containerPort,
+		"container":     containerName,
+	})
+	reporter.ReportStatus(DeploymentStatusUpdate{
+		DeploymentID: deploymentID,
+		Status:       StatusSuccess,
+		Message:      "Chaincode Docker container started successfully",
+	})
+	return DeploymentResult{
+		Success:     true,
+		Logs:        fmt.Sprintf("Container %s started with image %s (host port %s -> container port %s)", containerName, params.DockerImage, hostPort, containerPort),
+		ChaincodeID: params.PackageID,
+	}, nil
+}
+
+// DeployChaincodeWithDockerImage is a wrapper for DockerChaincodeDeployer.Deploy
+func DeployChaincodeWithDockerImage(dockerImage, packageID, hostPort, containerPort string, reporter DeploymentStatusReporter) (DeploymentResult, error) {
+	params := FabricChaincodeDockerDeployParams{
+		DockerImage:   dockerImage,
+		PackageID:     packageID,
+		HostPort:      hostPort,
+		ContainerPort: containerPort,
+	}
+	deployer, err := NewDockerChaincodeDeployer()
+	if err != nil {
+		reporter.ReportStatus(DeploymentStatusUpdate{
+			DeploymentID: "docker-wrapper",
+			Status:       StatusFailed,
+			Message:      "Failed to initialize Docker deployer",
+			Error:        err,
+		})
+		return DeploymentResult{Success: false, Error: err}, err
+	}
+	defer deployer.client.Close()
+	return deployer.Deploy(params, reporter)
+}
+
 type fabricDeployer struct{}
 
 // NewFabricDeployer returns a new instance of the Fabric deployer
@@ -362,4 +568,16 @@ func (d *fabricDeployer) DeployFabricContract(params FabricChaincodeDeployParams
 // DeployEVMContract is not supported for fabricDeployer
 func (d *fabricDeployer) DeployEVMContract(params EVMParams, reporter DeploymentStatusReporter) (DeploymentResult, error) {
 	return DeploymentResult{Success: false, Error: fmt.Errorf("DeployEVMContract not supported for Fabric")}, fmt.Errorf("DeployEVMContract not supported for Fabric")
+}
+
+// FabricChaincodeDockerDeployParams defines parameters for deploying chaincode using a Docker image.
+// - DockerImage: the image to use
+// - PackageID: the chaincode package ID
+// - HostPort: the port to listen on the host (if empty, a free port is chosen)
+// - ContainerPort: the port to map to inside the container (default "7052" if empty)
+type FabricChaincodeDockerDeployParams struct {
+	DockerImage   string
+	PackageID     string
+	HostPort      string // Host port to listen on
+	ContainerPort string // Container port to map to (default 7052)
 }

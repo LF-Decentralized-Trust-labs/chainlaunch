@@ -366,6 +366,39 @@ definitions:
       version:
         type: string
     type: object
+  chainlaunchdeploy.FabricChaincodeDockerDeployRequest:
+    properties:
+      container_port:
+        description: optional, defaults to 7052
+        type: string
+      docker_image:
+        type: string
+      host_port:
+        description: optional, if empty a free port is chosen
+        type: string
+      name:
+        type: string
+      package_id:
+        type: string
+      slug:
+        description: optional, for updates
+        type: string
+    required:
+    - docker_image
+    - name
+    - package_id
+    type: object
+  chainlaunchdeploy.FabricChaincodeDockerDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      slug:
+        type: string
+      status:
+        type: string
+    type: object
   chainlaunchdeploy.FabricChaincodeInstallParams:
     properties:
       label:
@@ -442,6 +475,13 @@ definitions:
       status:
         type: string
     type: object
+  chainlaunchdeploy.ListFabricChaincodesResponse:
+    properties:
+      chaincodes:
+        items:
+          $ref: '#/definitions/db.FabricChaincode'
+        type: array
+    type: object
   common.QueryResult:
     properties:
       data:
@@ -469,6 +509,29 @@ definitions:
             type: string
         type: object
       status:
+        type: string
+    type: object
+  db.FabricChaincode:
+    properties:
+      containerPort:
+        $ref: '#/definitions/sql.NullString'
+      createdAt:
+        type: string
+      dockerImage:
+        type: string
+      hostPort:
+        $ref: '#/definitions/sql.NullString'
+      id:
+        type: integer
+      name:
+        type: string
+      packageId:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      updatedAt:
         type: string
     type: object
   github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status:
@@ -2480,6 +2543,14 @@ definitions:
         type: string
       peerTemplateCMD:
         type: string
+    type: object
+  sql.NullString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
     type: object
   time.Duration:
     enum:
@@ -7034,6 +7105,25 @@ paths:
       summary: Deploy Besu smart contract
       tags:
       - SmartContracts
+  /sc/fabric/chaincodes:
+    get:
+      consumes:
+      - application/json
+      description: List all Fabric chaincodes deployed via Docker
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ListFabricChaincodesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List deployed Fabric chaincodes
+      tags:
+      - SmartContracts
   /sc/fabric/deploy:
     post:
       consumes:
@@ -7062,6 +7152,39 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Deploy Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/docker-deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a chaincode to a Fabric network using a Docker image, package
+        ID, and port mapping. If host_port is empty, a free port is chosen. If container_port
+        is empty, defaults to 7052.
+      parameters:
+      - description: 'Fabric chaincode Docker deployment parameters (host_port: optional,
+          container_port: optional, defaults to 7052)'
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Fabric chaincode with Docker image
       tags:
       - SmartContracts
   /sc/fabric/peer/{peerId}/chaincode/approve:

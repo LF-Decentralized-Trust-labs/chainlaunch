@@ -139,6 +139,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @in cookie
 // @name session_id
 
+// @tag.name Audit
+// @tag.description Audit management operations
+
 // @tag.name Authentication
 // @tag.description User authentication and authorization operations
 
@@ -160,6 +163,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @tag.name Keys
 // @tag.description Cryptographic key management operations
 
+// @tag.name Metrics
+// @tag.description Metrics management operations
+
 // @tag.name Nodes
 // @tag.description Network node management operations
 
@@ -177,6 +183,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // @tag.name Settings
 // @tag.description Settings management operations
+
+// @tag.name SmartContracts
+// @tag.description Smart contract management operations
 
 // @tag.name Users
 // @tag.description User account management operations
@@ -464,7 +473,7 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	// --- Smart contract deployment handler (Fabric & Besu) ---
 	// Import the EVM deployer constructor
 	besuDeployer := chainlaunchdeploy.NewDeployerWithAudit(auditService)
-	scHandler := chainlaunchdeploy.NewHandler(auditService, logger, besuDeployer)
+	scHandler := chainlaunchdeploy.NewHandler(auditService, logger, besuDeployer, nodesService)
 
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)

@@ -3161,3 +3161,46 @@ func (p *LocalPeer) GetCommittedChaincodes(ctx context.Context, channelID string
 
 	return committedChaincodes.GetChaincodeDefinitions(), nil
 }
+
+// GetGateway returns a chaincode.Gateway for the peer
+func (p *LocalPeer) GetGateway(ctx context.Context) (*chaincode.Gateway, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+
+	gateway := chaincode.NewGateway(peerConn, adminIdentity)
+	return gateway, nil
+}
+
+func (p *LocalPeer) GetPeerClient(ctx context.Context) (*chaincode.Peer, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+
+	adminIdentity, _, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+
+	peer := chaincode.NewPeer(peerConn, adminIdentity)
+	return peer, nil
+}

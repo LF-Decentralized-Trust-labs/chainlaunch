@@ -32,7 +32,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "audit"
+                    "Audit"
                 ],
                 "summary": "List audit logs",
                 "parameters": [
@@ -126,7 +126,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "audit"
+                    "Audit"
                 ],
                 "summary": "Get audit log",
                 "parameters": [
@@ -1786,7 +1786,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Deploy a new Prometheus instance",
                 "parameters": [
@@ -1835,7 +1835,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Get metrics for a specific node",
                 "parameters": [
@@ -1892,7 +1892,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Get label values for a specific label",
                 "parameters": [
@@ -1951,7 +1951,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Execute custom Prometheus query",
                 "parameters": [
@@ -2010,7 +2010,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Get metrics for a specific node with time range",
                 "parameters": [
@@ -2081,7 +2081,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Reload Prometheus configuration",
                 "responses": {
@@ -2110,7 +2110,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Get Prometheus status",
                 "responses": {
@@ -2139,7 +2139,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "metrics"
+                    "Metrics"
                 ],
                 "summary": "Undeploy Prometheus instance",
                 "responses": {
@@ -7180,18 +7180,8 @@
                 "channelID": {
                     "type": "string"
                 },
-                "collectionsConfig": {
-                    "description": "Serialized CollectionConfigPackage",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "endorsementPolicy": {
                     "type": "string"
-                },
-                "gateway": {
-                    "$ref": "#/definitions/chaincode.Gateway"
                 },
                 "initRequired": {
                     "type": "boolean"
@@ -7318,18 +7308,8 @@
                 "channelID": {
                     "type": "string"
                 },
-                "collectionsConfig": {
-                    "description": "Serialized CollectionConfigPackage",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "endorsementPolicy": {
                     "type": "string"
-                },
-                "gateway": {
-                    "$ref": "#/definitions/chaincode.Gateway"
                 },
                 "initRequired": {
                     "type": "boolean"
@@ -7389,20 +7369,19 @@
         },
         "chainlaunchdeploy.FabricInstallRequest": {
             "type": "object",
+            "required": [
+                "label",
+                "package_bytes"
+            ],
             "properties": {
                 "label": {
-                    "description": "Chaincode label",
                     "type": "string"
                 },
-                "packageBytes": {
-                    "description": "Chaincode package bytes",
+                "package_bytes": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
-                },
-                "peer": {
-                    "$ref": "#/definitions/chaincode.Peer"
                 }
             }
         },
@@ -11034,6 +11013,10 @@
     },
     "tags": [
         {
+            "description": "Audit management operations",
+            "name": "Audit"
+        },
+        {
             "description": "User authentication and authorization operations",
             "name": "Authentication"
         },
@@ -11062,6 +11045,10 @@
             "name": "Keys"
         },
         {
+            "description": "Metrics management operations",
+            "name": "Metrics"
+        },
+        {
             "description": "Network node management operations",
             "name": "Nodes"
         },
@@ -11084,6 +11071,10 @@
         {
             "description": "Settings management operations",
             "name": "Settings"
+        },
+        {
+            "description": "Smart contract management operations",
+            "name": "SmartContracts"
         },
         {
             "description": "User account management operations",

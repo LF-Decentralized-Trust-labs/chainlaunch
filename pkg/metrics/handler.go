@@ -43,7 +43,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // DeployPrometheus deploys a new Prometheus instance
 // @Summary Deploy a new Prometheus instance
 // @Description Deploys a new Prometheus instance with the specified configuration
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param request body types.DeployPrometheusRequest true "Prometheus deployment configuration"
@@ -78,7 +78,7 @@ func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
 // GetNodeMetrics retrieves metrics for a specific node
 // @Summary Get metrics for a specific node
 // @Description Retrieves metrics for a specific node by ID and optional PromQL query
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Param id path string true "Node ID"
 // @Param query query string false "PromQL query to filter metrics"
@@ -116,7 +116,7 @@ func (h *Handler) GetNodeMetrics(w http.ResponseWriter, r *http.Request) {
 // ReloadConfiguration reloads the Prometheus configuration
 // @Summary Reload Prometheus configuration
 // @Description Triggers a reload of the Prometheus configuration to pick up any changes
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Success 200 {object} types.MessageResponse
 // @Failure 500 {object} map[string]string
@@ -135,7 +135,7 @@ func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get label values for a specific label
 // @Description Retrieves all values for a specific label, optionally filtered by metric matches and node ID
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
@@ -183,7 +183,7 @@ func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Get metrics for a specific node with time range
 // @Description Retrieves metrics for a specific node within a specified time range
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
@@ -273,7 +273,7 @@ func (h *Handler) GetNodeMetricsRange(w http.ResponseWriter, r *http.Request) {
 // CustomQuery executes a custom Prometheus query
 // @Summary Execute custom Prometheus query
 // @Description Execute a custom Prometheus query with optional time range
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
@@ -339,7 +339,7 @@ func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
 // GetStatus returns the current status of the Prometheus instance
 // @Summary Get Prometheus status
 // @Description Returns the current status of the Prometheus instance including version, port, and configuration
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Success 200 {object} common.Status
 // @Failure 500 {object} map[string]string
@@ -360,7 +360,7 @@ func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 // UndeployPrometheus stops the Prometheus instance
 // @Summary Undeploy Prometheus instance
 // @Description Stops and removes the Prometheus instance
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Success 200 {object} types.MessageResponse
 // @Failure 500 {object} map[string]string

@@ -298,15 +298,8 @@ definitions:
     properties:
       channelID:
         type: string
-      collectionsConfig:
-        description: Serialized CollectionConfigPackage
-        items:
-          type: integer
-        type: array
       endorsementPolicy:
         type: string
-      gateway:
-        $ref: '#/definitions/chaincode.Gateway'
       initRequired:
         type: boolean
       name:
@@ -390,15 +383,8 @@ definitions:
     properties:
       channelID:
         type: string
-      collectionsConfig:
-        description: Serialized CollectionConfigPackage
-        items:
-          type: integer
-        type: array
       endorsementPolicy:
         type: string
-      gateway:
-        $ref: '#/definitions/chaincode.Gateway'
       initRequired:
         type: boolean
       name:
@@ -438,15 +424,14 @@ definitions:
   chainlaunchdeploy.FabricInstallRequest:
     properties:
       label:
-        description: Chaincode label
         type: string
-      packageBytes:
-        description: Chaincode package bytes
+      package_bytes:
         items:
           type: integer
         type: array
-      peer:
-        $ref: '#/definitions/chaincode.Peer'
+    required:
+    - label
+    - package_bytes
     type: object
   chainlaunchdeploy.FabricInstallResponse:
     properties:
@@ -3079,7 +3064,7 @@ paths:
             type: object
       summary: List audit logs
       tags:
-      - audit
+      - Audit
   /audit/logs/{id}:
     get:
       description: Retrieves a specific audit log by ID
@@ -3128,7 +3113,7 @@ paths:
             type: object
       summary: Get audit log
       tags:
-      - audit
+      - Audit
   /auth/change-password:
     post:
       consumes:
@@ -4204,7 +4189,7 @@ paths:
             type: object
       summary: Deploy a new Prometheus instance
       tags:
-      - metrics
+      - Metrics
   /metrics/node/{id}:
     get:
       description: Retrieves metrics for a specific node by ID and optional PromQL
@@ -4241,7 +4226,7 @@ paths:
             type: object
       summary: Get metrics for a specific node
       tags:
-      - metrics
+      - Metrics
   /metrics/node/{id}/label/{label}/values:
     get:
       consumes:
@@ -4282,7 +4267,7 @@ paths:
             type: object
       summary: Get label values for a specific label
       tags:
-      - metrics
+      - Metrics
   /metrics/node/{id}/query:
     post:
       consumes:
@@ -4321,7 +4306,7 @@ paths:
             type: object
       summary: Execute custom Prometheus query
       tags:
-      - metrics
+      - Metrics
   /metrics/node/{id}/range:
     get:
       consumes:
@@ -4372,7 +4357,7 @@ paths:
             type: object
       summary: Get metrics for a specific node with time range
       tags:
-      - metrics
+      - Metrics
   /metrics/reload:
     post:
       description: Triggers a reload of the Prometheus configuration to pick up any
@@ -4392,7 +4377,7 @@ paths:
             type: object
       summary: Reload Prometheus configuration
       tags:
-      - metrics
+      - Metrics
   /metrics/status:
     get:
       description: Returns the current status of the Prometheus instance including
@@ -4412,7 +4397,7 @@ paths:
             type: object
       summary: Get Prometheus status
       tags:
-      - metrics
+      - Metrics
   /metrics/undeploy:
     post:
       description: Stops and removes the Prometheus instance
@@ -4431,7 +4416,7 @@ paths:
             type: object
       summary: Undeploy Prometheus instance
       tags:
-      - metrics
+      - Metrics
   /networks/besu:
     get:
       description: Get a paginated list of Besu networks
@@ -7487,6 +7472,8 @@ securityDefinitions:
     type: apiKey
 swagger: "2.0"
 tags:
+- description: Audit management operations
+  name: Audit
 - description: User authentication and authorization operations
   name: Authentication
 - description: Backup schedule configuration and management
@@ -7501,6 +7488,8 @@ tags:
   name: Fabric Networks
 - description: Cryptographic key management operations
   name: Keys
+- description: Metrics management operations
+  name: Metrics
 - description: Network node management operations
   name: Nodes
 - description: System notification configuration and management
@@ -7513,5 +7502,7 @@ tags:
   name: Providers
 - description: Settings management operations
   name: Settings
+- description: Smart contract management operations
+  name: SmartContracts
 - description: User account management operations
   name: Users

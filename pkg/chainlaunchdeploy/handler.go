@@ -3,14 +3,15 @@ package chainlaunchdeploy
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	nodeService "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 )
 
 // Handler handles HTTP requests for smart contract deployment
@@ -19,10 +20,11 @@ type Handler struct {
 	logger       *logger.Logger
 	besuDeployer DeployerWithAudit
 	validate     *validator.Validate
+	nodeService  *nodeService.NodeService
 }
 
 // NewHandler creates a new smart contract deploy handler
-func NewHandler(auditService *audit.AuditService, logger *logger.Logger, besuDeployer DeployerWithAudit) *Handler {
+func NewHandler(auditService *audit.AuditService, logger *logger.Logger, besuDeployer DeployerWithAudit, nodeService *nodeService.NodeService) *Handler {
 	SetFabricAuditService(auditService)
 	if besuDeployer != nil {
 		besuDeployer.SetAuditService(auditService)
@@ -32,6 +34,7 @@ func NewHandler(auditService *audit.AuditService, logger *logger.Logger, besuDep
 		logger:       logger,
 		besuDeployer: besuDeployer,
 		validate:     validator.New(),
+		nodeService:  nodeService,
 	}
 }
 
@@ -60,7 +63,10 @@ type FabricDeployResponse struct {
 
 // FabricInstallRequest represents the request body for Fabric chaincode install
 // (separate from service struct for HTTP layer)
-type FabricInstallRequest FabricChaincodeInstallParams
+type FabricInstallRequest struct {
+	PackageBytes []byte `json:"package_bytes" validate:"required"`
+	Label        string `json:"label" validate:"required"`
+}
 
 type FabricInstallResponse struct {
 	Status  string           `json:"status"`
@@ -69,7 +75,15 @@ type FabricInstallResponse struct {
 }
 
 // FabricApproveRequest represents the request body for Fabric chaincode approve
-type FabricApproveRequest FabricChaincodeApproveParams
+type FabricApproveRequest struct {
+	Name              string
+	Version           string
+	Sequence          int64
+	PackageID         string
+	ChannelID         string
+	EndorsementPolicy string
+	InitRequired      bool
+}
 
 type FabricApproveResponse struct {
 	Status  string           `json:"status"`
@@ -78,7 +92,14 @@ type FabricApproveResponse struct {
 }
 
 // FabricCommitRequest represents the request body for Fabric chaincode commit
-type FabricCommitRequest FabricChaincodeCommitParams
+type FabricCommitRequest struct {
+	Name              string
+	Version           string
+	Sequence          int64
+	ChannelID         string
+	EndorsementPolicy string
+	InitRequired      bool
+}
 
 type FabricCommitResponse struct {
 	Status  string           `json:"status"`
@@ -144,18 +165,6 @@ func (h *Handler) DeployFabricChaincode(w http.ResponseWriter, r *http.Request) 
 	return response.WriteJSON(w, http.StatusOK, resp)
 }
 
-// Add a stub for peer lookup by ID
-func GetPeerByID(peerId string) (*chaincode.Peer, error) {
-	// TODO: Implement actual peer lookup logic
-	return nil, nil
-}
-
-// Add a stub for converting a peer to a gateway
-func PeerToGateway(peer *chaincode.Peer) (*chaincode.Gateway, error) {
-	// TODO: Implement actual conversion logic
-	return nil, nil
-}
-
 // InstallFabricChaincode handles Fabric chaincode install requests
 // @Summary Install Fabric chaincode
 // @Description Install a chaincode package on a Fabric peer
@@ -170,6 +179,14 @@ func PeerToGateway(peer *chaincode.Peer) (*chaincode.Gateway, error) {
 // @Router /sc/fabric/peer/{peerId}/chaincode/install [post]
 func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request) error {
 	peerId := chi.URLParam(r, "peerId")
+	peerIdInt, err := strconv.ParseInt(peerId, 10, 64)
+	if err != nil {
+		h.logger.Error("Invalid peer ID", "peerId", peerId)
+		return errors.NewValidationError("invalid peer ID", map[string]interface{}{
+			"detail": "Invalid peer ID",
+			"code":   "INVALID_PEER_ID",
+		})
+	}
 	var req FabricInstallRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Invalid Fabric install request body", "error", err)
@@ -189,17 +206,19 @@ func (h *Handler) InstallFabricChaincode(w http.ResponseWriter, r *http.Request)
 			"errors": validationErrors,
 		})
 	}
-	// Lookup peer by ID and set on params
-	peer, err := GetPeerByID(peerId)
-	if err != nil || peer == nil {
-		h.logger.Error("Peer not found", "peerId", peerId)
-		return errors.NewValidationError("peer not found", map[string]interface{}{
-			"detail": "Peer not found",
-			"code":   "PEER_NOT_FOUND",
+	peerService, err := h.nodeService.GetFabricPeerService(r.Context(), peerIdInt)
+	if err != nil {
+		h.logger.Error("Node not found", "peerId", peerId)
+		return errors.NewValidationError("node not found", map[string]interface{}{
+			"detail": "Node not found",
+			"code":   "NODE_NOT_FOUND",
 		})
 	}
-	params := FabricChaincodeInstallParams(req)
-	params.Peer = peer
+
+	params := FabricChaincodeInstallParams{
+		Peer:         peerService,
+		PackageBytes: req.PackageBytes, Label: req.Label,
+	}
 	reporter := NewInMemoryDeploymentStatusReporter()
 	result, err := InstallChaincode(params, reporter)
 	if err != nil {
@@ -247,25 +266,33 @@ func (h *Handler) ApproveFabricChaincode(w http.ResponseWriter, r *http.Request)
 			"errors": validationErrors,
 		})
 	}
-	// Lookup peer by ID and set Gateway on params
-	peer, err := GetPeerByID(peerId)
-	if err != nil || peer == nil {
-		h.logger.Error("Peer not found", "peerId", peerId)
-		return errors.NewValidationError("peer not found", map[string]interface{}{
-			"detail": "Peer not found",
-			"code":   "PEER_NOT_FOUND",
+	peerIdInt, err := strconv.ParseInt(peerId, 10, 64)
+	if err != nil {
+		h.logger.Error("Invalid peer ID", "peerId", peerId)
+		return errors.NewValidationError("invalid peer ID", map[string]interface{}{
+			"detail": "Invalid peer ID",
+			"code":   "INVALID_PEER_ID",
 		})
 	}
-	gateway, err := PeerToGateway(peer)
-	if err != nil || gateway == nil {
-		h.logger.Error("Gateway not found for peer", "peerId", peerId)
-		return errors.NewValidationError("gateway not found", map[string]interface{}{
-			"detail": "Gateway not found for peer",
-			"code":   "GATEWAY_NOT_FOUND",
+	peerGateway, err := h.nodeService.GetFabricPeerGateway(r.Context(), peerIdInt)
+	if err != nil {
+		h.logger.Error("Node not found", "peerId", peerId)
+		return errors.NewValidationError("node not found", map[string]interface{}{
+			"detail": "Node not found",
+			"code":   "NODE_NOT_FOUND",
 		})
 	}
-	params := FabricChaincodeApproveParams(req)
-	params.Gateway = gateway
+
+	params := FabricChaincodeApproveParams{
+		Gateway:           peerGateway,
+		Name:              req.Name,
+		Version:           req.Version,
+		Sequence:          req.Sequence,
+		PackageID:         req.PackageID,
+		ChannelID:         req.ChannelID,
+		EndorsementPolicy: req.EndorsementPolicy,
+		InitRequired:      req.InitRequired,
+	}
 	reporter := NewInMemoryDeploymentStatusReporter()
 	result, err := ApproveChaincode(params, reporter)
 	if err != nil {
@@ -313,25 +340,31 @@ func (h *Handler) CommitFabricChaincode(w http.ResponseWriter, r *http.Request) 
 			"errors": validationErrors,
 		})
 	}
-	// Lookup peer by ID and set Gateway on params
-	peer, err := GetPeerByID(peerId)
-	if err != nil || peer == nil {
-		h.logger.Error("Peer not found", "peerId", peerId)
-		return errors.NewValidationError("peer not found", map[string]interface{}{
-			"detail": "Peer not found",
-			"code":   "PEER_NOT_FOUND",
+	peerIdInt, err := strconv.ParseInt(peerId, 10, 64)
+	if err != nil {
+		h.logger.Error("Invalid peer ID", "peerId", peerId)
+		return errors.NewValidationError("invalid peer ID", map[string]interface{}{
+			"detail": "Invalid peer ID",
+			"code":   "INVALID_PEER_ID",
 		})
 	}
-	gateway, err := PeerToGateway(peer)
-	if err != nil || gateway == nil {
-		h.logger.Error("Gateway not found for peer", "peerId", peerId)
-		return errors.NewValidationError("gateway not found", map[string]interface{}{
-			"detail": "Gateway not found for peer",
-			"code":   "GATEWAY_NOT_FOUND",
+	peerGateway, err := h.nodeService.GetFabricPeerGateway(r.Context(), peerIdInt)
+	if err != nil {
+		h.logger.Error("Node not found", "peerId", peerId)
+		return errors.NewValidationError("node not found", map[string]interface{}{
+			"detail": "Node not found",
+			"code":   "NODE_NOT_FOUND",
 		})
 	}
-	params := FabricChaincodeCommitParams(req)
-	params.Gateway = gateway
+	params := FabricChaincodeCommitParams{
+		Gateway:           peerGateway,
+		Name:              req.Name,
+		Version:           req.Version,
+		Sequence:          req.Sequence,
+		ChannelID:         req.ChannelID,
+		EndorsementPolicy: req.EndorsementPolicy,
+		InitRequired:      req.InitRequired,
+	}
 	reporter := NewInMemoryDeploymentStatusReporter()
 	result, err := CommitChaincode(params, reporter)
 	if err != nil {

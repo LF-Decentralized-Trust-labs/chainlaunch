@@ -447,7 +447,21 @@ func (d *DockerChaincodeDeployer) Deploy(params FabricChaincodeDockerDeployParam
 	}
 
 	env := []string{
-		fmt.Sprintf("CHAINCODE_PACKAGE_ID=%s", params.PackageID),
+		fmt.Sprintf("CHAINCODE_ID=%s", params.PackageID),
+		fmt.Sprintf("CORE_CHAINCODE_ID=%s", params.PackageID),
+	}
+	// Optionally add chaincode address if available
+	chaincodeAddress := ""
+	if params.HostPort != "" {
+		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", params.HostPort)
+	} else {
+		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", hostPort)
+	}
+	if chaincodeAddress != "" {
+		env = append(env,
+			fmt.Sprintf("CHAINCODE_SERVER_ADDRESS=%s", chaincodeAddress),
+			fmt.Sprintf("CORE_CHAINCODE_ADDRESS=%s", chaincodeAddress),
+		)
 	}
 	exposedPort := nat.Port(fmt.Sprintf("%s/tcp", containerPort))
 	config := &container.Config{
@@ -570,7 +584,7 @@ func (d *fabricDeployer) DeployEVMContract(params EVMParams, reporter Deployment
 	return DeploymentResult{Success: false, Error: fmt.Errorf("DeployEVMContract not supported for Fabric")}, fmt.Errorf("DeployEVMContract not supported for Fabric")
 }
 
-// FabricChaincodeDockerDeployParams defines parameters for deploying chaincode using a Docker image.
+// DockerChaincodeDockerDeployParams defines parameters for deploying chaincode using a Docker image.
 // - DockerImage: the image to use
 // - PackageID: the chaincode package ID
 // - HostPort: the port to listen on the host (if empty, a free port is chosen)
@@ -580,4 +594,24 @@ type FabricChaincodeDockerDeployParams struct {
 	PackageID     string
 	HostPort      string // Host port to listen on
 	ContainerPort string // Container port to map to (default 7052)
+}
+
+// DockerContainerInfo holds Docker container runtime info for a chaincode
+// swagger:model
+// Used by both legacy and new chaincode logic
+type DockerContainerInfo struct {
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Image   string   `json:"image"`
+	State   string   `json:"state"`
+	Status  string   `json:"status"`
+	Ports   []string `json:"ports"`
+	Created int64    `json:"created"`
+}
+
+// FabricChaincodeDetail represents a chaincode with Docker/runtime info
+// Chaincode is a pointer to the new Chaincode struct (from chaincode_service.go)
+type FabricChaincodeDetail struct {
+	Chaincode  *Chaincode           `json:"chaincode"`
+	DockerInfo *DockerContainerInfo `json:"dockerInfo,omitempty"`
 }

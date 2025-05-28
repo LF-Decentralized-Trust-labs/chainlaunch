@@ -1106,19 +1106,57 @@ WHERE (? IS NULL OR timestamp >= ?)
   AND (? = '' OR event_type = ?)
   AND (? = '' OR user_identity = ?);
 
--- name: InsertFabricChaincode :one
-INSERT INTO fabric_chaincodes (name, slug, package_id, docker_image, host_port, container_port, status)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING *;
-
--- name: UpdateFabricChaincodeBySlug :one
-UPDATE fabric_chaincodes
-SET docker_image = ?, package_id = ?, host_port = ?, container_port = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-WHERE slug = ?
-RETURNING *;
-
--- name: GetFabricChaincodeBySlug :one
-SELECT * FROM fabric_chaincodes WHERE slug = ? LIMIT 1;
+-- name: GetFabricChaincodeByName :one
+SELECT * FROM fabric_chaincodes WHERE name = ? LIMIT 1;
 
 -- name: ListFabricChaincodes :many
 SELECT * FROM fabric_chaincodes ORDER BY created_at DESC;
+
+-- name: CreateChaincode :one
+INSERT INTO fabric_chaincodes (name, network_id)
+VALUES (?, ?)
+RETURNING *;
+
+-- name: ListChaincodes :many
+SELECT * FROM fabric_chaincodes ORDER BY id;
+
+-- name: GetChaincode :one
+SELECT * FROM fabric_chaincodes WHERE id = ?;
+
+-- name: UpdateChaincode :one
+UPDATE fabric_chaincodes
+SET name = ?, network_id = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteChaincode :exec
+DELETE FROM fabric_chaincodes WHERE id = ?;
+
+-- name: CreateChaincodeDefinition :one
+INSERT INTO fabric_chaincode_definitions (chaincode_id, version, sequence, docker_image, endorsement_policy)
+VALUES (?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: ListChaincodeDefinitions :many
+SELECT * FROM fabric_chaincode_definitions WHERE chaincode_id = ? ORDER BY id;
+
+-- name: GetChaincodeDefinition :one
+SELECT * FROM fabric_chaincode_definitions WHERE id = ?;
+
+-- name: UpdateChaincodeDefinition :one
+UPDATE fabric_chaincode_definitions
+SET version = ?, sequence = ?, docker_image = ?, endorsement_policy = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteChaincodeDefinition :exec
+DELETE FROM fabric_chaincode_definitions WHERE id = ?;
+
+-- name: SetPeerStatus :one
+INSERT INTO fabric_chaincode_definition_peer_status (definition_id, peer_id, status)
+VALUES (?, ?, ?)
+ON CONFLICT(definition_id, peer_id) DO UPDATE SET status = excluded.status, last_updated = CURRENT_TIMESTAMP
+RETURNING *;
+
+-- name: ListPeerStatuses :many
+SELECT * FROM fabric_chaincode_definition_peer_status WHERE definition_id = ?;

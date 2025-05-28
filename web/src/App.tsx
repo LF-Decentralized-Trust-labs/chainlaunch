@@ -58,6 +58,9 @@ import AccountPage from './pages/account'
 import AuditLogsPage from '@/pages/settings/audit-logs'
 import AuditLogDetailPage from '@/pages/settings/audit-logs/[id]'
 import AnalyticsPage from './pages/platform/analytics'
+import FabricChaincodesPage from './pages/smart-contracts/fabric'
+import BesuContractsPage from './pages/smart-contracts/besu'
+import FabricChaincodeDefinitionDetail from './pages/smart-contracts/fabric/definition'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -90,6 +93,8 @@ const App = () => {
 														<Route path="account" element={<AccountPage />} />
 														<Route path="nodes" element={<NodesPage />} />
 														<Route path="smart-contracts" element={<SmartContractsPage />} />
+														<Route path="smart-contracts/fabric" element={<FabricChaincodesPage />} />
+														<Route path="smart-contracts/besu" element={<BesuContractsPage />} />
 														<Route path="monitoring" element={<MonitoringPage />} />
 														<Route path="monitoring/providers/new" element={<CreateProviderPage />} />
 														<Route path="monitoring/providers/:id" element={<UpdateProviderPage />} />
@@ -132,6 +137,7 @@ const App = () => {
 														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
 														<Route path="platform/analytics" element={<AnalyticsPage />} />
+														<Route path="smart-contracts/fabric/definition" element={<FabricChaincodeDefinitionDetail />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

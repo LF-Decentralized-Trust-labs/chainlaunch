@@ -74,16 +74,28 @@ type BlockchainPlatform struct {
 }
 
 type FabricChaincode struct {
-	ID            int64          `json:"id"`
-	Name          string         `json:"name"`
-	Slug          string         `json:"slug"`
-	PackageID     string         `json:"packageId"`
-	DockerImage   string         `json:"dockerImage"`
-	HostPort      sql.NullString `json:"hostPort"`
-	ContainerPort sql.NullString `json:"containerPort"`
-	Status        string         `json:"status"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
+	ID        int64        `json:"id"`
+	Name      string       `json:"name"`
+	NetworkID int64        `json:"networkId"`
+	CreatedAt sql.NullTime `json:"createdAt"`
+}
+
+type FabricChaincodeDefinition struct {
+	ID                int64          `json:"id"`
+	ChaincodeID       int64          `json:"chaincodeId"`
+	Version           string         `json:"version"`
+	Sequence          int64          `json:"sequence"`
+	DockerImage       string         `json:"dockerImage"`
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
+	CreatedAt         sql.NullTime   `json:"createdAt"`
+}
+
+type FabricChaincodeDefinitionPeerStatus struct {
+	ID           int64        `json:"id"`
+	DefinitionID int64        `json:"definitionId"`
+	PeerID       int64        `json:"peerId"`
+	Status       string       `json:"status"`
+	LastUpdated  sql.NullTime `json:"lastUpdated"`
 }
 
 type FabricOrganization struct {

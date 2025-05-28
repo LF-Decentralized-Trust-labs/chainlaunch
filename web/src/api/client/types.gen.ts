@@ -169,14 +169,19 @@ export type ChainlaunchdeployDeploymentResult = {
     transactionHash?: string;
 };
 
+export type ChainlaunchdeployDockerContainerInfo = {
+    created?: number;
+    id?: string;
+    image?: string;
+    name?: string;
+    ports?: Array<string>;
+    state?: string;
+    status?: string;
+};
+
 export type ChainlaunchdeployFabricApproveRequest = {
     channelID?: string;
-    /**
-     * Serialized CollectionConfigPackage
-     */
-    collectionsConfig?: Array<number>;
     endorsementPolicy?: string;
-    gateway?: ChaincodeGateway;
     initRequired?: boolean;
     name?: string;
     packageID?: string;
@@ -219,6 +224,36 @@ export type ChainlaunchdeployFabricChaincodeCommitParams = {
     version?: string;
 };
 
+export type ChainlaunchdeployFabricChaincodeDetail = {
+    chaincode?: DbFabricChaincode;
+    dockerInfo?: ChainlaunchdeployDockerContainerInfo;
+};
+
+export type ChainlaunchdeployFabricChaincodeDockerDeployRequest = {
+    /**
+     * optional, defaults to 7052
+     */
+    container_port?: number;
+    docker_image: string;
+    /**
+     * optional, if 0 a free port is chosen
+     */
+    host_port?: number;
+    name: string;
+    package_id: string;
+    /**
+     * optional, for updates
+     */
+    slug?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeDockerDeployResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    slug?: string;
+    status?: string;
+};
+
 export type ChainlaunchdeployFabricChaincodeInstallParams = {
     /**
      * Chaincode label
@@ -233,12 +268,7 @@ export type ChainlaunchdeployFabricChaincodeInstallParams = {
 
 export type ChainlaunchdeployFabricCommitRequest = {
     channelID?: string;
-    /**
-     * Serialized CollectionConfigPackage
-     */
-    collectionsConfig?: Array<number>;
     endorsementPolicy?: string;
-    gateway?: ChaincodeGateway;
     initRequired?: boolean;
     name?: string;
     sequence?: number;
@@ -264,21 +294,22 @@ export type ChainlaunchdeployFabricDeployResponse = {
 };
 
 export type ChainlaunchdeployFabricInstallRequest = {
-    /**
-     * Chaincode label
-     */
-    label?: string;
-    /**
-     * Chaincode package bytes
-     */
-    packageBytes?: Array<number>;
-    peer?: ChaincodePeer;
+    label: string;
+    package_bytes: Array<number>;
 };
 
 export type ChainlaunchdeployFabricInstallResponse = {
     message?: string;
     result?: ChainlaunchdeployDeploymentResult;
     status?: string;
+};
+
+export type ChainlaunchdeployListFabricChaincodesDetailsResponse = {
+    chaincodes?: Array<ChainlaunchdeployFabricChaincodeDetail>;
+};
+
+export type ChainlaunchdeployListFabricChaincodesResponse = {
+    chaincodes?: Array<DbFabricChaincode>;
 };
 
 export type CommonQueryResult = {
@@ -299,6 +330,19 @@ export type CommonQueryResult = {
         resultType?: string;
     };
     status?: string;
+};
+
+export type DbFabricChaincode = {
+    containerPort?: SqlNullInt64;
+    createdAt?: string;
+    dockerImage?: string;
+    hostPort?: SqlNullInt64;
+    id?: number;
+    name?: string;
+    packageId?: string;
+    slug?: string;
+    status?: string;
+    updatedAt?: string;
 };
 
 export type GithubComChainlaunchChainlaunchPkgMetricsCommonStatus = {
@@ -1466,6 +1510,14 @@ export type ServiceSettingConfig = {
     besuTemplateCMD?: string;
     ordererTemplateCMD?: string;
     peerTemplateCMD?: string;
+};
+
+export type SqlNullInt64 = {
+    int64?: number;
+    /**
+     * Valid is true if Int64 is not NULL
+     */
+    valid?: boolean;
 };
 
 export type TimeDuration = -9223372036854776000 | 9223372036854776000 | 1 | 1000 | 1000000 | 1000000000 | 60000000000 | 3600000000000;
@@ -6337,6 +6389,65 @@ export type PostScBesuDeployResponses = {
 
 export type PostScBesuDeployResponse = PostScBesuDeployResponses[keyof PostScBesuDeployResponses];
 
+export type GetScFabricChaincodesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes';
+};
+
+export type GetScFabricChaincodesErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesError = GetScFabricChaincodesErrors[keyof GetScFabricChaincodesErrors];
+
+export type GetScFabricChaincodesResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployListFabricChaincodesDetailsResponse;
+};
+
+export type GetScFabricChaincodesResponse = GetScFabricChaincodesResponses[keyof GetScFabricChaincodesResponses];
+
+export type GetScFabricChaincodesBySlugData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode slug
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/sc/fabric/chaincodes/{slug}';
+};
+
+export type GetScFabricChaincodesBySlugErrors = {
+    /**
+     * Not Found
+     */
+    404: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesBySlugError = GetScFabricChaincodesBySlugErrors[keyof GetScFabricChaincodesBySlugErrors];
+
+export type GetScFabricChaincodesBySlugResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricChaincodeDetail;
+};
+
+export type GetScFabricChaincodesBySlugResponse = GetScFabricChaincodesBySlugResponses[keyof GetScFabricChaincodesBySlugResponses];
+
 export type PostScFabricDeployData = {
     /**
      * Fabric chaincode deployment parameters
@@ -6368,6 +6479,38 @@ export type PostScFabricDeployResponses = {
 };
 
 export type PostScFabricDeployResponse = PostScFabricDeployResponses[keyof PostScFabricDeployResponses];
+
+export type PostScFabricDockerDeployData = {
+    /**
+     * Fabric chaincode Docker deployment parameters (host_port: optional, container_port: optional, defaults to 7052)
+     */
+    body: ChainlaunchdeployFabricChaincodeDockerDeployRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/docker-deploy';
+};
+
+export type PostScFabricDockerDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDockerDeployError = PostScFabricDockerDeployErrors[keyof PostScFabricDockerDeployErrors];
+
+export type PostScFabricDockerDeployResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricChaincodeDockerDeployResponse;
+};
+
+export type PostScFabricDockerDeployResponse = PostScFabricDockerDeployResponses[keyof PostScFabricDockerDeployResponses];
 
 export type PostScFabricPeerByPeerIdChaincodeApproveData = {
     /**

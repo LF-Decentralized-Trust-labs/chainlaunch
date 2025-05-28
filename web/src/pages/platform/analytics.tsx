@@ -1,5 +1,5 @@
 import { getMetricsStatusOptions, getNodesOptions, postMetricsDeployMutation } from '@/api/client/@tanstack/react-query.gen'
-import { HttpNodeResponse, MetricsDeployPrometheusRequest } from '@/api/client/types.gen'
+import { HttpNodeResponse, TypesDeployPrometheusRequest } from '@/api/client/types.gen'
 import { BesuIcon } from '@/components/icons/besu-icon'
 import { FabricIcon } from '@/components/icons/fabric-icon'
 import { Button } from '@/components/ui/button'
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
 	})
 
 	const onSubmit = (data: PrometheusSetupForm) => {
-		const request: MetricsDeployPrometheusRequest = {
+		const request: TypesDeployPrometheusRequest = {
 			prometheus_port: data.prometheus_port,
 			prometheus_version: data.prometheus_version,
 			scrape_interval: data.scrape_interval,

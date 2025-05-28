@@ -277,6 +277,55 @@ definitions:
       status:
         type: string
     type: object
+  chainlaunchdeploy.Chaincode:
+    properties:
+      createdAt:
+        description: ISO8601
+        type: string
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinition'
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      networkID:
+        type: integer
+    type: object
+  chainlaunchdeploy.ChaincodeDefinition:
+    properties:
+      chaincodeID:
+        type: integer
+      createdAt:
+        description: ISO8601
+        type: string
+      dockerImage:
+        type: string
+      endorsementPolicy:
+        type: string
+      id:
+        type: integer
+      peerStatuses:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.PeerStatus'
+        type: array
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.ChaincodeResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      network_id:
+        type: integer
+    type: object
   chainlaunchdeploy.DeploymentResult:
     properties:
       chaincodeID:
@@ -292,6 +341,25 @@ definitions:
         type: boolean
       transactionHash:
         description: For EVM
+        type: string
+    type: object
+  chainlaunchdeploy.DockerContainerInfo:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      state:
+        type: string
+      status:
         type: string
     type: object
   chainlaunchdeploy.FabricApproveRequest:
@@ -366,16 +434,23 @@ definitions:
       version:
         type: string
     type: object
+  chainlaunchdeploy.FabricChaincodeDetail:
+    properties:
+      chaincode:
+        $ref: '#/definitions/chainlaunchdeploy.Chaincode'
+      dockerInfo:
+        $ref: '#/definitions/chainlaunchdeploy.DockerContainerInfo'
+    type: object
   chainlaunchdeploy.FabricChaincodeDockerDeployRequest:
     properties:
       container_port:
         description: optional, defaults to 7052
-        type: string
+        type: integer
       docker_image:
         type: string
       host_port:
-        description: optional, if empty a free port is chosen
-        type: string
+        description: optional, if 0 a free port is chosen
+        type: integer
       name:
         type: string
       package_id:
@@ -475,12 +550,33 @@ definitions:
       status:
         type: string
     type: object
-  chainlaunchdeploy.ListFabricChaincodesResponse:
+  chainlaunchdeploy.ListChaincodesResponse:
     properties:
       chaincodes:
         items:
-          $ref: '#/definitions/db.FabricChaincode'
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
         type: array
+    type: object
+  chainlaunchdeploy.ListFabricChaincodesDetailsResponse:
+    properties:
+      chaincodes:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDetail'
+        type: array
+    type: object
+  chainlaunchdeploy.PeerStatus:
+    properties:
+      definitionID:
+        type: integer
+      id:
+        type: integer
+      lastUpdated:
+        description: ISO8601
+        type: string
+      peerID:
+        type: integer
+      status:
+        type: string
     type: object
   common.QueryResult:
     properties:
@@ -509,29 +605,6 @@ definitions:
             type: string
         type: object
       status:
-        type: string
-    type: object
-  db.FabricChaincode:
-    properties:
-      containerPort:
-        $ref: '#/definitions/sql.NullString'
-      createdAt:
-        type: string
-      dockerImage:
-        type: string
-      hostPort:
-        $ref: '#/definitions/sql.NullString'
-      id:
-        type: integer
-      name:
-        type: string
-      packageId:
-        type: string
-      slug:
-        type: string
-      status:
-        type: string
-      updatedAt:
         type: string
     type: object
   github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status:
@@ -2543,14 +2616,6 @@ definitions:
         type: string
       peerTemplateCMD:
         type: string
-    type: object
-  sql.NullString:
-    properties:
-      string:
-        type: string
-      valid:
-        description: Valid is true if String is not NULL
-        type: boolean
     type: object
   time.Duration:
     enum:
@@ -7109,19 +7174,50 @@ paths:
     get:
       consumes:
       - application/json
-      description: List all Fabric chaincodes deployed via Docker
+      description: List all Fabric chaincodes deployed via Docker, including container
+        status and runtime details
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chainlaunchdeploy.ListFabricChaincodesResponse'
+            $ref: '#/definitions/chainlaunchdeploy.ListFabricChaincodesDetailsResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.Response'
-      summary: List deployed Fabric chaincodes
+      summary: List deployed Fabric chaincodes with Docker/runtime info
+      tags:
+      - SmartContracts
+  /sc/fabric/chaincodes/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific Fabric chaincode and its Docker/runtime info by
+        slug
+      parameters:
+      - description: Chaincode slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get Fabric chaincode details by slug
       tags:
       - SmartContracts
   /sc/fabric/deploy:

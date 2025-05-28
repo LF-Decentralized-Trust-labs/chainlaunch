@@ -6084,7 +6084,7 @@
         },
         "/sc/fabric/chaincodes": {
             "get": {
-                "description": "List all Fabric chaincodes deployed via Docker",
+                "description": "List all Fabric chaincodes deployed via Docker, including container status and runtime details",
                 "consumes": [
                     "application/json"
                 ],
@@ -6094,12 +6094,56 @@
                 "tags": [
                     "SmartContracts"
                 ],
-                "summary": "List deployed Fabric chaincodes",
+                "summary": "List deployed Fabric chaincodes with Docker/runtime info",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.ListFabricChaincodesResponse"
+                            "$ref": "#/definitions/chainlaunchdeploy.ListFabricChaincodesDetailsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/chaincodes/{slug}": {
+            "get": {
+                "description": "Get a specific Fabric chaincode and its Docker/runtime info by slug",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SmartContracts"
+                ],
+                "summary": "Get Fabric chaincode details by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chaincode slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
@@ -7225,6 +7269,80 @@
                 }
             }
         },
+        "chainlaunchdeploy.Chaincode": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "ISO8601",
+                    "type": "string"
+                },
+                "definitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinition"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "networkID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "chainlaunchdeploy.ChaincodeDefinition": {
+            "type": "object",
+            "properties": {
+                "chaincodeID": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "description": "ISO8601",
+                    "type": "string"
+                },
+                "dockerImage": {
+                    "type": "string"
+                },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "peerStatuses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chainlaunchdeploy.PeerStatus"
+                    }
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.ChaincodeResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "chainlaunchdeploy.DeploymentResult": {
             "type": "object",
             "properties": {
@@ -7245,6 +7363,35 @@
                 },
                 "transactionHash": {
                     "description": "For EVM",
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.DockerContainerInfo": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -7358,6 +7505,17 @@
                 }
             }
         },
+        "chainlaunchdeploy.FabricChaincodeDetail": {
+            "type": "object",
+            "properties": {
+                "chaincode": {
+                    "$ref": "#/definitions/chainlaunchdeploy.Chaincode"
+                },
+                "dockerInfo": {
+                    "$ref": "#/definitions/chainlaunchdeploy.DockerContainerInfo"
+                }
+            }
+        },
         "chainlaunchdeploy.FabricChaincodeDockerDeployRequest": {
             "type": "object",
             "required": [
@@ -7368,14 +7526,14 @@
             "properties": {
                 "container_port": {
                     "description": "optional, defaults to 7052",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "docker_image": {
                     "type": "string"
                 },
                 "host_port": {
-                    "description": "optional, if empty a free port is chosen",
-                    "type": "string"
+                    "description": "optional, if 0 a free port is chosen",
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -7522,14 +7680,46 @@
                 }
             }
         },
-        "chainlaunchdeploy.ListFabricChaincodesResponse": {
+        "chainlaunchdeploy.ListChaincodesResponse": {
             "type": "object",
             "properties": {
                 "chaincodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/db.FabricChaincode"
+                        "$ref": "#/definitions/chainlaunchdeploy.ChaincodeResponse"
                     }
+                }
+            }
+        },
+        "chainlaunchdeploy.ListFabricChaincodesDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "chaincodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeDetail"
+                    }
+                }
+            }
+        },
+        "chainlaunchdeploy.PeerStatus": {
+            "type": "object",
+            "properties": {
+                "definitionID": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastUpdated": {
+                    "description": "ISO8601",
+                    "type": "string"
+                },
+                "peerID": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -7572,41 +7762,6 @@
                     }
                 },
                 "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "db.FabricChaincode": {
-            "type": "object",
-            "properties": {
-                "containerPort": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "dockerImage": {
-                    "type": "string"
-                },
-                "hostPort": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "packageId": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -10471,18 +10626,6 @@
                 },
                 "peerTemplateCMD": {
                     "type": "string"
-                }
-            }
-        },
-        "sql.NullString": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
                 }
             }
         },

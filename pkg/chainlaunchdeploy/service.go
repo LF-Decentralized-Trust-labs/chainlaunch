@@ -1,12 +1,19 @@
 package chainlaunchdeploy
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
+	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -43,10 +50,11 @@ type PeerStatus struct {
 type ChaincodeService struct {
 	db           *db.Queries
 	nodesService *service.NodeService
+	logger       *logger.Logger
 }
 
-func NewChaincodeService(dbq *db.Queries) *ChaincodeService {
-	return &ChaincodeService{db: dbq}
+func NewChaincodeService(dbq *db.Queries, logger *logger.Logger) *ChaincodeService {
+	return &ChaincodeService{db: dbq, logger: logger}
 }
 
 // --- Chaincode CRUD ---
@@ -353,20 +361,230 @@ func (s *ChaincodeService) InstallChaincodeByDefinition(ctx context.Context, def
 	// 	return err
 	// }
 	// peer.ChaincodeID = definitionID
+	definition, err := s.GetChaincodeDefinition(ctx, definitionID)
+	if err != nil {
+		return err
+	}
+	label := definition.DockerImage
+	chaincodeAddress := fmt.Sprintf("localhost:%d", 17056)
+	codeTarGz, err := s.getCodeTarGz(chaincodeAddress, "", "", "", "")
+	if err != nil {
+		return err
+	}
+	pkg, err := s.getChaincodePackage(label, codeTarGz)
+	if err != nil {
+		return err
+	}
 	for _, peerID := range peerIDs {
-		peerService, err := s.nodesService.GetFabricPeerService(ctx, peer)
+		peerService, err := s.nodesService.GetFabricPeerService(ctx, peerID)
 		if err != nil {
 			return err
 		}
-		peerService.Install(ctx, io.Reader)
+		res, err := peerService.Install(ctx, bytes.NewReader(pkg))
+		if err != nil {
+			return err
+		}
+		s.logger.Debugf("Install result: %+v", res)
 	}
 
 	return nil
 }
 
+func (s *ChaincodeService) getCodeTarGz(
+	address string,
+	rootCert string,
+	clientKey string,
+	clientCert string,
+	metaInfPath string,
+) ([]byte, error) {
+	var err error
+	// Determine if TLS is required based on certificate presence
+	tlsRequired := rootCert != ""
+	clientAuthRequired := clientCert != "" && clientKey != ""
+
+	// Read certificate files if provided
+	var rootCertContent, clientKeyContent, clientCertContent string
+	if tlsRequired {
+		rootCertBytes, err := os.ReadFile(rootCert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read root certificate: %w", err)
+		}
+		rootCertContent = string(rootCertBytes)
+	}
+
+	if clientAuthRequired {
+		clientKeyBytes, err := os.ReadFile(clientKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client key: %w", err)
+		}
+		clientKeyContent = string(clientKeyBytes)
+
+		clientCertBytes, err := os.ReadFile(clientCert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read client certificate: %w", err)
+		}
+		clientCertContent = string(clientCertBytes)
+	}
+
+	connMap := map[string]interface{}{
+		"address":              address,
+		"dial_timeout":         "10s",
+		"tls_required":         tlsRequired,
+		"root_cert":            rootCertContent,
+		"client_auth_required": clientAuthRequired,
+		"client_key":           clientKeyContent,
+		"client_cert":          clientCertContent,
+	}
+	connJsonBytes, err := json.Marshal(connMap)
+	if err != nil {
+		return nil, err
+	}
+	s.logger.Debugf("Conn=%s", string(connJsonBytes))
+	// set up the output file
+	buf := &bytes.Buffer{}
+	// set up the gzip writer
+	gw := gzip.NewWriter(buf)
+	tw := tar.NewWriter(gw)
+	header := new(tar.Header)
+	header.Name = "connection.json"
+	header.Size = int64(len(connJsonBytes))
+	header.Mode = 0755
+	err = tw.WriteHeader(header)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(connJsonBytes)
+	_, err = io.Copy(tw, r)
+	if err != nil {
+		return nil, err
+	}
+	if metaInfPath != "" {
+		src := metaInfPath
+		// walk through 3 file in the folder
+		err = filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+			// generate tar header
+			header, err := tar.FileInfoHeader(fi, file)
+			if err != nil {
+				return err
+			}
+
+			// must provide real name
+			// (see https://golang.org/src/archive/tar/common.go?#L626)
+			relname, err := filepath.Rel(src, file)
+			if err != nil {
+				return err
+			}
+			if relname == "." {
+				return nil
+			}
+			header.Name = "META-INF/" + filepath.ToSlash(relname)
+
+			// write header
+			if err := tw.WriteHeader(header); err != nil {
+				return err
+			}
+			// if not a dir, write file content
+			if !fi.IsDir() {
+				data, err := os.Open(file)
+				if err != nil {
+					return err
+				}
+				if _, err := io.Copy(tw, data); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = tw.Close()
+	if err != nil {
+		return nil, err
+	}
+	err = gw.Close()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (s *ChaincodeService) getChaincodePackage(label string, codeTarGz []byte) ([]byte, error) {
+	var err error
+	metadataJson := fmt.Sprintf(`
+{
+  "type": "ccaas",
+  "label": "%s"
+}
+`, label)
+	// set up the output file
+	buf := &bytes.Buffer{}
+
+	// set up the gzip writer
+	gw := gzip.NewWriter(buf)
+	defer func(gw *gzip.Writer) {
+		err := gw.Close()
+		if err != nil {
+			s.logger.Warnf("gzip.Writer.Close() failed: %s", err)
+		}
+	}(gw)
+	tw := tar.NewWriter(gw)
+	defer func(tw *tar.Writer) {
+		err := tw.Close()
+		if err != nil {
+			s.logger.Warnf("tar.Writer.Close() failed: %s", err)
+		}
+	}(tw)
+	header := new(tar.Header)
+	header.Name = "metadata.json"
+	metadataJsonBytes := []byte(metadataJson)
+	header.Size = int64(len(metadataJsonBytes))
+	header.Mode = 0777
+	err = tw.WriteHeader(header)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(metadataJsonBytes)
+	_, err = io.Copy(tw, r)
+	if err != nil {
+		return nil, err
+	}
+	headerCode := new(tar.Header)
+	headerCode.Name = "code.tar.gz"
+	headerCode.Size = int64(len(codeTarGz))
+	headerCode.Mode = 0777
+	err = tw.WriteHeader(headerCode)
+	if err != nil {
+		return nil, err
+	}
+	r = bytes.NewReader(codeTarGz)
+	_, err = io.Copy(tw, r)
+	if err != nil {
+		return nil, err
+	}
+	err = tw.Close()
+	if err != nil {
+		return nil, err
+	}
+	err = gw.Close()
+	if err != nil {
+		s.logger.Warnf("gzip.Writer.Close() failed: %s", err)
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // ApproveChaincodeByDefinition approves a chaincode definition using the given peer
 func (s *ChaincodeService) ApproveChaincodeByDefinition(ctx context.Context, definitionID int64, peerID int64) error {
-	// TODO: Implement actual Fabric approve logic for the given definition and peer using fabric-admin-sdk
+	peerGateway, err := s.nodesService.GetFabricPeerGateway(ctx, peerID)
+	if err != nil {
+		return err
+	}
+	res, err := peerGateway.Approve(ctx, bytes.NewReader(pkg))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

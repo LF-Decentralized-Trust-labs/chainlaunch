@@ -59,9 +59,7 @@ const actionColors: Record<LifecycleAction, string> = {
 
 function DefinitionTimeline({ definitionId }: { definitionId: number }) {
 	const [expanded, setExpanded] = useState(false)
-	const { data, isLoading, error } = useQuery(
-		getScFabricDefinitionsByDefinitionIdTimelineOptions({ path: { definitionId } })
-	)
+	const { data, isLoading, error } = useQuery(getScFabricDefinitionsByDefinitionIdTimelineOptions({ path: { definitionId } }))
 
 	const sortedData = data?.slice()?.sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime()) || []
 	const visibleData = expanded ? sortedData : sortedData.slice(0, 5)
@@ -82,11 +80,7 @@ function DefinitionTimeline({ definitionId }: { definitionId: number }) {
 					<div key={event.id} className="flex items-start gap-2 text-sm py-1">
 						{/* Result icon */}
 						<div className="flex items-center justify-center min-w-[24px]">
-							{result === 'success' ? (
-								<Check className="text-green-600 w-4 h-4" />
-							) : result === 'failure' ? (
-								<XIcon className="text-red-600 w-4 h-4" />
-							) : null}
+							{result === 'success' ? <Check className="text-green-600 w-4 h-4" /> : result === 'failure' ? <XIcon className="text-red-600 w-4 h-4" /> : null}
 						</div>
 						<div className={`px-2 py-1 rounded ${actionColors[event.event_type as LifecycleAction] || 'bg-gray-100 text-gray-800'} min-w-[70px] text-center`} style={{ flexShrink: 0 }}>
 							{actionLabels[event.event_type as LifecycleAction] || event.event_type}
@@ -104,12 +98,7 @@ function DefinitionTimeline({ definitionId }: { definitionId: number }) {
 			{error && <div className="text-sm text-red-500">Failed to load timeline</div>}
 			{sortedData.length === 0 && !isLoading && <div className="text-sm text-muted-foreground">No events yet</div>}
 			{sortedData.length > 5 && (
-				<Button
-					variant="ghost"
-					size="sm"
-					className="w-full mt-2"
-					onClick={() => setExpanded((v) => !v)}
-				>
+				<Button variant="ghost" size="sm" className="w-full mt-2" onClick={() => setExpanded((v) => !v)}>
 					{expanded ? 'Show Less' : 'Show More'}
 				</Button>
 			)}
@@ -164,8 +153,8 @@ export default function FabricChaincodeDefinitionDetail() {
 		enabled: !!networkId,
 	})
 
-	const availablePeers = networkNodesResponse?.nodes?.filter((node) => node.node?.nodeType === 'FABRIC_PEER' && node.status === 'joined') || []
-
+	const availablePeers = useMemo(() => networkNodesResponse?.nodes?.filter((node) => node.node?.nodeType === 'FABRIC_PEER' && node.status === 'joined') || [], [networkNodesResponse?.nodes])
+	
 	const form = useForm<VersionFormValues>({
 		resolver: zodResolver(versionFormSchema),
 		defaultValues: {
@@ -400,7 +389,6 @@ export default function FabricChaincodeDefinitionDetail() {
 			enabled: !!v.id,
 		}))
 	}, [versions])
-
 
 	const refreshTimeline = (definitionId: number) => {
 		queryClient.invalidateQueries({
@@ -706,45 +694,35 @@ export default function FabricChaincodeDefinitionDetail() {
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle>Install Chaincode</DialogTitle>
-						<DialogDescription>
-							Select the peers where you want to install the chaincode.
-						</DialogDescription>
+						<DialogDescription>Select the peers where you want to install the chaincode.</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
 						{availablePeers.map((peer) => (
-							<div key={peer.id} className="flex items-center space-x-2">
+							<div key={peer.nodeId} className="flex items-center space-x-2">
 								<Checkbox
-									id={`peer-${peer.id}`}
-									checked={selectedPeers.has(peer.id!.toString())}
+									id={`peer-${peer.nodeId}`}
+									checked={selectedPeers.has(peer.nodeId!.toString())}
 									onCheckedChange={(checked) => {
 										setSelectedPeers((prev) => {
 											const next = new Set(prev)
 											if (checked) {
-												next.add(peer.id!.toString())
+												next.add(peer.nodeId!.toString())
 											} else {
-												next.delete(peer.id!.toString())
+												next.delete(peer.nodeId!.toString())
 											}
 											return next
 										})
 									}}
 								/>
-								<label
-									htmlFor={`peer-${peer.id}`}
-									className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-								>
+								<label htmlFor={`peer-${peer.nodeId}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 									{peer.node?.name} ({peer.node?.fabricPeer?.mspId})
 								</label>
 							</div>
 						))}
 					</div>
-					{installError && (
-						<div className="text-red-500 text-sm mt-2 break-words max-w-full">{installError}</div>
-					)}
+					{installError && <div className="text-red-500 text-sm mt-2 break-words max-w-full">{installError}</div>}
 					<DialogFooter>
-						<Button
-							onClick={handleInstall}
-							disabled={selectedPeers.size === 0 || installMutation.isPending}
-						>
+						<Button onClick={handleInstall} disabled={selectedPeers.size === 0 || installMutation.isPending}>
 							{installMutation.isPending ? 'Installing...' : 'Install'}
 						</Button>
 					</DialogFooter>
@@ -754,32 +732,25 @@ export default function FabricChaincodeDefinitionDetail() {
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle>Approve Chaincode</DialogTitle>
-						<DialogDescription>
-							Select the peer to approve the chaincode.
-						</DialogDescription>
+						<DialogDescription>Select the peer to approve the chaincode.</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
 						{availablePeers.map((peer) => (
-							<div key={peer.id} className="flex items-center space-x-2">
+							<div key={peer.nodeId} className="flex items-center space-x-2">
 								<Checkbox
-									id={`peer-${peer.id}`}
-									checked={selectedPeerId === peer.id!.toString()}
+									id={`peer-${peer.nodeId}`}
+									checked={selectedPeerId === peer.nodeId!.toString()}
 									onCheckedChange={(checked) => {
-										setSelectedPeerId(checked ? peer.id!.toString() : null)
+										setSelectedPeerId(checked ? peer.nodeId!.toString() : null)
 									}}
 								/>
-								<label
-									htmlFor={`peer-${peer.id}`}
-									className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-								>
+								<label htmlFor={`peer-${peer.nodeId}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 									{peer.node?.name} ({peer.node?.fabricPeer?.mspId})
 								</label>
 							</div>
 						))}
 					</div>
-					{approveError && (
-						<div className="text-red-500 text-sm mt-2 break-words max-w-full">{approveError}</div>
-					)}
+					{approveError && <div className="text-red-500 text-sm mt-2 break-words max-w-full">{approveError}</div>}
 					<DialogFooter>
 						<Button
 							onClick={() => {
@@ -798,32 +769,25 @@ export default function FabricChaincodeDefinitionDetail() {
 				<DialogContent className="max-w-lg">
 					<DialogHeader>
 						<DialogTitle>Commit Chaincode</DialogTitle>
-						<DialogDescription>
-							Select the peer to commit the chaincode.
-						</DialogDescription>
+						<DialogDescription>Select the peer to commit the chaincode.</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
 						{availablePeers.map((peer) => (
-							<div key={peer.id} className="flex items-center space-x-2">
+							<div key={peer.nodeId} className="flex items-center space-x-2">
 								<Checkbox
-									id={`peer-${peer.id}`}
-									checked={selectedPeerId === peer.id!.toString()}
+									id={`peer-${peer.nodeId}`}
+									checked={selectedPeerId === peer.nodeId!.toString()}
 									onCheckedChange={(checked) => {
-										setSelectedPeerId(checked ? peer.id!.toString() : null)
+										setSelectedPeerId(checked ? peer.nodeId!.toString() : null)
 									}}
 								/>
-								<label
-									htmlFor={`peer-${peer.id}`}
-									className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-								>
+								<label htmlFor={`peer-${peer.nodeId}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 									{peer.node?.name} ({peer.node?.fabricPeer?.mspId})
 								</label>
 							</div>
 						))}
 					</div>
-					{commitError && (
-						<div className="text-red-500 text-sm mt-2 break-words max-w-full">{commitError}</div>
-					)}
+					{commitError && <div className="text-red-500 text-sm mt-2 break-words max-w-full">{commitError}</div>}
 					<DialogFooter>
 						<Button
 							onClick={() => {

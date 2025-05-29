@@ -4,4 +4,4 @@ CREATE TABLE IF NOT EXISTS fabric_chaincodes (
   network_id INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX idx_fabric_chaincodes_network_id ON fabric_chaincodes(network_id);
+CREATE UNIQUE INDEX idx_fabric_chaincodes_name_network_id ON fabric_chaincodes(name, network_id);

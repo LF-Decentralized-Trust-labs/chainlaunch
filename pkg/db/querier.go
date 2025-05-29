@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AddChaincodeDefinitionEvent(ctx context.Context, arg *AddChaincodeDefinitionEventParams) error
 	AddRevokedCertificate(ctx context.Context, arg *AddRevokedCertificateParams) error
 	CheckNetworkNodeExists(ctx context.Context, arg *CheckNetworkNodeExistsParams) (int64, error)
 	CountAuditLogs(ctx context.Context, arg *CountAuditLogsParams) (int64, error)
@@ -73,7 +74,7 @@ type Querier interface {
 	GetBackupsByDateRange(ctx context.Context, arg *GetBackupsByDateRangeParams) ([]*Backup, error)
 	GetBackupsByScheduleAndStatus(ctx context.Context, arg *GetBackupsByScheduleAndStatusParams) ([]*Backup, error)
 	GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error)
-	GetChaincode(ctx context.Context, id int64) (*FabricChaincode, error)
+	GetChaincode(ctx context.Context, id int64) (*GetChaincodeRow, error)
 	GetChaincodeDefinition(ctx context.Context, id int64) (*FabricChaincodeDefinition, error)
 	GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error)
 	GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error)
@@ -128,6 +129,7 @@ type Querier interface {
 	ListBackups(ctx context.Context, arg *ListBackupsParams) ([]*Backup, error)
 	ListBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) ([]*Backup, error)
 	ListBackupsByTarget(ctx context.Context, targetID int64) ([]*Backup, error)
+	ListChaincodeDefinitionEvents(ctx context.Context, definitionID int64) ([]*FabricChaincodeDefinitionEvent, error)
 	ListChaincodeDefinitions(ctx context.Context, chaincodeID int64) ([]*FabricChaincodeDefinition, error)
 	ListChaincodes(ctx context.Context) ([]*FabricChaincode, error)
 	ListFabricChaincodes(ctx context.Context) ([]*FabricChaincode, error)

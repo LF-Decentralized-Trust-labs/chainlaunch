@@ -109,24 +109,22 @@ func (r *FabricTestnetRunner) Run() error {
 	orgIDs := map[string]int64{}
 	orgNamesWithUUID := map[string]string{}
 	for _, org := range r.Config.PeerOrgs {
-		suffixedOrg := fmt.Sprintf("%s-%s", org, generateShortUUID())
-		orgReq := fabrictypes.CreateOrganizationRequest{Name: suffixedOrg, MspID: org, ProviderID: 1}
+		orgReq := fabrictypes.CreateOrganizationRequest{Name: org, MspID: org, ProviderID: 1}
 		resp, err := client.CreateOrganization(orgReq)
 		if err != nil {
 			return fmt.Errorf("failed to create peer org %s: %w", org, err)
 		}
 		orgIDs[org] = resp.ID
-		orgNamesWithUUID[org] = suffixedOrg
+		orgNamesWithUUID[org] = org
 	}
 	for _, org := range r.Config.OrdererOrgs {
-		suffixedOrg := fmt.Sprintf("%s-%s", org, generateShortUUID())
-		orgReq := fabrictypes.CreateOrganizationRequest{Name: suffixedOrg, MspID: org, ProviderID: 1}
+		orgReq := fabrictypes.CreateOrganizationRequest{Name: org, MspID: org, ProviderID: 1}
 		resp, err := client.CreateOrganization(orgReq)
 		if err != nil {
 			return fmt.Errorf("failed to create orderer org %s: %w", org, err)
 		}
 		orgIDs[org] = resp.ID
-		orgNamesWithUUID[org] = suffixedOrg
+		orgNamesWithUUID[org] = org
 	}
 
 	// 2. Create nodes for each org using common helpers

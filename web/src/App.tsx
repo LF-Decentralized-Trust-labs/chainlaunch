@@ -137,7 +137,7 @@ const App = () => {
 														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
 														<Route path="platform/analytics" element={<AnalyticsPage />} />
-														<Route path="smart-contracts/fabric/definition" element={<FabricChaincodeDefinitionDetail />} />
+														<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

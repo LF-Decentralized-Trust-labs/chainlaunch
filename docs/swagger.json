@@ -6084,7 +6084,7 @@
         },
         "/sc/fabric/chaincodes": {
             "get": {
-                "description": "List all Fabric chaincodes deployed via Docker, including container status and runtime details",
+                "description": "List all Fabric chaincodes deployed via Docker",
                 "consumes": [
                     "application/json"
                 ],
@@ -6094,12 +6094,56 @@
                 "tags": [
                     "SmartContracts"
                 ],
-                "summary": "List deployed Fabric chaincodes with Docker/runtime info",
+                "summary": "List deployed Fabric chaincodes",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/chainlaunchdeploy.ListFabricChaincodesDetailsResponse"
+                            "$ref": "#/definitions/chainlaunchdeploy.ListChaincodesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new chaincode",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Create a chaincode",
+                "parameters": [
+                    {
+                        "description": "Chaincode info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.CreateChaincodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.CreateChaincodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
@@ -6111,9 +6155,97 @@
                 }
             }
         },
-        "/sc/fabric/chaincodes/{slug}": {
+        "/sc/fabric/chaincodes/{chaincodeId}/definitions": {
             "get": {
-                "description": "Get a specific Fabric chaincode and its Docker/runtime info by slug",
+                "description": "List all definitions for a given chaincode",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "List chaincode definitions for a chaincode",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode ID",
+                        "name": "chaincodeId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.ListChaincodeDefinitionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new chaincode definition for a chaincode",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Create a chaincode definition",
+                "parameters": [
+                    {
+                        "description": "Chaincode definition info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/chaincodes/{id}": {
+            "get": {
+                "description": "Get a specific Fabric chaincode and its Docker/runtime info by ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -6123,12 +6255,12 @@
                 "tags": [
                     "SmartContracts"
                 ],
-                "summary": "Get Fabric chaincode details by slug",
+                "summary": "Get Fabric chaincode details by ID",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Chaincode slug",
-                        "name": "slug",
+                        "type": "integer",
+                        "description": "Chaincode ID",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -6142,6 +6274,381 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}": {
+            "put": {
+                "description": "Update an existing chaincode definition by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Update a chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Chaincode definition update info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.UpdateChaincodeDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a chaincode definition by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Delete a chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}/approve": {
+            "post": {
+                "description": "Approve chaincode for a given definition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Approve chaincode based on chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Peer ID to use for approval",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.ApproveChaincodeByDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}/commit": {
+            "post": {
+                "description": "Commit chaincode for a given definition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Commit chaincode based on chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Peer ID to use for commit",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.CommitChaincodeByDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}/deploy": {
+            "post": {
+                "description": "Deploy chaincode for a given definition using Docker image",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Deploy chaincode based on chaincode definition (Docker)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Docker deploy params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.DeployChaincodeByDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}/install": {
+            "post": {
+                "description": "Install chaincode on peers for a given definition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Install chaincode based on chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Peer IDs to install on",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chainlaunchdeploy.InstallChaincodeByDefinitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sc/fabric/definitions/{definitionId}/timeline": {
+            "get": {
+                "description": "Get the timeline of install/approve/commit/deploy events for a chaincode definition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode"
+                ],
+                "summary": "Get timeline of events for a chaincode definition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Definition ID",
+                        "name": "definitionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinitionEvent"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -7222,6 +7729,15 @@
         "chaincode.Peer": {
             "type": "object"
         },
+        "chainlaunchdeploy.ApproveChaincodeByDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "peer_id": {
+                    "description": "Peer ID to use for approval\nrequired: true",
+                    "type": "integer"
+                }
+            }
+        },
         "chainlaunchdeploy.BesuDeployRequest": {
             "type": "object",
             "properties": {
@@ -7272,7 +7788,7 @@
         "chainlaunchdeploy.Chaincode": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "description": "ISO8601",
                     "type": "string"
                 },
@@ -7288,35 +7804,93 @@
                 "name": {
                     "type": "string"
                 },
-                "networkID": {
+                "network_id": {
                     "type": "integer"
+                },
+                "network_name": {
+                    "description": "Name of the network",
+                    "type": "string"
+                },
+                "network_platform": {
+                    "description": "Platform/type (fabric/besu/etc)",
+                    "type": "string"
                 }
             }
         },
         "chainlaunchdeploy.ChaincodeDefinition": {
             "type": "object",
             "properties": {
-                "chaincodeID": {
+                "chaincode_address": {
+                    "type": "string"
+                },
+                "chaincode_id": {
                     "type": "integer"
                 },
-                "createdAt": {
+                "created_at": {
                     "description": "ISO8601",
                     "type": "string"
                 },
-                "dockerImage": {
+                "docker_image": {
                     "type": "string"
                 },
-                "endorsementPolicy": {
+                "endorsement_policy": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "peerStatuses": {
+                "peer_statuses": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/chainlaunchdeploy.PeerStatus"
                     }
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.ChaincodeDefinitionEvent": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "definition_id": {
+                    "type": "integer"
+                },
+                "event_data": {},
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "chainlaunchdeploy.ChaincodeDefinitionResponse": {
+            "type": "object",
+            "properties": {
+                "chaincode_address": {
+                    "type": "string"
+                },
+                "chaincode_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "docker_image": {
+                    "type": "string"
+                },
+                "endorsement_policy": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
                 },
                 "sequence": {
                     "type": "integer"
@@ -7340,6 +7914,92 @@
                 },
                 "network_id": {
                     "type": "integer"
+                },
+                "network_name": {
+                    "type": "string"
+                },
+                "network_platform": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.CommitChaincodeByDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "peer_id": {
+                    "description": "Peer ID to use for commit\nrequired: true",
+                    "type": "integer"
+                }
+            }
+        },
+        "chainlaunchdeploy.CreateChaincodeDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "chaincode_address": {
+                    "description": "Chaincode address",
+                    "type": "string"
+                },
+                "chaincode_id": {
+                    "description": "Chaincode ID\nrequired: true",
+                    "type": "integer"
+                },
+                "docker_image": {
+                    "description": "Docker image\nrequired: true",
+                    "type": "string"
+                },
+                "endorsement_policy": {
+                    "description": "Endorsement policy",
+                    "type": "string"
+                },
+                "sequence": {
+                    "description": "Sequence\nrequired: true",
+                    "type": "integer"
+                },
+                "version": {
+                    "description": "Version\nrequired: true",
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.CreateChaincodeDefinitionResponse": {
+            "type": "object",
+            "properties": {
+                "definition": {
+                    "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse"
+                }
+            }
+        },
+        "chainlaunchdeploy.CreateChaincodeRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Name of the chaincode\nrequired: true",
+                    "type": "string"
+                },
+                "network_id": {
+                    "description": "Network ID\nrequired: true",
+                    "type": "integer"
+                }
+            }
+        },
+        "chainlaunchdeploy.CreateChaincodeResponse": {
+            "type": "object",
+            "properties": {
+                "chaincode": {
+                    "$ref": "#/definitions/chainlaunchdeploy.ChaincodeResponse"
+                }
+            }
+        },
+        "chainlaunchdeploy.DeployChaincodeByDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "container_port": {
+                    "description": "Container port to use (optional, default 7052)",
+                    "type": "string"
+                },
+                "host_port": {
+                    "description": "Host port to use (optional)",
+                    "type": "string"
                 }
             }
         },
@@ -7511,7 +8171,13 @@
                 "chaincode": {
                     "$ref": "#/definitions/chainlaunchdeploy.Chaincode"
                 },
-                "dockerInfo": {
+                "definitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinition"
+                    }
+                },
+                "docker_info": {
                     "$ref": "#/definitions/chainlaunchdeploy.DockerContainerInfo"
                 }
             }
@@ -7680,6 +8346,29 @@
                 }
             }
         },
+        "chainlaunchdeploy.InstallChaincodeByDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "peer_ids": {
+                    "description": "Peer IDs to install the chaincode on\nrequired: true",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "chainlaunchdeploy.ListChaincodeDefinitionsResponse": {
+            "type": "object",
+            "properties": {
+                "definitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse"
+                    }
+                }
+            }
+        },
         "chainlaunchdeploy.ListChaincodesResponse": {
             "type": "object",
             "properties": {
@@ -7691,34 +8380,48 @@
                 }
             }
         },
-        "chainlaunchdeploy.ListFabricChaincodesDetailsResponse": {
-            "type": "object",
-            "properties": {
-                "chaincodes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/chainlaunchdeploy.FabricChaincodeDetail"
-                    }
-                }
-            }
-        },
         "chainlaunchdeploy.PeerStatus": {
             "type": "object",
             "properties": {
-                "definitionID": {
+                "definition_id": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "lastUpdated": {
+                "last_updated": {
                     "description": "ISO8601",
                     "type": "string"
                 },
-                "peerID": {
+                "peer_id": {
                     "type": "integer"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "chainlaunchdeploy.UpdateChaincodeDefinitionRequest": {
+            "type": "object",
+            "properties": {
+                "chaincode_address": {
+                    "description": "Chaincode address",
+                    "type": "string"
+                },
+                "docker_image": {
+                    "description": "Docker image\nrequired: true",
+                    "type": "string"
+                },
+                "endorsement_policy": {
+                    "description": "Endorsement policy",
+                    "type": "string"
+                },
+                "sequence": {
+                    "description": "Sequence\nrequired: true",
+                    "type": "integer"
+                },
+                "version": {
+                    "description": "Version\nrequired: true",
                     "type": "string"
                 }
             }

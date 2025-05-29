@@ -453,9 +453,9 @@ func (d *DockerChaincodeDeployer) Deploy(params FabricChaincodeDockerDeployParam
 	// Optionally add chaincode address if available
 	chaincodeAddress := ""
 	if params.HostPort != "" {
-		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", params.HostPort)
+		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", params.ContainerPort)
 	} else {
-		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", hostPort)
+		chaincodeAddress = fmt.Sprintf("0.0.0.0:%s", containerPort)
 	}
 	if chaincodeAddress != "" {
 		env = append(env,
@@ -594,24 +594,4 @@ type FabricChaincodeDockerDeployParams struct {
 	PackageID     string
 	HostPort      string // Host port to listen on
 	ContainerPort string // Container port to map to (default 7052)
-}
-
-// DockerContainerInfo holds Docker container runtime info for a chaincode
-// swagger:model
-// Used by both legacy and new chaincode logic
-type DockerContainerInfo struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Image   string   `json:"image"`
-	State   string   `json:"state"`
-	Status  string   `json:"status"`
-	Ports   []string `json:"ports"`
-	Created int64    `json:"created"`
-}
-
-// FabricChaincodeDetail represents a chaincode with Docker/runtime info
-// Chaincode is a pointer to the new Chaincode struct (from chaincode_service.go)
-type FabricChaincodeDetail struct {
-	Chaincode  *Chaincode           `json:"chaincode"`
-	DockerInfo *DockerContainerInfo `json:"dockerInfo,omitempty"`
 }

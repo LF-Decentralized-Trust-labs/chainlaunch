@@ -1121,7 +1121,10 @@ RETURNING *;
 SELECT * FROM fabric_chaincodes ORDER BY id;
 
 -- name: GetChaincode :one
-SELECT * FROM fabric_chaincodes WHERE id = ?;
+SELECT fc.*, n.id as network_id, n.name as network_name, n.platform as network_platform
+FROM fabric_chaincodes fc
+JOIN networks n ON fc.network_id = n.id
+WHERE fc.id = ?;
 
 -- name: UpdateChaincode :one
 UPDATE fabric_chaincodes
@@ -1133,9 +1136,11 @@ RETURNING *;
 DELETE FROM fabric_chaincodes WHERE id = ?;
 
 -- name: CreateChaincodeDefinition :one
-INSERT INTO fabric_chaincode_definitions (chaincode_id, version, sequence, docker_image, endorsement_policy)
-VALUES (?, ?, ?, ?, ?)
-RETURNING *;
+INSERT INTO fabric_chaincode_definitions (
+  chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address
+) VALUES (
+  ?, ?, ?, ?, ?, ?
+) RETURNING *;
 
 -- name: ListChaincodeDefinitions :many
 SELECT * FROM fabric_chaincode_definitions WHERE chaincode_id = ? ORDER BY id;
@@ -1145,7 +1150,7 @@ SELECT * FROM fabric_chaincode_definitions WHERE id = ?;
 
 -- name: UpdateChaincodeDefinition :one
 UPDATE fabric_chaincode_definitions
-SET version = ?, sequence = ?, docker_image = ?, endorsement_policy = ?
+SET version = ?, sequence = ?, docker_image = ?, endorsement_policy = ?, chaincode_address = ?
 WHERE id = ?
 RETURNING *;
 
@@ -1160,3 +1165,9 @@ RETURNING *;
 
 -- name: ListPeerStatuses :many
 SELECT * FROM fabric_chaincode_definition_peer_status WHERE definition_id = ?;
+
+-- name: AddChaincodeDefinitionEvent :exec
+INSERT INTO fabric_chaincode_definition_events (definition_id, event_type, event_data) VALUES (?, ?, ?);
+
+-- name: ListChaincodeDefinitionEvents :many
+SELECT id, definition_id, event_type, event_data, created_at FROM fabric_chaincode_definition_events WHERE definition_id = ? ORDER BY created_at ASC;

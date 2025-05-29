@@ -87,7 +87,16 @@ type FabricChaincodeDefinition struct {
 	Sequence          int64          `json:"sequence"`
 	DockerImage       string         `json:"dockerImage"`
 	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
+	ChaincodeAddress  sql.NullString `json:"chaincodeAddress"`
 	CreatedAt         sql.NullTime   `json:"createdAt"`
+}
+
+type FabricChaincodeDefinitionEvent struct {
+	ID           int64          `json:"id"`
+	DefinitionID int64          `json:"definitionId"`
+	EventType    string         `json:"eventType"`
+	EventData    sql.NullString `json:"eventData"`
+	CreatedAt    sql.NullTime   `json:"createdAt"`
 }
 
 type FabricChaincodeDefinitionPeerStatus struct {

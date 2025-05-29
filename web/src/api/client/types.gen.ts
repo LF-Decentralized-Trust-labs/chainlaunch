@@ -118,6 +118,14 @@ export type ChaincodePeer = {
     [key: string]: unknown;
 };
 
+export type ChainlaunchdeployApproveChaincodeByDefinitionRequest = {
+    /**
+     * Peer ID to use for approval
+     * required: true
+     */
+    peer_id?: number;
+};
+
 export type ChainlaunchdeployBesuDeployRequest = {
     /**
      * Contract ABI (JSON string)
@@ -149,6 +157,139 @@ export type ChainlaunchdeployBesuDeployResponse = {
     message?: string;
     result?: ChainlaunchdeployDeploymentResult;
     status?: string;
+};
+
+export type ChainlaunchdeployChaincode = {
+    /**
+     * ISO8601
+     */
+    created_at?: string;
+    definitions?: Array<ChainlaunchdeployChaincodeDefinition>;
+    id?: number;
+    name?: string;
+    network_id?: number;
+    /**
+     * Name of the network
+     */
+    network_name?: string;
+    /**
+     * Platform/type (fabric/besu/etc)
+     */
+    network_platform?: string;
+};
+
+export type ChainlaunchdeployChaincodeDefinition = {
+    chaincode_address?: string;
+    chaincode_id?: number;
+    /**
+     * ISO8601
+     */
+    created_at?: string;
+    docker_image?: string;
+    endorsement_policy?: string;
+    id?: number;
+    peer_statuses?: Array<ChainlaunchdeployPeerStatus>;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployChaincodeDefinitionEvent = {
+    created_at?: string;
+    definition_id?: number;
+    event_data?: unknown;
+    event_type?: string;
+    id?: number;
+};
+
+export type ChainlaunchdeployChaincodeDefinitionResponse = {
+    chaincode_address?: string;
+    chaincode_id?: number;
+    created_at?: string;
+    docker_image?: string;
+    endorsement_policy?: string;
+    id?: number;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployChaincodeResponse = {
+    created_at?: string;
+    id?: number;
+    name?: string;
+    network_id?: number;
+    network_name?: string;
+    network_platform?: string;
+};
+
+export type ChainlaunchdeployCommitChaincodeByDefinitionRequest = {
+    /**
+     * Peer ID to use for commit
+     * required: true
+     */
+    peer_id?: number;
+};
+
+export type ChainlaunchdeployCreateChaincodeDefinitionRequest = {
+    /**
+     * Chaincode address
+     */
+    chaincode_address?: string;
+    /**
+     * Chaincode ID
+     * required: true
+     */
+    chaincode_id?: number;
+    /**
+     * Docker image
+     * required: true
+     */
+    docker_image?: string;
+    /**
+     * Endorsement policy
+     */
+    endorsement_policy?: string;
+    /**
+     * Sequence
+     * required: true
+     */
+    sequence?: number;
+    /**
+     * Version
+     * required: true
+     */
+    version?: string;
+};
+
+export type ChainlaunchdeployCreateChaincodeDefinitionResponse = {
+    definition?: ChainlaunchdeployChaincodeDefinitionResponse;
+};
+
+export type ChainlaunchdeployCreateChaincodeRequest = {
+    /**
+     * Name of the chaincode
+     * required: true
+     */
+    name?: string;
+    /**
+     * Network ID
+     * required: true
+     */
+    network_id?: number;
+};
+
+export type ChainlaunchdeployCreateChaincodeResponse = {
+    chaincode?: ChainlaunchdeployChaincodeResponse;
+};
+
+export type ChainlaunchdeployDeployChaincodeByDefinitionRequest = {
+    /**
+     * Container port to use (optional, default 7052)
+     */
+    container_port?: string;
+    /**
+     * Host port to use (optional)
+     */
+    host_port?: string;
 };
 
 export type ChainlaunchdeployDeploymentResult = {
@@ -225,8 +366,9 @@ export type ChainlaunchdeployFabricChaincodeCommitParams = {
 };
 
 export type ChainlaunchdeployFabricChaincodeDetail = {
-    chaincode?: DbFabricChaincode;
-    dockerInfo?: ChainlaunchdeployDockerContainerInfo;
+    chaincode?: ChainlaunchdeployChaincode;
+    definitions?: Array<ChainlaunchdeployChaincodeDefinition>;
+    docker_info?: ChainlaunchdeployDockerContainerInfo;
 };
 
 export type ChainlaunchdeployFabricChaincodeDockerDeployRequest = {
@@ -304,12 +446,57 @@ export type ChainlaunchdeployFabricInstallResponse = {
     status?: string;
 };
 
-export type ChainlaunchdeployListFabricChaincodesDetailsResponse = {
-    chaincodes?: Array<ChainlaunchdeployFabricChaincodeDetail>;
+export type ChainlaunchdeployInstallChaincodeByDefinitionRequest = {
+    /**
+     * Peer IDs to install the chaincode on
+     * required: true
+     */
+    peer_ids?: Array<number>;
 };
 
-export type ChainlaunchdeployListFabricChaincodesResponse = {
-    chaincodes?: Array<DbFabricChaincode>;
+export type ChainlaunchdeployListChaincodeDefinitionsResponse = {
+    definitions?: Array<ChainlaunchdeployChaincodeDefinitionResponse>;
+};
+
+export type ChainlaunchdeployListChaincodesResponse = {
+    chaincodes?: Array<ChainlaunchdeployChaincodeResponse>;
+};
+
+export type ChainlaunchdeployPeerStatus = {
+    definition_id?: number;
+    id?: number;
+    /**
+     * ISO8601
+     */
+    last_updated?: string;
+    peer_id?: number;
+    status?: string;
+};
+
+export type ChainlaunchdeployUpdateChaincodeDefinitionRequest = {
+    /**
+     * Chaincode address
+     */
+    chaincode_address?: string;
+    /**
+     * Docker image
+     * required: true
+     */
+    docker_image?: string;
+    /**
+     * Endorsement policy
+     */
+    endorsement_policy?: string;
+    /**
+     * Sequence
+     * required: true
+     */
+    sequence?: number;
+    /**
+     * Version
+     * required: true
+     */
+    version?: string;
 };
 
 export type CommonQueryResult = {
@@ -330,19 +517,6 @@ export type CommonQueryResult = {
         resultType?: string;
     };
     status?: string;
-};
-
-export type DbFabricChaincode = {
-    containerPort?: SqlNullInt64;
-    createdAt?: string;
-    dockerImage?: string;
-    hostPort?: SqlNullInt64;
-    id?: number;
-    name?: string;
-    packageId?: string;
-    slug?: string;
-    status?: string;
-    updatedAt?: string;
 };
 
 export type GithubComChainlaunchChainlaunchPkgMetricsCommonStatus = {
@@ -1510,14 +1684,6 @@ export type ServiceSettingConfig = {
     besuTemplateCMD?: string;
     ordererTemplateCMD?: string;
     peerTemplateCMD?: string;
-};
-
-export type SqlNullInt64 = {
-    int64?: number;
-    /**
-     * Valid is true if Int64 is not NULL
-     */
-    valid?: boolean;
 };
 
 export type TimeDuration = -9223372036854776000 | 9223372036854776000 | 1 | 1000 | 1000000 | 1000000000 | 60000000000 | 3600000000000;
@@ -6409,24 +6575,122 @@ export type GetScFabricChaincodesResponses = {
     /**
      * OK
      */
-    200: ChainlaunchdeployListFabricChaincodesDetailsResponse;
+    200: ChainlaunchdeployListChaincodesResponse;
 };
 
 export type GetScFabricChaincodesResponse = GetScFabricChaincodesResponses[keyof GetScFabricChaincodesResponses];
 
-export type GetScFabricChaincodesBySlugData = {
+export type PostScFabricChaincodesData = {
+    /**
+     * Chaincode info
+     */
+    body: ChainlaunchdeployCreateChaincodeRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes';
+};
+
+export type PostScFabricChaincodesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricChaincodesError = PostScFabricChaincodesErrors[keyof PostScFabricChaincodesErrors];
+
+export type PostScFabricChaincodesResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployCreateChaincodeResponse;
+};
+
+export type PostScFabricChaincodesResponse = PostScFabricChaincodesResponses[keyof PostScFabricChaincodesResponses];
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsData = {
     body?: never;
     path: {
         /**
-         * Chaincode slug
+         * Chaincode ID
          */
-        slug: string;
+        chaincodeId: number;
     };
     query?: never;
-    url: '/sc/fabric/chaincodes/{slug}';
+    url: '/sc/fabric/chaincodes/{chaincodeId}/definitions';
 };
 
-export type GetScFabricChaincodesBySlugErrors = {
+export type GetScFabricChaincodesByChaincodeIdDefinitionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsError = GetScFabricChaincodesByChaincodeIdDefinitionsErrors[keyof GetScFabricChaincodesByChaincodeIdDefinitionsErrors];
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployListChaincodeDefinitionsResponse;
+};
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsResponse = GetScFabricChaincodesByChaincodeIdDefinitionsResponses[keyof GetScFabricChaincodesByChaincodeIdDefinitionsResponses];
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsData = {
+    /**
+     * Chaincode definition info
+     */
+    body: ChainlaunchdeployCreateChaincodeDefinitionRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes/{chaincodeId}/definitions';
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsError = PostScFabricChaincodesByChaincodeIdDefinitionsErrors[keyof PostScFabricChaincodesByChaincodeIdDefinitionsErrors];
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployCreateChaincodeDefinitionResponse;
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsResponse = PostScFabricChaincodesByChaincodeIdDefinitionsResponses[keyof PostScFabricChaincodesByChaincodeIdDefinitionsResponses];
+
+export type GetScFabricChaincodesByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/sc/fabric/chaincodes/{id}';
+};
+
+export type GetScFabricChaincodesByIdErrors = {
     /**
      * Not Found
      */
@@ -6437,16 +6701,283 @@ export type GetScFabricChaincodesBySlugErrors = {
     500: ResponseResponse;
 };
 
-export type GetScFabricChaincodesBySlugError = GetScFabricChaincodesBySlugErrors[keyof GetScFabricChaincodesBySlugErrors];
+export type GetScFabricChaincodesByIdError = GetScFabricChaincodesByIdErrors[keyof GetScFabricChaincodesByIdErrors];
 
-export type GetScFabricChaincodesBySlugResponses = {
+export type GetScFabricChaincodesByIdResponses = {
     /**
      * OK
      */
     200: ChainlaunchdeployFabricChaincodeDetail;
 };
 
-export type GetScFabricChaincodesBySlugResponse = GetScFabricChaincodesBySlugResponses[keyof GetScFabricChaincodesBySlugResponses];
+export type GetScFabricChaincodesByIdResponse = GetScFabricChaincodesByIdResponses[keyof GetScFabricChaincodesByIdResponses];
+
+export type DeleteScFabricDefinitionsByDefinitionIdData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}';
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdError = DeleteScFabricDefinitionsByDefinitionIdErrors[keyof DeleteScFabricDefinitionsByDefinitionIdErrors];
+
+export type DeleteScFabricDefinitionsByDefinitionIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdResponse = DeleteScFabricDefinitionsByDefinitionIdResponses[keyof DeleteScFabricDefinitionsByDefinitionIdResponses];
+
+export type PutScFabricDefinitionsByDefinitionIdData = {
+    /**
+     * Chaincode definition update info
+     */
+    body: ChainlaunchdeployUpdateChaincodeDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}';
+};
+
+export type PutScFabricDefinitionsByDefinitionIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Not Found
+     */
+    404: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PutScFabricDefinitionsByDefinitionIdError = PutScFabricDefinitionsByDefinitionIdErrors[keyof PutScFabricDefinitionsByDefinitionIdErrors];
+
+export type PutScFabricDefinitionsByDefinitionIdResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployChaincodeDefinitionResponse;
+};
+
+export type PutScFabricDefinitionsByDefinitionIdResponse = PutScFabricDefinitionsByDefinitionIdResponses[keyof PutScFabricDefinitionsByDefinitionIdResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdApproveData = {
+    /**
+     * Peer ID to use for approval
+     */
+    body: ChainlaunchdeployApproveChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/approve';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveError = PostScFabricDefinitionsByDefinitionIdApproveErrors[keyof PostScFabricDefinitionsByDefinitionIdApproveErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdApproveResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveResponse = PostScFabricDefinitionsByDefinitionIdApproveResponses[keyof PostScFabricDefinitionsByDefinitionIdApproveResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdCommitData = {
+    /**
+     * Peer ID to use for commit
+     */
+    body: ChainlaunchdeployCommitChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/commit';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitError = PostScFabricDefinitionsByDefinitionIdCommitErrors[keyof PostScFabricDefinitionsByDefinitionIdCommitErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdCommitResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitResponse = PostScFabricDefinitionsByDefinitionIdCommitResponses[keyof PostScFabricDefinitionsByDefinitionIdCommitResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdDeployData = {
+    /**
+     * Docker deploy params
+     */
+    body: ChainlaunchdeployDeployChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/deploy';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployError = PostScFabricDefinitionsByDefinitionIdDeployErrors[keyof PostScFabricDefinitionsByDefinitionIdDeployErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdDeployResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployResponse = PostScFabricDefinitionsByDefinitionIdDeployResponses[keyof PostScFabricDefinitionsByDefinitionIdDeployResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdInstallData = {
+    /**
+     * Peer IDs to install on
+     */
+    body: ChainlaunchdeployInstallChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/install';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallError = PostScFabricDefinitionsByDefinitionIdInstallErrors[keyof PostScFabricDefinitionsByDefinitionIdInstallErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdInstallResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallResponse = PostScFabricDefinitionsByDefinitionIdInstallResponses[keyof PostScFabricDefinitionsByDefinitionIdInstallResponses];
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/timeline';
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineError = GetScFabricDefinitionsByDefinitionIdTimelineErrors[keyof GetScFabricDefinitionsByDefinitionIdTimelineErrors];
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineResponses = {
+    /**
+     * OK
+     */
+    200: Array<ChainlaunchdeployChaincodeDefinitionEvent>;
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineResponse = GetScFabricDefinitionsByDefinitionIdTimelineResponses[keyof GetScFabricDefinitionsByDefinitionIdTimelineResponses];
 
 export type PostScFabricDeployData = {
     /**

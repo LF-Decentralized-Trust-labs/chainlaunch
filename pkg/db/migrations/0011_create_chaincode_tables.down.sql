@@ -3,4 +3,4 @@
 
 DROP TABLE IF EXISTS fabric_chaincode_definition_peer_status;
 DROP TABLE IF EXISTS fabric_chaincode_definitions;
-DROP TABLE IF EXISTS fabric_chaincodes; 
+DROP TABLE IF EXISTS fabric_chaincode_definition_events;

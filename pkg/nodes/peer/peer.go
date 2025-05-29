@@ -3163,44 +3163,41 @@ func (p *LocalPeer) GetCommittedChaincodes(ctx context.Context, channelID string
 }
 
 // GetGateway returns a chaincode.Gateway for the peer
-func (p *LocalPeer) GetGateway(ctx context.Context) (*chaincode.Gateway, error) {
+func (p *LocalPeer) GetGateway(ctx context.Context) (*chaincode.Gateway, *grpc.ClientConn, error) {
 	peerUrl := p.GetPeerAddress()
 	tlsCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
-	}
-
-	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+		return nil, nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
 	}
 
 	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+		return nil, nil, fmt.Errorf("failed to get admin identity: %w", err)
 	}
-
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
 	gateway := chaincode.NewGateway(peerConn, adminIdentity)
-	return gateway, nil
+	return gateway, peerConn, nil
 }
 
-func (p *LocalPeer) GetPeerClient(ctx context.Context) (*chaincode.Peer, error) {
+func (p *LocalPeer) GetPeerClient(ctx context.Context) (*chaincode.Peer, *grpc.ClientConn, error) {
 	peerUrl := p.GetPeerAddress()
 	tlsCACert, err := p.GetTLSRootCACert(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
-	}
-
-	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create peer connection: %w", err)
+		return nil, nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
 	}
 
 	adminIdentity, _, err := p.GetAdminIdentity(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get admin identity: %w", err)
+		return nil, nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create peer connection: %w", err)
 	}
 
 	peer := chaincode.NewPeer(peerConn, adminIdentity)
-	return peer, nil
+	return peer, peerConn, nil
 }

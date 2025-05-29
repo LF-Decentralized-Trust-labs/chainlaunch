@@ -244,6 +244,14 @@ definitions:
     type: object
   chaincode.Peer:
     type: object
+  chainlaunchdeploy.ApproveChaincodeByDefinitionRequest:
+    properties:
+      peer_id:
+        description: |-
+          Peer ID to use for approval
+          required: true
+        type: integer
+    type: object
   chainlaunchdeploy.BesuDeployRequest:
     properties:
       abi:
@@ -279,7 +287,7 @@ definitions:
     type: object
   chainlaunchdeploy.Chaincode:
     properties:
-      createdAt:
+      created_at:
         description: ISO8601
         type: string
       definitions:
@@ -290,26 +298,65 @@ definitions:
         type: integer
       name:
         type: string
-      networkID:
+      network_id:
         type: integer
+      network_name:
+        description: Name of the network
+        type: string
+      network_platform:
+        description: Platform/type (fabric/besu/etc)
+        type: string
     type: object
   chainlaunchdeploy.ChaincodeDefinition:
     properties:
-      chaincodeID:
+      chaincode_address:
+        type: string
+      chaincode_id:
         type: integer
-      createdAt:
+      created_at:
         description: ISO8601
         type: string
-      dockerImage:
+      docker_image:
         type: string
-      endorsementPolicy:
+      endorsement_policy:
         type: string
       id:
         type: integer
-      peerStatuses:
+      peer_statuses:
         items:
           $ref: '#/definitions/chainlaunchdeploy.PeerStatus'
         type: array
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.ChaincodeDefinitionEvent:
+    properties:
+      created_at:
+        type: string
+      definition_id:
+        type: integer
+      event_data: {}
+      event_type:
+        type: string
+      id:
+        type: integer
+    type: object
+  chainlaunchdeploy.ChaincodeDefinitionResponse:
+    properties:
+      chaincode_address:
+        type: string
+      chaincode_id:
+        type: integer
+      created_at:
+        type: string
+      docker_image:
+        type: string
+      endorsement_policy:
+        type: string
+      id:
+        type: integer
       sequence:
         type: integer
       version:
@@ -325,6 +372,79 @@ definitions:
         type: string
       network_id:
         type: integer
+      network_name:
+        type: string
+      network_platform:
+        type: string
+    type: object
+  chainlaunchdeploy.CommitChaincodeByDefinitionRequest:
+    properties:
+      peer_id:
+        description: |-
+          Peer ID to use for commit
+          required: true
+        type: integer
+    type: object
+  chainlaunchdeploy.CreateChaincodeDefinitionRequest:
+    properties:
+      chaincode_address:
+        description: Chaincode address
+        type: string
+      chaincode_id:
+        description: |-
+          Chaincode ID
+          required: true
+        type: integer
+      docker_image:
+        description: |-
+          Docker image
+          required: true
+        type: string
+      endorsement_policy:
+        description: Endorsement policy
+        type: string
+      sequence:
+        description: |-
+          Sequence
+          required: true
+        type: integer
+      version:
+        description: |-
+          Version
+          required: true
+        type: string
+    type: object
+  chainlaunchdeploy.CreateChaincodeDefinitionResponse:
+    properties:
+      definition:
+        $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+    type: object
+  chainlaunchdeploy.CreateChaincodeRequest:
+    properties:
+      name:
+        description: |-
+          Name of the chaincode
+          required: true
+        type: string
+      network_id:
+        description: |-
+          Network ID
+          required: true
+        type: integer
+    type: object
+  chainlaunchdeploy.CreateChaincodeResponse:
+    properties:
+      chaincode:
+        $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
+    type: object
+  chainlaunchdeploy.DeployChaincodeByDefinitionRequest:
+    properties:
+      container_port:
+        description: Container port to use (optional, default 7052)
+        type: string
+      host_port:
+        description: Host port to use (optional)
+        type: string
     type: object
   chainlaunchdeploy.DeploymentResult:
     properties:
@@ -438,7 +558,11 @@ definitions:
     properties:
       chaincode:
         $ref: '#/definitions/chainlaunchdeploy.Chaincode'
-      dockerInfo:
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinition'
+        type: array
+      docker_info:
         $ref: '#/definitions/chainlaunchdeploy.DockerContainerInfo'
     type: object
   chainlaunchdeploy.FabricChaincodeDockerDeployRequest:
@@ -550,6 +674,23 @@ definitions:
       status:
         type: string
     type: object
+  chainlaunchdeploy.InstallChaincodeByDefinitionRequest:
+    properties:
+      peer_ids:
+        description: |-
+          Peer IDs to install the chaincode on
+          required: true
+        items:
+          type: integer
+        type: array
+    type: object
+  chainlaunchdeploy.ListChaincodeDefinitionsResponse:
+    properties:
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+        type: array
+    type: object
   chainlaunchdeploy.ListChaincodesResponse:
     properties:
       chaincodes:
@@ -557,25 +698,42 @@ definitions:
           $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
         type: array
     type: object
-  chainlaunchdeploy.ListFabricChaincodesDetailsResponse:
-    properties:
-      chaincodes:
-        items:
-          $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDetail'
-        type: array
-    type: object
   chainlaunchdeploy.PeerStatus:
     properties:
-      definitionID:
+      definition_id:
         type: integer
       id:
         type: integer
-      lastUpdated:
+      last_updated:
         description: ISO8601
         type: string
-      peerID:
+      peer_id:
         type: integer
       status:
+        type: string
+    type: object
+  chainlaunchdeploy.UpdateChaincodeDefinitionRequest:
+    properties:
+      chaincode_address:
+        description: Chaincode address
+        type: string
+      docker_image:
+        description: |-
+          Docker image
+          required: true
+        type: string
+      endorsement_policy:
+        description: Endorsement policy
+        type: string
+      sequence:
+        description: |-
+          Sequence
+          required: true
+        type: integer
+      version:
+        description: |-
+          Version
+          required: true
         type: string
     type: object
   common.QueryResult:
@@ -7174,34 +7332,120 @@ paths:
     get:
       consumes:
       - application/json
-      description: List all Fabric chaincodes deployed via Docker, including container
-        status and runtime details
+      description: List all Fabric chaincodes deployed via Docker
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chainlaunchdeploy.ListFabricChaincodesDetailsResponse'
+            $ref: '#/definitions/chainlaunchdeploy.ListChaincodesResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.Response'
-      summary: List deployed Fabric chaincodes with Docker/runtime info
+      summary: List deployed Fabric chaincodes
       tags:
       - SmartContracts
-  /sc/fabric/chaincodes/{slug}:
+    post:
+      consumes:
+      - application/json
+      description: Create a new chaincode
+      parameters:
+      - description: Chaincode info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a chaincode
+      tags:
+      - Chaincode
+  /sc/fabric/chaincodes/{chaincodeId}/definitions:
+    get:
+      consumes:
+      - application/json
+      description: List all definitions for a given chaincode
+      parameters:
+      - description: Chaincode ID
+        in: path
+        name: chaincodeId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ListChaincodeDefinitionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List chaincode definitions for a chaincode
+      tags:
+      - Chaincode
+    post:
+      consumes:
+      - application/json
+      description: Create a new chaincode definition for a chaincode
+      parameters:
+      - description: Chaincode definition info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/chaincodes/{id}:
     get:
       consumes:
       - application/json
       description: Get a specific Fabric chaincode and its Docker/runtime info by
-        slug
+        ID
       parameters:
-      - description: Chaincode slug
+      - description: Chaincode ID
         in: path
-        name: slug
+        name: id
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -7217,9 +7461,258 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.Response'
-      summary: Get Fabric chaincode details by slug
+      summary: Get Fabric chaincode details by ID
       tags:
       - SmartContracts
+  /sc/fabric/definitions/{definitionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a chaincode definition by ID
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a chaincode definition
+      tags:
+      - Chaincode
+    put:
+      consumes:
+      - application/json
+      description: Update an existing chaincode definition by ID
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Chaincode definition update info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.UpdateChaincodeDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update a chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve chaincode for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer ID to use for approval
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.ApproveChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Approve chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/commit:
+    post:
+      consumes:
+      - application/json
+      description: Commit chaincode for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer ID to use for commit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CommitChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Commit chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy chaincode for a given definition using Docker image
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Docker deploy params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.DeployChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy chaincode based on chaincode definition (Docker)
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/install:
+    post:
+      consumes:
+      - application/json
+      description: Install chaincode on peers for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer IDs to install on
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.InstallChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Install chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/timeline:
+    get:
+      consumes:
+      - application/json
+      description: Get the timeline of install/approve/commit/deploy events for a
+        chaincode definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionEvent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get timeline of events for a chaincode definition
+      tags:
+      - Chaincode
   /sc/fabric/deploy:
     post:
       consumes:

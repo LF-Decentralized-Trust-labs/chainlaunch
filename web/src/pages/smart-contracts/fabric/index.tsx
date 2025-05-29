@@ -24,7 +24,6 @@ type ChaincodeFormValues = z.infer<typeof chaincodeFormSchema>
 export default function FabricChaincodesPage() {
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 	const [createError, setCreateError] = useState<string | null>(null)
-	const queryClient = useQueryClient()
 	const form = useForm<ChaincodeFormValues>({
 		resolver: zodResolver(chaincodeFormSchema),
 		defaultValues: { name: '', networkId: '' },
@@ -32,7 +31,7 @@ export default function FabricChaincodesPage() {
 	const navigate = useNavigate()
 
 	// Fetch networks
-	const { data: networks } = useQuery({
+	const { data: networks, refetch } = useQuery({
 		...getNetworksFabricOptions({
 			query: {
 				limit: 10,
@@ -42,7 +41,7 @@ export default function FabricChaincodesPage() {
 	})
 
 	// Fetch chaincodes
-	const { data: chaincodesResponse } = useQuery({
+	const { data: chaincodesResponse, refetch: refetchChaincodes } = useQuery({
 		...getScFabricChaincodesOptions(),
 	})
 
@@ -58,7 +57,7 @@ export default function FabricChaincodesPage() {
 			return response.data
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['fabricChaincodes'] })
+			refetchChaincodes()
 			setIsCreateDialogOpen(false)
 			form.reset()
 			setCreateError(null)

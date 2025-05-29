@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Play, Square } from 'lucide-react'
+import { Play, Square, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -144,6 +144,9 @@ const PluginDetailPage = () => {
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={() => setShowYaml(true)}>View YAML</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => navigate(`/plugins/${name}/edit`)}>
+								<Pencil className="mr-2 h-4 w-4" /> Edit Plugin
+							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 					{status?.status !== 'deployed' && (

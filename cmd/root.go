@@ -8,6 +8,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/cmd/besu"
 	"github.com/chainlaunch/chainlaunch/cmd/fabric"
 	"github.com/chainlaunch/chainlaunch/cmd/keymanagement"
+	"github.com/chainlaunch/chainlaunch/cmd/metrics"
 	"github.com/chainlaunch/chainlaunch/cmd/networks"
 	"github.com/chainlaunch/chainlaunch/cmd/serve"
 	"github.com/chainlaunch/chainlaunch/cmd/testnet"
@@ -37,6 +38,7 @@ func NewRootCmd(configCMD config.ConfigCMD) *cobra.Command {
 	rootCmd.AddCommand(networks.NewNetworksCmd(logger))
 	rootCmd.AddCommand(keymanagement.NewKeyManagementCmd())
 	rootCmd.AddCommand(testnet.NewTestnetCmd())
+	rootCmd.AddCommand(metrics.NewMetricsCmd())
 	// In the function where rootCmd is defined and commands are added:
 	// rootCmd.AddCommand(testnet.NewTestnetCmd())
 	return rootCmd

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getApiV1MetricsNodeByIdRange } from "@/api/client";
+import { getMetricsNodeByIdRange } from "@/api/client";
 
 interface UseMetricsOptions {
   nodeId: string;
@@ -26,7 +26,7 @@ export function useMetrics({ nodeId, query, start, end, step = "1m" }: UseMetric
   return useQuery({
     queryKey: ['metrics', nodeId, query, start, end, step],
     queryFn: async () => {
-      const response = await getApiV1MetricsNodeByIdRange({
+      const response = await getMetricsNodeByIdRange({
         path: { id: nodeId },
         query: {
           query,

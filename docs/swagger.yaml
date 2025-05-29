@@ -240,6 +240,502 @@ definitions:
     - ORDERER_TRANSACTION
     - DELIVER_SEEK_INFO
     - CHAINCODE_PACKAGE
+  chaincode.Gateway:
+    type: object
+  chaincode.Peer:
+    type: object
+  chainlaunchdeploy.ApproveChaincodeByDefinitionRequest:
+    properties:
+      peer_id:
+        description: |-
+          Peer ID to use for approval
+          required: true
+        type: integer
+    type: object
+  chainlaunchdeploy.BesuDeployRequest:
+    properties:
+      abi:
+        description: Contract ABI (JSON string)
+        type: string
+      bytecode:
+        description: Compiled contract bytecode
+        items:
+          type: integer
+        type: array
+      chainID:
+        description: Chain ID for the target network
+        type: integer
+      constructorArgs:
+        description: Constructor arguments for the contract
+        items: {}
+        type: array
+      rpcurl:
+        description: RPC endpoint for Besu node
+        type: string
+      solidityCode:
+        description: (Optional) Solidity source code (for reference)
+        type: string
+    type: object
+  chainlaunchdeploy.BesuDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.Chaincode:
+    properties:
+      created_at:
+        description: ISO8601
+        type: string
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinition'
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      network_id:
+        type: integer
+      network_name:
+        description: Name of the network
+        type: string
+      network_platform:
+        description: Platform/type (fabric/besu/etc)
+        type: string
+    type: object
+  chainlaunchdeploy.ChaincodeDefinition:
+    properties:
+      chaincode_address:
+        type: string
+      chaincode_id:
+        type: integer
+      created_at:
+        description: ISO8601
+        type: string
+      docker_image:
+        type: string
+      endorsement_policy:
+        type: string
+      id:
+        type: integer
+      peer_statuses:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.PeerStatus'
+        type: array
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.ChaincodeDefinitionEvent:
+    properties:
+      created_at:
+        type: string
+      definition_id:
+        type: integer
+      event_data: {}
+      event_type:
+        type: string
+      id:
+        type: integer
+    type: object
+  chainlaunchdeploy.ChaincodeDefinitionResponse:
+    properties:
+      chaincode_address:
+        type: string
+      chaincode_id:
+        type: integer
+      created_at:
+        type: string
+      docker_image:
+        type: string
+      endorsement_policy:
+        type: string
+      id:
+        type: integer
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.ChaincodeResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      network_id:
+        type: integer
+      network_name:
+        type: string
+      network_platform:
+        type: string
+    type: object
+  chainlaunchdeploy.CommitChaincodeByDefinitionRequest:
+    properties:
+      peer_id:
+        description: |-
+          Peer ID to use for commit
+          required: true
+        type: integer
+    type: object
+  chainlaunchdeploy.CreateChaincodeDefinitionRequest:
+    properties:
+      chaincode_address:
+        description: Chaincode address
+        type: string
+      chaincode_id:
+        description: |-
+          Chaincode ID
+          required: true
+        type: integer
+      docker_image:
+        description: |-
+          Docker image
+          required: true
+        type: string
+      endorsement_policy:
+        description: Endorsement policy
+        type: string
+      sequence:
+        description: |-
+          Sequence
+          required: true
+        type: integer
+      version:
+        description: |-
+          Version
+          required: true
+        type: string
+    type: object
+  chainlaunchdeploy.CreateChaincodeDefinitionResponse:
+    properties:
+      definition:
+        $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+    type: object
+  chainlaunchdeploy.CreateChaincodeRequest:
+    properties:
+      name:
+        description: |-
+          Name of the chaincode
+          required: true
+        type: string
+      network_id:
+        description: |-
+          Network ID
+          required: true
+        type: integer
+    type: object
+  chainlaunchdeploy.CreateChaincodeResponse:
+    properties:
+      chaincode:
+        $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
+    type: object
+  chainlaunchdeploy.DeployChaincodeByDefinitionRequest:
+    properties:
+      container_port:
+        description: Container port to use (optional, default 7052)
+        type: string
+      host_port:
+        description: Host port to use (optional)
+        type: string
+    type: object
+  chainlaunchdeploy.DeploymentResult:
+    properties:
+      chaincodeID:
+        description: For Fabric
+        type: string
+      contractAddress:
+        description: For EVM
+        type: string
+      error: {}
+      logs:
+        type: string
+      success:
+        type: boolean
+      transactionHash:
+        description: For EVM
+        type: string
+    type: object
+  chainlaunchdeploy.DockerContainerInfo:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      state:
+        type: string
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricApproveRequest:
+    properties:
+      channelID:
+        type: string
+      endorsementPolicy:
+        type: string
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      packageID:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricApproveResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeApproveParams:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      packageID:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeCommitParams:
+    properties:
+      channelID:
+        type: string
+      collectionsConfig:
+        description: Serialized CollectionConfigPackage
+        items:
+          type: integer
+        type: array
+      endorsementPolicy:
+        type: string
+      gateway:
+        $ref: '#/definitions/chaincode.Gateway'
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeDetail:
+    properties:
+      chaincode:
+        $ref: '#/definitions/chainlaunchdeploy.Chaincode'
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinition'
+        type: array
+      docker_info:
+        $ref: '#/definitions/chainlaunchdeploy.DockerContainerInfo'
+    type: object
+  chainlaunchdeploy.FabricChaincodeDockerDeployRequest:
+    properties:
+      container_port:
+        description: optional, defaults to 7052
+        type: integer
+      docker_image:
+        type: string
+      host_port:
+        description: optional, if 0 a free port is chosen
+        type: integer
+      name:
+        type: string
+      package_id:
+        type: string
+      slug:
+        description: optional, for updates
+        type: string
+    required:
+    - docker_image
+    - name
+    - package_id
+    type: object
+  chainlaunchdeploy.FabricChaincodeDockerDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      slug:
+        type: string
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricChaincodeInstallParams:
+    properties:
+      label:
+        description: Chaincode label
+        type: string
+      packageBytes:
+        description: Chaincode package bytes
+        items:
+          type: integer
+        type: array
+      peer:
+        $ref: '#/definitions/chaincode.Peer'
+    type: object
+  chainlaunchdeploy.FabricCommitRequest:
+    properties:
+      channelID:
+        type: string
+      endorsementPolicy:
+        type: string
+      initRequired:
+        type: boolean
+      name:
+        type: string
+      sequence:
+        type: integer
+      version:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricCommitResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricDeployRequest:
+    properties:
+      approveParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeApproveParams'
+      commitParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeCommitParams'
+      installParams:
+        $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeInstallParams'
+    type: object
+  chainlaunchdeploy.FabricDeployResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.FabricInstallRequest:
+    properties:
+      label:
+        type: string
+      package_bytes:
+        items:
+          type: integer
+        type: array
+    required:
+    - label
+    - package_bytes
+    type: object
+  chainlaunchdeploy.FabricInstallResponse:
+    properties:
+      message:
+        type: string
+      result:
+        $ref: '#/definitions/chainlaunchdeploy.DeploymentResult'
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.InstallChaincodeByDefinitionRequest:
+    properties:
+      peer_ids:
+        description: |-
+          Peer IDs to install the chaincode on
+          required: true
+        items:
+          type: integer
+        type: array
+    type: object
+  chainlaunchdeploy.ListChaincodeDefinitionsResponse:
+    properties:
+      definitions:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+        type: array
+    type: object
+  chainlaunchdeploy.ListChaincodesResponse:
+    properties:
+      chaincodes:
+        items:
+          $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
+        type: array
+    type: object
+  chainlaunchdeploy.PeerStatus:
+    properties:
+      definition_id:
+        type: integer
+      id:
+        type: integer
+      last_updated:
+        description: ISO8601
+        type: string
+      peer_id:
+        type: integer
+      status:
+        type: string
+    type: object
+  chainlaunchdeploy.UpdateChaincodeDefinitionRequest:
+    properties:
+      chaincode_address:
+        description: Chaincode address
+        type: string
+      docker_image:
+        description: |-
+          Docker image
+          required: true
+        type: string
+      endorsement_policy:
+        description: Endorsement policy
+        type: string
+      sequence:
+        description: |-
+          Sequence
+          required: true
+        type: integer
+      version:
+        description: |-
+          Version
+          required: true
+        type: string
+    type: object
   common.QueryResult:
     properties:
       data:
@@ -1638,35 +2134,6 @@ definitions:
     - name
     - type
     type: object
-  metrics.CustomQueryRequest:
-    properties:
-      end:
-        type: string
-      query:
-        type: string
-      start:
-        type: string
-      step:
-        type: string
-    required:
-    - query
-    type: object
-  metrics.DeployPrometheusRequest:
-    properties:
-      deployment_mode:
-        type: string
-      prometheus_port:
-        type: integer
-      prometheus_version:
-        type: string
-      scrape_interval:
-        type: integer
-    required:
-    - deployment_mode
-    - prometheus_port
-    - prometheus_version
-    - scrape_interval
-    type: object
   models.CertificateRequest:
     properties:
       commonName:
@@ -1941,6 +2408,15 @@ definitions:
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+  plugin.AvailablePluginsResponse:
+    properties:
+      last_updated:
+        type: string
+      plugins:
+        items:
+          $ref: '#/definitions/registry.PluginMetadata'
+        type: array
+    type: object
   plugin.ServiceStatus:
     properties:
       config:
@@ -1982,6 +2458,41 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  registry.PluginMetadata:
+    properties:
+      author:
+        type: string
+      created:
+        type: string
+      description:
+        type: string
+      downloads:
+        type: integer
+      hash:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      license:
+        type: string
+      name:
+        type: string
+      rating:
+        type: number
+      raw_yaml:
+        type: string
+      source:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      updated:
+        type: string
+      version:
+        type: string
     type: object
   response.ErrorResponse:
     properties:
@@ -2354,6 +2865,32 @@ definitions:
     x-enum-varnames:
     - PlatformFabric
     - PlatformBesu
+  types.CustomQueryRequest:
+    properties:
+      end:
+        type: string
+      query:
+        type: string
+      start:
+        type: string
+      step:
+        type: string
+    required:
+    - query
+    type: object
+  types.DeployPrometheusRequest:
+    properties:
+      prometheus_port:
+        type: integer
+      prometheus_version:
+        type: string
+      scrape_interval:
+        type: integer
+    required:
+    - prometheus_port
+    - prometheus_version
+    - scrape_interval
+    type: object
   types.DeploymentStatus:
     properties:
       error:
@@ -2524,6 +3061,20 @@ definitions:
     - name
     - organizationId
     type: object
+  types.LabelValuesResponse:
+    properties:
+      data:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+    type: object
+  types.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
   types.Metadata:
     properties:
       author:
@@ -2541,6 +3092,12 @@ definitions:
           type: string
         type: array
       version:
+        type: string
+    type: object
+  types.MetricsDataResponse:
+    properties:
+      data: {}
+      status:
         type: string
     type: object
   types.NodeType:
@@ -2738,254 +3295,6 @@ info:
   title: ChainLaunch API
   version: "1.0"
 paths:
-  /api/v1/metrics/deploy:
-    post:
-      consumes:
-      - application/json
-      description: Deploys a new Prometheus instance with the specified configuration
-      parameters:
-      - description: Prometheus deployment configuration
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/metrics.DeployPrometheusRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Deploy a new Prometheus instance
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}:
-    get:
-      description: Retrieves metrics for a specific node by ID and optional PromQL
-        query
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: PromQL query to filter metrics
-        in: query
-        name: query
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get metrics for a specific node
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/label/{label}/values:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves all values for a specific label, optionally filtered
-        by metric matches and node ID
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Label name
-        in: path
-        name: label
-        required: true
-        type: string
-      - description: Metric matches (e.g. {__name__=\
-        in: query
-        name: match
-        type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Label values
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get label values for a specific label
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/query:
-    post:
-      consumes:
-      - application/json
-      description: Execute a custom Prometheus query with optional time range
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Query parameters
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/metrics.CustomQueryRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/common.QueryResult'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Execute custom Prometheus query
-      tags:
-      - metrics
-  /api/v1/metrics/node/{id}/range:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves metrics for a specific node within a specified time range
-      parameters:
-      - description: Node ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: PromQL query
-        in: query
-        name: query
-        required: true
-        type: string
-      - description: Start time (RFC3339 format)
-        in: query
-        name: start
-        required: true
-        type: string
-      - description: End time (RFC3339 format)
-        in: query
-        name: end
-        required: true
-        type: string
-      - description: Step duration (e.g. 1m, 5m, 1h)
-        in: query
-        name: step
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Metrics data
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get metrics for a specific node with time range
-      tags:
-      - metrics
-  /api/v1/metrics/reload:
-    post:
-      description: Triggers a reload of the Prometheus configuration to pick up any
-        changes
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Reload Prometheus configuration
-      tags:
-      - metrics
-  /api/v1/metrics/status:
-    get:
-      description: Returns the current status of the Prometheus instance including
-        version, port, and configuration
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status'
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get Prometheus status
-      tags:
-      - metrics
   /audit/logs:
     get:
       consumes:
@@ -3049,7 +3358,7 @@ paths:
             type: object
       summary: List audit logs
       tags:
-      - audit
+      - Audit
   /audit/logs/{id}:
     get:
       description: Retrieves a specific audit log by ID
@@ -3098,7 +3407,7 @@ paths:
             type: object
       summary: Get audit log
       tags:
-      - audit
+      - Audit
   /auth/change-password:
     post:
       consumes:
@@ -4141,6 +4450,267 @@ paths:
       summary: Filter keys by algorithm and curve
       tags:
       - Keys
+  /metrics/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploys a new Prometheus instance with the specified configuration
+      parameters:
+      - description: Prometheus deployment configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.DeployPrometheusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deploy a new Prometheus instance
+      tags:
+      - Metrics
+  /metrics/node/{id}:
+    get:
+      description: Retrieves metrics for a specific node by ID and optional PromQL
+        query
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: PromQL query to filter metrics
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get metrics for a specific node
+      tags:
+      - Metrics
+  /metrics/node/{id}/label/{label}/values:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all values for a specific label, optionally filtered
+        by metric matches and node ID
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Label name
+        in: path
+        name: label
+        required: true
+        type: string
+      - description: Metric matches (e.g. {__name__=\
+        in: query
+        name: match
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Label values
+          schema:
+            $ref: '#/definitions/types.LabelValuesResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get label values for a specific label
+      tags:
+      - Metrics
+  /metrics/node/{id}/query:
+    post:
+      consumes:
+      - application/json
+      description: Execute a custom Prometheus query with optional time range
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Query parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.CustomQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.QueryResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Execute custom Prometheus query
+      tags:
+      - Metrics
+  /metrics/node/{id}/range:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves metrics for a specific node within a specified time range
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: PromQL query
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: Start time (RFC3339 format)
+        in: query
+        name: start
+        required: true
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: end
+        required: true
+        type: string
+      - description: Step duration (e.g. 1m, 5m, 1h)
+        in: query
+        name: step
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Metrics data
+          schema:
+            $ref: '#/definitions/types.MetricsDataResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get metrics for a specific node with time range
+      tags:
+      - Metrics
+  /metrics/reload:
+    post:
+      description: Triggers a reload of the Prometheus configuration to pick up any
+        changes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reload Prometheus configuration
+      tags:
+      - Metrics
+  /metrics/status:
+    get:
+      description: Returns the current status of the Prometheus instance including
+        version, port, and configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Prometheus status
+      tags:
+      - Metrics
+  /metrics/undeploy:
+    post:
+      description: Stops and removes the Prometheus instance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Undeploy Prometheus instance
+      tags:
+      - Metrics
   /networks/besu:
     get:
       description: Get a paginated list of Besu networks
@@ -6690,6 +7260,627 @@ paths:
       summary: Stop a plugin deployment
       tags:
       - Plugins
+  /plugins/available:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all available plugins from configured GitHub repositories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugin.AvailablePluginsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List available plugins from GitHub sources
+      tags:
+      - Plugins
+  /plugins/available/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a refresh of the available plugins cache from GitHub sources
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/plugin.AvailablePluginsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Refresh available plugins
+      tags:
+      - Plugins
+  /sc/besu/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a smart contract to a Besu (EVM) network
+      parameters:
+      - description: Besu contract deployment parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.BesuDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.BesuDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Besu smart contract
+      tags:
+      - SmartContracts
+  /sc/fabric/chaincodes:
+    get:
+      consumes:
+      - application/json
+      description: List all Fabric chaincodes deployed via Docker
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ListChaincodesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List deployed Fabric chaincodes
+      tags:
+      - SmartContracts
+    post:
+      consumes:
+      - application/json
+      description: Create a new chaincode
+      parameters:
+      - description: Chaincode info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a chaincode
+      tags:
+      - Chaincode
+  /sc/fabric/chaincodes/{chaincodeId}/definitions:
+    get:
+      consumes:
+      - application/json
+      description: List all definitions for a given chaincode
+      parameters:
+      - description: Chaincode ID
+        in: path
+        name: chaincodeId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ListChaincodeDefinitionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List chaincode definitions for a chaincode
+      tags:
+      - Chaincode
+    post:
+      consumes:
+      - application/json
+      description: Create a new chaincode definition for a chaincode
+      parameters:
+      - description: Chaincode definition info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.CreateChaincodeDefinitionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/chaincodes/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific Fabric chaincode and its Docker/runtime info by
+        ID
+      parameters:
+      - description: Chaincode ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get Fabric chaincode details by ID
+      tags:
+      - SmartContracts
+  /sc/fabric/definitions/{definitionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a chaincode definition by ID
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a chaincode definition
+      tags:
+      - Chaincode
+    put:
+      consumes:
+      - application/json
+      description: Update an existing chaincode definition by ID
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Chaincode definition update info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.UpdateChaincodeDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update a chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve chaincode for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer ID to use for approval
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.ApproveChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Approve chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/commit:
+    post:
+      consumes:
+      - application/json
+      description: Commit chaincode for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer ID to use for commit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.CommitChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Commit chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy chaincode for a given definition using Docker image
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Docker deploy params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.DeployChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy chaincode based on chaincode definition (Docker)
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/install:
+    post:
+      consumes:
+      - application/json
+      description: Install chaincode on peers for a given definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      - description: Peer IDs to install on
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.InstallChaincodeByDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Install chaincode based on chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/definitions/{definitionId}/timeline:
+    get:
+      consumes:
+      - application/json
+      description: Get the timeline of install/approve/commit/deploy events for a
+        chaincode definition
+      parameters:
+      - description: Chaincode Definition ID
+        in: path
+        name: definitionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/chainlaunchdeploy.ChaincodeDefinitionEvent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get timeline of events for a chaincode definition
+      tags:
+      - Chaincode
+  /sc/fabric/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a chaincode to a Fabric network (install, approve, commit)
+      parameters:
+      - description: Fabric chaincode deployment parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/docker-deploy:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a chaincode to a Fabric network using a Docker image, package
+        ID, and port mapping. If host_port is empty, a free port is chosen. If container_port
+        is empty, defaults to 7052.
+      parameters:
+      - description: 'Fabric chaincode Docker deployment parameters (host_port: optional,
+          container_port: optional, defaults to 7052)'
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricChaincodeDockerDeployResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Deploy Fabric chaincode with Docker image
+      tags:
+      - SmartContracts
+  /sc/fabric/peer/{peerId}/chaincode/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a chaincode definition for an organization
+      parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: Fabric chaincode approve parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricApproveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricApproveResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Approve Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/peer/{peerId}/chaincode/commit:
+    post:
+      consumes:
+      - application/json
+      description: Commit a chaincode definition to the channel
+      parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: Fabric chaincode commit parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricCommitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricCommitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Commit Fabric chaincode
+      tags:
+      - SmartContracts
+  /sc/fabric/peer/{peerId}/chaincode/install:
+    post:
+      consumes:
+      - application/json
+      description: Install a chaincode package on a Fabric peer
+      parameters:
+      - description: Peer ID
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: Fabric chaincode install parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chainlaunchdeploy.FabricInstallRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chainlaunchdeploy.FabricInstallResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Install Fabric chaincode
+      tags:
+      - SmartContracts
   /settings:
     get:
       description: Get the default setting's details
@@ -6993,6 +8184,8 @@ securityDefinitions:
     type: apiKey
 swagger: "2.0"
 tags:
+- description: Audit management operations
+  name: Audit
 - description: User authentication and authorization operations
   name: Authentication
 - description: Backup schedule configuration and management
@@ -7007,6 +8200,8 @@ tags:
   name: Fabric Networks
 - description: Cryptographic key management operations
   name: Keys
+- description: Metrics management operations
+  name: Metrics
 - description: Network node management operations
   name: Nodes
 - description: System notification configuration and management
@@ -7019,5 +8214,7 @@ tags:
   name: Providers
 - description: Settings management operations
   name: Settings
+- description: Smart contract management operations
+  name: SmartContracts
 - description: User account management operations
   name: Users

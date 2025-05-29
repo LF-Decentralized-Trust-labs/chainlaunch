@@ -10,6 +10,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
+	"github.com/chainlaunch/chainlaunch/pkg/plugin/registry"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -22,19 +23,23 @@ func init() {
 
 // Handler handles HTTP requests for plugins
 type Handler struct {
-	store    Store
-	pm       *PluginManager
-	logger   *logger.Logger
-	validate *validator.Validate
+	store                 Store
+	pm                    *PluginManager
+	logger                *logger.Logger
+	validate              *validator.Validate
+	registry              *registry.Registry
+	availablePluginsCache *registry.AvailablePluginsCache // cache for available plugins
 }
 
 // NewHandler creates a new plugin handler
-func NewHandler(store Store, pm *PluginManager, logger *logger.Logger) *Handler {
+func NewHandler(store Store, pm *PluginManager, logger *logger.Logger, registry *registry.Registry, availablePluginsCache *registry.AvailablePluginsCache) *Handler {
 	return &Handler{
-		store:    store,
-		pm:       pm,
-		logger:   logger,
-		validate: validator.New(),
+		store:                 store,
+		pm:                    pm,
+		logger:                logger,
+		validate:              validator.New(),
+		registry:              registry,
+		availablePluginsCache: availablePluginsCache,
 	}
 }
 
@@ -42,6 +47,8 @@ func NewHandler(store Store, pm *PluginManager, logger *logger.Logger) *Handler 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/plugins", func(r chi.Router) {
 		r.Get("/", response.Middleware(h.listPlugins))
+		r.Get("/available", response.Middleware(h.listAvailablePlugins))
+		r.Post("/available/refresh", response.Middleware(h.refreshAvailablePlugins))
 		r.Post("/", response.Middleware(h.createPlugin))
 		r.Route("/{name}", func(r chi.Router) {
 			r.Get("/", response.Middleware(h.getPlugin))
@@ -180,6 +187,22 @@ func (h *Handler) updatePlugin(w http.ResponseWriter, r *http.Request) error {
 			"code":   "NAME_MISMATCH",
 		})
 	}
+
+	// Get existing plugin to validate it exists
+	existingPlugin, err := h.store.GetPlugin(r.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return errors.NewNotFoundError("plugin not found", map[string]interface{}{
+				"detail":      "The requested plugin does not exist",
+				"code":        "PLUGIN_NOT_FOUND",
+				"plugin_name": name,
+			})
+		}
+		return errors.NewInternalError("failed to get plugin", err, nil)
+	}
+
+	// Preserve deployment status
+	plugin.DeploymentStatus = existingPlugin.DeploymentStatus
 
 	if err := h.validate.Struct(plugin); err != nil {
 		validationErrors := make(map[string]string)
@@ -512,4 +535,47 @@ func (h *Handler) resumePlugin(w http.ResponseWriter, r *http.Request) error {
 	return response.WriteJSON(w, http.StatusOK, map[string]string{
 		"status": "resumed",
 	})
+}
+
+// @Summary List available plugins from GitHub sources
+// @Description Get a list of all available plugins from configured GitHub repositories
+// @Tags Plugins
+// @Accept json
+// @Produce json
+// @Success 200 {object} AvailablePluginsResponse
+// @Failure 500 {object} response.Response
+// @Router /plugins/available [get]
+func (h *Handler) listAvailablePlugins(w http.ResponseWriter, r *http.Request) error {
+	plugins, lastUpdated := h.availablePluginsCache.Get()
+	resp := AvailablePluginsResponse{
+		Plugins:     plugins,
+		LastUpdated: lastUpdated.Format(time.RFC3339),
+	}
+	return response.WriteJSON(w, http.StatusOK, resp)
+}
+
+type AvailablePluginsResponse struct {
+	Plugins     []registry.PluginMetadata `json:"plugins"`
+	LastUpdated string                    `json:"last_updated"`
+}
+
+// @Summary Refresh available plugins
+// @Description Triggers a refresh of the available plugins cache from GitHub sources
+// @Tags Plugins
+// @Accept json
+// @Produce json
+// @Success 200 {object} AvailablePluginsResponse
+// @Failure 500 {object} response.Response
+// @Router /plugins/available/refresh [post]
+func (h *Handler) refreshAvailablePlugins(w http.ResponseWriter, r *http.Request) error {
+	plugins, err := h.registry.ListAvailablePluginsFromGitHub()
+	if err != nil {
+		return errors.NewInternalError("failed to refresh available plugins from GitHub", err, nil)
+	}
+	h.availablePluginsCache.Set(plugins)
+	resp := AvailablePluginsResponse{
+		Plugins:     plugins,
+		LastUpdated: time.Now().Format(time.RFC3339),
+	}
+	return response.WriteJSON(w, http.StatusOK, resp)
 }

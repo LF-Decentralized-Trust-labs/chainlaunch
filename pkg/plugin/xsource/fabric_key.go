@@ -121,8 +121,8 @@ func (v *FabricKeyValue) GetValue(ctx context.Context) (interface{}, error) {
 		MspID:       org.MspID,
 		Certificate: *key.Certificate,
 		PrivateKey:  privateKey,
-		CertPath:    "/etc/chainlaunch/key/cert.pem",
-		KeyPath:     "/etc/chainlaunch/key/key.pem",
+		CertPath:    fmt.Sprintf("/etc/chainlaunch/%s/cert.pem", v.Key),
+		KeyPath:     fmt.Sprintf("/etc/chainlaunch/%s/key.pem", v.Key),
 	}
 
 	return details, nil

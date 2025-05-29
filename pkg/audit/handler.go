@@ -54,7 +54,7 @@ type ListLogsResponse struct {
 // ListLogs retrieves a list of audit logs
 // @Summary List audit logs
 // @Description Retrieves a paginated list of audit logs with optional filters
-// @Tags audit
+// @Tags Audit
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number (default: 1)"
@@ -142,7 +142,7 @@ func (h *Handler) ListLogs(w http.ResponseWriter, r *http.Request) {
 // GetLog retrieves a specific audit log by ID
 // @Summary Get audit log
 // @Description Retrieves a specific audit log by ID
-// @Tags audit
+// @Tags Audit
 // @Produce json
 // @Param id path string true "Log ID"
 // @Success 200 {object} Event

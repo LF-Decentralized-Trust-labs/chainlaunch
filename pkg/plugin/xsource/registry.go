@@ -23,6 +23,7 @@ func NewRegistry(queries *db.Queries, nodeService *nodeservice.NodeService, keyM
 	// Register default handlers
 	r.Register(NewFabricKeyHandler(queries, nodeService, keyManagement))
 	r.Register(NewFabricPeerHandler(queries, nodeService))
+	r.Register(&FileHandler{})
 
 	return r
 }

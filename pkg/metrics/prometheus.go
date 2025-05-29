@@ -394,17 +394,9 @@ func NewPrometheusManager(config *common.Config, db *db.Queries, nodeService *no
 	var deployer PrometheusDeployer
 	var err error
 
-	switch config.DeploymentMode {
-	case "docker":
-		deployer, err = NewDockerPrometheusDeployer(config, db, nodeService)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create docker deployer: %w", err)
-		}
-	default:
-		deployer, err = NewDockerPrometheusDeployer(config, db, nodeService)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create docker deployer: %w", err)
-		}
+	deployer, err = NewDockerPrometheusDeployer(config, db, nodeService)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker deployer: %w", err)
 	}
 
 	// Create Prometheus client

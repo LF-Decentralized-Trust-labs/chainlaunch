@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/plugin/types"
@@ -55,6 +56,32 @@ type PluginMetadata struct {
 	Created     time.Time         `json:"created" yaml:"created"`
 	Updated     time.Time         `json:"updated" yaml:"updated"`
 	Labels      map[string]string `json:"labels" yaml:"labels"`
+	RawYAML     string            `json:"raw_yaml" yaml:"raw_yaml"`
+}
+
+// AvailablePluginsCache caches available plugins from GitHub sources
+// Thread-safe for concurrent access
+type AvailablePluginsCache struct {
+	mu          sync.RWMutex
+	plugins     []PluginMetadata
+	lastUpdated time.Time
+}
+
+func NewAvailablePluginsCache() *AvailablePluginsCache {
+	return &AvailablePluginsCache{}
+}
+
+func (c *AvailablePluginsCache) Get() ([]PluginMetadata, time.Time) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.plugins, c.lastUpdated
+}
+
+func (c *AvailablePluginsCache) Set(plugins []PluginMetadata) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.plugins = plugins
+	c.lastUpdated = time.Now()
 }
 
 // NewRegistry creates a new plugin registry
@@ -91,7 +118,34 @@ func newSource(config RegistrySource) (PluginSource, error) {
 		return NewIPFSSource(config)
 	case "marketplace":
 		return NewMarketplaceSource(config)
+	case "github":
+		return NewGitHubSource(config)
 	default:
 		return nil, fmt.Errorf("unsupported source type: %s", config.Type)
 	}
+}
+
+// Sources returns all plugin sources in the registry
+func (r *Registry) Sources() []PluginSource {
+	s := make([]PluginSource, 0, len(r.sources))
+	for _, src := range r.sources {
+		s = append(s, src)
+	}
+	return s
+}
+
+// ListAvailablePluginsFromGitHub returns all available plugins from GitHub sources
+func (r *Registry) ListAvailablePluginsFromGitHub() ([]PluginMetadata, error) {
+	result := []PluginMetadata{}
+	for _, src := range r.sources {
+		// Type assertion to *GitHubSource
+		if githubSrc, ok := src.(*GitHubSource); ok {
+			plugins, err := githubSrc.List()
+			if err != nil {
+				continue // skip sources that fail
+			}
+			result = append(result, plugins...)
+		}
+	}
+	return result, nil
 }

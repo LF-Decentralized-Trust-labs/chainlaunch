@@ -103,14 +103,14 @@ func (s *service) GetLabelValues(ctx context.Context, nodeID int64, labelName st
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
-	jobName := slugify(fmt.Sprintf("%s-%d", node.NodeType, node.ID))
-
+	jobName := slugify(fmt.Sprintf("%d-%s", node.ID, node.Name))
+	realMatches := []string{}
 	// Add job filter to matches
-	jobMatch := fmt.Sprintf(`{job="%s"}`, jobName)
-	_ = jobMatch
-	// matches = append(matches, jobMatch)
+	for _, match := range matches {
+		realMatches = append(realMatches, fmt.Sprintf(`%s{job="%s"}`, match, jobName))
+	}
 
-	result, err := s.manager.GetLabelValues(ctx, labelName, matches)
+	result, err := s.manager.GetLabelValues(ctx, labelName, realMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get label values: %w", err)
 	}

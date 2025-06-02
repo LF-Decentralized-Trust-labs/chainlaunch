@@ -136,9 +136,13 @@ func (b *LocalBesu) startDocker(env map[string]string, dataDir, configDir string
 		return nil, err
 	}
 	// Pull the image
-	_, err = cli.ImagePull(ctx, imageName, image.PullOptions{})
+	reader, err = cli.ImagePull(ctx, imageName, image.PullOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull image: %w", err)
+	}
+	_, err = io.Copy(io.Discard, reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read image pull response: %w", err)
 	}
 
 	// Create container

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -102,11 +103,15 @@ func (d *DockerPrometheusDeployer) Start(ctx context.Context) error {
 
 	// Pull Prometheus image
 	imageName := fmt.Sprintf("prom/prometheus:%s", d.config.PrometheusVersion)
-	_, err = d.client.ImagePull(ctx, imageName, image.PullOptions{
+	reader, err := d.client.ImagePull(ctx, imageName, image.PullOptions{
 		// All: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to pull Prometheus image: %w", err)
+	}
+	_, err = io.Copy(os.Stdout, reader)
+	if err != nil {
+		return fmt.Errorf("failed to copy Prometheus image: %w", err)
 	}
 
 	// Create container config

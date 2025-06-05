@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AddChaincodeDefinitionEvent(ctx context.Context, arg *AddChaincodeDefinitionEventParams) error
 	AddRevokedCertificate(ctx context.Context, arg *AddRevokedCertificateParams) error
 	CheckNetworkNodeExists(ctx context.Context, arg *CheckNetworkNodeExistsParams) (int64, error)
 	CountAuditLogs(ctx context.Context, arg *CountAuditLogsParams) (int64, error)
@@ -24,6 +25,8 @@ type Querier interface {
 	CreateBackup(ctx context.Context, arg *CreateBackupParams) (*Backup, error)
 	CreateBackupSchedule(ctx context.Context, arg *CreateBackupScheduleParams) (*BackupSchedule, error)
 	CreateBackupTarget(ctx context.Context, arg *CreateBackupTargetParams) (*BackupTarget, error)
+	CreateChaincode(ctx context.Context, arg *CreateChaincodeParams) (*FabricChaincode, error)
+	CreateChaincodeDefinition(ctx context.Context, arg *CreateChaincodeDefinitionParams) (*FabricChaincodeDefinition, error)
 	CreateFabricOrganization(ctx context.Context, arg *CreateFabricOrganizationParams) (*FabricOrganization, error)
 	CreateKey(ctx context.Context, arg *CreateKeyParams) (*Key, error)
 	CreateKeyProvider(ctx context.Context, arg *CreateKeyProviderParams) (*KeyProvider, error)
@@ -43,6 +46,8 @@ type Querier interface {
 	DeleteBackupTarget(ctx context.Context, id int64) error
 	DeleteBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) error
 	DeleteBackupsByTarget(ctx context.Context, targetID int64) error
+	DeleteChaincode(ctx context.Context, id int64) error
+	DeleteChaincodeDefinition(ctx context.Context, id int64) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteFabricOrganization(ctx context.Context, id int64) error
 	DeleteKey(ctx context.Context, id int64) error
@@ -69,10 +74,13 @@ type Querier interface {
 	GetBackupsByDateRange(ctx context.Context, arg *GetBackupsByDateRangeParams) ([]*Backup, error)
 	GetBackupsByScheduleAndStatus(ctx context.Context, arg *GetBackupsByScheduleAndStatusParams) ([]*Backup, error)
 	GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error)
+	GetChaincode(ctx context.Context, id int64) (*GetChaincodeRow, error)
+	GetChaincodeDefinition(ctx context.Context, id int64) (*FabricChaincodeDefinition, error)
 	GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error)
 	GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error)
 	GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error)
 	GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error)
+	GetFabricChaincodeByName(ctx context.Context, name string) (*FabricChaincode, error)
 	GetFabricOrganization(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByID(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (*FabricOrganization, error)
@@ -121,6 +129,10 @@ type Querier interface {
 	ListBackups(ctx context.Context, arg *ListBackupsParams) ([]*Backup, error)
 	ListBackupsBySchedule(ctx context.Context, scheduleID sql.NullInt64) ([]*Backup, error)
 	ListBackupsByTarget(ctx context.Context, targetID int64) ([]*Backup, error)
+	ListChaincodeDefinitionEvents(ctx context.Context, definitionID int64) ([]*FabricChaincodeDefinitionEvent, error)
+	ListChaincodeDefinitions(ctx context.Context, chaincodeID int64) ([]*FabricChaincodeDefinition, error)
+	ListChaincodes(ctx context.Context) ([]*FabricChaincode, error)
+	ListFabricChaincodes(ctx context.Context) ([]*FabricChaincode, error)
 	ListFabricOrganizations(ctx context.Context) ([]*FabricOrganization, error)
 	ListFabricOrganizationsWithKeys(ctx context.Context, arg *ListFabricOrganizationsWithKeysParams) ([]*ListFabricOrganizationsWithKeysRow, error)
 	ListKeyProviders(ctx context.Context) ([]*KeyProvider, error)
@@ -135,11 +147,13 @@ type Querier interface {
 	ListNodesByNetwork(ctx context.Context, arg *ListNodesByNetworkParams) ([]*Node, error)
 	ListNodesByPlatform(ctx context.Context, arg *ListNodesByPlatformParams) ([]*Node, error)
 	ListNotificationProviders(ctx context.Context) ([]*NotificationProvider, error)
+	ListPeerStatuses(ctx context.Context, definitionID int64) ([]*FabricChaincodeDefinitionPeerStatus, error)
 	ListPlugins(ctx context.Context) ([]*Plugin, error)
 	ListSettings(ctx context.Context) ([]*Setting, error)
 	ListUsers(ctx context.Context) ([]*User, error)
 	MarkBackupNotified(ctx context.Context, id int64) error
 	ResetPrometheusConfig(ctx context.Context) (*PrometheusConfig, error)
+	SetPeerStatus(ctx context.Context, arg *SetPeerStatusParams) (*FabricChaincodeDefinitionPeerStatus, error)
 	UnsetDefaultNotificationProvider(ctx context.Context, type_ string) error
 	UnsetDefaultProvider(ctx context.Context) error
 	UpdateBackupCompleted(ctx context.Context, arg *UpdateBackupCompletedParams) (*Backup, error)
@@ -149,6 +163,8 @@ type Querier interface {
 	UpdateBackupSize(ctx context.Context, arg *UpdateBackupSizeParams) (*Backup, error)
 	UpdateBackupStatus(ctx context.Context, arg *UpdateBackupStatusParams) (*Backup, error)
 	UpdateBackupTarget(ctx context.Context, arg *UpdateBackupTargetParams) (*BackupTarget, error)
+	UpdateChaincode(ctx context.Context, arg *UpdateChaincodeParams) (*FabricChaincode, error)
+	UpdateChaincodeDefinition(ctx context.Context, arg *UpdateChaincodeDefinitionParams) (*FabricChaincodeDefinition, error)
 	UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploymentConfigParams) (*Node, error)
 	UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error
 	UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error

@@ -8,15 +8,9 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/metrics/common"
+	"github.com/chainlaunch/chainlaunch/pkg/metrics/types"
 	"github.com/go-chi/chi/v5"
 )
-
-// Node represents a node to be monitored
-type Node struct {
-	ID      string
-	Address string
-	Port    int
-}
 
 // Handler handles HTTP requests for metrics
 type Handler struct {
@@ -34,8 +28,9 @@ func NewHandler(service common.Service, logger *logger.Logger) *Handler {
 
 // RegisterRoutes registers the metrics routes
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	r.Route("/api/v1/metrics", func(r chi.Router) {
+	r.Route("/metrics", func(r chi.Router) {
 		r.Post("/deploy", h.DeployPrometheus)
+		r.Post("/undeploy", h.UndeployPrometheus)
 		r.Get("/node/{id}", h.GetNodeMetrics)
 		r.Post("/reload", h.ReloadConfiguration)
 		r.Get("/node/{id}/label/{label}/values", h.GetLabelValues)
@@ -45,27 +40,19 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	})
 }
 
-// DeployPrometheusRequest represents the request to deploy Prometheus
-type DeployPrometheusRequest struct {
-	PrometheusVersion string `json:"prometheus_version" binding:"required"`
-	PrometheusPort    int    `json:"prometheus_port" binding:"required"`
-	ScrapeInterval    int    `json:"scrape_interval" binding:"required"`
-	DeploymentMode    string `json:"deployment_mode" binding:"required"`
-}
-
 // DeployPrometheus deploys a new Prometheus instance
 // @Summary Deploy a new Prometheus instance
 // @Description Deploys a new Prometheus instance with the specified configuration
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
-// @Param request body DeployPrometheusRequest true "Prometheus deployment configuration"
-// @Success 200 {object} map[string]string
+// @Param request body types.DeployPrometheusRequest true "Prometheus deployment configuration"
+// @Success 200 {object} types.MessageResponse
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /api/v1/metrics/deploy [post]
+// @Router /metrics/deploy [post]
 func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
-	var req DeployPrometheusRequest
+	var req types.DeployPrometheusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -75,7 +62,6 @@ func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
 		PrometheusVersion: req.PrometheusVersion,
 		PrometheusPort:    req.PrometheusPort,
 		ScrapeInterval:    time.Duration(req.ScrapeInterval) * time.Second,
-		DeploymentMode:    req.DeploymentMode,
 	}
 
 	if err := h.service.Start(r.Context(), config); err != nil {
@@ -86,29 +72,20 @@ func (h *Handler) DeployPrometheus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Prometheus deployed successfully"})
-}
-
-// RefreshNodesRequest represents the request to refresh nodes
-type RefreshNodesRequest struct {
-	Nodes []struct {
-		ID      string `json:"id" binding:"required"`
-		Address string `json:"address" binding:"required"`
-		Port    int    `json:"port" binding:"required"`
-	} `json:"nodes" binding:"required"`
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus deployed successfully"})
 }
 
 // GetNodeMetrics retrieves metrics for a specific node
 // @Summary Get metrics for a specific node
 // @Description Retrieves metrics for a specific node by ID and optional PromQL query
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Param id path string true "Node ID"
 // @Param query query string false "PromQL query to filter metrics"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /api/v1/metrics/node/{id} [get]
+// @Router /metrics/node/{id} [get]
 func (h *Handler) GetNodeMetrics(w http.ResponseWriter, r *http.Request) {
 	nodeID := chi.URLParam(r, "id")
 	if nodeID == "" {
@@ -139,11 +116,11 @@ func (h *Handler) GetNodeMetrics(w http.ResponseWriter, r *http.Request) {
 // ReloadConfiguration reloads the Prometheus configuration
 // @Summary Reload Prometheus configuration
 // @Description Triggers a reload of the Prometheus configuration to pick up any changes
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} types.MessageResponse
 // @Failure 500 {object} map[string]string
-// @Router /api/v1/metrics/reload [post]
+// @Router /metrics/reload [post]
 func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Reload(r.Context()); err != nil {
 		h.logger.Error("Failed to reload Prometheus configuration", "error", err)
@@ -153,21 +130,21 @@ func (h *Handler) ReloadConfiguration(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Prometheus configuration reloaded successfully"})
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus configuration reloaded successfully"})
 }
 
 // @Summary Get label values for a specific label
 // @Description Retrieves all values for a specific label, optionally filtered by metric matches and node ID
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
 // @Param label path string true "Label name"
 // @Param match query array false "Metric matches (e.g. {__name__=\"metric_name\"})"
-// @Success 200 {object} map[string]interface{} "Label values"
+// @Success 200 {object} types.LabelValuesResponse "Label values"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/metrics/node/{id}/label/{label}/values [get]
+// @Router /metrics/node/{id}/label/{label}/values [get]
 func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 	nodeID := chi.URLParam(r, "id")
 	if nodeID == "" {
@@ -198,15 +175,15 @@ func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"data":   values,
+	json.NewEncoder(w).Encode(types.LabelValuesResponse{
+		Status: "success",
+		Data:   values,
 	})
 }
 
 // @Summary Get metrics for a specific node with time range
 // @Description Retrieves metrics for a specific node within a specified time range
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
@@ -214,10 +191,10 @@ func (h *Handler) GetLabelValues(w http.ResponseWriter, r *http.Request) {
 // @Param start query string true "Start time (RFC3339 format)"
 // @Param end query string true "End time (RFC3339 format)"
 // @Param step query string true "Step duration (e.g. 1m, 5m, 1h)"
-// @Success 200 {object} map[string]interface{} "Metrics data"
+// @Success 200 {object} types.MetricsDataResponse "Metrics data"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/metrics/node/{id}/range [get]
+// @Router /metrics/node/{id}/range [get]
 func (h *Handler) GetNodeMetricsRange(w http.ResponseWriter, r *http.Request) {
 	nodeID := chi.URLParam(r, "id")
 	if nodeID == "" {
@@ -287,32 +264,24 @@ func (h *Handler) GetNodeMetricsRange(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"data":   metrics,
+	json.NewEncoder(w).Encode(types.MetricsDataResponse{
+		Status: "success",
+		Data:   metrics,
 	})
-}
-
-// CustomQueryRequest represents the request body for custom Prometheus queries
-type CustomQueryRequest struct {
-	Query string     `json:"query" binding:"required"`
-	Start *time.Time `json:"start,omitempty"`
-	End   *time.Time `json:"end,omitempty"`
-	Step  *string    `json:"step,omitempty"`
 }
 
 // CustomQuery executes a custom Prometheus query
 // @Summary Execute custom Prometheus query
 // @Description Execute a custom Prometheus query with optional time range
-// @Tags metrics
+// @Tags Metrics
 // @Accept json
 // @Produce json
 // @Param id path string true "Node ID"
-// @Param request body CustomQueryRequest true "Query parameters"
+// @Param request body types.CustomQueryRequest true "Query parameters"
 // @Success 200 {object} common.QueryResult
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /api/v1/metrics/node/{id}/query [post]
+// @Router /metrics/node/{id}/query [post]
 func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
 	nodeID := chi.URLParam(r, "id")
 	if nodeID == "" {
@@ -325,7 +294,7 @@ func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req CustomQueryRequest
+	var req types.CustomQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
@@ -370,11 +339,11 @@ func (h *Handler) CustomQuery(w http.ResponseWriter, r *http.Request) {
 // GetStatus returns the current status of the Prometheus instance
 // @Summary Get Prometheus status
 // @Description Returns the current status of the Prometheus instance including version, port, and configuration
-// @Tags metrics
+// @Tags Metrics
 // @Produce json
 // @Success 200 {object} common.Status
 // @Failure 500 {object} map[string]string
-// @Router /api/v1/metrics/status [get]
+// @Router /metrics/status [get]
 func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	status, err := h.service.GetStatus(r.Context())
 	if err != nil {
@@ -386,4 +355,23 @@ func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(status)
+}
+
+// UndeployPrometheus stops the Prometheus instance
+// @Summary Undeploy Prometheus instance
+// @Description Stops and removes the Prometheus instance
+// @Tags Metrics
+// @Produce json
+// @Success 200 {object} types.MessageResponse
+// @Failure 500 {object} map[string]string
+// @Router /metrics/undeploy [post]
+func (h *Handler) UndeployPrometheus(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.Stop(r.Context()); err != nil {
+		h.logger.Error("Failed to undeploy Prometheus", "error", err)
+		http.Error(w, "Failed to undeploy Prometheus", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(types.MessageResponse{Message: "Prometheus undeployed successfully"})
 }

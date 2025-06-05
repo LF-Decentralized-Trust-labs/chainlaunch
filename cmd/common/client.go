@@ -55,7 +55,6 @@ func (c *Client) DoRequest(method, path string, body interface{}) (*http.Respons
 		}
 		reqBody = bytes.NewBuffer(jsonBody)
 	}
-
 	// Create HTTP request
 	req, err := http.NewRequest(method, fmt.Sprintf("%s%s", c.baseURL, path), reqBody)
 	if err != nil {

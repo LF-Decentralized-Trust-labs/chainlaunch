@@ -110,6 +110,395 @@ export type BlockTransactionWrite = {
 
 export type BlockTxType = 'MESSAGE' | 'CONFIG' | 'CONFIG_UPDATE' | 'ENDORSER_TRANSACTION' | 'ORDERER_TRANSACTION' | 'DELIVER_SEEK_INFO' | 'CHAINCODE_PACKAGE';
 
+export type ChaincodeGateway = {
+    [key: string]: unknown;
+};
+
+export type ChaincodePeer = {
+    [key: string]: unknown;
+};
+
+export type ChainlaunchdeployApproveChaincodeByDefinitionRequest = {
+    /**
+     * Peer ID to use for approval
+     * required: true
+     */
+    peer_id?: number;
+};
+
+export type ChainlaunchdeployBesuDeployRequest = {
+    /**
+     * Contract ABI (JSON string)
+     */
+    abi?: string;
+    /**
+     * Compiled contract bytecode
+     */
+    bytecode?: Array<number>;
+    /**
+     * Chain ID for the target network
+     */
+    chainID?: number;
+    /**
+     * Constructor arguments for the contract
+     */
+    constructorArgs?: Array<unknown>;
+    /**
+     * RPC endpoint for Besu node
+     */
+    rpcurl?: string;
+    /**
+     * (Optional) Solidity source code (for reference)
+     */
+    solidityCode?: string;
+};
+
+export type ChainlaunchdeployBesuDeployResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    status?: string;
+};
+
+export type ChainlaunchdeployChaincode = {
+    /**
+     * ISO8601
+     */
+    created_at?: string;
+    definitions?: Array<ChainlaunchdeployChaincodeDefinition>;
+    id?: number;
+    name?: string;
+    network_id?: number;
+    /**
+     * Name of the network
+     */
+    network_name?: string;
+    /**
+     * Platform/type (fabric/besu/etc)
+     */
+    network_platform?: string;
+};
+
+export type ChainlaunchdeployChaincodeDefinition = {
+    chaincode_address?: string;
+    chaincode_id?: number;
+    /**
+     * ISO8601
+     */
+    created_at?: string;
+    docker_image?: string;
+    endorsement_policy?: string;
+    id?: number;
+    peer_statuses?: Array<ChainlaunchdeployPeerStatus>;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployChaincodeDefinitionEvent = {
+    created_at?: string;
+    definition_id?: number;
+    event_data?: unknown;
+    event_type?: string;
+    id?: number;
+};
+
+export type ChainlaunchdeployChaincodeDefinitionResponse = {
+    chaincode_address?: string;
+    chaincode_id?: number;
+    created_at?: string;
+    docker_image?: string;
+    endorsement_policy?: string;
+    id?: number;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployChaincodeResponse = {
+    created_at?: string;
+    id?: number;
+    name?: string;
+    network_id?: number;
+    network_name?: string;
+    network_platform?: string;
+};
+
+export type ChainlaunchdeployCommitChaincodeByDefinitionRequest = {
+    /**
+     * Peer ID to use for commit
+     * required: true
+     */
+    peer_id?: number;
+};
+
+export type ChainlaunchdeployCreateChaincodeDefinitionRequest = {
+    /**
+     * Chaincode address
+     */
+    chaincode_address?: string;
+    /**
+     * Chaincode ID
+     * required: true
+     */
+    chaincode_id?: number;
+    /**
+     * Docker image
+     * required: true
+     */
+    docker_image?: string;
+    /**
+     * Endorsement policy
+     */
+    endorsement_policy?: string;
+    /**
+     * Sequence
+     * required: true
+     */
+    sequence?: number;
+    /**
+     * Version
+     * required: true
+     */
+    version?: string;
+};
+
+export type ChainlaunchdeployCreateChaincodeDefinitionResponse = {
+    definition?: ChainlaunchdeployChaincodeDefinitionResponse;
+};
+
+export type ChainlaunchdeployCreateChaincodeRequest = {
+    /**
+     * Name of the chaincode
+     * required: true
+     */
+    name?: string;
+    /**
+     * Network ID
+     * required: true
+     */
+    network_id?: number;
+};
+
+export type ChainlaunchdeployCreateChaincodeResponse = {
+    chaincode?: ChainlaunchdeployChaincodeResponse;
+};
+
+export type ChainlaunchdeployDeployChaincodeByDefinitionRequest = {
+    /**
+     * Container port to use (optional, default 7052)
+     */
+    container_port?: string;
+    /**
+     * Host port to use (optional)
+     */
+    host_port?: string;
+};
+
+export type ChainlaunchdeployDeploymentResult = {
+    /**
+     * For Fabric
+     */
+    chaincodeID?: string;
+    /**
+     * For EVM
+     */
+    contractAddress?: string;
+    error?: unknown;
+    logs?: string;
+    success?: boolean;
+    /**
+     * For EVM
+     */
+    transactionHash?: string;
+};
+
+export type ChainlaunchdeployDockerContainerInfo = {
+    created?: number;
+    id?: string;
+    image?: string;
+    name?: string;
+    ports?: Array<string>;
+    state?: string;
+    status?: string;
+};
+
+export type ChainlaunchdeployFabricApproveRequest = {
+    channelID?: string;
+    endorsementPolicy?: string;
+    initRequired?: boolean;
+    name?: string;
+    packageID?: string;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployFabricApproveResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    status?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeApproveParams = {
+    channelID?: string;
+    /**
+     * Serialized CollectionConfigPackage
+     */
+    collectionsConfig?: Array<number>;
+    endorsementPolicy?: string;
+    gateway?: ChaincodeGateway;
+    initRequired?: boolean;
+    name?: string;
+    packageID?: string;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeCommitParams = {
+    channelID?: string;
+    /**
+     * Serialized CollectionConfigPackage
+     */
+    collectionsConfig?: Array<number>;
+    endorsementPolicy?: string;
+    gateway?: ChaincodeGateway;
+    initRequired?: boolean;
+    name?: string;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeDetail = {
+    chaincode?: ChainlaunchdeployChaincode;
+    definitions?: Array<ChainlaunchdeployChaincodeDefinition>;
+    docker_info?: ChainlaunchdeployDockerContainerInfo;
+};
+
+export type ChainlaunchdeployFabricChaincodeDockerDeployRequest = {
+    /**
+     * optional, defaults to 7052
+     */
+    container_port?: number;
+    docker_image: string;
+    /**
+     * optional, if 0 a free port is chosen
+     */
+    host_port?: number;
+    name: string;
+    package_id: string;
+    /**
+     * optional, for updates
+     */
+    slug?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeDockerDeployResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    slug?: string;
+    status?: string;
+};
+
+export type ChainlaunchdeployFabricChaincodeInstallParams = {
+    /**
+     * Chaincode label
+     */
+    label?: string;
+    /**
+     * Chaincode package bytes
+     */
+    packageBytes?: Array<number>;
+    peer?: ChaincodePeer;
+};
+
+export type ChainlaunchdeployFabricCommitRequest = {
+    channelID?: string;
+    endorsementPolicy?: string;
+    initRequired?: boolean;
+    name?: string;
+    sequence?: number;
+    version?: string;
+};
+
+export type ChainlaunchdeployFabricCommitResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    status?: string;
+};
+
+export type ChainlaunchdeployFabricDeployRequest = {
+    approveParams?: ChainlaunchdeployFabricChaincodeApproveParams;
+    commitParams?: ChainlaunchdeployFabricChaincodeCommitParams;
+    installParams?: ChainlaunchdeployFabricChaincodeInstallParams;
+};
+
+export type ChainlaunchdeployFabricDeployResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    status?: string;
+};
+
+export type ChainlaunchdeployFabricInstallRequest = {
+    label: string;
+    package_bytes: Array<number>;
+};
+
+export type ChainlaunchdeployFabricInstallResponse = {
+    message?: string;
+    result?: ChainlaunchdeployDeploymentResult;
+    status?: string;
+};
+
+export type ChainlaunchdeployInstallChaincodeByDefinitionRequest = {
+    /**
+     * Peer IDs to install the chaincode on
+     * required: true
+     */
+    peer_ids?: Array<number>;
+};
+
+export type ChainlaunchdeployListChaincodeDefinitionsResponse = {
+    definitions?: Array<ChainlaunchdeployChaincodeDefinitionResponse>;
+};
+
+export type ChainlaunchdeployListChaincodesResponse = {
+    chaincodes?: Array<ChainlaunchdeployChaincodeResponse>;
+};
+
+export type ChainlaunchdeployPeerStatus = {
+    definition_id?: number;
+    id?: number;
+    /**
+     * ISO8601
+     */
+    last_updated?: string;
+    peer_id?: number;
+    status?: string;
+};
+
+export type ChainlaunchdeployUpdateChaincodeDefinitionRequest = {
+    /**
+     * Chaincode address
+     */
+    chaincode_address?: string;
+    /**
+     * Docker image
+     * required: true
+     */
+    docker_image?: string;
+    /**
+     * Endorsement policy
+     */
+    endorsement_policy?: string;
+    /**
+     * Sequence
+     * required: true
+     */
+    sequence?: number;
+    /**
+     * Version
+     * required: true
+     */
+    version?: string;
+};
+
 export type CommonQueryResult = {
     data?: {
         result?: Array<{
@@ -962,20 +1351,6 @@ export type HttpUpdateProviderRequest = {
     type: 'SMTP';
 };
 
-export type MetricsCustomQueryRequest = {
-    end?: string;
-    query: string;
-    start?: string;
-    step?: string;
-};
-
-export type MetricsDeployPrometheusRequest = {
-    deployment_mode: string;
-    prometheus_port: number;
-    prometheus_version: string;
-    scrape_interval: number;
-};
-
 export type ModelsCertificateRequest = {
     commonName: string;
     country?: Array<string>;
@@ -1094,6 +1469,11 @@ export type ModelsProviderResponse = {
 
 export type NotificationsProviderType = 'SMTP';
 
+export type PluginAvailablePluginsResponse = {
+    last_updated?: string;
+    plugins?: Array<RegistryPluginMetadata>;
+};
+
 export type PluginServiceStatus = {
     config?: {
         [key: string]: unknown;
@@ -1113,6 +1493,25 @@ export type PluginServiceStatus = {
     started_at?: string;
     state?: string;
     volumes?: Array<string>;
+};
+
+export type RegistryPluginMetadata = {
+    author?: string;
+    created?: string;
+    description?: string;
+    downloads?: number;
+    hash?: string;
+    labels?: {
+        [key: string]: string;
+    };
+    license?: string;
+    name?: string;
+    rating?: number;
+    raw_yaml?: string;
+    source?: string;
+    tags?: Array<string>;
+    updated?: string;
+    version?: string;
 };
 
 export type ResponseErrorResponse = {
@@ -1324,6 +1723,19 @@ export type TypesBesuNodeConfig = {
 
 export type TypesBlockchainPlatform = 'FABRIC' | 'BESU';
 
+export type TypesCustomQueryRequest = {
+    end?: string;
+    query: string;
+    start?: string;
+    step?: string;
+};
+
+export type TypesDeployPrometheusRequest = {
+    prometheus_port: number;
+    prometheus_version: string;
+    scrape_interval: number;
+};
+
 export type TypesDeploymentStatus = {
     error?: string;
     parameters?: {
@@ -1461,6 +1873,15 @@ export type TypesFabricPeerConfig = {
     version?: string;
 };
 
+export type TypesLabelValuesResponse = {
+    data?: Array<string>;
+    status?: string;
+};
+
+export type TypesMessageResponse = {
+    message?: string;
+};
+
 export type TypesMetadata = {
     author?: string;
     description?: string;
@@ -1469,6 +1890,11 @@ export type TypesMetadata = {
     repository?: string;
     tags?: Array<string>;
     version?: string;
+};
+
+export type TypesMetricsDataResponse = {
+    data?: unknown;
+    status?: string;
 };
 
 export type TypesNodeType = 'FABRIC_PEER' | 'FABRIC_ORDERER' | 'BESU_FULLNODE';
@@ -1569,292 +1995,6 @@ export type UrlUserinfo = {
 export type X509ExtKeyUsage = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
 export type X509KeyUsage = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256;
-
-export type PostApiV1MetricsDeployData = {
-    /**
-     * Prometheus deployment configuration
-     */
-    body: MetricsDeployPrometheusRequest;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/deploy';
-};
-
-export type PostApiV1MetricsDeployErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsDeployError = PostApiV1MetricsDeployErrors[keyof PostApiV1MetricsDeployErrors];
-
-export type PostApiV1MetricsDeployResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsDeployResponse = PostApiV1MetricsDeployResponses[keyof PostApiV1MetricsDeployResponses];
-
-export type GetApiV1MetricsNodeByIdData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query?: {
-        /**
-         * PromQL query to filter metrics
-         */
-        query?: string;
-    };
-    url: '/api/v1/metrics/node/{id}';
-};
-
-export type GetApiV1MetricsNodeByIdErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdError = GetApiV1MetricsNodeByIdErrors[keyof GetApiV1MetricsNodeByIdErrors];
-
-export type GetApiV1MetricsNodeByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdResponse = GetApiV1MetricsNodeByIdResponses[keyof GetApiV1MetricsNodeByIdResponses];
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-        /**
-         * Label name
-         */
-        label: string;
-    };
-    query?: {
-        /**
-         * Metric matches (e.g. {__name__=\
-         */
-        match?: Array<unknown>;
-    };
-    url: '/api/v1/metrics/node/{id}/label/{label}/values';
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesErrors = {
-    /**
-     * Bad request
-     */
-    400: {
-        [key: string]: unknown;
-    };
-    /**
-     * Internal server error
-     */
-    500: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesError = GetApiV1MetricsNodeByIdLabelByLabelValuesErrors[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesErrors];
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponses = {
-    /**
-     * Label values
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdLabelByLabelValuesResponse = GetApiV1MetricsNodeByIdLabelByLabelValuesResponses[keyof GetApiV1MetricsNodeByIdLabelByLabelValuesResponses];
-
-export type PostApiV1MetricsNodeByIdQueryData = {
-    /**
-     * Query parameters
-     */
-    body: MetricsCustomQueryRequest;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/metrics/node/{id}/query';
-};
-
-export type PostApiV1MetricsNodeByIdQueryErrors = {
-    /**
-     * Bad Request
-     */
-    400: {
-        [key: string]: string;
-    };
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsNodeByIdQueryError = PostApiV1MetricsNodeByIdQueryErrors[keyof PostApiV1MetricsNodeByIdQueryErrors];
-
-export type PostApiV1MetricsNodeByIdQueryResponses = {
-    /**
-     * OK
-     */
-    200: CommonQueryResult;
-};
-
-export type PostApiV1MetricsNodeByIdQueryResponse = PostApiV1MetricsNodeByIdQueryResponses[keyof PostApiV1MetricsNodeByIdQueryResponses];
-
-export type GetApiV1MetricsNodeByIdRangeData = {
-    body?: never;
-    path: {
-        /**
-         * Node ID
-         */
-        id: string;
-    };
-    query: {
-        /**
-         * PromQL query
-         */
-        query: string;
-        /**
-         * Start time (RFC3339 format)
-         */
-        start: string;
-        /**
-         * End time (RFC3339 format)
-         */
-        end: string;
-        /**
-         * Step duration (e.g. 1m, 5m, 1h)
-         */
-        step: string;
-    };
-    url: '/api/v1/metrics/node/{id}/range';
-};
-
-export type GetApiV1MetricsNodeByIdRangeErrors = {
-    /**
-     * Bad request
-     */
-    400: {
-        [key: string]: unknown;
-    };
-    /**
-     * Internal server error
-     */
-    500: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdRangeError = GetApiV1MetricsNodeByIdRangeErrors[keyof GetApiV1MetricsNodeByIdRangeErrors];
-
-export type GetApiV1MetricsNodeByIdRangeResponses = {
-    /**
-     * Metrics data
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MetricsNodeByIdRangeResponse = GetApiV1MetricsNodeByIdRangeResponses[keyof GetApiV1MetricsNodeByIdRangeResponses];
-
-export type PostApiV1MetricsReloadData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/reload';
-};
-
-export type PostApiV1MetricsReloadErrors = {
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsReloadError = PostApiV1MetricsReloadErrors[keyof PostApiV1MetricsReloadErrors];
-
-export type PostApiV1MetricsReloadResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: string;
-    };
-};
-
-export type PostApiV1MetricsReloadResponse = PostApiV1MetricsReloadResponses[keyof PostApiV1MetricsReloadResponses];
-
-export type GetApiV1MetricsStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/metrics/status';
-};
-
-export type GetApiV1MetricsStatusErrors = {
-    /**
-     * Internal Server Error
-     */
-    500: {
-        [key: string]: string;
-    };
-};
-
-export type GetApiV1MetricsStatusError = GetApiV1MetricsStatusErrors[keyof GetApiV1MetricsStatusErrors];
-
-export type GetApiV1MetricsStatusResponses = {
-    /**
-     * OK
-     */
-    200: GithubComChainlaunchChainlaunchPkgMetricsCommonStatus;
-};
-
-export type GetApiV1MetricsStatusResponse = GetApiV1MetricsStatusResponses[keyof GetApiV1MetricsStatusResponses];
 
 export type GetAuditLogsData = {
     body?: never;
@@ -3152,6 +3292,311 @@ export type PostKeysByKeyIdSignResponses = {
 };
 
 export type PostKeysByKeyIdSignResponse = PostKeysByKeyIdSignResponses[keyof PostKeysByKeyIdSignResponses];
+
+export type PostMetricsDeployData = {
+    /**
+     * Prometheus deployment configuration
+     */
+    body: TypesDeployPrometheusRequest;
+    path?: never;
+    query?: never;
+    url: '/metrics/deploy';
+};
+
+export type PostMetricsDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsDeployError = PostMetricsDeployErrors[keyof PostMetricsDeployErrors];
+
+export type PostMetricsDeployResponses = {
+    /**
+     * OK
+     */
+    200: TypesMessageResponse;
+};
+
+export type PostMetricsDeployResponse = PostMetricsDeployResponses[keyof PostMetricsDeployResponses];
+
+export type GetMetricsNodeByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * PromQL query to filter metrics
+         */
+        query?: string;
+    };
+    url: '/metrics/node/{id}';
+};
+
+export type GetMetricsNodeByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetMetricsNodeByIdError = GetMetricsNodeByIdErrors[keyof GetMetricsNodeByIdErrors];
+
+export type GetMetricsNodeByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdResponse = GetMetricsNodeByIdResponses[keyof GetMetricsNodeByIdResponses];
+
+export type GetMetricsNodeByIdLabelByLabelValuesData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+        /**
+         * Label name
+         */
+        label: string;
+    };
+    query?: {
+        /**
+         * Metric matches (e.g. {__name__=\
+         */
+        match?: Array<unknown>;
+    };
+    url: '/metrics/node/{id}/label/{label}/values';
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesError = GetMetricsNodeByIdLabelByLabelValuesErrors[keyof GetMetricsNodeByIdLabelByLabelValuesErrors];
+
+export type GetMetricsNodeByIdLabelByLabelValuesResponses = {
+    /**
+     * Label values
+     */
+    200: TypesLabelValuesResponse;
+};
+
+export type GetMetricsNodeByIdLabelByLabelValuesResponse = GetMetricsNodeByIdLabelByLabelValuesResponses[keyof GetMetricsNodeByIdLabelByLabelValuesResponses];
+
+export type PostMetricsNodeByIdQueryData = {
+    /**
+     * Query parameters
+     */
+    body: TypesCustomQueryRequest;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/metrics/node/{id}/query';
+};
+
+export type PostMetricsNodeByIdQueryErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        [key: string]: string;
+    };
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsNodeByIdQueryError = PostMetricsNodeByIdQueryErrors[keyof PostMetricsNodeByIdQueryErrors];
+
+export type PostMetricsNodeByIdQueryResponses = {
+    /**
+     * OK
+     */
+    200: CommonQueryResult;
+};
+
+export type PostMetricsNodeByIdQueryResponse = PostMetricsNodeByIdQueryResponses[keyof PostMetricsNodeByIdQueryResponses];
+
+export type GetMetricsNodeByIdRangeData = {
+    body?: never;
+    path: {
+        /**
+         * Node ID
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * PromQL query
+         */
+        query: string;
+        /**
+         * Start time (RFC3339 format)
+         */
+        start: string;
+        /**
+         * End time (RFC3339 format)
+         */
+        end: string;
+        /**
+         * Step duration (e.g. 1m, 5m, 1h)
+         */
+        step: string;
+    };
+    url: '/metrics/node/{id}/range';
+};
+
+export type GetMetricsNodeByIdRangeErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        [key: string]: unknown;
+    };
+    /**
+     * Internal server error
+     */
+    500: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetMetricsNodeByIdRangeError = GetMetricsNodeByIdRangeErrors[keyof GetMetricsNodeByIdRangeErrors];
+
+export type GetMetricsNodeByIdRangeResponses = {
+    /**
+     * Metrics data
+     */
+    200: TypesMetricsDataResponse;
+};
+
+export type GetMetricsNodeByIdRangeResponse = GetMetricsNodeByIdRangeResponses[keyof GetMetricsNodeByIdRangeResponses];
+
+export type PostMetricsReloadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/reload';
+};
+
+export type PostMetricsReloadErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsReloadError = PostMetricsReloadErrors[keyof PostMetricsReloadErrors];
+
+export type PostMetricsReloadResponses = {
+    /**
+     * OK
+     */
+    200: TypesMessageResponse;
+};
+
+export type PostMetricsReloadResponse = PostMetricsReloadResponses[keyof PostMetricsReloadResponses];
+
+export type GetMetricsStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/status';
+};
+
+export type GetMetricsStatusErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type GetMetricsStatusError = GetMetricsStatusErrors[keyof GetMetricsStatusErrors];
+
+export type GetMetricsStatusResponses = {
+    /**
+     * OK
+     */
+    200: GithubComChainlaunchChainlaunchPkgMetricsCommonStatus;
+};
+
+export type GetMetricsStatusResponse = GetMetricsStatusResponses[keyof GetMetricsStatusResponses];
+
+export type PostMetricsUndeployData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/metrics/undeploy';
+};
+
+export type PostMetricsUndeployErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: {
+        [key: string]: string;
+    };
+};
+
+export type PostMetricsUndeployError = PostMetricsUndeployErrors[keyof PostMetricsUndeployErrors];
+
+export type PostMetricsUndeployResponses = {
+    /**
+     * OK
+     */
+    200: TypesMessageResponse;
+};
+
+export type PostMetricsUndeployResponse = PostMetricsUndeployResponses[keyof PostMetricsUndeployResponses];
 
 export type GetNetworksBesuData = {
     body?: never;
@@ -5710,6 +6155,56 @@ export type PostPluginsResponses = {
 
 export type PostPluginsResponse = PostPluginsResponses[keyof PostPluginsResponses];
 
+export type GetPluginsAvailableData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/plugins/available';
+};
+
+export type GetPluginsAvailableErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetPluginsAvailableError = GetPluginsAvailableErrors[keyof GetPluginsAvailableErrors];
+
+export type GetPluginsAvailableResponses = {
+    /**
+     * OK
+     */
+    200: PluginAvailablePluginsResponse;
+};
+
+export type GetPluginsAvailableResponse = GetPluginsAvailableResponses[keyof GetPluginsAvailableResponses];
+
+export type PostPluginsAvailableRefreshData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/plugins/available/refresh';
+};
+
+export type PostPluginsAvailableRefreshErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostPluginsAvailableRefreshError = PostPluginsAvailableRefreshErrors[keyof PostPluginsAvailableRefreshErrors];
+
+export type PostPluginsAvailableRefreshResponses = {
+    /**
+     * OK
+     */
+    200: PluginAvailablePluginsResponse;
+};
+
+export type PostPluginsAvailableRefreshResponse = PostPluginsAvailableRefreshResponses[keyof PostPluginsAvailableRefreshResponses];
+
 export type DeletePluginsByNameData = {
     body?: never;
     path: {
@@ -6027,6 +6522,637 @@ export type PostPluginsByNameStopResponses = {
      */
     200: unknown;
 };
+
+export type PostScBesuDeployData = {
+    /**
+     * Besu contract deployment parameters
+     */
+    body: ChainlaunchdeployBesuDeployRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/besu/deploy';
+};
+
+export type PostScBesuDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScBesuDeployError = PostScBesuDeployErrors[keyof PostScBesuDeployErrors];
+
+export type PostScBesuDeployResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployBesuDeployResponse;
+};
+
+export type PostScBesuDeployResponse = PostScBesuDeployResponses[keyof PostScBesuDeployResponses];
+
+export type GetScFabricChaincodesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes';
+};
+
+export type GetScFabricChaincodesErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesError = GetScFabricChaincodesErrors[keyof GetScFabricChaincodesErrors];
+
+export type GetScFabricChaincodesResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployListChaincodesResponse;
+};
+
+export type GetScFabricChaincodesResponse = GetScFabricChaincodesResponses[keyof GetScFabricChaincodesResponses];
+
+export type PostScFabricChaincodesData = {
+    /**
+     * Chaincode info
+     */
+    body: ChainlaunchdeployCreateChaincodeRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes';
+};
+
+export type PostScFabricChaincodesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricChaincodesError = PostScFabricChaincodesErrors[keyof PostScFabricChaincodesErrors];
+
+export type PostScFabricChaincodesResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployCreateChaincodeResponse;
+};
+
+export type PostScFabricChaincodesResponse = PostScFabricChaincodesResponses[keyof PostScFabricChaincodesResponses];
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode ID
+         */
+        chaincodeId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/chaincodes/{chaincodeId}/definitions';
+};
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsError = GetScFabricChaincodesByChaincodeIdDefinitionsErrors[keyof GetScFabricChaincodesByChaincodeIdDefinitionsErrors];
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployListChaincodeDefinitionsResponse;
+};
+
+export type GetScFabricChaincodesByChaincodeIdDefinitionsResponse = GetScFabricChaincodesByChaincodeIdDefinitionsResponses[keyof GetScFabricChaincodesByChaincodeIdDefinitionsResponses];
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsData = {
+    /**
+     * Chaincode definition info
+     */
+    body: ChainlaunchdeployCreateChaincodeDefinitionRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/chaincodes/{chaincodeId}/definitions';
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsError = PostScFabricChaincodesByChaincodeIdDefinitionsErrors[keyof PostScFabricChaincodesByChaincodeIdDefinitionsErrors];
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployCreateChaincodeDefinitionResponse;
+};
+
+export type PostScFabricChaincodesByChaincodeIdDefinitionsResponse = PostScFabricChaincodesByChaincodeIdDefinitionsResponses[keyof PostScFabricChaincodesByChaincodeIdDefinitionsResponses];
+
+export type GetScFabricChaincodesByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/sc/fabric/chaincodes/{id}';
+};
+
+export type GetScFabricChaincodesByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricChaincodesByIdError = GetScFabricChaincodesByIdErrors[keyof GetScFabricChaincodesByIdErrors];
+
+export type GetScFabricChaincodesByIdResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricChaincodeDetail;
+};
+
+export type GetScFabricChaincodesByIdResponse = GetScFabricChaincodesByIdResponses[keyof GetScFabricChaincodesByIdResponses];
+
+export type DeleteScFabricDefinitionsByDefinitionIdData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}';
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdError = DeleteScFabricDefinitionsByDefinitionIdErrors[keyof DeleteScFabricDefinitionsByDefinitionIdErrors];
+
+export type DeleteScFabricDefinitionsByDefinitionIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type DeleteScFabricDefinitionsByDefinitionIdResponse = DeleteScFabricDefinitionsByDefinitionIdResponses[keyof DeleteScFabricDefinitionsByDefinitionIdResponses];
+
+export type PutScFabricDefinitionsByDefinitionIdData = {
+    /**
+     * Chaincode definition update info
+     */
+    body: ChainlaunchdeployUpdateChaincodeDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}';
+};
+
+export type PutScFabricDefinitionsByDefinitionIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Not Found
+     */
+    404: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PutScFabricDefinitionsByDefinitionIdError = PutScFabricDefinitionsByDefinitionIdErrors[keyof PutScFabricDefinitionsByDefinitionIdErrors];
+
+export type PutScFabricDefinitionsByDefinitionIdResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployChaincodeDefinitionResponse;
+};
+
+export type PutScFabricDefinitionsByDefinitionIdResponse = PutScFabricDefinitionsByDefinitionIdResponses[keyof PutScFabricDefinitionsByDefinitionIdResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdApproveData = {
+    /**
+     * Peer ID to use for approval
+     */
+    body: ChainlaunchdeployApproveChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/approve';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveError = PostScFabricDefinitionsByDefinitionIdApproveErrors[keyof PostScFabricDefinitionsByDefinitionIdApproveErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdApproveResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdApproveResponse = PostScFabricDefinitionsByDefinitionIdApproveResponses[keyof PostScFabricDefinitionsByDefinitionIdApproveResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdCommitData = {
+    /**
+     * Peer ID to use for commit
+     */
+    body: ChainlaunchdeployCommitChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/commit';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitError = PostScFabricDefinitionsByDefinitionIdCommitErrors[keyof PostScFabricDefinitionsByDefinitionIdCommitErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdCommitResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdCommitResponse = PostScFabricDefinitionsByDefinitionIdCommitResponses[keyof PostScFabricDefinitionsByDefinitionIdCommitResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdDeployData = {
+    /**
+     * Docker deploy params
+     */
+    body: ChainlaunchdeployDeployChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/deploy';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployError = PostScFabricDefinitionsByDefinitionIdDeployErrors[keyof PostScFabricDefinitionsByDefinitionIdDeployErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdDeployResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdDeployResponse = PostScFabricDefinitionsByDefinitionIdDeployResponses[keyof PostScFabricDefinitionsByDefinitionIdDeployResponses];
+
+export type PostScFabricDefinitionsByDefinitionIdInstallData = {
+    /**
+     * Peer IDs to install on
+     */
+    body: ChainlaunchdeployInstallChaincodeByDefinitionRequest;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/install';
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallError = PostScFabricDefinitionsByDefinitionIdInstallErrors[keyof PostScFabricDefinitionsByDefinitionIdInstallErrors];
+
+export type PostScFabricDefinitionsByDefinitionIdInstallResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type PostScFabricDefinitionsByDefinitionIdInstallResponse = PostScFabricDefinitionsByDefinitionIdInstallResponses[keyof PostScFabricDefinitionsByDefinitionIdInstallResponses];
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineData = {
+    body?: never;
+    path: {
+        /**
+         * Chaincode Definition ID
+         */
+        definitionId: number;
+    };
+    query?: never;
+    url: '/sc/fabric/definitions/{definitionId}/timeline';
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineError = GetScFabricDefinitionsByDefinitionIdTimelineErrors[keyof GetScFabricDefinitionsByDefinitionIdTimelineErrors];
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineResponses = {
+    /**
+     * OK
+     */
+    200: Array<ChainlaunchdeployChaincodeDefinitionEvent>;
+};
+
+export type GetScFabricDefinitionsByDefinitionIdTimelineResponse = GetScFabricDefinitionsByDefinitionIdTimelineResponses[keyof GetScFabricDefinitionsByDefinitionIdTimelineResponses];
+
+export type PostScFabricDeployData = {
+    /**
+     * Fabric chaincode deployment parameters
+     */
+    body: ChainlaunchdeployFabricDeployRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/deploy';
+};
+
+export type PostScFabricDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDeployError = PostScFabricDeployErrors[keyof PostScFabricDeployErrors];
+
+export type PostScFabricDeployResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricDeployResponse;
+};
+
+export type PostScFabricDeployResponse = PostScFabricDeployResponses[keyof PostScFabricDeployResponses];
+
+export type PostScFabricDockerDeployData = {
+    /**
+     * Fabric chaincode Docker deployment parameters (host_port: optional, container_port: optional, defaults to 7052)
+     */
+    body: ChainlaunchdeployFabricChaincodeDockerDeployRequest;
+    path?: never;
+    query?: never;
+    url: '/sc/fabric/docker-deploy';
+};
+
+export type PostScFabricDockerDeployErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricDockerDeployError = PostScFabricDockerDeployErrors[keyof PostScFabricDockerDeployErrors];
+
+export type PostScFabricDockerDeployResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricChaincodeDockerDeployResponse;
+};
+
+export type PostScFabricDockerDeployResponse = PostScFabricDockerDeployResponses[keyof PostScFabricDockerDeployResponses];
+
+export type PostScFabricPeerByPeerIdChaincodeApproveData = {
+    /**
+     * Fabric chaincode approve parameters
+     */
+    body: ChainlaunchdeployFabricApproveRequest;
+    path: {
+        /**
+         * Peer ID
+         */
+        peerId: string;
+    };
+    query?: never;
+    url: '/sc/fabric/peer/{peerId}/chaincode/approve';
+};
+
+export type PostScFabricPeerByPeerIdChaincodeApproveErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeApproveError = PostScFabricPeerByPeerIdChaincodeApproveErrors[keyof PostScFabricPeerByPeerIdChaincodeApproveErrors];
+
+export type PostScFabricPeerByPeerIdChaincodeApproveResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricApproveResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeApproveResponse = PostScFabricPeerByPeerIdChaincodeApproveResponses[keyof PostScFabricPeerByPeerIdChaincodeApproveResponses];
+
+export type PostScFabricPeerByPeerIdChaincodeCommitData = {
+    /**
+     * Fabric chaincode commit parameters
+     */
+    body: ChainlaunchdeployFabricCommitRequest;
+    path: {
+        /**
+         * Peer ID
+         */
+        peerId: string;
+    };
+    query?: never;
+    url: '/sc/fabric/peer/{peerId}/chaincode/commit';
+};
+
+export type PostScFabricPeerByPeerIdChaincodeCommitErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeCommitError = PostScFabricPeerByPeerIdChaincodeCommitErrors[keyof PostScFabricPeerByPeerIdChaincodeCommitErrors];
+
+export type PostScFabricPeerByPeerIdChaincodeCommitResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricCommitResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeCommitResponse = PostScFabricPeerByPeerIdChaincodeCommitResponses[keyof PostScFabricPeerByPeerIdChaincodeCommitResponses];
+
+export type PostScFabricPeerByPeerIdChaincodeInstallData = {
+    /**
+     * Fabric chaincode install parameters
+     */
+    body: ChainlaunchdeployFabricInstallRequest;
+    path: {
+        /**
+         * Peer ID
+         */
+        peerId: string;
+    };
+    query?: never;
+    url: '/sc/fabric/peer/{peerId}/chaincode/install';
+};
+
+export type PostScFabricPeerByPeerIdChaincodeInstallErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeInstallError = PostScFabricPeerByPeerIdChaincodeInstallErrors[keyof PostScFabricPeerByPeerIdChaincodeInstallErrors];
+
+export type PostScFabricPeerByPeerIdChaincodeInstallResponses = {
+    /**
+     * OK
+     */
+    200: ChainlaunchdeployFabricInstallResponse;
+};
+
+export type PostScFabricPeerByPeerIdChaincodeInstallResponse = PostScFabricPeerByPeerIdChaincodeInstallResponses[keyof PostScFabricPeerByPeerIdChaincodeInstallResponses];
 
 export type GetSettingsData = {
     body?: never;

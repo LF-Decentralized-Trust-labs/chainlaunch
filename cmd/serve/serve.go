@@ -33,6 +33,7 @@ import (
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
+	"github.com/chainlaunch/chainlaunch/pkg/chainlaunchdeploy"
 	"github.com/chainlaunch/chainlaunch/pkg/metrics"
 	networkshttp "github.com/chainlaunch/chainlaunch/pkg/networks/http"
 	networksservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
@@ -41,6 +42,7 @@ import (
 	notificationhttp "github.com/chainlaunch/chainlaunch/pkg/notifications/http"
 	notificationservice "github.com/chainlaunch/chainlaunch/pkg/notifications/service"
 	"github.com/chainlaunch/chainlaunch/pkg/plugin"
+	pluginregistry "github.com/chainlaunch/chainlaunch/pkg/plugin/registry"
 	settingshttp "github.com/chainlaunch/chainlaunch/pkg/settings/http"
 	settingsservice "github.com/chainlaunch/chainlaunch/pkg/settings/service"
 	"github.com/go-chi/chi/v5"
@@ -137,6 +139,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @in cookie
 // @name session_id
 
+// @tag.name Audit
+// @tag.description Audit management operations
+
 // @tag.name Authentication
 // @tag.description User authentication and authorization operations
 
@@ -158,6 +163,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // @tag.name Keys
 // @tag.description Cryptographic key management operations
 
+// @tag.name Metrics
+// @tag.description Metrics management operations
+
 // @tag.name Nodes
 // @tag.description Network node management operations
 
@@ -175,6 +183,9 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // @tag.name Settings
 // @tag.description Settings management operations
+
+// @tag.name SmartContracts
+// @tag.description Smart contract management operations
 
 // @tag.name Users
 // @tag.description User account management operations
@@ -425,7 +436,45 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	if err != nil {
 		log.Fatal("Failed to initialize plugin manager:", err)
 	}
-	pluginHandler := plugin.NewHandler(pluginStore, pluginManager, logger)
+	// --- Registry integration for GitHub plugins ---
+	// TODO: Load registry config from file or env
+	regConfig := &pluginregistry.RegistryConfig{
+		Sources: []pluginregistry.RegistrySource{
+			{
+				Name:    "plugin-hlf-api",
+				Type:    "github",
+				URL:     "https://github.com/kfsoftware/plugin-hlf-api", // Example public repo
+				Enabled: true,
+			},
+		},
+	}
+	reg, err := pluginregistry.NewRegistry(regConfig)
+	if err != nil {
+		log.Fatal("Failed to initialize plugin registry:", err)
+	}
+
+	// Create and start available plugins cache
+	availablePluginsCache := pluginregistry.NewAvailablePluginsCache()
+	go func() {
+		for {
+			plugins, err := reg.ListAvailablePluginsFromGitHub()
+			if err == nil {
+				availablePluginsCache.Set(plugins)
+			} else {
+				log.Printf("Failed to refresh available plugins from GitHub: %v", err)
+			}
+			time.Sleep(5 * time.Minute)
+		}
+	}()
+
+	registryStore := plugin.NewRegistryStore(pluginStore, reg)
+	pluginHandler := plugin.NewHandler(registryStore, pluginManager, logger, reg, availablePluginsCache)
+
+	// --- Smart contract deployment handler (Fabric & Besu) ---
+	// Import the EVM deployer constructor
+	besuDeployer := chainlaunchdeploy.NewDeployerWithAudit(auditService)
+	chaincodeService := chainlaunchdeploy.NewChaincodeService(queries, logger, nodesService)
+	scHandler := chainlaunchdeploy.NewHandler(auditService, logger, besuDeployer, nodesService, chaincodeService)
 
 	// Initialize handlers
 	keyManagementHandler := handler.NewKeyManagementHandler(keyManagementService)
@@ -492,6 +541,9 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 			// Mount audit routes
 			auditHandler.RegisterRoutes(r)
+
+			// Register smart contract deployment routes
+			scHandler.RegisterRoutes(r)
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(

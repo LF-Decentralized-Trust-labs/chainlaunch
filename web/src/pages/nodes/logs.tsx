@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 interface NodeLogs {
 	nodeId: number
@@ -14,7 +15,9 @@ interface NodeLogs {
 }
 
 export default function NodesLogsPage() {
-	const [selectedNode, setSelectedNode] = useState<string>()
+	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
+	const [selectedNode, setSelectedNode] = useState<string>(searchParams.get('node') || undefined)
 	const [nodeLogs, setNodeLogs] = useState<NodeLogs[]>([])
 	const logsRef = useRef<HTMLPreElement>(null)
 	const abortControllers = useRef<{ [key: string]: AbortController }>({})
@@ -47,52 +50,55 @@ export default function NodesLogsPage() {
 			const abortController = new AbortController()
 			abortControllers.current[nodeId] = abortController
 
-			const response = await fetch(`/api/v1/nodes/${nodeId}/logs`, {
-				signal: abortController.signal,
-				credentials: 'include',
+			const eventSource = new EventSource(`/api/v1/nodes/${nodeId}/logs?follow=true`, {
+				withCredentials: true,
 			})
 
-			if (!response.body) {
-				throw new Error('No response body')
+			eventSource.onmessage = (event) => {
+				setNodeLogs((prev) => {
+					const existing = prev.find((nl) => nl.nodeId === nodeId)
+					if (existing) {
+						return prev.map((nl) => (nl.nodeId === nodeId ? { ...nl, logs: nl.logs + event.data + '\n' } : nl))
+					}
+					return [...prev, { nodeId, logs: event.data + '\n' }]
+				})
+				scrollToBottom(nodeId)
 			}
 
-			const reader = response.body.getReader()
-			const decoder = new TextDecoder()
-			let buffer = ''
-
-			while (true) {
-				const { value, done } = await reader.read()
-				if (done) break
-
-				const text = decoder.decode(value)
-				buffer += text
-
-				// Update logs less frequently to improve performance
-				if (buffer.length > 1000 || done) {
-					setNodeLogs((prev) => {
-						const existing = prev.find((nl) => nl.nodeId === nodeId)
-						if (existing) {
-							return prev.map((nl) => (nl.nodeId === nodeId ? { ...nl, logs: nl.logs + buffer } : nl))
-						}
-						return [...prev, { nodeId, logs: buffer }]
-					})
-					buffer = ''
-					scrollToBottom(nodeId)
-				}
+			eventSource.onerror = (error) => {
+				console.error('EventSource error:', error)
+				eventSource.close()
 			}
+
+			// Store the EventSource in the abort controller for cleanup
+			abortControllers.current[nodeId] = {
+				abort: () => {
+					eventSource.close()
+				},
+			} as AbortController
 		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
-				return
-			}
 			console.error('Error fetching logs:', error)
 		}
 	}
 
+	const handleNodeChange = (nodeId: string) => {
+		setSelectedNode(nodeId)
+		// Update URL with the selected node
+		const params = new URLSearchParams(searchParams.toString())
+		params.set('node', nodeId)
+		navigate(`/nodes/logs?${params.toString()}`)
+	}
+
 	useEffect(() => {
 		if (nodes?.items && !selectedNode && nodes.items.length > 0) {
-			setSelectedNode(nodes.items[0].id!.toString())
+			const nodeFromUrl = searchParams.get('node')
+			if (nodeFromUrl && nodes.items.some(node => node.id!.toString() === nodeFromUrl)) {
+				setSelectedNode(nodeFromUrl)
+			} else {
+				setSelectedNode(nodes.items[0].id!.toString())
+			}
 		}
-	}, [nodes])
+	}, [nodes, searchParams])
 
 	useEffect(() => {
 		if (selectedNode) {
@@ -130,7 +136,7 @@ export default function NodesLogsPage() {
 
 			{/* Mobile View */}
 			<div className="md:hidden mb-4">
-				<Select value={selectedNode} onValueChange={setSelectedNode}>
+				<Select value={selectedNode} onValueChange={handleNodeChange}>
 					<SelectTrigger>
 						<SelectValue placeholder="Select a node" />
 					</SelectTrigger>
@@ -149,7 +155,7 @@ export default function NodesLogsPage() {
 
 			{/* Desktop View */}
 			<div className="hidden md:block">
-				<Tabs value={selectedNode} onValueChange={setSelectedNode}>
+				<Tabs value={selectedNode} onValueChange={handleNodeChange}>
 					<TabsList className="w-full justify-start">
 						{nodes.items.map((node) => (
 							<TabsTrigger key={node.id} value={node.id!.toString()} className="flex items-center gap-2">

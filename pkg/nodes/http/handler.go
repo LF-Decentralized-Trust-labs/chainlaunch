@@ -516,7 +516,6 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
 
 	// Create a context that's canceled when the client disconnects
 	ctx := r.Context()
@@ -550,7 +549,7 @@ func (h *NodeHandler) TailLogs(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Write log line to response
-			fmt.Fprintf(w, "%s", logLine)
+			fmt.Fprintf(w, "data: %s\n\n", logLine)
 			flusher.Flush()
 		}
 	}

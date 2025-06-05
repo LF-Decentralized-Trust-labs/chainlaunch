@@ -51,12 +51,16 @@ import EditBesuNodePage from './pages/nodes/besu/edit'
 import CreateNodePage from './pages/nodes/create'
 import PluginsPage from './pages/plugins'
 import PluginDetailPage from './pages/plugins/[name]'
+import EditPluginPage from './pages/plugins/[name]/edit'
 import NewPluginPage from './pages/plugins/new'
 import UsersPage from './pages/users'
 import AccountPage from './pages/account'
 import AuditLogsPage from '@/pages/settings/audit-logs'
 import AuditLogDetailPage from '@/pages/settings/audit-logs/[id]'
 import AnalyticsPage from './pages/platform/analytics'
+import FabricChaincodesPage from './pages/smart-contracts/fabric'
+import BesuContractsPage from './pages/smart-contracts/besu'
+import FabricChaincodeDefinitionDetail from './pages/smart-contracts/fabric/definition'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -89,6 +93,8 @@ const App = () => {
 														<Route path="account" element={<AccountPage />} />
 														<Route path="nodes" element={<NodesPage />} />
 														<Route path="smart-contracts" element={<SmartContractsPage />} />
+														<Route path="smart-contracts/fabric" element={<FabricChaincodesPage />} />
+														<Route path="smart-contracts/besu" element={<BesuContractsPage />} />
 														<Route path="monitoring" element={<MonitoringPage />} />
 														<Route path="monitoring/providers/new" element={<CreateProviderPage />} />
 														<Route path="monitoring/providers/:id" element={<UpdateProviderPage />} />
@@ -126,10 +132,12 @@ const App = () => {
 														<Route path="plugins" element={<PluginsPage />} />
 														<Route path="plugins/new" element={<NewPluginPage />} />
 														<Route path="plugins/:name" element={<PluginDetailPage />} />
+														<Route path="plugins/:name/edit" element={<EditPluginPage />} />
 														<Route path="users" element={<UsersPage />} />
 														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
 														<Route path="platform/analytics" element={<AnalyticsPage />} />
+														<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

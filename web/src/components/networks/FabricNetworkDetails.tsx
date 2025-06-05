@@ -51,6 +51,7 @@ import * as z from 'zod'
 import { ChannelUpdateForm } from '../nodes/ChannelUpdateForm'
 import { AddMultipleNodesDialog } from './add-multiple-nodes-dialog'
 import { BlockExplorer } from './block-explorer'
+import { ChaincodeManagement } from './chaincode-management'
 
 const SyntaxHighlighterComp = SyntaxHighlighter as unknown as React.ComponentType<SyntaxHighlighterProps>
 interface FabricNetworkDetailsProps {
@@ -991,88 +992,21 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 						}
 						chaincode={
 							<div className="space-y-4">
-								<div className="flex items-center gap-4 mb-6">
-									<div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-										<Code className="h-6 w-6 text-primary" />
-									</div>
-									<div>
-										<h2 className="text-lg font-semibold">Chaincode Installation</h2>
-										<p className="text-sm text-muted-foreground">Instructions for installing and managing chaincode</p>
-									</div>
-								</div>
-
-								{networkNodes?.nodes?.find((node) => node.status === 'joined' && node.node?.nodeType === 'FABRIC_PEER') && (
-									<CommittedChaincodes
-										networkId={network.id!}
-										channelName={network.name!}
+								{networkNodes?.nodes?.find((node) => node.status === 'joined' && node.node?.nodeType === 'FABRIC_PEER') ? (
+									<ChaincodeManagement
+										network={network}
 										peerId={networkNodes.nodes.find((node) => node.status === 'joined' && node.node?.nodeType === 'FABRIC_PEER')!.node!.id!}
+										channelName={network.name!}
+										organizationId={selectedOrg?.id!}
 									/>
+								) : (
+									<Card className="p-6">
+										<div className="flex items-center gap-4">
+											<AlertTriangle className="h-5 w-5 text-muted-foreground" />
+											<p className="text-sm text-muted-foreground">No peer nodes are joined to this channel</p>
+										</div>
+									</Card>
 								)}
-
-								<Card className="p-6">
-									<div className="mb-6">
-										<Select
-											value={selectedOrg?.mspId}
-											onValueChange={(mspId) => {
-												const org = fabricOrgs?.items?.find((org) => org.mspId === mspId)
-												if (org) {
-													setSelectedOrg({
-														id: org.id!,
-														mspId: org.mspId!,
-													})
-												}
-											}}
-										>
-											<SelectTrigger>
-												<SelectValue placeholder="Select an organization" />
-											</SelectTrigger>
-											<SelectContent>
-												{peerOrgs?.map((mspId) => (
-													<SelectItem key={mspId} value={mspId}>
-														{mspId}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-
-									<div className="">
-										<ReactMarkdown
-											rehypePlugins={[rehypeRaw]}
-											components={{
-												h1: ({ children }) => <h1 className="text-2xl font-bold mb-4 mt-0">{children}</h1>,
-												h2: ({ children }) => <h2 className="text-xl font-semibold mt-6 mb-3">{children}</h2>,
-												h3: ({ children }) => <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>,
-												h4: ({ children }) => <h4 className="text-base font-semibold mt-4 mb-2">{children}</h4>,
-												h5: ({ children }) => <h5 className="text-sm font-semibold mt-4 mb-2">{children}</h5>,
-												h6: ({ children }) => <h6 className="text-xs font-semibold mt-4 mb-2">{children}</h6>,
-												code: ({ node, className, children, ...props }) => {
-													const match = /language-(\w+)/.exec(className || '')
-													const content = Array.isArray(children) ? children.join('') : String(children)
-
-													return match ? (
-														<div className="relative group">
-															<CopyButton text={content.replace(/\n$/, '')} />
-															<SyntaxHighlighterComp style={docco} language="javascript">
-																{content}
-															</SyntaxHighlighterComp>
-														</div>
-													) : (
-														<code {...props} className={`${className} !bg-muted !text-primary px-1.5 py-0.5 rounded`}>
-															{children}
-														</code>
-													)
-												},
-												p: ({ children }) => <p className="my-4 leading-7">{children}</p>,
-												ul: ({ children }) => <ul className="my-6 ml-6 list-disc [&>li]:mt-2">{children}</ul>,
-												ol: ({ children }) => <ol className="my-6 ml-6 list-decimal [&>li]:mt-2">{children}</ol>,
-												blockquote: ({ children }) => <blockquote className="mt-6 border-l-2 border-border pl-6 italic">{children}</blockquote>,
-											}}
-										>
-											{getChainCodeInstructions(network.name!, selectedOrg?.mspId || '')}
-										</ReactMarkdown>
-									</div>
-								</Card>
 							</div>
 						}
 						channelUpdate={

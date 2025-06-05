@@ -266,65 +266,33 @@ export default function NodeDetailPage() {
 	}
 
 	useEffect(() => {
-		const fetchLogs = async () => {
-			try {
-				// Cancel previous request if exists
-				if (abortControllerRef.current) {
-					abortControllerRef.current.abort()
-				}
+		const eventSource = new EventSource(`/api/v1/nodes/${id}/logs?follow=true`, {
+			withCredentials: true
+		})
 
-				// Create new abort controller for this request
-				const abortController = new AbortController()
-				abortControllerRef.current = abortController
+		let fullText = ''
 
-				const response = await fetch(`/api/v1/nodes/${id}/logs`, {
-					signal: abortController.signal,
-					credentials: 'include',
-				})
-
-				if (!response.body) {
-					throw new Error('No response body')
-				}
-
-				const reader = response.body.getReader()
-				const decoder = new TextDecoder()
-				let fullText = ''
-
-				while (true) {
-					const { value, done } = await reader.read()
-					if (done) break
-
-					const text = decoder.decode(value)
-					fullText += text
-				}
-
-				// Set full text at once and scroll to bottom
-				setLogs(fullText)
-				if (logsRef.current) {
-					setTimeout(() => {
-						if (logsRef.current) {
-							logsRef.current.scrollTop = logsRef.current.scrollHeight
-						}
-					}, 100)
-				}
-			} catch (error) {
-				if (error instanceof Error && error.name === 'AbortError') {
-					// Ignore abort errors
-					return
-				}
-				console.error('Error fetching logs:', error)
+		eventSource.onmessage = (event) => {
+			fullText += event.data + '\n'
+			setLogs(fullText)
+			
+			// Scroll to bottom after new logs arrive
+			if (logsRef.current) {
+				setTimeout(() => {
+					if (logsRef.current) {
+						logsRef.current.scrollTop = logsRef.current.scrollHeight
+					}
+				}, 100)
 			}
 		}
 
-		if (id) {
-			fetchLogs()
+		eventSource.onerror = (error) => {
+			console.error('EventSource error:', error)
+			eventSource.close()
 		}
 
 		return () => {
-			// Cleanup: abort any ongoing request when component unmounts
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort()
-			}
+			eventSource.close()
 		}
 	}, [id])
 

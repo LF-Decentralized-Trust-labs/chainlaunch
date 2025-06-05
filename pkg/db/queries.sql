@@ -1105,3 +1105,69 @@ WHERE (? IS NULL OR timestamp >= ?)
   AND (? IS NULL OR timestamp <= ?)
   AND (? = '' OR event_type = ?)
   AND (? = '' OR user_identity = ?);
+
+-- name: GetFabricChaincodeByName :one
+SELECT * FROM fabric_chaincodes WHERE name = ? LIMIT 1;
+
+-- name: ListFabricChaincodes :many
+SELECT * FROM fabric_chaincodes ORDER BY created_at DESC;
+
+-- name: CreateChaincode :one
+INSERT INTO fabric_chaincodes (name, network_id)
+VALUES (?, ?)
+RETURNING *;
+
+-- name: ListChaincodes :many
+SELECT * FROM fabric_chaincodes ORDER BY id;
+
+-- name: GetChaincode :one
+SELECT fc.*, n.id as network_id, n.name as network_name, n.platform as network_platform
+FROM fabric_chaincodes fc
+JOIN networks n ON fc.network_id = n.id
+WHERE fc.id = ?;
+
+-- name: UpdateChaincode :one
+UPDATE fabric_chaincodes
+SET name = ?, network_id = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteChaincode :exec
+DELETE FROM fabric_chaincodes WHERE id = ?;
+
+-- name: CreateChaincodeDefinition :one
+INSERT INTO fabric_chaincode_definitions (
+  chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address
+) VALUES (
+  ?, ?, ?, ?, ?, ?
+) RETURNING *;
+
+-- name: ListChaincodeDefinitions :many
+SELECT * FROM fabric_chaincode_definitions WHERE chaincode_id = ? ORDER BY id;
+
+-- name: GetChaincodeDefinition :one
+SELECT * FROM fabric_chaincode_definitions WHERE id = ?;
+
+-- name: UpdateChaincodeDefinition :one
+UPDATE fabric_chaincode_definitions
+SET version = ?, sequence = ?, docker_image = ?, endorsement_policy = ?, chaincode_address = ?
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteChaincodeDefinition :exec
+DELETE FROM fabric_chaincode_definitions WHERE id = ?;
+
+-- name: SetPeerStatus :one
+INSERT INTO fabric_chaincode_definition_peer_status (definition_id, peer_id, status)
+VALUES (?, ?, ?)
+ON CONFLICT(definition_id, peer_id) DO UPDATE SET status = excluded.status, last_updated = CURRENT_TIMESTAMP
+RETURNING *;
+
+-- name: ListPeerStatuses :many
+SELECT * FROM fabric_chaincode_definition_peer_status WHERE definition_id = ?;
+
+-- name: AddChaincodeDefinitionEvent :exec
+INSERT INTO fabric_chaincode_definition_events (definition_id, event_type, event_data) VALUES (?, ?, ?);
+
+-- name: ListChaincodeDefinitionEvents :many
+SELECT id, definition_id, event_type, event_data, created_at FROM fabric_chaincode_definition_events WHERE definition_id = ? ORDER BY created_at ASC;

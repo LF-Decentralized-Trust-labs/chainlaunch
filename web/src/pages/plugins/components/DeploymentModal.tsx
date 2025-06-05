@@ -7,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -166,6 +167,76 @@ const FabricKeySelect = ({ value, onChange, disabled }: FabricKeySelectProps) =>
 	)
 }
 
+const FileInput = ({ value, onChange, disabled }: { value?: string; onChange: (value: string) => void; disabled?: boolean }) => {
+	const [isDragging, setIsDragging] = useState(false)
+
+	const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+		e.preventDefault()
+		setIsDragging(false)
+
+		const file = e.dataTransfer.files[0]
+		if (file) {
+			const reader = new FileReader()
+			reader.onload = (event) => {
+				if (event.target?.result) {
+					onChange(event.target.result as string)
+				}
+			}
+			reader.readAsText(file)
+		}
+	}
+
+	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (file) {
+			const reader = new FileReader()
+			reader.onload = (event) => {
+				if (event.target?.result) {
+					onChange(event.target.result as string)
+				}
+			}
+			reader.readAsText(file)
+		}
+	}
+
+	return (
+		<div className="space-y-4">
+			<div
+				className={`border-2 border-dashed rounded-lg p-4 text-center ${
+					isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+				}`}
+				onDragOver={(e) => {
+					e.preventDefault()
+					setIsDragging(true)
+				}}
+				onDragLeave={() => setIsDragging(false)}
+				onDrop={handleFileDrop}
+			>
+				<input
+					type="file"
+					className="hidden"
+					id="file-input"
+					onChange={handleFileSelect}
+					disabled={disabled}
+				/>
+				<label
+					htmlFor="file-input"
+					className="cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+				>
+					Drop a file here or click to select
+				</label>
+			</div>
+			<Textarea
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+				placeholder="Or paste your content here..."
+				className="min-h-[200px]"
+				disabled={disabled}
+			/>
+		</div>
+	)
+}
+
 const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentModalProps) => {
 	// Fetch data for x-source fields
 	const { data: organizations } = useQuery({
@@ -199,6 +270,9 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 						} else {
 							schema[key] = z.number()
 						}
+						break
+					case 'file':
+						schema[key] = z.string()
 						break
 					default:
 						// Fall back to normal type handling
@@ -437,6 +511,31 @@ const DeploymentModal = ({ isOpen, onClose, onDeploy, parameters }: DeploymentMo
 								/>
 							)
 						}
+					case 'file':
+						return (
+							<FormField
+								key={key}
+								control={form.control}
+								name={key}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel className="capitalize">
+											{value.title || key}
+											{parameters.required?.includes(key) && <span className="text-red-500 ml-1">*</span>}
+										</FormLabel>
+										<FormControl>
+											<FileInput
+												value={field.value as string}
+												onChange={field.onChange}
+												disabled={false}
+											/>
+										</FormControl>
+										{value.description && <p className="text-sm text-muted-foreground">{value.description}</p>}
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						)
 				}
 			}
 			// Default rendering for normal fields

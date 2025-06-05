@@ -11,6 +11,21 @@ import (
 	"time"
 )
 
+const AddChaincodeDefinitionEvent = `-- name: AddChaincodeDefinitionEvent :exec
+INSERT INTO fabric_chaincode_definition_events (definition_id, event_type, event_data) VALUES (?, ?, ?)
+`
+
+type AddChaincodeDefinitionEventParams struct {
+	DefinitionID int64          `json:"definitionId"`
+	EventType    string         `json:"eventType"`
+	EventData    sql.NullString `json:"eventData"`
+}
+
+func (q *Queries) AddChaincodeDefinitionEvent(ctx context.Context, arg *AddChaincodeDefinitionEventParams) error {
+	_, err := q.db.ExecContext(ctx, AddChaincodeDefinitionEvent, arg.DefinitionID, arg.EventType, arg.EventData)
+	return err
+}
+
 const AddRevokedCertificate = `-- name: AddRevokedCertificate :exec
 INSERT INTO fabric_revoked_certificates (
     fabric_organization_id,
@@ -413,6 +428,69 @@ func (q *Queries) CreateBackupTarget(ctx context.Context, arg *CreateBackupTarge
 		&i.Type,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const CreateChaincode = `-- name: CreateChaincode :one
+INSERT INTO fabric_chaincodes (name, network_id)
+VALUES (?, ?)
+RETURNING id, name, network_id, created_at
+`
+
+type CreateChaincodeParams struct {
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+}
+
+func (q *Queries) CreateChaincode(ctx context.Context, arg *CreateChaincodeParams) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, CreateChaincode, arg.Name, arg.NetworkID)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.NetworkID,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const CreateChaincodeDefinition = `-- name: CreateChaincodeDefinition :one
+INSERT INTO fabric_chaincode_definitions (
+  chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address
+) VALUES (
+  ?, ?, ?, ?, ?, ?
+) RETURNING id, chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address, created_at
+`
+
+type CreateChaincodeDefinitionParams struct {
+	ChaincodeID       int64          `json:"chaincodeId"`
+	Version           string         `json:"version"`
+	Sequence          int64          `json:"sequence"`
+	DockerImage       string         `json:"dockerImage"`
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
+	ChaincodeAddress  sql.NullString `json:"chaincodeAddress"`
+}
+
+func (q *Queries) CreateChaincodeDefinition(ctx context.Context, arg *CreateChaincodeDefinitionParams) (*FabricChaincodeDefinition, error) {
+	row := q.db.QueryRowContext(ctx, CreateChaincodeDefinition,
+		arg.ChaincodeID,
+		arg.Version,
+		arg.Sequence,
+		arg.DockerImage,
+		arg.EndorsementPolicy,
+		arg.ChaincodeAddress,
+	)
+	var i FabricChaincodeDefinition
+	err := row.Scan(
+		&i.ID,
+		&i.ChaincodeID,
+		&i.Version,
+		&i.Sequence,
+		&i.DockerImage,
+		&i.EndorsementPolicy,
+		&i.ChaincodeAddress,
+		&i.CreatedAt,
 	)
 	return &i, err
 }
@@ -1148,6 +1226,24 @@ func (q *Queries) DeleteBackupsByTarget(ctx context.Context, targetID int64) err
 	return err
 }
 
+const DeleteChaincode = `-- name: DeleteChaincode :exec
+DELETE FROM fabric_chaincodes WHERE id = ?
+`
+
+func (q *Queries) DeleteChaincode(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, DeleteChaincode, id)
+	return err
+}
+
+const DeleteChaincodeDefinition = `-- name: DeleteChaincodeDefinition :exec
+DELETE FROM fabric_chaincode_definitions WHERE id = ?
+`
+
+func (q *Queries) DeleteChaincodeDefinition(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, DeleteChaincodeDefinition, id)
+	return err
+}
+
 const DeleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP
 `
@@ -1725,6 +1821,58 @@ func (q *Queries) GetBackupsByStatus(ctx context.Context, status string) ([]*Bac
 	return items, nil
 }
 
+const GetChaincode = `-- name: GetChaincode :one
+SELECT fc.id, fc.name, fc.network_id, fc.created_at, n.id as network_id, n.name as network_name, n.platform as network_platform
+FROM fabric_chaincodes fc
+JOIN networks n ON fc.network_id = n.id
+WHERE fc.id = ?
+`
+
+type GetChaincodeRow struct {
+	ID              int64        `json:"id"`
+	Name            string       `json:"name"`
+	NetworkID       int64        `json:"networkId"`
+	CreatedAt       sql.NullTime `json:"createdAt"`
+	NetworkID_2     int64        `json:"networkId2"`
+	NetworkName     string       `json:"networkName"`
+	NetworkPlatform string       `json:"networkPlatform"`
+}
+
+func (q *Queries) GetChaincode(ctx context.Context, id int64) (*GetChaincodeRow, error) {
+	row := q.db.QueryRowContext(ctx, GetChaincode, id)
+	var i GetChaincodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.NetworkID,
+		&i.CreatedAt,
+		&i.NetworkID_2,
+		&i.NetworkName,
+		&i.NetworkPlatform,
+	)
+	return &i, err
+}
+
+const GetChaincodeDefinition = `-- name: GetChaincodeDefinition :one
+SELECT id, chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address, created_at FROM fabric_chaincode_definitions WHERE id = ?
+`
+
+func (q *Queries) GetChaincodeDefinition(ctx context.Context, id int64) (*FabricChaincodeDefinition, error) {
+	row := q.db.QueryRowContext(ctx, GetChaincodeDefinition, id)
+	var i FabricChaincodeDefinition
+	err := row.Scan(
+		&i.ID,
+		&i.ChaincodeID,
+		&i.Version,
+		&i.Sequence,
+		&i.DockerImage,
+		&i.EndorsementPolicy,
+		&i.ChaincodeAddress,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
 const GetDefaultNotificationProvider = `-- name: GetDefaultNotificationProvider :one
 SELECT id, name, type, config, is_default, is_enabled, created_at, updated_at, notify_node_downtime, notify_backup_success, notify_backup_failure, notify_s3_connection_issue, last_test_at, last_test_status, last_test_message FROM notification_providers
 WHERE is_default = 1 AND type = ?
@@ -1813,6 +1961,22 @@ func (q *Queries) GetDeploymentStatus(ctx context.Context, name string) (sql.Nul
 	var deployment_status sql.NullString
 	err := row.Scan(&deployment_status)
 	return deployment_status, err
+}
+
+const GetFabricChaincodeByName = `-- name: GetFabricChaincodeByName :one
+SELECT id, name, network_id, created_at FROM fabric_chaincodes WHERE name = ? LIMIT 1
+`
+
+func (q *Queries) GetFabricChaincodeByName(ctx context.Context, name string) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricChaincodeByName, name)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.NetworkID,
+		&i.CreatedAt,
+	)
+	return &i, err
 }
 
 const GetFabricOrganization = `-- name: GetFabricOrganization :one
@@ -3516,6 +3680,139 @@ func (q *Queries) ListBackupsByTarget(ctx context.Context, targetID int64) ([]*B
 	return items, nil
 }
 
+const ListChaincodeDefinitionEvents = `-- name: ListChaincodeDefinitionEvents :many
+SELECT id, definition_id, event_type, event_data, created_at FROM fabric_chaincode_definition_events WHERE definition_id = ? ORDER BY created_at ASC
+`
+
+func (q *Queries) ListChaincodeDefinitionEvents(ctx context.Context, definitionID int64) ([]*FabricChaincodeDefinitionEvent, error) {
+	rows, err := q.db.QueryContext(ctx, ListChaincodeDefinitionEvents, definitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincodeDefinitionEvent{}
+	for rows.Next() {
+		var i FabricChaincodeDefinitionEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.DefinitionID,
+			&i.EventType,
+			&i.EventData,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListChaincodeDefinitions = `-- name: ListChaincodeDefinitions :many
+SELECT id, chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address, created_at FROM fabric_chaincode_definitions WHERE chaincode_id = ? ORDER BY id
+`
+
+func (q *Queries) ListChaincodeDefinitions(ctx context.Context, chaincodeID int64) ([]*FabricChaincodeDefinition, error) {
+	rows, err := q.db.QueryContext(ctx, ListChaincodeDefinitions, chaincodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincodeDefinition{}
+	for rows.Next() {
+		var i FabricChaincodeDefinition
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChaincodeID,
+			&i.Version,
+			&i.Sequence,
+			&i.DockerImage,
+			&i.EndorsementPolicy,
+			&i.ChaincodeAddress,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListChaincodes = `-- name: ListChaincodes :many
+SELECT id, name, network_id, created_at FROM fabric_chaincodes ORDER BY id
+`
+
+func (q *Queries) ListChaincodes(ctx context.Context) ([]*FabricChaincode, error) {
+	rows, err := q.db.QueryContext(ctx, ListChaincodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincode{}
+	for rows.Next() {
+		var i FabricChaincode
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NetworkID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListFabricChaincodes = `-- name: ListFabricChaincodes :many
+SELECT id, name, network_id, created_at FROM fabric_chaincodes ORDER BY created_at DESC
+`
+
+func (q *Queries) ListFabricChaincodes(ctx context.Context) ([]*FabricChaincode, error) {
+	rows, err := q.db.QueryContext(ctx, ListFabricChaincodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincode{}
+	for rows.Next() {
+		var i FabricChaincode
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NetworkID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListFabricOrganizations = `-- name: ListFabricOrganizations :many
 SELECT id, msp_id, description, config, ca_config, sign_key_id, tls_root_key_id, admin_tls_key_id, admin_sign_key_id, client_sign_key_id, provider_id, created_at, created_by, updated_at, crl_key_id, crl_last_update FROM fabric_organizations
 ORDER BY created_at DESC
@@ -4247,6 +4544,39 @@ func (q *Queries) ListNotificationProviders(ctx context.Context) ([]*Notificatio
 	return items, nil
 }
 
+const ListPeerStatuses = `-- name: ListPeerStatuses :many
+SELECT id, definition_id, peer_id, status, last_updated FROM fabric_chaincode_definition_peer_status WHERE definition_id = ?
+`
+
+func (q *Queries) ListPeerStatuses(ctx context.Context, definitionID int64) ([]*FabricChaincodeDefinitionPeerStatus, error) {
+	rows, err := q.db.QueryContext(ctx, ListPeerStatuses, definitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*FabricChaincodeDefinitionPeerStatus{}
+	for rows.Next() {
+		var i FabricChaincodeDefinitionPeerStatus
+		if err := rows.Scan(
+			&i.ID,
+			&i.DefinitionID,
+			&i.PeerID,
+			&i.Status,
+			&i.LastUpdated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPlugins = `-- name: ListPlugins :many
 SELECT name, api_version, kind, metadata, spec, created_at, updated_at, deployment_metadata, deployment_status FROM plugins ORDER BY name
 `
@@ -4405,6 +4735,32 @@ func (q *Queries) ResetPrometheusConfig(ctx context.Context) (*PrometheusConfig,
 		&i.DockerExtraArgs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const SetPeerStatus = `-- name: SetPeerStatus :one
+INSERT INTO fabric_chaincode_definition_peer_status (definition_id, peer_id, status)
+VALUES (?, ?, ?)
+ON CONFLICT(definition_id, peer_id) DO UPDATE SET status = excluded.status, last_updated = CURRENT_TIMESTAMP
+RETURNING id, definition_id, peer_id, status, last_updated
+`
+
+type SetPeerStatusParams struct {
+	DefinitionID int64  `json:"definitionId"`
+	PeerID       int64  `json:"peerId"`
+	Status       string `json:"status"`
+}
+
+func (q *Queries) SetPeerStatus(ctx context.Context, arg *SetPeerStatusParams) (*FabricChaincodeDefinitionPeerStatus, error) {
+	row := q.db.QueryRowContext(ctx, SetPeerStatus, arg.DefinitionID, arg.PeerID, arg.Status)
+	var i FabricChaincodeDefinitionPeerStatus
+	err := row.Scan(
+		&i.ID,
+		&i.DefinitionID,
+		&i.PeerID,
+		&i.Status,
+		&i.LastUpdated,
 	)
 	return &i, err
 }
@@ -4702,6 +5058,70 @@ func (q *Queries) UpdateBackupTarget(ctx context.Context, arg *UpdateBackupTarge
 		&i.Type,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const UpdateChaincode = `-- name: UpdateChaincode :one
+UPDATE fabric_chaincodes
+SET name = ?, network_id = ?
+WHERE id = ?
+RETURNING id, name, network_id, created_at
+`
+
+type UpdateChaincodeParams struct {
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+	ID        int64  `json:"id"`
+}
+
+func (q *Queries) UpdateChaincode(ctx context.Context, arg *UpdateChaincodeParams) (*FabricChaincode, error) {
+	row := q.db.QueryRowContext(ctx, UpdateChaincode, arg.Name, arg.NetworkID, arg.ID)
+	var i FabricChaincode
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.NetworkID,
+		&i.CreatedAt,
+	)
+	return &i, err
+}
+
+const UpdateChaincodeDefinition = `-- name: UpdateChaincodeDefinition :one
+UPDATE fabric_chaincode_definitions
+SET version = ?, sequence = ?, docker_image = ?, endorsement_policy = ?, chaincode_address = ?
+WHERE id = ?
+RETURNING id, chaincode_id, version, sequence, docker_image, endorsement_policy, chaincode_address, created_at
+`
+
+type UpdateChaincodeDefinitionParams struct {
+	Version           string         `json:"version"`
+	Sequence          int64          `json:"sequence"`
+	DockerImage       string         `json:"dockerImage"`
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
+	ChaincodeAddress  sql.NullString `json:"chaincodeAddress"`
+	ID                int64          `json:"id"`
+}
+
+func (q *Queries) UpdateChaincodeDefinition(ctx context.Context, arg *UpdateChaincodeDefinitionParams) (*FabricChaincodeDefinition, error) {
+	row := q.db.QueryRowContext(ctx, UpdateChaincodeDefinition,
+		arg.Version,
+		arg.Sequence,
+		arg.DockerImage,
+		arg.EndorsementPolicy,
+		arg.ChaincodeAddress,
+		arg.ID,
+	)
+	var i FabricChaincodeDefinition
+	err := row.Scan(
+		&i.ID,
+		&i.ChaincodeID,
+		&i.Version,
+		&i.Sequence,
+		&i.DockerImage,
+		&i.EndorsementPolicy,
+		&i.ChaincodeAddress,
+		&i.CreatedAt,
 	)
 	return &i, err
 }

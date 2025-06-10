@@ -73,6 +73,12 @@ type BlockchainPlatform struct {
 	Name string `json:"name"`
 }
 
+type Conversation struct {
+	ID        int64     `json:"id"`
+	ProjectID int64     `json:"projectId"`
+	StartedAt time.Time `json:"startedAt"`
+}
+
 type FabricChaincode struct {
 	ID        int64        `json:"id"`
 	Name      string       `json:"name"`
@@ -174,6 +180,15 @@ type KeyProvider struct {
 
 type KeyProviderType struct {
 	Name string `json:"name"`
+}
+
+type Message struct {
+	ID             int64         `json:"id"`
+	ConversationID int64         `json:"conversationId"`
+	ParentID       sql.NullInt64 `json:"parentId"`
+	Sender         string        `json:"sender"`
+	Content        string        `json:"content"`
+	CreatedAt      time.Time     `json:"createdAt"`
 }
 
 type Network struct {
@@ -288,6 +303,22 @@ type Plugin struct {
 	DeploymentStatus   sql.NullString `json:"deploymentStatus"`
 }
 
+type Project struct {
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"`
+	Description   sql.NullString `json:"description"`
+	Boilerplate   sql.NullString `json:"boilerplate"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
+	Slug          string         `json:"slug"`
+	ContainerID   sql.NullString `json:"containerId"`
+	ContainerName sql.NullString `json:"containerName"`
+	Status        sql.NullString `json:"status"`
+	LastStartedAt sql.NullTime   `json:"lastStartedAt"`
+	LastStoppedAt sql.NullTime   `json:"lastStoppedAt"`
+	ContainerPort sql.NullInt64  `json:"containerPort"`
+}
+
 type PrometheusConfig struct {
 	ID                  int64          `json:"id"`
 	PrometheusPort      int64          `json:"prometheusPort"`
@@ -323,6 +354,16 @@ type Setting struct {
 	Config    string       `json:"config"`
 	CreatedAt sql.NullTime `json:"createdAt"`
 	UpdatedAt sql.NullTime `json:"updatedAt"`
+}
+
+type ToolCall struct {
+	ID        int64          `json:"id"`
+	MessageID int64          `json:"messageId"`
+	ToolName  string         `json:"toolName"`
+	Arguments string         `json:"arguments"`
+	Result    sql.NullString `json:"result"`
+	Error     sql.NullString `json:"error"`
+	CreatedAt time.Time      `json:"createdAt"`
 }
 
 type User struct {

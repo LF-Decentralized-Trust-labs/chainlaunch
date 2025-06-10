@@ -31,6 +31,11 @@ import (
 	metricscommon "github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/ai"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/dirs"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/files"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/projectrunner"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/projects"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/chainlaunch/chainlaunch/pkg/chainlaunchdeploy"
@@ -283,7 +288,7 @@ func ensureKeyExists(filename string, dataPath string) (string, error) {
 }
 
 // setupServer configures and returns the HTTP server
-func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string) *chi.Mux {
+func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string, projectsDir string) *chi.Mux {
 	// Initialize services
 	keyManagementService, err := service.NewKeyManagementService(queries)
 	if err != nil {
@@ -488,6 +493,29 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
 	authHandler := auth.NewHandler(authService)
 	auditHandler := audit.NewHandler(auditService, logger)
+
+	// AI handlers
+
+	openaiKey := os.Getenv("OPENAI_API_KEY")
+	if openaiKey == "" {
+		log.Fatal("OPENAI_API_KEY is not set")
+	}
+	runner := projectrunner.NewRunner(queries)
+	projectsService := projects.NewProjectsService(queries, runner, projectsDir)
+	chatService := ai.NewChatService(queries)
+	openAIchatService := ai.NewOpenAIChatService(openaiKey, logger, chatService, queries, projectsDir)
+	// Register directory, file, and project handlers
+	dirsService := dirs.NewDirsService(projectsDir)
+	dirsHandler := &dirs.DirsHandler{Service: dirsService, ProjectsService: projectsService}
+	filesService := files.NewFilesService()
+	filesHandler := &files.FilesHandler{Service: filesService, ProjectsService: projectsService}
+
+	// Create the project runner and inject into ProjectsService
+	projectsHandler := &projects.ProjectsHandler{Service: projectsService, Root: projectsDir}
+
+	// Register AI API Gateway routes
+	aiHandler := &ai.AIHandler{OpenAIChatService: openAIchatService, ChatService: chatService, Projects: projectsService}
+
 	// Setup router
 	r := chi.NewRouter()
 
@@ -544,6 +572,16 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 			// Register smart contract deployment routes
 			scHandler.RegisterRoutes(r)
+
+			// Mount directory management routes
+			dirsHandler.RegisterRoutes(r)
+			// Mount file management routes
+			filesHandler.RegisterRoutes(r)
+			// Mount project management routes
+			projectsHandler.RegisterRoutes(r)
+			// Mount AI/ML routes
+			aiHandler.RegisterRoutes(r)
+
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(
@@ -609,6 +647,7 @@ type serveCmd struct {
 	tlsKeyFile  string
 	dataPath    string
 	dev         bool
+	projectsDir string
 
 	queries *db.Queries
 }
@@ -756,7 +795,7 @@ func (c *serveCmd) run() error {
 	}
 
 	// Setup and start HTTP server
-	router := setupServer(c.queries, authService, c.configCMD.Views, c.dev, c.dbPath, c.dataPath)
+	router := setupServer(c.queries, authService, c.configCMD.Views, c.dev, c.dbPath, c.dataPath, c.projectsDir)
 
 	// Start HTTP server in a goroutine
 	httpServer := &http.Server{
@@ -821,6 +860,9 @@ For example:
 	// Add HTTP TLS configuration flags
 	cmd.Flags().StringVar(&serveCmd.tlsCertFile, "tls-cert", "", "Path to TLS certificate file for HTTP server (required)")
 	cmd.Flags().StringVar(&serveCmd.tlsKeyFile, "tls-key", "", "Path to TLS key file for HTTP server (required)")
+
+	// Add projects directory flag
+	cmd.Flags().StringVar(&serveCmd.projectsDir, "projects", "projects-data", "Path to projects directory")
 
 	// Update the default data path to use the OS-specific user config directory
 	defaultDataPath := ""

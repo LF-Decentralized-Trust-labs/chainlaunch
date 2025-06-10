@@ -1,5 +1,98 @@
-basePath: /api/v1
 definitions:
+  ai.ChatMessage:
+    properties:
+      content:
+        type: string
+      parts:
+        items:
+          $ref: '#/definitions/ai.ChatMessagePart'
+        type: array
+      role:
+        type: string
+    type: object
+  ai.ChatMessagePart:
+    properties:
+      text:
+        type: string
+      type:
+        type: string
+    type: object
+  ai.ChatRequest:
+    properties:
+      id:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/ai.ChatMessage'
+        type: array
+      projectId:
+        type: string
+    type: object
+  ai.ConversationDetailResponse:
+    properties:
+      id:
+        type: integer
+      messages:
+        items:
+          $ref: '#/definitions/ai.MessageDetailResponse'
+        type: array
+      projectId:
+        type: integer
+      startedAt:
+        type: string
+    type: object
+  ai.ConversationResponse:
+    properties:
+      id:
+        type: integer
+      projectId:
+        type: integer
+      startedAt:
+        type: string
+    type: object
+  ai.MessageDetailResponse:
+    properties:
+      content:
+        type: string
+      conversationId:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      sender:
+        type: string
+      toolCalls:
+        items:
+          $ref: '#/definitions/ai.ToolCallResponse'
+        type: array
+    type: object
+  ai.ParentMessageDetailResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/ai.MessageDetailResponse'
+        type: array
+      message:
+        $ref: '#/definitions/ai.MessageDetailResponse'
+    type: object
+  ai.ToolCallResponse:
+    properties:
+      arguments:
+        type: string
+      createdAt:
+        type: string
+      error:
+        type: string
+      id:
+        type: integer
+      messageId:
+        type: integer
+      result:
+        type: string
+      toolName:
+        type: string
+    type: object
   audit.Event:
     properties:
       affectedResource:
@@ -438,13 +531,6 @@ definitions:
         $ref: '#/definitions/chainlaunchdeploy.ChaincodeResponse'
     type: object
   chainlaunchdeploy.DeployChaincodeByDefinitionRequest:
-    properties:
-      container_port:
-        description: Container port to use (optional, default 7052)
-        type: string
-      host_port:
-        description: Host port to use (optional)
-        type: string
     type: object
   chainlaunchdeploy.DeploymentResult:
     properties:
@@ -763,6 +849,104 @@ definitions:
             type: string
         type: object
       status:
+        type: string
+    type: object
+  dirs.CreateDirRequest:
+    properties:
+      dir:
+        example: newdir
+        type: string
+      project:
+        example: myproject
+        type: string
+    type: object
+  dirs.CreateDirResponse:
+    properties:
+      status:
+        example: created
+        type: string
+    type: object
+  dirs.DeleteDirResponse:
+    properties:
+      status:
+        example: deleted
+        type: string
+    type: object
+  dirs.ListEntriesResponse:
+    description: Unified response for listing files and directories in a directory
+    properties:
+      directories:
+        example:
+        - '["src"'
+        - '"docs"]'
+        items:
+          type: string
+        type: array
+      files:
+        example:
+        - '["main.go"'
+        - '"README.md"]'
+        items:
+          type: string
+        type: array
+      skipped:
+        example:
+        - '["node_modules"]'
+        items:
+          type: string
+        type: array
+    type: object
+  files.DeleteFileResponse:
+    properties:
+      status:
+        example: deleted
+        type: string
+    type: object
+  files.DirectoryTreeNode:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/files.DirectoryTreeNode'
+        type: array
+      isDir:
+        type: boolean
+      name:
+        type: string
+      path:
+        type: string
+    type: object
+  files.ListFilesResponse:
+    properties:
+      files:
+        example:
+        - '["main.go"'
+        - '"README.md"]'
+        items:
+          type: string
+        type: array
+    type: object
+  files.ReadFileResponse:
+    properties:
+      content:
+        example: file contents
+        type: string
+    type: object
+  files.WriteFileRequest:
+    properties:
+      content:
+        example: new file contents
+        type: string
+      path:
+        example: main.go
+        type: string
+      project:
+        example: myproject
+        type: string
+    type: object
+  files.WriteFileResponse:
+    properties:
+      status:
+        example: written
         type: string
     type: object
   github_com_chainlaunch_chainlaunch_pkg_metrics_common.Status:
@@ -2459,6 +2643,131 @@ definitions:
           type: string
         type: array
     type: object
+  projects.CommitDetailAPI:
+    properties:
+      added:
+        items:
+          type: string
+        type: array
+      author:
+        type: string
+      hash:
+        type: string
+      message:
+        type: string
+      modified:
+        items:
+          type: string
+        type: array
+      parent:
+        type: string
+      removed:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: string
+    type: object
+  projects.CommitWithFileChangesAPI:
+    properties:
+      added:
+        items:
+          type: string
+        type: array
+      author:
+        type: string
+      hash:
+        type: string
+      message:
+        type: string
+      modified:
+        items:
+          type: string
+        type: array
+      parent:
+        type: string
+      removed:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: string
+    type: object
+  projects.CommitsListResponse:
+    properties:
+      commits:
+        items:
+          $ref: '#/definitions/projects.CommitWithFileChangesAPI'
+        type: array
+    type: object
+  projects.CreateProjectRequest:
+    properties:
+      boilerplate:
+        example: go-basic
+        type: string
+      description:
+        example: A sample project
+        type: string
+      name:
+        example: myproject
+        type: string
+    required:
+    - name
+    type: object
+  projects.CreateProjectResponse:
+    properties:
+      boilerplate:
+        example: go-basic
+        type: string
+      containerPort:
+        type: integer
+      description:
+        example: A sample project
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: myproject
+        type: string
+      slug:
+        example: myproject-abc12
+        type: string
+    type: object
+  projects.ListProjectsResponse:
+    properties:
+      projects:
+        items:
+          $ref: '#/definitions/projects.Project'
+        type: array
+    type: object
+  projects.Project:
+    properties:
+      boilerplate:
+        example: go-basic
+        type: string
+      containerPort:
+        type: integer
+      description:
+        example: A sample project
+        type: string
+      id:
+        example: 1
+        type: integer
+      lastStartedAt:
+        type: string
+      lastStoppedAt:
+        type: string
+      name:
+        example: myproject
+        type: string
+      slug:
+        example: myproject-abc12
+        type: string
+      status:
+        example: running
+        type: string
+    type: object
   registry.PluginMetadata:
     properties:
       author:
@@ -3280,21 +3589,1023 @@ definitions:
     - KeyUsageCRLSign
     - KeyUsageEncipherOnly
     - KeyUsageDecipherOnly
-host: localhost:8100
 info:
-  contact:
-    email: support@chainlaunch.dev
-    name: API Support
-    url: http://chainlaunch.dev/support
-  description: ChainLaunch API provides services for managing blockchain networks
-    and cryptographic keys
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
-  title: ChainLaunch API
-  version: "1.0"
+  contact: {}
 paths:
+  /api/ai/{projectId}/chat:
+    post:
+      consumes:
+      - application/json
+      description: Stream a conversation with the AI assistant using Server-Sent Events
+        (SSE)
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Chat request containing project ID and messages
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ai.ChatRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of chat responses
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Chat with AI assistant
+      tags:
+      - ai
+  /api/ai/{projectId}/conversations:
+    get:
+      description: Returns a list of all chat conversations associated with a specific
+        project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ai.ConversationResponse'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get all conversations for a project
+      tags:
+      - ai
+  /api/ai/{projectId}/conversations/{conversationId}:
+    get:
+      description: Returns a list of all messages in a specific chat conversation,
+        aggregating tool messages under their parent
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: conversationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ai.ParentMessageDetailResponse'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get all messages in a conversation
+      tags:
+      - ai
+  /api/ai/{projectId}/conversations/{conversationId}/export:
+    get:
+      description: Returns all messages and tool calls for a conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: conversationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ai.ConversationDetailResponse'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Export full conversation detail
+      tags:
+      - ai
+  /api/ai/boilerplates:
+    get:
+      description: Get a list of available boilerplate templates for project initialization
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List available boilerplates
+      tags:
+      - ai
+  /api/ai/docs:
+    get:
+      description: Get documentation for the AI API endpoints
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get AI API documentation
+      tags:
+      - ai
+  /api/ai/generate:
+    post:
+      consumes:
+      - application/json
+      description: Generate code or content using the selected AI model
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate code or content using AI
+      tags:
+      - ai
+  /api/ai/models:
+    get:
+      description: Get a list of available AI models
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List available AI models
+      tags:
+      - ai
+  /api/ai/templates:
+    get:
+      description: Get a list of available AI instruction templates
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List AI instruction templates
+      tags:
+      - ai
+  /api/projects:
+    get:
+      description: Get a list of all projects
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projects.ListProjectsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List all projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Create a new project, scaffold its directory, and store it in the
+        DB
+      parameters:
+      - description: Project info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/projects.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/projects.CreateProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Create a project
+      tags:
+      - projects
+  /api/projects/{id}:
+    get:
+      description: Get details of a project by its ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projects.Project'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get a project by ID
+      tags:
+      - projects
+  /api/projects/{id}/commits:
+    get:
+      description: Get a paginated list of commits for a project, including added/removed/modified
+        files
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projects.CommitsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List project commits with file changes
+      tags:
+      - projects
+  /api/projects/{id}/commits/{commitHash}:
+    get:
+      description: Get details for a single commit, including file changes
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Commit hash
+        in: path
+        name: commitHash
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projects.CommitDetailAPI'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get commit details
+      tags:
+      - projects
+  /api/projects/{id}/diff:
+    get:
+      description: Get the diff of a file between two commits
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: File path (relative to project root)
+        in: query
+        name: file
+        required: true
+        type: string
+      - description: From commit hash
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: To commit hash
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Diff
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get file diff between two commits
+      tags:
+      - projects
+  /api/projects/{id}/file_at_commit:
+    get:
+      description: Get the contents of a file at a specific commit hash
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: File path (relative to project root)
+        in: query
+        name: file
+        required: true
+        type: string
+      - description: Commit hash
+        in: query
+        name: commit
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: File contents
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get file contents at a specific commit
+      tags:
+      - projects
+  /api/projects/{id}/logs:
+    get:
+      description: Stream or return the logs for the project's running container
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Logs
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get logs for a project server
+      tags:
+      - projects
+  /api/projects/{id}/logs/stream:
+    get:
+      description: Stream logs for the project's running container using SSE
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of logs
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Stream real-time logs for a project server
+      tags:
+      - projects
+  /api/projects/{id}/start:
+    post:
+      description: Start the server process for a given project using its boilerplate
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Start the server for a project
+      tags:
+      - projects
+  /api/projects/{id}/stop:
+    post:
+      description: Stop the server process for a given project
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Stop the server for a project
+      tags:
+      - projects
+  /api/projects/{projectId}/dirs/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new directory in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Directory create info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dirs.CreateDirRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dirs.CreateDirResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Create a directory
+      tags:
+      - directories
+  /api/projects/{projectId}/dirs/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a directory in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Project name
+        in: query
+        name: project
+        required: true
+        type: string
+      - description: Directory to delete, relative to project root
+        in: query
+        name: dir
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dirs.DeleteDirResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete a directory
+      tags:
+      - directories
+  /api/projects/{projectId}/dirs/list:
+    get:
+      description: List files and directories in a given project and directory. Large
+        directories (e.g., node_modules) are summarized/skipped.
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Directory to list, relative to project root
+        in: query
+        name: dir
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dirs.ListEntriesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List files and directories
+      tags:
+      - directories
+  /api/projects/{projectId}/files/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a file in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: File path relative to project root
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.DeleteFileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete a file
+      tags:
+      - files
+  /api/projects/{projectId}/files/entries:
+    get:
+      description: List the full directory tree for a project, excluding large/ignored
+        folders (e.g., node_modules, .git)
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.DirectoryTreeNode'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List full project directory tree
+      tags:
+      - files
+  /api/projects/{projectId}/files/list:
+    get:
+      consumes:
+      - application/json
+      description: List files in a given project and directory
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Directory to list, relative to project root
+        in: query
+        name: dir
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.ListFilesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List files
+      tags:
+      - files
+  /api/projects/{projectId}/files/read:
+    get:
+      consumes:
+      - application/json
+      description: Get the contents of a file in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: File path relative to project root
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/files.ReadFileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Read file contents
+      tags:
+      - files
+  /api/projects/{projectId}/files/write:
+    post:
+      consumes:
+      - application/json
+      description: Write or modify the contents of a file in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: File write info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/files.WriteFileRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/files.WriteFileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Write file contents
+      tags:
+      - files
   /audit/logs:
     get:
       consumes:
@@ -8172,49 +9483,4 @@ paths:
       summary: Update user role
       tags:
       - Users
-schemes:
-- http
-- https
-securityDefinitions:
-  BasicAuth:
-    type: basic
-  CookieAuth:
-    in: cookie
-    name: session_id
-    type: apiKey
 swagger: "2.0"
-tags:
-- description: Audit management operations
-  name: Audit
-- description: User authentication and authorization operations
-  name: Authentication
-- description: Backup schedule configuration and management
-  name: Backup Schedules
-- description: Backup target location configuration and management
-  name: Backup Targets
-- description: Backup management operations
-  name: Backups
-- description: Hyperledger Besu network management operations
-  name: Besu Networks
-- description: Hyperledger Fabric network management operations
-  name: Fabric Networks
-- description: Cryptographic key management operations
-  name: Keys
-- description: Metrics management operations
-  name: Metrics
-- description: Network node management operations
-  name: Nodes
-- description: System notification configuration and management
-  name: Notifications
-- description: Organization management operations
-  name: Organizations
-- description: Plugin management operations
-  name: Plugins
-- description: Key provider management operations
-  name: Providers
-- description: Settings management operations
-  name: Settings
-- description: Smart contract management operations
-  name: SmartContracts
-- description: User account management operations
-  name: Users

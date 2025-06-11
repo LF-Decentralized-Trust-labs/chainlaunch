@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
-	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -33,8 +33,7 @@ func NewRunner(queries *db.Queries) *Runner {
 	}
 }
 
-func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, error) {
-	ctx := context.Background()
+func (r *Runner) Start(ctx context.Context, projectID string, projectDir string, imageName string, port int, env map[string]string, args ...string) (int, error) {
 	containerName := fmt.Sprintf("project-%s", projectID)
 
 	// Remove any existing container with the same name
@@ -42,9 +41,10 @@ func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, e
 	if err == nil {
 		_ = r.docker.ContainerRemove(ctx, dockerContainer.ID, container.RemoveOptions{Force: true})
 	}
+
 	// Check if image exists locally
 	_, err = r.docker.ImageInspect(ctx, imageName)
-	if cerrdefs.IsNotFound(err) {
+	if errdefs.IsNotFound(err) {
 		// Pull the image if not found locally
 		rc, err := r.docker.ImagePull(ctx, imageName, image.PullOptions{})
 		if err != nil {
@@ -58,17 +58,29 @@ func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, e
 		return 0, fmt.Errorf("failed to inspect image %s: %w", imageName, err)
 	}
 
+	// Create container host config with port binding
 	containerHostConfig := &container.HostConfig{
+		PortBindings: nat.PortMap{
+			nat.Port("4000/tcp"): []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: strconv.Itoa(port),
+				},
+			},
+		},
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
-				Source: dir,
+				Source: projectDir,
 				Target: "/app",
 			},
 		},
-		PortBindings: nat.PortMap{
-			nat.Port("4000/tcp"): []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: ""}}, // Let Docker assign a random port
-		},
+	}
+
+	// Convert environment map to slice
+	envSlice := make([]string, 0, len(env))
+	for k, v := range env {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	containerConfig := &container.Config{
@@ -76,7 +88,7 @@ func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, e
 		Cmd:        args,
 		Tty:        false,
 		WorkingDir: "/app",
-		Env:        []string{"PORT=4000"},
+		Env:        envSlice,
 		ExposedPorts: nat.PortSet{
 			nat.Port("4000/tcp"): struct{}{},
 		},
@@ -92,15 +104,6 @@ func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, e
 	// Wait for container to be ready
 	time.Sleep(2 * time.Second)
 
-	// Inspect the container to get the mapped host port
-	inspect, err := r.docker.ContainerInspect(ctx, resp.ID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to inspect container: %w", err)
-	}
-	hostPort := 0
-	if bindings, ok := inspect.NetworkSettings.Ports["4000/tcp"]; ok && len(bindings) > 0 {
-		hostPort, _ = strconv.Atoi(bindings[0].HostPort)
-	}
 	// Update DB with running status
 	idInt64, _ := parseProjectID(projectID)
 	now := time.Now()
@@ -110,13 +113,13 @@ func (r *Runner) Start(projectID, dir, imageName string, args ...string) (int, e
 		Status:        sqlNullString("running"),
 		LastStartedAt: sqlNullTime(now),
 		LastStoppedAt: sqlNullTimeZero(),
-		ContainerPort: sql.NullInt64{Int64: int64(hostPort), Valid: hostPort > 0},
+		ContainerPort: sql.NullInt64{Int64: int64(port), Valid: true},
 		ID:            idInt64,
 	})
 	if err != nil {
 		return 0, err
 	}
-	return hostPort, nil
+	return port, nil
 }
 
 func (r *Runner) Stop(projectID string) error {
@@ -146,7 +149,7 @@ func (r *Runner) Stop(projectID string) error {
 
 func (r *Runner) Restart(projectID, dir, image string, args ...string) error {
 	r.Stop(projectID)
-	_, err := r.Start(projectID, dir, image, args...)
+	_, err := r.Start(context.Background(), projectID, dir, image, 4000, nil, args...)
 	return err
 }
 

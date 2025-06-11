@@ -264,7 +264,7 @@ func (h *ProjectsHandler) StopProjectServer(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	err = h.Service.StopProjectServer(id)
+	err = h.Service.StopProjectServer(r.Context(), id)
 	if err != nil {
 		return errors.NewInternalError("failed to stop project server", err, nil)
 	}

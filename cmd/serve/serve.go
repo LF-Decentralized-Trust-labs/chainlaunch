@@ -515,7 +515,7 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 
 	// Re-initialize projectsService
 	runner := projectrunner.NewRunner(queries)
-	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir)
+	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
 	if err != nil {
 		log.Fatalf("Failed to create projects service: %v", err)
 	}

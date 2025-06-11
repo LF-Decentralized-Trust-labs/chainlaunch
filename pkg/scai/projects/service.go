@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +17,11 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"github.com/chainlaunch/chainlaunch/pkg/common/addresses"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
+	fabricService "github.com/chainlaunch/chainlaunch/pkg/fabric/service"
+	keyMgmtService "github.com/chainlaunch/chainlaunch/pkg/keymanagement/service"
+	networkservice "github.com/chainlaunch/chainlaunch/pkg/networks/service"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/projectrunner"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/versionmanagement"
@@ -29,6 +34,9 @@ type ProjectsService struct {
 	Runner             *projectrunner.Runner
 	ProjectsDir        string
 	BoilerplateService *boilerplates.BoilerplateService
+	OrgService         *fabricService.OrganizationService
+	KeyMgmtService     *keyMgmtService.KeyManagementService
+	NetworkService     *networkservice.NetworkService
 }
 
 type Project struct {
@@ -51,17 +59,19 @@ var projectProcessManager = struct {
 }{servers: make(map[int64]*exec.Cmd)}
 
 // NewProjectsService creates a new ProjectsService instance
-func NewProjectsService(queries *db.Queries, runner *projectrunner.Runner, projectsDir string) (*ProjectsService, error) {
+func NewProjectsService(queries *db.Queries, runner *projectrunner.Runner, projectsDir string, orgService *fabricService.OrganizationService, keyMgmtService *keyMgmtService.KeyManagementService, networkService *networkservice.NetworkService) (*ProjectsService, error) {
 	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create boilerplate service: %w", err)
+		return nil, err
 	}
-
 	return &ProjectsService{
 		Queries:            queries,
 		Runner:             runner,
 		ProjectsDir:        projectsDir,
 		BoilerplateService: boilerplateService,
+		OrgService:         orgService,
+		KeyMgmtService:     keyMgmtService,
+		NetworkService:     networkService,
 	}, nil
 }
 
@@ -243,7 +253,21 @@ func dbProjectToAPI(p *db.Project) Project {
 
 var ErrNotFound = errors.New("not found")
 
-// StartProjectServer starts a development server for a project
+// findAvailablePort finds an available port starting from the given port
+func findAvailablePort(startPort int) (int, error) {
+	maxAttempts := 100
+	for port := startPort; port < startPort+maxAttempts; port++ {
+		addr := fmt.Sprintf(":%d", port)
+		listener, err := net.Listen("tcp", addr)
+		if err == nil {
+			listener.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("no available ports found after %d attempts starting from %d", maxAttempts, startPort)
+}
+
+// StartProjectServer starts the server process for a project
 func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int64) error {
 	project, err := s.Queries.GetProject(ctx, projectID)
 	if err != nil {
@@ -252,6 +276,23 @@ func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int6
 
 	if !project.Boilerplate.Valid {
 		return fmt.Errorf("project has no boilerplate configured")
+	}
+	projectDB, err := s.Queries.GetProject(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %w", err)
+	}
+	networkDB, err := s.Queries.GetNetwork(ctx, projectDB.NetworkID.Int64)
+	if err != nil {
+		return fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get the appropriate lifecycle implementation for the platform
+	lifecycle, err := GetPlatformLifecycle(networkDB.Platform, s.Queries, s.OrgService, s.KeyMgmtService, s.NetworkService, zap.L())
+	if err != nil {
+		zap.L().Warn("failed to get platform lifecycle, continuing without lifecycle hooks",
+			zap.String("platform", project.Boilerplate.String),
+			zap.Error(err),
+		)
 	}
 
 	command, args, image, err := projectrunner.GetBoilerplateRunner(s.BoilerplateService, project.Boilerplate.String)
@@ -264,15 +305,168 @@ func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int6
 		return err
 	}
 
+	// Get the host IP for smart contract deployment
+	hostIP, err := addresses.GetExternalIP()
+	if err != nil {
+		zap.L().Warn("failed to get host IP, using localhost",
+			zap.Error(err),
+		)
+		hostIP = "127.0.0.1"
+	}
+
+	// Find an available port
+	port, err := findAvailablePort(40000)
+	if err != nil {
+		return fmt.Errorf("failed to find available port: %w", err)
+	}
+
+	// Call PreStart lifecycle hook if available
+	var env map[string]string
+	if lifecycle != nil {
+		preStartParams := PreStartParams{
+			ProjectLifecycleParams: ProjectLifecycleParams{
+				ProjectID:   project.ID,
+				ProjectName: project.Name,
+				ProjectSlug: project.Slug,
+				NetworkID:   project.NetworkID.Int64,
+				NetworkName: networkDB.Name,
+				Platform:    networkDB.Platform,
+				Boilerplate: project.Boilerplate.String,
+			},
+			Image:       image,
+			Port:        port,
+			Command:     command,
+			Args:        args,
+			Environment: make(map[string]string),
+			HostIP:      hostIP,
+		}
+		result, err := lifecycle.PreStart(ctx, preStartParams)
+		if err != nil {
+			return fmt.Errorf("pre-start lifecycle hook failed: %w", err)
+		}
+		if result != nil {
+			env = result.Environment
+		}
+	}
+
 	// Prepend the command to the args
 	allArgs := append([]string{command}, args...)
-	_, err = s.Runner.Start(fmt.Sprintf("%d", projectID), projectDir, image, allArgs...)
-	return err
+	port, err = s.Runner.Start(ctx, fmt.Sprintf("%d", projectID), projectDir, image, port, env, allArgs...)
+	if err != nil {
+		return err
+	}
+
+	// Call PostStart lifecycle hook if available
+	if lifecycle != nil {
+		postStartParams := PostStartParams{
+			ProjectLifecycleParams: ProjectLifecycleParams{
+				ProjectID:   project.ID,
+				ProjectName: project.Name,
+				ProjectSlug: project.Slug,
+				NetworkID:   project.NetworkID.Int64,
+				NetworkName: networkDB.Name,
+				Platform:    networkDB.Platform,
+				Boilerplate: project.Boilerplate.String,
+			},
+			ContainerID: project.ContainerID.String,
+			Image:       image,
+			Port:        port,
+			StartedAt:   time.Now(),
+			Status:      "running",
+			HostIP:      hostIP,
+		}
+		if err := lifecycle.PostStart(ctx, postStartParams); err != nil {
+			// Log the error but don't fail the start operation
+			zap.L().Error("post-start lifecycle hook failed",
+				zap.Int64("projectID", project.ID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	return nil
 }
 
 // StopProjectServer stops the server process for a project
-func (s *ProjectsService) StopProjectServer(projectID int64) error {
-	return s.Runner.Stop(fmt.Sprintf("%d", projectID))
+func (s *ProjectsService) StopProjectServer(ctx context.Context, projectID int64) error {
+	project, err := s.Queries.GetProject(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %w", err)
+	}
+
+	// Get the appropriate lifecycle implementation for the platform
+	projectDB, err := s.Queries.GetProject(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %w", err)
+	}
+	networkDB, err := s.Queries.GetNetwork(ctx, projectDB.NetworkID.Int64)
+	if err != nil {
+		return fmt.Errorf("failed to get network: %w", err)
+	}
+
+	// Get the appropriate lifecycle implementation for the platform
+	lifecycle, err := GetPlatformLifecycle(networkDB.Platform, s.Queries, s.OrgService, s.KeyMgmtService, s.NetworkService, zap.L())
+	if err != nil {
+		zap.L().Warn("failed to get platform lifecycle, continuing without lifecycle hooks",
+			zap.String("platform", project.Boilerplate.String),
+			zap.Error(err),
+		)
+	}
+	// Call PreStop lifecycle hook if available
+	if lifecycle != nil {
+		preStopParams := PreStopParams{
+			ProjectLifecycleParams: ProjectLifecycleParams{
+				ProjectID:   project.ID,
+				ProjectName: project.Name,
+				ProjectSlug: project.Slug,
+				NetworkID:   project.NetworkID.Int64,
+				NetworkName: networkDB.Name,
+				Platform:    networkDB.Platform,
+				Boilerplate: project.Boilerplate.String,
+			},
+			ContainerID: project.ContainerID.String,
+			StartedAt:   project.LastStartedAt.Time,
+		}
+		if err := lifecycle.PreStop(ctx, preStopParams); err != nil {
+			// Log the error but don't fail the stop operation
+			zap.L().Error("pre-stop lifecycle hook failed",
+				zap.Int64("projectID", project.ID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	if err := s.Runner.Stop(fmt.Sprintf("%d", projectID)); err != nil {
+		return err
+	}
+
+	// Call PostStop lifecycle hook if available
+	if lifecycle != nil {
+		now := time.Now()
+		postStopParams := PostStopParams{
+			ProjectLifecycleParams: ProjectLifecycleParams{
+				ProjectID:   project.ID,
+				ProjectName: project.Name,
+				ProjectSlug: project.Slug,
+				NetworkID:   project.NetworkID.Int64,
+				NetworkName: networkDB.Name,
+				Platform:    networkDB.Platform,
+				Boilerplate: project.Boilerplate.String,
+			},
+			ContainerID: project.ContainerID.String,
+			StartedAt:   project.LastStartedAt.Time,
+			StoppedAt:   now,
+		}
+		if err := lifecycle.PostStop(ctx, postStopParams); err != nil {
+			// Log the error but don't fail the stop operation
+			zap.L().Error("post-stop lifecycle hook failed",
+				zap.Int64("projectID", project.ID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	return nil
 }
 
 func (s *ProjectsService) GetProjectLogs(ctx context.Context, projectID int64) (string, error) {

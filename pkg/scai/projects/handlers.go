@@ -15,6 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
+func NewProjectsHandler(service *ProjectsService, root string) *ProjectsHandler {
+	return &ProjectsHandler{
+		Root:    root,
+		Service: service,
+	}
+}
+
 type ProjectsHandler struct {
 	Root    string
 	Service *ProjectsService
@@ -24,6 +31,7 @@ type CreateProjectRequest struct {
 	Name        string `json:"name" validate:"required" example:"myproject" description:"Project name"`
 	Description string `json:"description" example:"A sample project" description:"Project description"`
 	Boilerplate string `json:"boilerplate" example:"go-basic" description:"Boilerplate template to use for scaffolding"`
+	NetworkID   *int64 `json:"networkId,omitempty" example:"1" description:"ID of the network to link with"`
 }
 
 type CreateProjectResponse struct {
@@ -33,6 +41,7 @@ type CreateProjectResponse struct {
 	Description   string `json:"description" example:"A sample project" description:"Project description"`
 	Boilerplate   string `json:"boilerplate" example:"go-basic" description:"Boilerplate template used for scaffolding"`
 	ContainerPort *int   `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
+	NetworkID     *int64 `json:"networkId,omitempty" description:"ID of the linked network"`
 }
 
 type ListProjectsResponse struct {
@@ -74,7 +83,7 @@ type CommitsListResponse struct {
 
 // RegisterRoutes registers project endpoints to the router
 func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
-	r.Route("/api/projects", func(r chi.Router) {
+	r.Route("/projects", func(r chi.Router) {
 		r.Post("/", response.Middleware(h.CreateProject))
 		r.Get("/", response.Middleware(h.ListProjects))
 		r.Get("/{id}", response.Middleware(h.GetProject))
@@ -104,7 +113,7 @@ func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects [post]
+// @Router       /api/v1/projects [post]
 func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) error {
 	var req CreateProjectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -127,7 +136,7 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 		return errors.NewConflictError("project already exists", nil)
 	}
 
-	proj, err := h.Service.CreateProject(r.Context(), req.Name, req.Description, req.Boilerplate)
+	proj, err := h.Service.CreateProject(r.Context(), req.Name, req.Description, req.Boilerplate, req.NetworkID)
 	if err != nil {
 		return errors.NewInternalError("failed to create project", err, nil)
 	}
@@ -141,6 +150,7 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 		Description:   proj.Description,
 		Boilerplate:   proj.Boilerplate,
 		ContainerPort: proj.ContainerPort,
+		NetworkID:     proj.NetworkID,
 	})
 }
 
@@ -151,7 +161,7 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Success      200 {object} ListProjectsResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects [get]
+// @Router       /api/v1/projects [get]
 func (h *ProjectsHandler) ListProjects(w http.ResponseWriter, r *http.Request) error {
 	projs, err := h.Service.ListProjects(r.Context())
 	if err != nil {
@@ -173,7 +183,7 @@ func (h *ProjectsHandler) ListProjects(w http.ResponseWriter, r *http.Request) e
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id} [get]
+// @Router       /api/v1/projects/{id} [get]
 func (h *ProjectsHandler) GetProject(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -206,7 +216,7 @@ func (h *ProjectsHandler) GetProject(w http.ResponseWriter, r *http.Request) err
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/start [post]
+// @Router       /api/v1/projects/{id}/start [post]
 func (h *ProjectsHandler) StartProjectServer(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -224,7 +234,7 @@ func (h *ProjectsHandler) StartProjectServer(w http.ResponseWriter, r *http.Requ
 		return errors.NewInternalError("failed to get project", err, nil)
 	}
 
-	err = h.Service.StartProjectServer(r.Context(), proj.ID, proj.Boilerplate, proj.Name)
+	err = h.Service.StartProjectServer(r.Context(), proj.ID)
 	if err != nil {
 		return errors.NewInternalError("failed to start project server", err, nil)
 	}
@@ -244,7 +254,7 @@ func (h *ProjectsHandler) StartProjectServer(w http.ResponseWriter, r *http.Requ
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/stop [post]
+// @Router       /api/v1/projects/{id}/stop [post]
 func (h *ProjectsHandler) StopProjectServer(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -274,7 +284,7 @@ func (h *ProjectsHandler) StopProjectServer(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/logs [get]
+// @Router       /api/v1/projects/{id}/logs [get]
 func (h *ProjectsHandler) GetProjectLogs(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -305,7 +315,7 @@ func (h *ProjectsHandler) GetProjectLogs(w http.ResponseWriter, r *http.Request)
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/logs/stream [get]
+// @Router       /api/v1/projects/{id}/logs/stream [get]
 func (h *ProjectsHandler) StreamProjectLogs(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -349,7 +359,7 @@ func (h *ProjectsHandler) StreamProjectLogs(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/commits [get]
+// @Router       /api/v1/projects/{id}/commits [get]
 func (h *ProjectsHandler) GetProjectCommits(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -426,7 +436,7 @@ func (h *ProjectsHandler) GetProjectCommits(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/commits/{commitHash} [get]
+// @Router       /api/v1/projects/{id}/commits/{commitHash} [get]
 func (h *ProjectsHandler) GetProjectCommitDetail(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	commitHash := chi.URLParam(r, "commitHash")
@@ -482,7 +492,7 @@ func (h *ProjectsHandler) GetProjectCommitDetail(w http.ResponseWriter, r *http.
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/diff [get]
+// @Router       /api/v1/projects/{id}/diff [get]
 func (h *ProjectsHandler) GetProjectFileDiff(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	file := r.URL.Query().Get("file")
@@ -532,7 +542,7 @@ func (h *ProjectsHandler) GetProjectFileDiff(w http.ResponseWriter, r *http.Requ
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{id}/file_at_commit [get]
+// @Router       /api/v1/projects/{id}/file_at_commit [get]
 func (h *ProjectsHandler) GetProjectFileAtCommit(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	file := r.URL.Query().Get("file")

@@ -14,7 +14,8 @@ CREATE TABLE projects (
     status TEXT,
     last_started_at DATETIME,
     last_stopped_at DATETIME,
-    container_port INTEGER
+    container_port INTEGER,
+    network_id INTEGER REFERENCES networks(id)
 );
 
 -- Create conversations table

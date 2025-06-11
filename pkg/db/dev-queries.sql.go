@@ -22,7 +22,7 @@ func (q *Queries) CreateConversation(ctx context.Context, projectID int64) (*Con
 }
 
 const CreateProject = `-- name: CreateProject :one
-INSERT INTO projects (name, description, boilerplate, slug) VALUES (?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port
+INSERT INTO projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id
 `
 
 type CreateProjectParams struct {
@@ -30,6 +30,7 @@ type CreateProjectParams struct {
 	Description sql.NullString `json:"description"`
 	Boilerplate sql.NullString `json:"boilerplate"`
 	Slug        string         `json:"slug"`
+	NetworkID   sql.NullInt64  `json:"networkId"`
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (*Project, error) {
@@ -38,6 +39,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 		arg.Description,
 		arg.Boilerplate,
 		arg.Slug,
+		arg.NetworkID,
 	)
 	var i Project
 	err := row.Scan(
@@ -54,6 +56,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 		&i.LastStartedAt,
 		&i.LastStoppedAt,
 		&i.ContainerPort,
+		&i.NetworkID,
 	)
 	return &i, err
 }
@@ -79,7 +82,7 @@ func (q *Queries) GetDefaultConversationForProject(ctx context.Context, projectI
 }
 
 const GetProject = `-- name: GetProject :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port FROM projects WHERE id = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id int64) (*Project, error) {
@@ -99,12 +102,13 @@ func (q *Queries) GetProject(ctx context.Context, id int64) (*Project, error) {
 		&i.LastStartedAt,
 		&i.LastStoppedAt,
 		&i.ContainerPort,
+		&i.NetworkID,
 	)
 	return &i, err
 }
 
 const GetProjectBySlug = `-- name: GetProjectBySlug :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port FROM projects WHERE slug = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects WHERE slug = ?
 `
 
 func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*Project, error) {
@@ -124,6 +128,7 @@ func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*Project, 
 		&i.LastStartedAt,
 		&i.LastStoppedAt,
 		&i.ContainerPort,
+		&i.NetworkID,
 	)
 	return &i, err
 }
@@ -254,7 +259,7 @@ func (q *Queries) ListMessagesForConversation(ctx context.Context, conversationI
 }
 
 const ListProjects = `-- name: ListProjects :many
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port FROM projects ORDER BY created_at DESC
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects ORDER BY created_at DESC
 `
 
 func (q *Queries) ListProjects(ctx context.Context) ([]*Project, error) {
@@ -280,6 +285,7 @@ func (q *Queries) ListProjects(ctx context.Context) ([]*Project, error) {
 			&i.LastStartedAt,
 			&i.LastStoppedAt,
 			&i.ContainerPort,
+			&i.NetworkID,
 		); err != nil {
 			return nil, err
 		}

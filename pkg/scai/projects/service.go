@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/projectrunner"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/versionmanagement"
 	"github.com/go-chi/chi/v5/middleware"
@@ -24,9 +25,10 @@ import (
 )
 
 type ProjectsService struct {
-	Queries     *db.Queries
-	Runner      *projectrunner.Runner
-	ProjectsDir string
+	Queries            *db.Queries
+	Runner             *projectrunner.Runner
+	ProjectsDir        string
+	BoilerplateService *boilerplates.BoilerplateService
 }
 
 type Project struct {
@@ -39,6 +41,7 @@ type Project struct {
 	LastStartedAt *string `json:"lastStartedAt,omitempty" description:"Last time the project was started (RFC3339)"`
 	LastStoppedAt *string `json:"lastStoppedAt,omitempty" description:"Last time the project was stopped (RFC3339)"`
 	ContainerPort *int    `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
+	NetworkID     *int64  `json:"networkId,omitempty" description:"ID of the linked network"`
 }
 
 // ProjectProcessManager manages running server processes for projects
@@ -47,8 +50,19 @@ var projectProcessManager = struct {
 	servers map[int64]*exec.Cmd
 }{servers: make(map[int64]*exec.Cmd)}
 
-func NewProjectsService(queries *db.Queries, runner *projectrunner.Runner, projectsDir string) *ProjectsService {
-	return &ProjectsService{Queries: queries, Runner: runner, ProjectsDir: projectsDir}
+// NewProjectsService creates a new ProjectsService instance
+func NewProjectsService(queries *db.Queries, runner *projectrunner.Runner, projectsDir string) (*ProjectsService, error) {
+	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create boilerplate service: %w", err)
+	}
+
+	return &ProjectsService{
+		Queries:            queries,
+		Runner:             runner,
+		ProjectsDir:        projectsDir,
+		BoilerplateService: boilerplateService,
+	}, nil
 }
 
 func getReqID(ctx context.Context) string {
@@ -116,7 +130,7 @@ func generateSlug(name string, queries *db.Queries, ctx context.Context) (string
 	}
 }
 
-func (s *ProjectsService) CreateProject(ctx context.Context, name, description, boilerplate string) (Project, error) {
+func (s *ProjectsService) CreateProject(ctx context.Context, name, description, boilerplate string, networkID *int64) (Project, error) {
 	slug, err := generateSlug(name, s.Queries, ctx)
 	if err != nil {
 		return Project{}, err
@@ -126,6 +140,7 @@ func (s *ProjectsService) CreateProject(ctx context.Context, name, description, 
 		Description: sql.NullString{String: description, Valid: description != ""},
 		Boilerplate: sql.NullString{String: boilerplate, Valid: boilerplate != ""},
 		Slug:        slug,
+		NetworkID:   sql.NullInt64{Int64: *networkID, Valid: networkID != nil},
 	})
 	if err != nil {
 		zap.L().Error("DB error in CreateProject", zap.String("name", name), zap.Error(err), zap.String("request_id", getReqID(ctx)))
@@ -133,26 +148,26 @@ func (s *ProjectsService) CreateProject(ctx context.Context, name, description, 
 	}
 	zap.L().Info("created project in DB", zap.Int64("id", proj.ID), zap.String("name", proj.Name), zap.String("slug", proj.Slug), zap.String("request_id", getReqID(ctx)))
 
-	// Copy boilerplate folder if specified
+	// Download boilerplate if specified
 	if boilerplate != "" {
-		boilerplateSrc := filepath.Join("/Users/davidviejo/poc/chain-ai-v0/boilerplates", boilerplate)
-		projectDst := filepath.Join(s.ProjectsDir, slug)
-		if err := copyDir(boilerplateSrc, projectDst); err != nil {
-			zap.L().Error("failed to copy boilerplate", zap.String("src", boilerplateSrc), zap.String("dst", projectDst), zap.Error(err))
+		projectDir := filepath.Join(s.ProjectsDir, slug)
+		if err := s.BoilerplateService.DownloadBoilerplate(ctx, boilerplate, projectDir); err != nil {
+			zap.L().Error("failed to download boilerplate", zap.String("boilerplate", boilerplate), zap.Error(err))
 			return Project{}, err
 		}
+
 		// Ensure git repository is initialized before committing
-		gitDir := filepath.Join(projectDst, ".git")
+		gitDir := filepath.Join(projectDir, ".git")
 		if _, err := os.Stat(gitDir); os.IsNotExist(err) {
 			// Initialize the repo using go-git
-			_, err := versionmanagement.InitRepo(projectDst)
+			_, err := versionmanagement.InitRepo(projectDir)
 			if err != nil {
 				zap.L().Error("failed to initialize git repo", zap.Error(err))
 			}
 		}
 		vm := versionmanagement.NewDefaultManager()
 		cwd, _ := os.Getwd()
-		if err := os.Chdir(projectDst); err == nil {
+		if err := os.Chdir(projectDir); err == nil {
 			err = vm.CommitChange(ctx, "Initial commit for project "+name)
 			if err != nil {
 				zap.L().Error("failed to commit", zap.Error(err))
@@ -208,6 +223,10 @@ func dbProjectToAPI(p *db.Project) Project {
 		v := int(p.ContainerPort.Int64)
 		containerPort = &v
 	}
+	var networkID *int64
+	if p.NetworkID.Valid {
+		networkID = &p.NetworkID.Int64
+	}
 	return Project{
 		ID:            p.ID,
 		Name:          p.Name,
@@ -218,26 +237,36 @@ func dbProjectToAPI(p *db.Project) Project {
 		LastStartedAt: started,
 		LastStoppedAt: stopped,
 		ContainerPort: containerPort,
+		NetworkID:     networkID,
 	}
 }
 
 var ErrNotFound = errors.New("not found")
 
-// StartProjectServer starts the server process for a project
-func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int64, boilerplate, projectName string) error {
-	project, err := s.GetProject(ctx, projectID)
+// StartProjectServer starts a development server for a project
+func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int64) error {
+	project, err := s.Queries.GetProject(ctx, projectID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get project: %w", err)
 	}
+
+	if !project.Boilerplate.Valid {
+		return fmt.Errorf("project has no boilerplate configured")
+	}
+
+	command, args, image, err := projectrunner.GetBoilerplateRunner(s.BoilerplateService, project.Boilerplate.String)
+	if err != nil {
+		return fmt.Errorf("failed to get boilerplate runner: %w", err)
+	}
+
 	projectDir, err := filepath.Abs(filepath.Join(s.ProjectsDir, project.Slug))
 	if err != nil {
 		return err
 	}
-	_, args, image, ok := projectrunner.GetBoilerplateRunner(project.Boilerplate)
-	if !ok {
-		return errors.New("unsupported boilerplate for start")
-	}
-	_, err = s.Runner.Start(fmt.Sprintf("%d", projectID), projectDir, image, args...)
+
+	// Prepend the command to the args
+	allArgs := append([]string{command}, args...)
+	_, err = s.Runner.Start(fmt.Sprintf("%d", projectID), projectDir, image, allArgs...)
 	return err
 }
 

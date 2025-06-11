@@ -317,6 +317,7 @@ type Project struct {
 	LastStartedAt sql.NullTime   `json:"lastStartedAt"`
 	LastStoppedAt sql.NullTime   `json:"lastStoppedAt"`
 	ContainerPort sql.NullInt64  `json:"containerPort"`
+	NetworkID     sql.NullInt64  `json:"networkId"`
 }
 
 type PrometheusConfig struct {

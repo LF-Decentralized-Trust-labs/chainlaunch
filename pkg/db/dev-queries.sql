@@ -2,7 +2,7 @@
 SELECT * FROM projects ORDER BY created_at DESC;
 
 -- name: CreateProject :one
-INSERT INTO projects (name, description, boilerplate, slug) VALUES (?, ?, ?, ?) RETURNING *;
+INSERT INTO projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING *;
 
 -- name: DeleteProject :exec
 DELETE FROM projects WHERE id = ?;

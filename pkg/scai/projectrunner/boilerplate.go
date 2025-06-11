@@ -1,5 +1,11 @@
 package projectrunner
 
+import (
+	"fmt"
+
+	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
+)
+
 // BoilerplateRunnerConfig defines how to run a project for a given boilerplate type.
 type BoilerplateRunnerConfig struct {
 	Command string
@@ -8,19 +14,18 @@ type BoilerplateRunnerConfig struct {
 }
 
 var boilerplateRunners = map[string]BoilerplateRunnerConfig{
-	"server-ts": {
-		Command: "bun",
-		Args:    []string{"--watch", "run", "index.ts"},
-		Image:   "oven/bun:latest",
-	},
 	"chaincode-fabric-ts": {
 		Args:  []string{"npm", "run", "start:dev"},
 		Image: "chaincode-ts:1.0",
 	},
 }
 
-// GetBoilerplateRunner returns the command, args, and image for a given boilerplate type.
-func GetBoilerplateRunner(boilerplate string) (string, []string, string, bool) {
-	runner, ok := boilerplateRunners[boilerplate]
-	return runner.Command, runner.Args, runner.Image, ok
+// GetBoilerplateRunner returns the command, args, and image for a given boilerplate type
+func GetBoilerplateRunner(boilerplateService *boilerplates.BoilerplateService, boilerplateType string) (string, []string, string, error) {
+	config, err := boilerplateService.GetBoilerplateConfig(boilerplateType)
+	if err != nil {
+		return "", nil, "", fmt.Errorf("unknown boilerplate type: %s", boilerplateType)
+	}
+
+	return config.Command, config.Args, config.Image, nil
 }

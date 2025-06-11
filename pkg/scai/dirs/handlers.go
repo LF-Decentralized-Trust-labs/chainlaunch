@@ -13,6 +13,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
+// NewDirsHandler creates a new instance of DirsHandler
+func NewDirsHandler(service *DirsService, projectsService *projects.ProjectsService) *DirsHandler {
+	return &DirsHandler{
+		Service:         service,
+		ProjectsService: projectsService,
+	}
+}
 
 type DirsHandler struct {
 	Service         *DirsService
@@ -47,7 +54,7 @@ type DeleteDirResponse struct {
 // @Failure      409 {object} errors.ErrorResponse
 // @Failure      422 {object} errors.ErrorResponse
 // @Failure      500 {object} errors.ErrorResponse
-// @Router       /api/entries/list [get]
+// @Router       /api/v1/entries/list [get]
 type ListEntriesResponse struct {
 	Files       []string `json:"files" example:"[\"main.go\",\"README.md\"]" description:"List of file names"`
 	Directories []string `json:"directories" example:"[\"src\",\"docs\"]" description:"List of directory names"`
@@ -56,7 +63,7 @@ type ListEntriesResponse struct {
 
 // RegisterRoutes registers directory endpoints to the router, now project-scoped
 func (h *DirsHandler) RegisterRoutes(r chi.Router) {
-	r.Route("/api/projects/{projectId}/dirs", func(r chi.Router) {
+	r.Route("/projects/{projectId}/dirs", func(r chi.Router) {
 		r.Post("/create", response.Middleware(h.CreateDir))
 		r.Delete("/delete", response.Middleware(h.DeleteDir))
 		r.Get("/list", response.Middleware(h.ListEntries))
@@ -95,7 +102,7 @@ func (h *DirsHandler) getProjectRoot(r *http.Request) (string, error) {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{projectId}/dirs/create [post]
+// @Router       /api/v1/projects/{projectId}/dirs/create [post]
 func (h *DirsHandler) CreateDir(w http.ResponseWriter, r *http.Request) error {
 	var req CreateDirRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -145,7 +152,7 @@ func (h *DirsHandler) CreateDir(w http.ResponseWriter, r *http.Request) error {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{projectId}/dirs/delete [delete]
+// @Router       /api/v1/projects/{projectId}/dirs/delete [delete]
 func (h *DirsHandler) DeleteDir(w http.ResponseWriter, r *http.Request) error {
 	dir := r.URL.Query().Get("dir")
 	if dir == "" {
@@ -180,7 +187,7 @@ func (h *DirsHandler) DeleteDir(w http.ResponseWriter, r *http.Request) error {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/projects/{projectId}/dirs/list [get]
+// @Router       /api/v1/projects/{projectId}/dirs/list [get]
 func (h *DirsHandler) ListEntries(w http.ResponseWriter, r *http.Request) error {
 	dir := r.URL.Query().Get("dir")
 	if dir == "" {

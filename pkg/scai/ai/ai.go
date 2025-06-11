@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
@@ -187,7 +188,7 @@ func (s *OpenAIChatService) StreamChat(ctx context.Context, project *db.Project,
 	var lastParentMsgID *int64
 	for i, m := range messages {
 		role := openai.ChatMessageRoleUser
-		if m.Role == "assistant" {
+		if m.Sender == "assistant" {
 			role = openai.ChatMessageRoleAssistant
 		}
 		msg := openai.ChatCompletionMessage{
@@ -526,8 +527,11 @@ func (s *OpenAIChatService) ChatWithPersistence(
 	var messages []Message
 	for _, m := range dbMessages {
 		messages = append(messages, Message{
-			Role:    m.Sender,
-			Content: m.Content,
+			ID:             m.ID,
+			ConversationID: m.ConversationID,
+			Sender:         m.Sender,
+			Content:        m.Content,
+			CreatedAt:      m.CreatedAt.Format(time.RFC3339),
 		})
 	}
 

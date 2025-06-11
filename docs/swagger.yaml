@@ -1,40 +1,22 @@
 definitions:
-  ai.ChatMessage:
+  ai.Boilerplate:
     properties:
-      content:
+      description:
         type: string
-      parts:
-        items:
-          $ref: '#/definitions/ai.ChatMessagePart'
-        type: array
-      role:
+      name:
+        type: string
+      path:
+        type: string
+      platform:
         type: string
     type: object
-  ai.ChatMessagePart:
-    properties:
-      text:
-        type: string
-      type:
-        type: string
-    type: object
-  ai.ChatRequest:
-    properties:
-      id:
-        type: string
-      messages:
-        items:
-          $ref: '#/definitions/ai.ChatMessage'
-        type: array
-      projectId:
-        type: string
-    type: object
-  ai.ConversationDetailResponse:
+  ai.ConversationDetail:
     properties:
       id:
         type: integer
       messages:
         items:
-          $ref: '#/definitions/ai.MessageDetailResponse'
+          $ref: '#/definitions/ai.Message'
         type: array
       projectId:
         type: integer
@@ -50,7 +32,19 @@ definitions:
       startedAt:
         type: string
     type: object
-  ai.MessageDetailResponse:
+  ai.GenerateRequest:
+    properties:
+      projectId:
+        type: integer
+      prompt:
+        type: string
+    type: object
+  ai.GenerateResponse:
+    properties:
+      code:
+        type: string
+    type: object
+  ai.Message:
     properties:
       content:
         type: string
@@ -64,33 +58,16 @@ definitions:
         type: string
       toolCalls:
         items:
-          $ref: '#/definitions/ai.ToolCallResponse'
+          $ref: '#/definitions/db.ToolCall'
         type: array
     type: object
-  ai.ParentMessageDetailResponse:
+  ai.Model:
     properties:
-      children:
-        items:
-          $ref: '#/definitions/ai.MessageDetailResponse'
-        type: array
-      message:
-        $ref: '#/definitions/ai.MessageDetailResponse'
-    type: object
-  ai.ToolCallResponse:
-    properties:
-      arguments:
+      description:
         type: string
-      createdAt:
-        type: string
-      error:
-        type: string
-      id:
+      maxTokens:
         type: integer
-      messageId:
-        type: integer
-      result:
-        type: string
-      toolName:
+      name:
         type: string
     type: object
   audit.Event:
@@ -849,6 +826,23 @@ definitions:
             type: string
         type: object
       status:
+        type: string
+    type: object
+  db.ToolCall:
+    properties:
+      arguments:
+        type: string
+      createdAt:
+        type: string
+      error:
+        $ref: '#/definitions/sql.NullString'
+      id:
+        type: integer
+      messageId:
+        type: integer
+      result:
+        $ref: '#/definitions/sql.NullString'
+      toolName:
         type: string
     type: object
   dirs.CreateDirRequest:
@@ -2711,6 +2705,9 @@ definitions:
       name:
         example: myproject
         type: string
+      networkId:
+        example: 1
+        type: integer
     required:
     - name
     type: object
@@ -2730,6 +2727,8 @@ definitions:
       name:
         example: myproject
         type: string
+      networkId:
+        type: integer
       slug:
         example: myproject-abc12
         type: string
@@ -2761,6 +2760,8 @@ definitions:
       name:
         example: myproject
         type: string
+      networkId:
+        type: integer
       slug:
         example: myproject-abc12
         type: string
@@ -3083,6 +3084,14 @@ definitions:
         type: string
       peerTemplateCMD:
         type: string
+    type: object
+  sql.NullString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
     type: object
   time.Duration:
     enum:
@@ -3592,43 +3601,7 @@ definitions:
 info:
   contact: {}
 paths:
-  /api/ai/{projectId}/chat:
-    post:
-      consumes:
-      - application/json
-      description: Stream a conversation with the AI assistant using Server-Sent Events
-        (SSE)
-      parameters:
-      - description: Project ID
-        in: path
-        name: projectId
-        required: true
-        type: integer
-      - description: Chat request containing project ID and messages
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/ai.ChatRequest'
-      produces:
-      - text/event-stream
-      responses:
-        "200":
-          description: SSE stream of chat responses
-          schema:
-            type: string
-        "400":
-          description: Invalid request
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Chat with AI assistant
-      tags:
-      - ai
-  /api/ai/{projectId}/conversations:
+  /api/v1/ai/{projectId}/conversations:
     get:
       description: Returns a list of all chat conversations associated with a specific
         project
@@ -3648,21 +3621,25 @@ paths:
               $ref: '#/definitions/ai.ConversationResponse'
             type: array
         "400":
-          description: Invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Get all conversations for a project
       tags:
       - ai
-  /api/ai/{projectId}/conversations/{conversationId}:
+  /api/v1/ai/{projectId}/conversations/{conversationId}:
     get:
-      description: Returns a list of all messages in a specific chat conversation,
-        aggregating tool messages under their parent
+      description: Get all messages in a conversation
       parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
       - description: Conversation ID
         in: path
         name: conversationId
@@ -3675,23 +3652,33 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/ai.ParentMessageDetailResponse'
+              $ref: '#/definitions/ai.Message'
             type: array
         "400":
-          description: Invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            type: string
-      summary: Get all messages in a conversation
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get conversation messages
       tags:
       - ai
-  /api/ai/{projectId}/conversations/{conversationId}/export:
+  /api/v1/ai/{projectId}/conversations/{conversationId}/export:
     get:
-      description: Returns all messages and tool calls for a conversation
+      description: Get detailed information about a conversation including all messages
+        and metadata
       parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
       - description: Conversation ID
         in: path
         name: conversationId
@@ -3703,91 +3690,109 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/ai.ConversationDetailResponse'
+            $ref: '#/definitions/ai.ConversationDetail'
         "400":
-          description: Invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            type: string
-      summary: Export full conversation detail
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get conversation detail
       tags:
       - ai
-  /api/ai/boilerplates:
+  /api/v1/ai/boilerplates:
     get:
-      description: Get a list of available boilerplate templates for project initialization
+      description: Returns a list of available boilerplates filtered by network platform
+      parameters:
+      - description: Network ID to filter boilerplates by platform
+        in: query
+        name: network_id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-      summary: List available boilerplates
-      tags:
-      - ai
-  /api/ai/docs:
-    get:
-      description: Get documentation for the AI API endpoints
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
+            items:
+              $ref: '#/definitions/ai.Boilerplate'
+            type: array
+        "400":
+          description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
-      summary: Get AI API documentation
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get available boilerplates
       tags:
       - ai
-  /api/ai/generate:
+  /api/v1/ai/generate:
     post:
       consumes:
       - application/json
-      description: Generate code or content using the selected AI model
+      description: Generates code based on the provided prompt and project context
+      parameters:
+      - description: Generation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ai.GenerateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-      summary: Generate code or content using AI
+            $ref: '#/definitions/ai.GenerateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Generate code
       tags:
       - ai
-  /api/ai/models:
+  /api/v1/ai/models:
     get:
-      description: Get a list of available AI models
+      description: Returns a list of available AI models for code generation
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-      summary: List available AI models
-      tags:
-      - ai
-  /api/ai/templates:
-    get:
-      description: Get a list of available AI instruction templates
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
+            items:
+              $ref: '#/definitions/ai.Model'
+            type: array
+        "500":
+          description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
-      summary: List AI instruction templates
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get available AI models
       tags:
       - ai
-  /api/projects:
+  /api/v1/projects:
     get:
       description: Get a list of all projects
       produces:
@@ -3854,7 +3859,7 @@ paths:
       summary: Create a project
       tags:
       - projects
-  /api/projects/{id}:
+  /api/v1/projects/{id}:
     get:
       description: Get details of a project by its ID
       parameters:
@@ -3885,7 +3890,7 @@ paths:
       summary: Get a project by ID
       tags:
       - projects
-  /api/projects/{id}/commits:
+  /api/v1/projects/{id}/commits:
     get:
       description: Get a paginated list of commits for a project, including added/removed/modified
         files
@@ -3925,7 +3930,7 @@ paths:
       summary: List project commits with file changes
       tags:
       - projects
-  /api/projects/{id}/commits/{commitHash}:
+  /api/v1/projects/{id}/commits/{commitHash}:
     get:
       description: Get details for a single commit, including file changes
       parameters:
@@ -3961,7 +3966,7 @@ paths:
       summary: Get commit details
       tags:
       - projects
-  /api/projects/{id}/diff:
+  /api/v1/projects/{id}/diff:
     get:
       description: Get the diff of a file between two commits
       parameters:
@@ -4007,7 +4012,7 @@ paths:
       summary: Get file diff between two commits
       tags:
       - projects
-  /api/projects/{id}/file_at_commit:
+  /api/v1/projects/{id}/file_at_commit:
     get:
       description: Get the contents of a file at a specific commit hash
       parameters:
@@ -4048,7 +4053,7 @@ paths:
       summary: Get file contents at a specific commit
       tags:
       - projects
-  /api/projects/{id}/logs:
+  /api/v1/projects/{id}/logs:
     get:
       description: Stream or return the logs for the project's running container
       parameters:
@@ -4079,7 +4084,7 @@ paths:
       summary: Get logs for a project server
       tags:
       - projects
-  /api/projects/{id}/logs/stream:
+  /api/v1/projects/{id}/logs/stream:
     get:
       description: Stream logs for the project's running container using SSE
       parameters:
@@ -4110,7 +4115,7 @@ paths:
       summary: Stream real-time logs for a project server
       tags:
       - projects
-  /api/projects/{id}/start:
+  /api/v1/projects/{id}/start:
     post:
       description: Start the server process for a given project using its boilerplate
       parameters:
@@ -4143,7 +4148,7 @@ paths:
       summary: Start the server for a project
       tags:
       - projects
-  /api/projects/{id}/stop:
+  /api/v1/projects/{id}/stop:
     post:
       description: Stop the server process for a given project
       parameters:
@@ -4176,7 +4181,7 @@ paths:
       summary: Stop the server for a project
       tags:
       - projects
-  /api/projects/{projectId}/dirs/create:
+  /api/v1/projects/{projectId}/dirs/create:
     post:
       consumes:
       - application/json
@@ -4231,7 +4236,7 @@ paths:
       summary: Create a directory
       tags:
       - directories
-  /api/projects/{projectId}/dirs/delete:
+  /api/v1/projects/{projectId}/dirs/delete:
     delete:
       consumes:
       - application/json
@@ -4290,7 +4295,7 @@ paths:
       summary: Delete a directory
       tags:
       - directories
-  /api/projects/{projectId}/dirs/list:
+  /api/v1/projects/{projectId}/dirs/list:
     get:
       description: List files and directories in a given project and directory. Large
         directories (e.g., node_modules) are summarized/skipped.
@@ -4342,7 +4347,7 @@ paths:
       summary: List files and directories
       tags:
       - directories
-  /api/projects/{projectId}/files/delete:
+  /api/v1/projects/{projectId}/files/delete:
     delete:
       consumes:
       - application/json
@@ -4396,7 +4401,7 @@ paths:
       summary: Delete a file
       tags:
       - files
-  /api/projects/{projectId}/files/entries:
+  /api/v1/projects/{projectId}/files/entries:
     get:
       description: List the full directory tree for a project, excluding large/ignored
         folders (e.g., node_modules, .git)
@@ -4444,7 +4449,7 @@ paths:
       summary: List full project directory tree
       tags:
       - files
-  /api/projects/{projectId}/files/list:
+  /api/v1/projects/{projectId}/files/list:
     get:
       consumes:
       - application/json
@@ -4497,7 +4502,7 @@ paths:
       summary: List files
       tags:
       - files
-  /api/projects/{projectId}/files/read:
+  /api/v1/projects/{projectId}/files/read:
     get:
       consumes:
       - application/json
@@ -4551,7 +4556,7 @@ paths:
       summary: Read file contents
       tags:
       - files
-  /api/projects/{projectId}/files/write:
+  /api/v1/projects/{projectId}/files/write:
     post:
       consumes:
       - application/json

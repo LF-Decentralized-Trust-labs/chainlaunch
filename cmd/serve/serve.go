@@ -32,6 +32,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/ai"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/dirs"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/files"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/projectrunner"
@@ -500,21 +501,31 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	if openaiKey == "" {
 		log.Fatal("OPENAI_API_KEY is not set")
 	}
+
 	runner := projectrunner.NewRunner(queries)
-	projectsService := projects.NewProjectsService(queries, runner, projectsDir)
+	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir)
+	if err != nil {
+		log.Fatalf("Failed to create projects service: %v", err)
+	}
+
 	chatService := ai.NewChatService(queries)
 	openAIchatService := ai.NewOpenAIChatService(openaiKey, logger, chatService, queries, projectsDir)
+
 	// Register directory, file, and project handlers
 	dirsService := dirs.NewDirsService(projectsDir)
-	dirsHandler := &dirs.DirsHandler{Service: dirsService, ProjectsService: projectsService}
+	dirsHandler := dirs.NewDirsHandler(dirsService, projectsService)
 	filesService := files.NewFilesService()
-	filesHandler := &files.FilesHandler{Service: filesService, ProjectsService: projectsService}
+	filesHandler := files.NewFilesHandler(filesService, projectsService)
 
 	// Create the project runner and inject into ProjectsService
-	projectsHandler := &projects.ProjectsHandler{Service: projectsService, Root: projectsDir}
+	projectsHandler := projects.NewProjectsHandler(projectsService, projectsDir)
 
+	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
+	if err != nil {
+		log.Fatalf("Failed to create boilerplate service: %v", err)
+	}
 	// Register AI API Gateway routes
-	aiHandler := &ai.AIHandler{OpenAIChatService: openAIchatService, ChatService: chatService, Projects: projectsService}
+	aiHandler := ai.NewAIHandler(openAIchatService, chatService, projectsService, boilerplateService)
 
 	// Setup router
 	r := chi.NewRouter()

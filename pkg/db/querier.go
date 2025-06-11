@@ -50,6 +50,7 @@ type Querier interface {
 	DeleteBackupsByTarget(ctx context.Context, targetID int64) error
 	DeleteChaincode(ctx context.Context, id int64) error
 	DeleteChaincodeDefinition(ctx context.Context, id int64) error
+	DeleteChaincodesByNetwork(ctx context.Context, networkID int64) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteFabricOrganization(ctx context.Context, id int64) error
 	DeleteKey(ctx context.Context, id int64) error
@@ -79,6 +80,7 @@ type Querier interface {
 	GetBackupsByStatus(ctx context.Context, status string) ([]*Backup, error)
 	GetChaincode(ctx context.Context, id int64) (*GetChaincodeRow, error)
 	GetChaincodeDefinition(ctx context.Context, id int64) (*FabricChaincodeDefinition, error)
+	GetConversation(ctx context.Context, id int64) (*Conversation, error)
 	GetDefaultConversationForProject(ctx context.Context, projectID int64) (*Conversation, error)
 	GetDefaultNotificationProvider(ctx context.Context, type_ string) (*NotificationProvider, error)
 	GetDefaultNotificationProviderForType(ctx context.Context, notificationType interface{}) (*NotificationProvider, error)

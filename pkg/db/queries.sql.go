@@ -1244,6 +1244,15 @@ func (q *Queries) DeleteChaincodeDefinition(ctx context.Context, id int64) error
 	return err
 }
 
+const DeleteChaincodesByNetwork = `-- name: DeleteChaincodesByNetwork :exec
+DELETE FROM fabric_chaincodes WHERE network_id = ?
+`
+
+func (q *Queries) DeleteChaincodesByNetwork(ctx context.Context, networkID int64) error {
+	_, err := q.db.ExecContext(ctx, DeleteChaincodesByNetwork, networkID)
+	return err
+}
+
 const DeleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP
 `
@@ -1870,6 +1879,17 @@ func (q *Queries) GetChaincodeDefinition(ctx context.Context, id int64) (*Fabric
 		&i.ChaincodeAddress,
 		&i.CreatedAt,
 	)
+	return &i, err
+}
+
+const GetConversation = `-- name: GetConversation :one
+SELECT id, project_id, started_at FROM conversations WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetConversation(ctx context.Context, id int64) (*Conversation, error) {
+	row := q.db.QueryRowContext(ctx, GetConversation, id)
+	var i Conversation
+	err := row.Scan(&i.ID, &i.ProjectID, &i.StartedAt)
 	return &i, err
 }
 

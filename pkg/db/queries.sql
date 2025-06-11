@@ -437,6 +437,9 @@ SELECT COUNT(*) FROM networks;
 DELETE FROM networks
 WHERE id = ?;
 
+-- name: DeleteChaincodesByNetwork :exec
+DELETE FROM fabric_chaincodes WHERE network_id = ?;
+
 -- name: UpdateNodeDeploymentConfig :one
 UPDATE nodes
 SET deployment_config = ?,

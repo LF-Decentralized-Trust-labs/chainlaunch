@@ -495,6 +495,30 @@ func (q *Queries) CreateChaincodeDefinition(ctx context.Context, arg *CreateChai
 	return &i, err
 }
 
+const CreateFabricChaincode = `-- name: CreateFabricChaincode :one
+INSERT INTO fabric_chaincodes (name, network_id)
+VALUES (?, ?)
+RETURNING id, name, network_id
+`
+
+type CreateFabricChaincodeParams struct {
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+}
+
+type CreateFabricChaincodeRow struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+}
+
+func (q *Queries) CreateFabricChaincode(ctx context.Context, arg *CreateFabricChaincodeParams) (*CreateFabricChaincodeRow, error) {
+	row := q.db.QueryRowContext(ctx, CreateFabricChaincode, arg.Name, arg.NetworkID)
+	var i CreateFabricChaincodeRow
+	err := row.Scan(&i.ID, &i.Name, &i.NetworkID)
+	return &i, err
+}
+
 const CreateFabricOrganization = `-- name: CreateFabricOrganization :one
 INSERT INTO fabric_organizations (
     msp_id, description, config, ca_config, sign_key_id,
@@ -1996,6 +2020,30 @@ func (q *Queries) GetFabricChaincodeByName(ctx context.Context, name string) (*F
 		&i.NetworkID,
 		&i.CreatedAt,
 	)
+	return &i, err
+}
+
+const GetFabricChaincodeByNameAndNetwork = `-- name: GetFabricChaincodeByNameAndNetwork :one
+SELECT id, name, network_id
+FROM fabric_chaincodes
+WHERE name = ? AND network_id = ?
+`
+
+type GetFabricChaincodeByNameAndNetworkParams struct {
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+}
+
+type GetFabricChaincodeByNameAndNetworkRow struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	NetworkID int64  `json:"networkId"`
+}
+
+func (q *Queries) GetFabricChaincodeByNameAndNetwork(ctx context.Context, arg *GetFabricChaincodeByNameAndNetworkParams) (*GetFabricChaincodeByNameAndNetworkRow, error) {
+	row := q.db.QueryRowContext(ctx, GetFabricChaincodeByNameAndNetwork, arg.Name, arg.NetworkID)
+	var i GetFabricChaincodeByNameAndNetworkRow
+	err := row.Scan(&i.ID, &i.Name, &i.NetworkID)
 	return &i, err
 }
 
@@ -5216,6 +5264,22 @@ type UpdateDeploymentStatusParams struct {
 
 func (q *Queries) UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateDeploymentStatus, arg.DeploymentStatus, arg.Name)
+	return err
+}
+
+const UpdateFabricChaincodeDefinitionAddress = `-- name: UpdateFabricChaincodeDefinitionAddress :exec
+UPDATE fabric_chaincode_definitions
+SET chaincode_address = ?
+WHERE id = ?
+`
+
+type UpdateFabricChaincodeDefinitionAddressParams struct {
+	ChaincodeAddress sql.NullString `json:"chaincodeAddress"`
+	ID               int64          `json:"id"`
+}
+
+func (q *Queries) UpdateFabricChaincodeDefinitionAddress(ctx context.Context, arg *UpdateFabricChaincodeDefinitionAddressParams) error {
+	_, err := q.db.ExecContext(ctx, UpdateFabricChaincodeDefinitionAddress, arg.ChaincodeAddress, arg.ID)
 	return err
 }
 

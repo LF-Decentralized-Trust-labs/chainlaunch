@@ -28,6 +28,7 @@ type Querier interface {
 	CreateChaincode(ctx context.Context, arg *CreateChaincodeParams) (*FabricChaincode, error)
 	CreateChaincodeDefinition(ctx context.Context, arg *CreateChaincodeDefinitionParams) (*FabricChaincodeDefinition, error)
 	CreateConversation(ctx context.Context, projectID int64) (*Conversation, error)
+	CreateFabricChaincode(ctx context.Context, arg *CreateFabricChaincodeParams) (*CreateFabricChaincodeRow, error)
 	CreateFabricOrganization(ctx context.Context, arg *CreateFabricOrganizationParams) (*FabricOrganization, error)
 	CreateKey(ctx context.Context, arg *CreateKeyParams) (*Key, error)
 	CreateKeyProvider(ctx context.Context, arg *CreateKeyProviderParams) (*KeyProvider, error)
@@ -87,6 +88,7 @@ type Querier interface {
 	GetDeploymentMetadata(ctx context.Context, name string) (interface{}, error)
 	GetDeploymentStatus(ctx context.Context, name string) (sql.NullString, error)
 	GetFabricChaincodeByName(ctx context.Context, name string) (*FabricChaincode, error)
+	GetFabricChaincodeByNameAndNetwork(ctx context.Context, arg *GetFabricChaincodeByNameAndNetworkParams) (*GetFabricChaincodeByNameAndNetworkRow, error)
 	GetFabricOrganization(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByID(ctx context.Context, id int64) (*FabricOrganization, error)
 	GetFabricOrganizationByMSPID(ctx context.Context, mspID string) (*FabricOrganization, error)
@@ -183,6 +185,7 @@ type Querier interface {
 	UpdateDeploymentConfig(ctx context.Context, arg *UpdateDeploymentConfigParams) (*Node, error)
 	UpdateDeploymentMetadata(ctx context.Context, arg *UpdateDeploymentMetadataParams) error
 	UpdateDeploymentStatus(ctx context.Context, arg *UpdateDeploymentStatusParams) error
+	UpdateFabricChaincodeDefinitionAddress(ctx context.Context, arg *UpdateFabricChaincodeDefinitionAddressParams) error
 	UpdateFabricOrganization(ctx context.Context, arg *UpdateFabricOrganizationParams) (*FabricOrganization, error)
 	UpdateKey(ctx context.Context, arg *UpdateKeyParams) (*Key, error)
 	UpdateKeyProvider(ctx context.Context, arg *UpdateKeyProviderParams) (*KeyProvider, error)

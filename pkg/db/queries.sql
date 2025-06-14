@@ -1177,3 +1177,20 @@ SELECT id, definition_id, event_type, event_data, created_at FROM fabric_chainco
 
 -- name: GetConversation :one
 SELECT id, project_id, started_at FROM conversations WHERE id = ? LIMIT 1;
+
+
+-- name: UpdateFabricChaincodeDefinitionAddress :exec
+UPDATE fabric_chaincode_definitions
+SET chaincode_address = ?
+WHERE id = ?;
+
+
+-- name: CreateFabricChaincode :one
+INSERT INTO fabric_chaincodes (name, network_id)
+VALUES (?, ?)
+RETURNING id, name, network_id;
+
+-- name: GetFabricChaincodeByNameAndNetwork :one
+SELECT id, name, network_id
+FROM fabric_chaincodes
+WHERE name = ? AND network_id = ?;

@@ -13,11 +13,11 @@ import (
 
 const ProjectsRoot = "./data/projects"
 
-func ListProjects(q *db.Queries, ctx context.Context) ([]*db.Project, error) {
+func ListProjects(q *db.Queries, ctx context.Context) ([]*db.ChaincodeProject, error) {
 	return q.ListProjects(ctx)
 }
 
-func CreateProject(q *db.Queries, ctx context.Context, name, description string) (*db.Project, error) {
+func CreateProject(q *db.Queries, ctx context.Context, name, description string) (*db.ChaincodeProject, error) {
 	proj, err := q.CreateProject(ctx, &db.CreateProjectParams{Name: name, Description: sql.NullString{String: description, Valid: description != ""}})
 	if err != nil {
 		return proj, err

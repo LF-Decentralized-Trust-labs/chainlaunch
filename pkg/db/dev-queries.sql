@@ -1,17 +1,17 @@
 -- name: ListProjects :many
-SELECT * FROM projects ORDER BY created_at DESC;
+SELECT * FROM chaincode_projects ORDER BY created_at DESC;
 
 -- name: CreateProject :one
-INSERT INTO projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING *;
+INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING *;
 
 -- name: DeleteProject :exec
-DELETE FROM projects WHERE id = ?;
+DELETE FROM chaincode_projects WHERE id = ?;
 
 -- name: GetProject :one
-SELECT * FROM projects WHERE id = ?;
+SELECT * FROM chaincode_projects WHERE id = ?;
 
 -- name: GetProjectBySlug :one
-SELECT * FROM projects WHERE slug = ?;
+SELECT * FROM chaincode_projects WHERE slug = ?;
 
 -- name: CreateConversation :one
 INSERT INTO conversations (project_id) VALUES (?) RETURNING *;
@@ -42,7 +42,7 @@ WHERE m.conversation_id = ?
 ORDER BY tc.created_at ASC;
 
 -- name: UpdateProjectContainerInfo :exec
-UPDATE projects
+UPDATE chaincode_projects
 SET
   container_id = ?,
   container_name = ?,

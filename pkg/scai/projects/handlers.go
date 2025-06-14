@@ -83,7 +83,7 @@ type CommitsListResponse struct {
 
 // RegisterRoutes registers project endpoints to the router
 func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
-	r.Route("/projects", func(r chi.Router) {
+	r.Route("/chaincode-projects", func(r chi.Router) {
 		r.Post("/", response.Middleware(h.CreateProject))
 		r.Get("/", response.Middleware(h.ListProjects))
 		r.Get("/{id}", response.Middleware(h.GetProject))
@@ -113,7 +113,7 @@ func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects [post]
+// @Router       /chaincode-projects [post]
 func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) error {
 	var req CreateProjectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -161,7 +161,7 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Success      200 {object} ListProjectsResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects [get]
+// @Router       /chaincode-projects [get]
 func (h *ProjectsHandler) ListProjects(w http.ResponseWriter, r *http.Request) error {
 	projs, err := h.Service.ListProjects(r.Context())
 	if err != nil {
@@ -183,7 +183,7 @@ func (h *ProjectsHandler) ListProjects(w http.ResponseWriter, r *http.Request) e
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id} [get]
+// @Router       /chaincode-projects/{id} [get]
 func (h *ProjectsHandler) GetProject(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -216,7 +216,7 @@ func (h *ProjectsHandler) GetProject(w http.ResponseWriter, r *http.Request) err
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/start [post]
+// @Router       /chaincode-projects/{id}/start [post]
 func (h *ProjectsHandler) StartProjectServer(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -254,7 +254,7 @@ func (h *ProjectsHandler) StartProjectServer(w http.ResponseWriter, r *http.Requ
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/stop [post]
+// @Router       /chaincode-projects/{id}/stop [post]
 func (h *ProjectsHandler) StopProjectServer(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -284,7 +284,7 @@ func (h *ProjectsHandler) StopProjectServer(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/logs [get]
+// @Router       /chaincode-projects/{id}/logs [get]
 func (h *ProjectsHandler) GetProjectLogs(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -315,7 +315,7 @@ func (h *ProjectsHandler) GetProjectLogs(w http.ResponseWriter, r *http.Request)
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/logs/stream [get]
+// @Router       /chaincode-projects/{id}/logs/stream [get]
 func (h *ProjectsHandler) StreamProjectLogs(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -359,7 +359,7 @@ func (h *ProjectsHandler) StreamProjectLogs(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/commits [get]
+// @Router       /chaincode-projects/{id}/commits [get]
 func (h *ProjectsHandler) GetProjectCommits(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -436,7 +436,7 @@ func (h *ProjectsHandler) GetProjectCommits(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/commits/{commitHash} [get]
+// @Router       /chaincode-projects/{id}/commits/{commitHash} [get]
 func (h *ProjectsHandler) GetProjectCommitDetail(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	commitHash := chi.URLParam(r, "commitHash")
@@ -492,7 +492,7 @@ func (h *ProjectsHandler) GetProjectCommitDetail(w http.ResponseWriter, r *http.
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/diff [get]
+// @Router       /chaincode-projects/{id}/diff [get]
 func (h *ProjectsHandler) GetProjectFileDiff(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	file := r.URL.Query().Get("file")
@@ -542,7 +542,7 @@ func (h *ProjectsHandler) GetProjectFileDiff(w http.ResponseWriter, r *http.Requ
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{id}/file_at_commit [get]
+// @Router       /chaincode-projects/{id}/file_at_commit [get]
 func (h *ProjectsHandler) GetProjectFileAtCommit(w http.ResponseWriter, r *http.Request) error {
 	idStr := chi.URLParam(r, "id")
 	file := r.URL.Query().Get("file")

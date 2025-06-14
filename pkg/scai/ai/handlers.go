@@ -73,11 +73,11 @@ func (h *AIHandler) RegisterRoutes(r chi.Router) {
 // @Tags         ai
 // @Produce      json
 // @Param        network_id query int true "Network ID to filter boilerplates by platform"
-// @Success      200 {array} Boilerplate
+// @Success      200 {array} boilerplates.BoilerplateConfig
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/boilerplates [get]
+// @Router       /ai/boilerplates [get]
 func (h *AIHandler) GetBoilerplates(w http.ResponseWriter, r *http.Request) error {
 	networkIDStr := r.URL.Query().Get("network_id")
 	if networkIDStr == "" {
@@ -110,7 +110,7 @@ func (h *AIHandler) GetBoilerplates(w http.ResponseWriter, r *http.Request) erro
 // @Produce      json
 // @Success      200 {array} Model
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/models [get]
+// @Router       /ai/models [get]
 func (h *AIHandler) GetModels(w http.ResponseWriter, r *http.Request) error {
 	models := []Model{
 		{
@@ -138,7 +138,7 @@ func (h *AIHandler) GetModels(w http.ResponseWriter, r *http.Request) error {
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/generate [post]
+// @Router       /ai/generate [post]
 func (h *AIHandler) Generate(w http.ResponseWriter, r *http.Request) error {
 	var req GenerateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -175,7 +175,7 @@ func (h *AIHandler) Generate(w http.ResponseWriter, r *http.Request) error {
 // @Success      200 {array} ConversationResponse
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/{projectId}/conversations [get]
+// @Router       /ai/{projectId}/conversations [get]
 func (h *AIHandler) GetConversations(w http.ResponseWriter, r *http.Request) error {
 	projectID, err := strconv.ParseInt(chi.URLParam(r, "projectId"), 10, 64)
 	if err != nil {
@@ -212,7 +212,7 @@ func (h *AIHandler) GetConversations(w http.ResponseWriter, r *http.Request) err
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/{projectId}/conversations/{conversationId} [get]
+// @Router       /ai/{projectId}/conversations/{conversationId} [get]
 func (h *AIHandler) GetConversationMessages(w http.ResponseWriter, r *http.Request) error {
 	projectID, err := strconv.ParseInt(chi.URLParam(r, "projectId"), 10, 64)
 	if err != nil {
@@ -250,7 +250,7 @@ func (h *AIHandler) GetConversationMessages(w http.ResponseWriter, r *http.Reque
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/ai/{projectId}/conversations/{conversationId}/export [get]
+// @Router       /ai/{projectId}/conversations/{conversationId}/export [get]
 func (h *AIHandler) GetConversationDetail(w http.ResponseWriter, r *http.Request) error {
 	projectID, err := strconv.ParseInt(chi.URLParam(r, "projectId"), 10, 64)
 	if err != nil {

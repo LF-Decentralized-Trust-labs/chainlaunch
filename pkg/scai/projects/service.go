@@ -218,7 +218,7 @@ func (s *ProjectsService) GetProject(ctx context.Context, id int64) (Project, er
 	return dbProjectToAPI(p), nil
 }
 
-func dbProjectToAPI(p *db.Project) Project {
+func dbProjectToAPI(p *db.ChaincodeProject) Project {
 	var started, stopped *string
 	if p.LastStartedAt.Valid {
 		ts := p.LastStartedAt.Time.UTC().Format(time.RFC3339)

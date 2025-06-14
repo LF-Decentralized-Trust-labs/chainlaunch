@@ -491,50 +491,33 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
 	authHandler := auth.NewHandler(authService)
 	auditHandler := audit.NewHandler(auditService, logger)
-
-	// AI handlers
-
-	var aiClient ai.AIClient
-	switch c.aiProvider {
-	case "anthropic", "claude":
-		if c.anthropicKey == "" {
-			log.Fatal("ANTHROPIC_API_KEY is not set and --anthropic-key not provided")
-		}
-		aiClient = ai.NewClaudeAdapter(c.anthropicKey)
-	case "openai":
-		if c.openaiKey == "" {
-			log.Fatal("OPENAI_API_KEY is not set and --openai-key not provided")
-		}
-		aiClient = ai.NewOpenAIAdapter(c.openaiKey)
-	default:
-		log.Fatalf("Unknown AI provider: %s", c.aiProvider)
-	}
-
-	chatService := ai.NewChatService(queries)
-	openAIchatService := ai.NewOpenAIChatServiceWithClient(aiClient, logger, chatService, queries, projectsDir, c.aiModel)
-
-	// Re-initialize projectsService
-	runner := projectrunner.NewRunner(queries)
-	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
+	var projectsHandler *projects.ProjectsHandler
+	// Initialize AI services if available
+	aiHandler, filesHandler, dirsHandler, err := c.initializeAIServices(queries, logger, projectsDir, organizationService, keyManagementService, networksService)
 	if err != nil {
-		log.Fatalf("Failed to create projects service: %v", err)
+		logger.Warnf("Failed to initialize AI services: %v", err)
+		return nil
 	}
 
-	// Register directory, file, and project handlers
-	dirsService := dirs.NewDirsService(projectsDir)
-	dirsHandler := dirs.NewDirsHandler(dirsService, projectsService)
-	filesService := files.NewFilesService()
-	filesHandler := files.NewFilesHandler(filesService, projectsService)
+	if aiHandler != nil {
+		logger.Info("AI services initialized successfully")
 
-	// Create the project runner and inject into ProjectsService
-	projectsHandler := projects.NewProjectsHandler(projectsService, projectsDir)
-
-	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
-	if err != nil {
-		log.Fatalf("Failed to create boilerplate service: %v", err)
+		// Initialize directory and file services
+		dirsService := dirs.NewDirsService(projectsDir)
+		filesService := files.NewFilesService()
+		runner := projectrunner.NewRunner(queries)
+		projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
+		if err != nil {
+			logger.Warnf("Failed to create projects service: %v - AI services will not be available", err)
+			return nil
+		}
+		projectsHandler = projects.NewProjectsHandler(projectsService, projectsDir)
+		// Create handlers
+		dirsHandler = dirs.NewDirsHandler(dirsService, projectsService)
+		filesHandler = files.NewFilesHandler(filesService, projectsService)
+	} else {
+		logger.Info("AI services not available - continuing without AI functionality")
 	}
-	// Register AI API Gateway routes
-	aiHandler := ai.NewAIHandler(openAIchatService, chatService, projectsService, boilerplateService)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -593,15 +576,20 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 			// Register smart contract deployment routes
 			scHandler.RegisterRoutes(r)
 
-			// Mount directory management routes
-			dirsHandler.RegisterRoutes(r)
-			// Mount file management routes
-			filesHandler.RegisterRoutes(r)
-			// Mount project management routes
-			projectsHandler.RegisterRoutes(r)
-			// Mount AI/ML routes
-			aiHandler.RegisterRoutes(r)
-
+			// Mount AI/ML routes if available
+			if aiHandler != nil {
+				aiHandler.RegisterRoutes(r)
+			}
+			// Register files and dirs routes
+			if dirsHandler != nil {
+				dirsHandler.RegisterRoutes(r)
+			}
+			if filesHandler != nil {
+				filesHandler.RegisterRoutes(r)
+			}
+			if projectsHandler != nil {
+				projectsHandler.RegisterRoutes(r)
+			}
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(
@@ -629,6 +617,60 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 	}
 
 	return r
+}
+
+// initializeAIServices initializes AI-related services and returns the AI handler if successful
+func (c *serveCmd) initializeAIServices(queries *db.Queries, logger *logger.Logger, projectsDir string, organizationService *fabricservice.OrganizationService, keyManagementService *service.KeyManagementService, networksService *networksservice.NetworkService) (*ai.AIHandler, *files.FilesHandler, *dirs.DirsHandler, error) {
+	// Check if AI provider is configured
+	if c.aiProvider == "" {
+		return nil, nil, nil, nil
+	}
+
+	var aiClient ai.AIClient
+	switch c.aiProvider {
+	case "anthropic", "claude":
+		if c.anthropicKey == "" {
+			logger.Warn("ANTHROPIC_API_KEY is not set and --anthropic-key not provided - AI services will not be available")
+			return nil, nil, nil, nil
+		}
+		aiClient = ai.NewClaudeAdapter(c.anthropicKey)
+	case "openai":
+		if c.openaiKey == "" {
+			logger.Warn("OPENAI_API_KEY is not set and --openai-key not provided - AI services will not be available")
+			return nil, nil, nil, nil
+		}
+		aiClient = ai.NewOpenAIAdapter(c.openaiKey)
+	default:
+		logger.Warnf("Unknown AI provider: %s - AI services will not be available", c.aiProvider)
+		return nil, nil, nil, nil
+	}
+
+	chatService := ai.NewChatService(queries)
+	openAIchatService := ai.NewOpenAIChatServiceWithClient(aiClient, logger, chatService, queries, projectsDir, c.aiModel)
+
+	// Initialize projectsService
+	runner := projectrunner.NewRunner(queries)
+	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
+	if err != nil {
+		logger.Warnf("Failed to create projects service: %v - AI services will not be available", err)
+		return nil, nil, nil, nil
+	}
+
+	// Initialize directory and file services
+	dirsService := dirs.NewDirsService(projectsDir)
+	dirsHandler := dirs.NewDirsHandler(dirsService, projectsService)
+	filesService := files.NewFilesService()
+	filesHandler := files.NewFilesHandler(filesService, projectsService)
+
+	// Initialize boilerplate service
+	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
+	if err != nil {
+		logger.Warnf("Failed to create boilerplate service: %v - AI services will not be available", err)
+		return nil, nil, nil, nil
+	}
+
+	// Create and return AI handler
+	return ai.NewAIHandler(openAIchatService, chatService, projectsService, boilerplateService), filesHandler, dirsHandler, nil
 }
 
 type serveCmd struct {
@@ -886,50 +928,3 @@ For example:
 
 	return cmd
 }
-
-// func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string, projectsDir string) *chi.Mux {
-// 	var aiClient ai.AIClient
-// 	switch c.aiProvider {
-// 	case "anthropic", "claude":
-// 		if c.anthropicKey == "" {
-// 			log.Fatal("ANTHROPIC_API_KEY is not set and --anthropic-key not provided")
-// 		}
-// 		aiClient = ai.NewClaudeAdapter(c.anthropicKey)
-// 	case "openai":
-// 		if c.openaiKey == "" {
-// 			log.Fatal("OPENAI_API_KEY is not set and --openai-key not provided")
-// 		}
-// 		aiClient = ai.NewOpenAIAdapter(c.openaiKey)
-// 	default:
-// 		log.Fatalf("Unknown AI provider: %s", c.aiProvider)
-// 	}
-
-// 	chatService := ai.NewChatService(queries)
-// 	openAIchatService := ai.NewOpenAIChatServiceWithClient(aiClient, c.logger, chatService, queries, projectsDir, c.aiModel)
-
-// 	// Re-initialize projectsService
-// 	runner := projectrunner.NewRunner(queries)
-// 	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir)
-// 	if err != nil {
-// 		log.Fatalf("Failed to create projects service: %v", err)
-// 	}
-
-// 	// Register directory, file, and project handlers
-// 	dirsService := dirs.NewDirsService(projectsDir)
-// 	_ = dirs.NewDirsHandler(dirsService, projectsService)
-// 	filesService := files.NewFilesService()
-// 	_ = files.NewFilesHandler(filesService, projectsService)
-
-// 	// Create the project runner and inject into ProjectsService
-// 	_ = projects.NewProjectsHandler(projectsService, projectsDir)
-
-// 	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
-// 	if err != nil {
-// 		log.Fatalf("Failed to create boilerplate service: %v", err)
-// 	}
-// 	// Register AI API Gateway routes
-// 	_ = ai.NewAIHandler(openAIchatService, chatService, projectsService, boilerplateService)
-
-// 	// Call the existing setupServer function with the correct parameters
-// 	return setupServer(queries, authService, views, dev, dbPath, dataPath, projectsDir)
-// }

@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
+
 // NewFilesHandler creates a new instance of FilesHandler
 func NewFilesHandler(service *FilesService, projectsService *projects.ProjectsService) *FilesHandler {
 	return &FilesHandler{
@@ -64,7 +65,7 @@ type DeleteFileResponse struct {
 // @Failure      409 {object} errors.ErrorResponse
 // @Failure      422 {object} errors.ErrorResponse
 // @Failure      500 {object} errors.ErrorResponse
-// @Router       /api/v1/entries/list [get]
+// @Router       /entries/list [get]
 type ListEntriesResponse struct {
 	Files       []string `json:"files" example:"[\"main.go\",\"README.md\"]" description:"List of file names"`
 	Directories []string `json:"directories" example:"[\"src\",\"docs\"]" description:"List of directory names"`
@@ -123,7 +124,7 @@ func (h *FilesHandler) getProjectRoot(r *http.Request) (string, error) {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{projectId}/files/list [get]
+// @Router       /projects/{projectId}/files/list [get]
 func (h *FilesHandler) ListFiles(w http.ResponseWriter, r *http.Request) error {
 	projectRoot, err := h.getProjectRoot(r)
 	if err != nil {
@@ -160,7 +161,7 @@ func (h *FilesHandler) ListFiles(w http.ResponseWriter, r *http.Request) error {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{projectId}/files/read [get]
+// @Router       /projects/{projectId}/files/read [get]
 func (h *FilesHandler) ReadFile(w http.ResponseWriter, r *http.Request) error {
 	projectRoot, err := h.getProjectRoot(r)
 	if err != nil {
@@ -205,7 +206,7 @@ func (h *FilesHandler) ReadFile(w http.ResponseWriter, r *http.Request) error {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{projectId}/files/write [post]
+// @Router       /projects/{projectId}/files/write [post]
 func (h *FilesHandler) WriteFile(w http.ResponseWriter, r *http.Request) error {
 	projectRoot, err := h.getProjectRoot(r)
 	if err != nil {
@@ -254,7 +255,7 @@ func (h *FilesHandler) WriteFile(w http.ResponseWriter, r *http.Request) error {
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{projectId}/files/delete [delete]
+// @Router       /projects/{projectId}/files/delete [delete]
 func (h *FilesHandler) DeleteFile(w http.ResponseWriter, r *http.Request) error {
 	projectRoot, err := h.getProjectRoot(r)
 	if err != nil {
@@ -296,7 +297,7 @@ func (h *FilesHandler) DeleteFile(w http.ResponseWriter, r *http.Request) error 
 // @Failure      409 {object} response.ErrorResponse
 // @Failure      422 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
-// @Router       /api/v1/projects/{projectId}/files/entries [get]
+// @Router       /projects/{projectId}/files/entries [get]
 func (h *FilesHandler) ListEntries(w http.ResponseWriter, r *http.Request) error {
 	projectRoot, err := h.getProjectRoot(r)
 	if err != nil {

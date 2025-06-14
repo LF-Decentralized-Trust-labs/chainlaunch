@@ -1,7 +1,7 @@
 -- Squashed migrations combining all schema changes
 
--- Create projects table
-CREATE TABLE projects (
+-- Create chaincode_projects table
+CREATE TABLE chaincode_projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id)
+    FOREIGN KEY (project_id) REFERENCES chaincode_projects(id)
 );
 
 -- Create messages table

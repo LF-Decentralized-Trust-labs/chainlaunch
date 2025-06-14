@@ -22,7 +22,7 @@ func (q *Queries) CreateConversation(ctx context.Context, projectID int64) (*Con
 }
 
 const CreateProject = `-- name: CreateProject :one
-INSERT INTO projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id
+INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id
 `
 
 type CreateProjectParams struct {
@@ -33,7 +33,7 @@ type CreateProjectParams struct {
 	NetworkID   sql.NullInt64  `json:"networkId"`
 }
 
-func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (*Project, error) {
+func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (*ChaincodeProject, error) {
 	row := q.db.QueryRowContext(ctx, CreateProject,
 		arg.Name,
 		arg.Description,
@@ -41,7 +41,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 		arg.Slug,
 		arg.NetworkID,
 	)
-	var i Project
+	var i ChaincodeProject
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -62,7 +62,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 }
 
 const DeleteProject = `-- name: DeleteProject :exec
-DELETE FROM projects WHERE id = ?
+DELETE FROM chaincode_projects WHERE id = ?
 `
 
 func (q *Queries) DeleteProject(ctx context.Context, id int64) error {
@@ -82,12 +82,12 @@ func (q *Queries) GetDefaultConversationForProject(ctx context.Context, projectI
 }
 
 const GetProject = `-- name: GetProject :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects WHERE id = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects WHERE id = ?
 `
 
-func (q *Queries) GetProject(ctx context.Context, id int64) (*Project, error) {
+func (q *Queries) GetProject(ctx context.Context, id int64) (*ChaincodeProject, error) {
 	row := q.db.QueryRowContext(ctx, GetProject, id)
-	var i Project
+	var i ChaincodeProject
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -108,12 +108,12 @@ func (q *Queries) GetProject(ctx context.Context, id int64) (*Project, error) {
 }
 
 const GetProjectBySlug = `-- name: GetProjectBySlug :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects WHERE slug = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects WHERE slug = ?
 `
 
-func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*Project, error) {
+func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*ChaincodeProject, error) {
 	row := q.db.QueryRowContext(ctx, GetProjectBySlug, slug)
-	var i Project
+	var i ChaincodeProject
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -259,18 +259,18 @@ func (q *Queries) ListMessagesForConversation(ctx context.Context, conversationI
 }
 
 const ListProjects = `-- name: ListProjects :many
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM projects ORDER BY created_at DESC
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects ORDER BY created_at DESC
 `
 
-func (q *Queries) ListProjects(ctx context.Context) ([]*Project, error) {
+func (q *Queries) ListProjects(ctx context.Context) ([]*ChaincodeProject, error) {
 	rows, err := q.db.QueryContext(ctx, ListProjects)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*Project{}
+	items := []*ChaincodeProject{}
 	for rows.Next() {
-		var i Project
+		var i ChaincodeProject
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -374,7 +374,7 @@ func (q *Queries) ListToolCallsForMessage(ctx context.Context, messageID int64) 
 }
 
 const UpdateProjectContainerInfo = `-- name: UpdateProjectContainerInfo :exec
-UPDATE projects
+UPDATE chaincode_projects
 SET
   container_id = ?,
   container_name = ?,

@@ -360,7 +360,7 @@ func (s *OpenAIChatService) handleToolCall(toolCall openai.ToolCall, projectRoot
 }
 
 // StreamChat uses a multi-step tool execution loop with OpenAI function-calling.
-func (s *OpenAIChatService) StreamChat(ctx context.Context, project *db.Project, conversationID int64, messages []Message, observer AgentStepObserver, maxSteps int) error {
+func (s *OpenAIChatService) StreamChat(ctx context.Context, project *db.ChaincodeProject, conversationID int64, messages []Message, observer AgentStepObserver, maxSteps int) error {
 	var chatMsgs []ChatCompletionMessage
 	projectID := project.ID
 	projectSlug := project.Slug

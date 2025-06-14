@@ -73,6 +73,23 @@ type BlockchainPlatform struct {
 	Name string `json:"name"`
 }
 
+type ChaincodeProject struct {
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"`
+	Description   sql.NullString `json:"description"`
+	Boilerplate   sql.NullString `json:"boilerplate"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
+	Slug          string         `json:"slug"`
+	ContainerID   sql.NullString `json:"containerId"`
+	ContainerName sql.NullString `json:"containerName"`
+	Status        sql.NullString `json:"status"`
+	LastStartedAt sql.NullTime   `json:"lastStartedAt"`
+	LastStoppedAt sql.NullTime   `json:"lastStoppedAt"`
+	ContainerPort sql.NullInt64  `json:"containerPort"`
+	NetworkID     sql.NullInt64  `json:"networkId"`
+}
+
 type Conversation struct {
 	ID        int64     `json:"id"`
 	ProjectID int64     `json:"projectId"`
@@ -301,23 +318,6 @@ type Plugin struct {
 	UpdatedAt          time.Time      `json:"updatedAt"`
 	DeploymentMetadata interface{}    `json:"deploymentMetadata"`
 	DeploymentStatus   sql.NullString `json:"deploymentStatus"`
-}
-
-type Project struct {
-	ID            int64          `json:"id"`
-	Name          string         `json:"name"`
-	Description   sql.NullString `json:"description"`
-	Boilerplate   sql.NullString `json:"boilerplate"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
-	Slug          string         `json:"slug"`
-	ContainerID   sql.NullString `json:"containerId"`
-	ContainerName sql.NullString `json:"containerName"`
-	Status        sql.NullString `json:"status"`
-	LastStartedAt sql.NullTime   `json:"lastStartedAt"`
-	LastStoppedAt sql.NullTime   `json:"lastStoppedAt"`
-	ContainerPort sql.NullInt64  `json:"containerPort"`
-	NetworkID     sql.NullInt64  `json:"networkId"`
 }
 
 type PrometheusConfig struct {

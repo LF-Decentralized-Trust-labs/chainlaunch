@@ -142,7 +142,7 @@ func (s *ChatService) GetConversationDetail(ctx context.Context, projectID, conv
 }
 
 // GenerateCode generates code using the AI service.
-func (s *ChatService) GenerateCode(ctx context.Context, prompt string, project *db.Project) (string, error) {
+func (s *ChatService) GenerateCode(ctx context.Context, prompt string, project *db.ChaincodeProject) (string, error) {
 	// This is a placeholder implementation. In a real implementation, this would use the AI service
 	// to generate code based on the prompt and project context.
 	return "// Generated code placeholder", nil

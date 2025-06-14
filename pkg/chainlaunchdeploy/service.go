@@ -13,7 +13,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 
+	"github.com/chainlaunch/chainlaunch/pkg/common/ports"
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/service"
@@ -413,8 +415,14 @@ func (s *ChaincodeService) InstallChaincodeByDefinition(ctx context.Context, def
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "install", eventData)
 		return err
 	}
+	chaincodeAddress, _, err := s.ensureChaincodeAddress(ctx, definition)
+	if err != nil {
+		eventData := InstallChaincodeEventData{PeerIDs: peerIDs, Result: "failure", ErrorMessage: err.Error()}
+		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "install", eventData)
+		return err
+	}
 	label := chaincode.Name
-	codeTarGz, err := s.getCodeTarGz(definition.ChaincodeAddress, "", "", "", "")
+	codeTarGz, err := s.getCodeTarGz(chaincodeAddress, "", "", "", "")
 	if err != nil {
 		eventData := InstallChaincodeEventData{PeerIDs: peerIDs, Result: "failure", ErrorMessage: err.Error()}
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "install", eventData)
@@ -734,8 +742,7 @@ func (s *ChaincodeService) buildChaincodeDefinition(ctx context.Context, definit
 // getChaincodePackageInfo returns the package ID and chaincode package bytes for a given chaincode and definition
 func (s *ChaincodeService) getChaincodePackageInfo(ctx context.Context, chaincode *Chaincode, definition *ChaincodeDefinition) (string, []byte, error) {
 	label := chaincode.Name
-	chaincodeAddress := definition.ChaincodeAddress
-	codeTarGz, err := s.getCodeTarGz(chaincodeAddress, "", "", "", "")
+	codeTarGz, err := s.getCodeTarGz(definition.ChaincodeAddress, "", "", "", "")
 	if err != nil {
 		return "", nil, err
 	}
@@ -755,6 +762,19 @@ func GetPackageID(label string, ccInstallPkg []byte) string {
 	return fmt.Sprintf("%s:%x", label, hash)
 }
 
+// buildChaincodeDockerLabels builds a map of Docker labels for chaincode deployment
+func buildChaincodeDockerLabels(definition *ChaincodeDefinition, chaincode *Chaincode) map[string]string {
+	return map[string]string{
+		"chainlaunch.chaincode.definition_id": fmt.Sprintf("%d", definition.ID),
+		"chainlaunch.chaincode.name":          chaincode.Name,
+		"chainlaunch.chaincode.version":       definition.Version,
+		"chainlaunch.chaincode.sequence":      fmt.Sprintf("%d", definition.Sequence),
+		"chainlaunch.chaincode.network_id":    fmt.Sprintf("%d", chaincode.NetworkID),
+		"chainlaunch.chaincode.network_name":  chaincode.NetworkName,
+		"chainlaunch.chaincode.address":       definition.ChaincodeAddress,
+	}
+}
+
 // DeployChaincodeByDefinition deploys a chaincode definition using Docker image
 func (s *ChaincodeService) DeployChaincodeByDefinition(ctx context.Context, definitionID int64) error {
 	definition, err := s.GetChaincodeDefinition(ctx, definitionID)
@@ -763,36 +783,42 @@ func (s *ChaincodeService) DeployChaincodeByDefinition(ctx context.Context, defi
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
 		return err
 	}
-	chaincodeAddress := definition.ChaincodeAddress
-	// Parse chaincode address to get host and container ports
-	_, exposedPort, err := net.SplitHostPort(chaincodeAddress)
-	if err != nil {
-		return fmt.Errorf("invalid chaincode address format: %s", chaincodeAddress)
-	}
-
 	internalPort := "7052"
-
+	host, portStr, err := net.SplitHostPort(definition.ChaincodeAddress)
+	if err != nil {
+		eventData := DeployChaincodeEventData{HostPort: "", ContainerPort: "", Result: "failure", ErrorMessage: err.Error()}
+		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
+		return err
+	}
+	exposedPort, err := strconv.Atoi(portStr)
+	if err != nil {
+		eventData := DeployChaincodeEventData{HostPort: "", ContainerPort: "", Result: "failure", ErrorMessage: err.Error()}
+		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
+		return err
+	}
 	chaincodeDB, err := s.GetChaincode(ctx, definition.ChaincodeID)
 	if err != nil {
-		eventData := DeployChaincodeEventData{HostPort: exposedPort, ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
+		eventData := DeployChaincodeEventData{HostPort: fmt.Sprintf("%s:%d", host, exposedPort), ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
 		return err
 	}
 	packageID, _, err := s.getChaincodePackageInfo(ctx, chaincodeDB, definition)
 	if err != nil {
-		eventData := DeployChaincodeEventData{HostPort: exposedPort, ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
+		eventData := DeployChaincodeEventData{HostPort: fmt.Sprintf("%s:%d", host, exposedPort), ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
 		return err
 	}
+	labels := buildChaincodeDockerLabels(definition, chaincodeDB)
 	reporter := &loggerStatusReporter{logger: s.logger}
-	_, err = DeployChaincodeWithDockerImage(definition.DockerImage, packageID, exposedPort, internalPort, reporter)
+	_, err = DeployChaincodeWithDockerImageWithLabels(definition.DockerImage, packageID, portStr, internalPort, labels, reporter)
 	if err != nil {
-		eventData := DeployChaincodeEventData{HostPort: exposedPort, ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
+		eventData := DeployChaincodeEventData{HostPort: fmt.Sprintf("%s:%d", host, exposedPort), ContainerPort: internalPort, Result: "failure", ErrorMessage: err.Error()}
 		_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
 		return err
 	}
-	eventData := DeployChaincodeEventData{HostPort: exposedPort, ContainerPort: internalPort, Result: "success"}
+	eventData := DeployChaincodeEventData{HostPort: fmt.Sprintf("%s:%d", host, exposedPort), ContainerPort: internalPort, Result: "success", ErrorMessage: ""}
 	_ = s.AddChaincodeDefinitionEvent(ctx, definitionID, "deploy", eventData)
+	// Optionally: store the labels somewhere if you want to track them outside Docker
 	return nil
 }
 
@@ -859,4 +885,51 @@ func (s *ChaincodeService) ListChaincodeDefinitionEvents(ctx context.Context, de
 		})
 	}
 	return events, nil
+}
+
+// ensureChaincodeAddress ensures the chaincode address is set and available, updating the DB if needed.
+func (s *ChaincodeService) ensureChaincodeAddress(ctx context.Context, definition *ChaincodeDefinition) (string, string, error) {
+	externalIP := "0.0.0.0"
+	chaincodeAddress := definition.ChaincodeAddress
+	exposedPort := ""
+	addressChanged := false
+	if chaincodeAddress == "" {
+		alloc, err := ports.GetFreePort("fabric-chaincode")
+		if err != nil {
+			return "", "", fmt.Errorf("no free ports available for chaincode: %w", err)
+		}
+		exposedPort = fmt.Sprintf("%d", alloc.Port)
+		chaincodeAddress = fmt.Sprintf("%s:%s", externalIP, exposedPort)
+		addressChanged = true
+	} else {
+		_, portStr, err := net.SplitHostPort(chaincodeAddress)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid chaincode address format: %s", chaincodeAddress)
+		}
+		portNum, err := strconv.Atoi(portStr)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid port in chaincode address: %s", portStr)
+		}
+		if !ports.IsPortAvailable(portNum) {
+			alloc, err := ports.GetFreePort("fabric-chaincode")
+			if err != nil {
+				return "", "", fmt.Errorf("no free ports available for chaincode: %w", err)
+			}
+			exposedPort = fmt.Sprintf("%d", alloc.Port)
+			chaincodeAddress = fmt.Sprintf("%s:%s", externalIP, exposedPort)
+			addressChanged = true
+		} else {
+			exposedPort = portStr
+		}
+	}
+	if addressChanged {
+		err := s.db.UpdateFabricChaincodeDefinitionAddress(ctx, &db.UpdateFabricChaincodeDefinitionAddressParams{
+			ChaincodeAddress: sql.NullString{String: chaincodeAddress, Valid: true},
+			ID:               definition.ID,
+		})
+		if err != nil {
+			return "", "", fmt.Errorf("failed to update chaincode address in db: %w", err)
+		}
+	}
+	return chaincodeAddress, exposedPort, nil
 }

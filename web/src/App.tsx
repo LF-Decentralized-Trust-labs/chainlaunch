@@ -61,6 +61,7 @@ import AnalyticsPage from './pages/platform/analytics'
 import FabricChaincodesPage from './pages/smart-contracts/fabric'
 import BesuContractsPage from './pages/smart-contracts/besu'
 import FabricChaincodeDefinitionDetail from './pages/smart-contracts/fabric/definition'
+import ChaincodeProjectDetailPage from './pages/smart-contracts/fabric/[id]'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -138,6 +139,7 @@ const App = () => {
 														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
 														<Route path="platform/analytics" element={<AnalyticsPage />} />
 														<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
+														<Route path="sc/fabric/projects/chaincodes/:id" element={<ChaincodeProjectDetailPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

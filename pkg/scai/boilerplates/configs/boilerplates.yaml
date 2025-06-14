@@ -1,0 +1,10 @@
+boilerplates:
+    chaincode-fabric-ts:
+        name: Chaincode Fabric TypeScript
+        description: A TypeScript-based Hyperledger Fabric chaincode project
+        platform: fabric
+        command: npm
+        args: ['run', 'start:dev']
+        image: docker.io/kfsoftware/chainlaunch-fabric-ts:0.0.1
+        repoOwner: chainlaunch
+        repoName: chaincode-fabric-ts-tmpl

@@ -619,8 +619,8 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 
 	const peerOrgs = useMemo(
 		() =>
-			Object.keys(channelConfig?.config?.data?.data?.[0]?.payload?.data?.config?.channel_group?.groups?.Application?.groups || {}).filter((mspId) =>
-				fabricOrgs?.items?.find((org) => org.mspId === mspId)!!
+			Object.keys(channelConfig?.config?.data?.data?.[0]?.payload?.data?.config?.channel_group?.groups?.Application?.groups || {}).filter(
+				(mspId) => fabricOrgs?.items?.find((org) => org.mspId === mspId)!!
 			),
 		[channelConfig, fabricOrgs]
 	)
@@ -916,8 +916,8 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 
 								{channelConfig?.config?.data?.data?.[0]?.payload?.data?.config?.channel_group?.groups?.Application?.groups &&
 									(() => {
-										const filteredOrgs = Object.entries(channelConfig.config.data.data[0].payload.data.config.channel_group.groups.Application.groups).filter(([mspId]) =>
-											fabricOrgs?.items?.find((org) => org.mspId === mspId)!!
+										const filteredOrgs = Object.entries(channelConfig.config.data.data[0].payload.data.config.channel_group.groups.Application.groups).filter(
+											([mspId]) => fabricOrgs?.items?.find((org) => org.mspId === mspId)!!
 										)
 
 										if (filteredOrgs.length === 0) {
@@ -993,12 +993,7 @@ export default function FabricNetworkDetails({ network }: FabricNetworkDetailsPr
 						chaincode={
 							<div className="space-y-4">
 								{networkNodes?.nodes?.find((node) => node.status === 'joined' && node.node?.nodeType === 'FABRIC_PEER') ? (
-									<ChaincodeManagement
-										network={network}
-										peerId={networkNodes.nodes.find((node) => node.status === 'joined' && node.node?.nodeType === 'FABRIC_PEER')!.node!.id!}
-										channelName={network.name!}
-										organizationId={selectedOrg?.id!}
-									/>
+									<ChaincodeManagement network={network} networkNodes={networkNodes} channelConfig={channelConfig} />
 								) : (
 									<Card className="p-6">
 										<div className="flex items-center gap-4">

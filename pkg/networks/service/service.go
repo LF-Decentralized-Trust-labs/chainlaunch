@@ -242,6 +242,11 @@ func (s *NetworkService) DeleteNetwork(ctx context.Context, networkID int64) err
 		return fmt.Errorf("failed to delete network record: %w", err)
 	}
 
+	// Delete chaincodes associated with the network
+	if err := s.db.DeleteChaincodesByNetwork(ctx, networkID); err != nil {
+		return fmt.Errorf("failed to delete chaincodes: %w", err)
+	}
+
 	return nil
 }
 

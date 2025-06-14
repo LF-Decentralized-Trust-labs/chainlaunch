@@ -10,6 +10,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/db"
 	nodeservice "github.com/chainlaunch/chainlaunch/pkg/nodes/service"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	ptypes "github.com/chainlaunch/chainlaunch/pkg/plugin/types"
 )
 
 // FabricPeerValue represents a fabric-peer x-source value
@@ -123,7 +124,7 @@ func (v *FabricPeerValue) Validate(ctx context.Context) error {
 	return nil
 }
 
-func (v *FabricPeerValue) GetValue(ctx context.Context) (interface{}, error) {
+func (v *FabricPeerValue) GetValue(ctx context.Context, spec ptypes.ParameterSpec) (interface{}, error) {
 	var details []*FabricPeerDetails
 
 	for _, peerIDStr := range v.PeerIDs {
@@ -155,11 +156,13 @@ func (v *FabricPeerValue) GetValue(ctx context.Context) (interface{}, error) {
 		})
 	}
 
-	// If there's only one peer, return it directly
+	// Return array if spec type is array, otherwise return single peer if available
+	if spec.Type == "array" {
+		return details, nil
+	}
 	if len(details) == 1 {
 		return details[0], nil
 	}
-
 	return details, nil
 }
 

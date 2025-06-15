@@ -18,6 +18,7 @@ import (
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/types"
 	"github.com/chainlaunch/chainlaunch/pkg/nodes/utils"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"google.golang.org/grpc"
 )
 
@@ -1088,6 +1089,40 @@ func (s *NodeService) GetFabricPeerGateway(ctx context.Context, peerID int64) (*
 	}
 
 	gateway, peerConn, err := localPeer.GetGateway(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get gateway: %w", err)
+	}
+
+	return gateway, peerConn, nil
+}
+
+// GetPeerGateway returns a chaincode.Gateway for a peer
+func (s *NodeService) GetFabricPeerClientGateway(ctx context.Context, peerID int64) (*client.Gateway, *grpc.ClientConn, error) {
+	// Get the peer node from database
+	node, err := s.db.GetNode(ctx, peerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, errors.NewNotFoundError("peer not found", map[string]interface{}{
+				"id": peerID,
+			})
+		}
+		return nil, nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	// Validate node is a Fabric peer
+	if node.Platform != string(types.PlatformFabric) || node.NodeType.String != string(types.NodeTypeFabricPeer) {
+		return nil, nil, errors.NewValidationError("invalid node type", map[string]interface{}{
+			"detail": fmt.Sprintf("Node must be a Fabric peer, got %s", node.NodeType.String),
+			"code":   "INVALID_NODE_TYPE",
+		})
+	}
+
+	localPeer, err := s.GetFabricPeer(ctx, node.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get peer: %w", err)
+	}
+
+	gateway, peerConn, err := localPeer.GetGatewayClient(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get gateway: %w", err)
 	}

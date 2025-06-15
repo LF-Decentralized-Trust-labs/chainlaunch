@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { client } from './api/client'
 import { Header } from './components/dashboard/Header'
 import AppSidebar from './components/dashboard/Sidebar'
@@ -61,6 +61,9 @@ import AnalyticsPage from './pages/platform/analytics'
 import FabricChaincodesPage from './pages/smart-contracts/fabric'
 import BesuContractsPage from './pages/smart-contracts/besu'
 import FabricChaincodeDefinitionDetail from './pages/smart-contracts/fabric/definition'
+import ChaincodeProjectDetailPage from './pages/smart-contracts/fabric/[id]'
+import ChaincodeProjectEditorPage from './pages/smart-contracts/fabric/[id]/editor'
+import { AlertCircle, CheckCircle, Loader2, X } from 'lucide-react'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -73,7 +76,7 @@ const queryClient = new QueryClient({
 
 client.setConfig({ baseUrl: config.apiUrl })
 
-const App = () => {
+const App2 = () => {
 	return (
 		<ThemeProvider defaultTheme="system" enableSystem attribute="class">
 			<ThemeWrapper>
@@ -82,75 +85,173 @@ const App = () => {
 						<AuthProvider>
 							<ProtectedLayout>
 								<BreadcrumbProvider>
-									<SidebarProvider>
-										<AppSidebar />
-										<SidebarInset>
-											<Header />
-											<div className="p-0">
-												<Routes>
-													<Route path="/">
-														<Route path="/" element={<Navigate to="/nodes" replace />} />
-														<Route path="account" element={<AccountPage />} />
-														<Route path="nodes" element={<NodesPage />} />
-														<Route path="smart-contracts" element={<SmartContractsPage />} />
-														<Route path="smart-contracts/fabric" element={<FabricChaincodesPage />} />
-														<Route path="smart-contracts/besu" element={<BesuContractsPage />} />
-														<Route path="monitoring" element={<MonitoringPage />} />
-														<Route path="monitoring/providers/new" element={<CreateProviderPage />} />
-														<Route path="monitoring/providers/:id" element={<UpdateProviderPage />} />
-														<Route path="networks" element={<NetworksPage />} />
-														<Route path="networks/import" element={<ImportNetworkPage />} />
-														<Route path="network/fabric" element={<FabricPage />} />
-														<Route path="network/besu" element={<BesuPage />} />
-														<Route path="settings/access" element={<AccessControlPage />} />
-														<Route path="settings/network" element={<NetworkConfigPage />} />
-														<Route path="settings/keys" element={<KeyManagementPage />} />
-														<Route path="settings/backups" element={<BackupsPage />} />
-														<Route path="settings/general" element={<SettingsPage />} />
-														<Route path="settings/monitoring" element={<MonitoringPage />} />
-														<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
-														<Route path="fabric/organizations" element={<OrganizationsPage />} />
-														<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
-														<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
-														<Route path="nodes/besu/edit/:id" element={<EditBesuNodePage />} />
-														<Route path="nodes/:id" element={<NodeDetailPage />} />
-														<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
-														<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />
-														<Route path="networks/:id/besu" element={<BesuNetworkDetailPage />} />
-														<Route path="networks/:id/fabric" element={<FabricNetworkDetailPage />} />
-														<Route path="networks/:id/blocks" element={<BlocksOverview />} />
-														<Route path="networks/:id/blocks/:blockNumber" element={<BlockDetails />} />
-														<Route path="organizations/:id" element={<OrganizationDetailPage />} />
-														<Route path="settings/keys/:id" element={<KeyDetailPage />} />
-														<Route path="nodes/create" element={<CreateNodePage />} />
-														<Route path="nodes/fabric/bulk" element={<BulkCreateNodesPage />} />
-														<Route path="nodes/logs" element={<NodesLogsPage />} />
-														<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
-														<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
-														<Route path="docs" element={<ApiDocumentationPage />} />
-														<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
-														<Route path="plugins" element={<PluginsPage />} />
-														<Route path="plugins/new" element={<NewPluginPage />} />
-														<Route path="plugins/:name" element={<PluginDetailPage />} />
-														<Route path="plugins/:name/edit" element={<EditPluginPage />} />
-														<Route path="users" element={<UsersPage />} />
-														<Route path="settings/audit-logs" element={<AuditLogsPage />} />
-														<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
-														<Route path="platform/analytics" element={<AnalyticsPage />} />
-														<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
-													</Route>
-													<Route path="*" element={<NotFoundPage />} />
-												</Routes>
-											</div>
-										</SidebarInset>
-									</SidebarProvider>
+									<div className="p-0">
+										<Routes>
+											<Route path="/">
+												<Route path="/" element={<Navigate to="/nodes" replace />} />
+												<Route path="account" element={<AccountPage />} />
+												<Route path="nodes" element={<NodesPage />} />
+												<Route path="smart-contracts" element={<SmartContractsPage />} />
+												<Route path="smart-contracts/fabric" element={<FabricChaincodesPage />} />
+												<Route path="smart-contracts/besu" element={<BesuContractsPage />} />
+												<Route path="monitoring" element={<MonitoringPage />} />
+												<Route path="monitoring/providers/new" element={<CreateProviderPage />} />
+												<Route path="monitoring/providers/:id" element={<UpdateProviderPage />} />
+												<Route path="networks" element={<NetworksPage />} />
+												<Route path="networks/import" element={<ImportNetworkPage />} />
+												<Route path="network/fabric" element={<FabricPage />} />
+												<Route path="network/besu" element={<BesuPage />} />
+												<Route path="settings/access" element={<AccessControlPage />} />
+												<Route path="settings/network" element={<NetworkConfigPage />} />
+												<Route path="settings/keys" element={<KeyManagementPage />} />
+												<Route path="settings/backups" element={<BackupsPage />} />
+												<Route path="settings/general" element={<SettingsPage />} />
+												<Route path="settings/monitoring" element={<MonitoringPage />} />
+												<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
+												<Route path="fabric/organizations" element={<OrganizationsPage />} />
+												<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
+												<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
+												<Route path="nodes/besu/edit/:id" element={<EditBesuNodePage />} />
+												<Route path="nodes/:id" element={<NodeDetailPage />} />
+												<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
+												<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />
+												<Route path="networks/:id/besu" element={<BesuNetworkDetailPage />} />
+												<Route path="networks/:id/fabric" element={<FabricNetworkDetailPage />} />
+												<Route path="networks/:id/blocks" element={<BlocksOverview />} />
+												<Route path="networks/:id/blocks/:blockNumber" element={<BlockDetails />} />
+												<Route path="organizations/:id" element={<OrganizationDetailPage />} />
+												<Route path="settings/keys/:id" element={<KeyDetailPage />} />
+												<Route path="nodes/create" element={<CreateNodePage />} />
+												<Route path="nodes/fabric/bulk" element={<BulkCreateNodesPage />} />
+												<Route path="nodes/logs" element={<NodesLogsPage />} />
+												<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
+												<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
+												<Route path="docs" element={<ApiDocumentationPage />} />
+												<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
+												<Route path="plugins" element={<PluginsPage />} />
+												<Route path="plugins/new" element={<NewPluginPage />} />
+												<Route path="plugins/:name" element={<PluginDetailPage />} />
+												<Route path="plugins/:name/edit" element={<EditPluginPage />} />
+												<Route path="users" element={<UsersPage />} />
+												<Route path="settings/audit-logs" element={<AuditLogsPage />} />
+												<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
+												<Route path="platform/analytics" element={<AnalyticsPage />} />
+												<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
+												<Route path="sc/fabric/projects/chaincodes/:id" element={<ChaincodeProjectDetailPage />} />
+												<Route path="sc/fabric/projects/chaincodes/:id/editor" element={<ChaincodeProjectEditorPage />} />
+											</Route>
+											<Route path="*" element={<NotFoundPage />} />
+										</Routes>
+									</div>
 								</BreadcrumbProvider>
 							</ProtectedLayout>
 						</AuthProvider>
 					</BrowserRouter>
 				</QueryClientProvider>
 			</ThemeWrapper>
-			<Toaster position="top-center" />
+			<Toaster
+				toastOptions={{
+					closeButton: true,
+				}}
+				position="top-center"
+			/>
+		</ThemeProvider>
+	)
+}
+
+const App = () => {
+	const location = useLocation()
+	// Regex to match /sc/fabric/projects/chaincodes/:id/editor
+	const hideLayout = /^\/sc\/fabric\/projects\/chaincodes\/[^/]+\/editor$/.test(location.pathname)
+
+	return (
+		<ThemeProvider defaultTheme="system" enableSystem attribute="class">
+			<ThemeWrapper>
+				<QueryClientProvider client={queryClient}>
+					<AuthProvider>
+						<ProtectedLayout>
+							<BreadcrumbProvider>
+								<SidebarProvider>
+									{!hideLayout && <AppSidebar />}
+									<SidebarInset>
+										{!hideLayout && <Header />}
+										<div className="p-0">
+											<Routes>
+												<Route path="/">
+													<Route path="/" element={<Navigate to="/nodes" replace />} />
+													<Route path="account" element={<AccountPage />} />
+													<Route path="nodes" element={<NodesPage />} />
+													<Route path="smart-contracts" element={<SmartContractsPage />} />
+													<Route path="smart-contracts/fabric" element={<FabricChaincodesPage />} />
+													<Route path="smart-contracts/besu" element={<BesuContractsPage />} />
+													<Route path="monitoring" element={<MonitoringPage />} />
+													<Route path="monitoring/providers/new" element={<CreateProviderPage />} />
+													<Route path="monitoring/providers/:id" element={<UpdateProviderPage />} />
+													<Route path="networks" element={<NetworksPage />} />
+													<Route path="networks/import" element={<ImportNetworkPage />} />
+													<Route path="network/fabric" element={<FabricPage />} />
+													<Route path="network/besu" element={<BesuPage />} />
+													<Route path="settings/access" element={<AccessControlPage />} />
+													<Route path="settings/network" element={<NetworkConfigPage />} />
+													<Route path="settings/keys" element={<KeyManagementPage />} />
+													<Route path="settings/backups" element={<BackupsPage />} />
+													<Route path="settings/general" element={<SettingsPage />} />
+													<Route path="settings/monitoring" element={<MonitoringPage />} />
+													<Route path="identity/certificates" element={<CertificateTemplatesPage />} />
+													<Route path="fabric/organizations" element={<OrganizationsPage />} />
+													<Route path="nodes/fabric/create" element={<CreateFabricNodePage />} />
+													<Route path="nodes/fabric/edit/:id" element={<EditFabricNodePage />} />
+													<Route path="nodes/besu/edit/:id" element={<EditBesuNodePage />} />
+													<Route path="nodes/:id" element={<NodeDetailPage />} />
+													<Route path="networks/fabric/create" element={<FabricCreateChannel />} />
+													<Route path="networks/besu/create" element={<CreateBesuNetworkPage />} />
+													<Route path="networks/:id/besu" element={<BesuNetworkDetailPage />} />
+													<Route path="networks/:id/fabric" element={<FabricNetworkDetailPage />} />
+													<Route path="networks/:id/blocks" element={<BlocksOverview />} />
+													<Route path="networks/:id/blocks/:blockNumber" element={<BlockDetails />} />
+													<Route path="organizations/:id" element={<OrganizationDetailPage />} />
+													<Route path="settings/keys/:id" element={<KeyDetailPage />} />
+													<Route path="nodes/create" element={<CreateNodePage />} />
+													<Route path="nodes/fabric/bulk" element={<BulkCreateNodesPage />} />
+													<Route path="nodes/logs" element={<NodesLogsPage />} />
+													<Route path="nodes/besu/create" element={<CreateBesuNodePage />} />
+													<Route path="networks/fabric/shared" element={<SharedNetworksPage />} />
+													<Route path="docs" element={<ApiDocumentationPage />} />
+													<Route path="networks/besu/bulk-create" element={<BulkCreateBesuNetworkPage />} />
+													<Route path="plugins" element={<PluginsPage />} />
+													<Route path="plugins/new" element={<NewPluginPage />} />
+													<Route path="plugins/:name" element={<PluginDetailPage />} />
+													<Route path="plugins/:name/edit" element={<EditPluginPage />} />
+													<Route path="users" element={<UsersPage />} />
+													<Route path="settings/audit-logs" element={<AuditLogsPage />} />
+													<Route path="settings/audit-logs/:id" element={<AuditLogDetailPage />} />
+													<Route path="platform/analytics" element={<AnalyticsPage />} />
+													<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
+													<Route path="sc/fabric/projects/chaincodes/:id" element={<ChaincodeProjectDetailPage />} />
+													<Route path="sc/fabric/projects/chaincodes/:id/editor" element={<ChaincodeProjectEditorPage />} />
+												</Route>
+												<Route path="*" element={<NotFoundPage />} />
+											</Routes>
+										</div>
+									</SidebarInset>
+								</SidebarProvider>
+							</BreadcrumbProvider>
+						</ProtectedLayout>
+					</AuthProvider>
+				</QueryClientProvider>
+			</ThemeWrapper>
+			<Toaster
+				icons={{
+					success: <CheckCircle className="h-4 w-4" />,
+					error: <AlertCircle className="h-4 w-4" />,
+					loading: <Loader2 className="h-4 w-4 animate-spin" />,
+					close: <X className="h-4 w-4" />,
+				}}
+				toastOptions={{
+					closeButton: true,
+				}}
+				position="top-center"
+			/>
 		</ThemeProvider>
 	)
 }

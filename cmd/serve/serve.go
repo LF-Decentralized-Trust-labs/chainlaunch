@@ -31,6 +31,12 @@ import (
 	metricscommon "github.com/chainlaunch/chainlaunch/pkg/metrics/common"
 	"github.com/chainlaunch/chainlaunch/pkg/monitoring"
 	nodeTypes "github.com/chainlaunch/chainlaunch/pkg/nodes/types"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/ai"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/dirs"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/files"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/projectrunner"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/projects"
 
 	"github.com/chainlaunch/chainlaunch/pkg/audit"
 	"github.com/chainlaunch/chainlaunch/pkg/chainlaunchdeploy"
@@ -48,10 +54,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -283,7 +286,7 @@ func ensureKeyExists(filename string, dataPath string) (string, error) {
 }
 
 // setupServer configures and returns the HTTP server
-func setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string) *chi.Mux {
+func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthService, views embed.FS, dev bool, dbPath string, dataPath string, projectsDir string) *chi.Mux {
 	// Initialize services
 	keyManagementService, err := service.NewKeyManagementService(queries)
 	if err != nil {
@@ -488,6 +491,34 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
 	authHandler := auth.NewHandler(authService)
 	auditHandler := audit.NewHandler(auditService, logger)
+	// Initialize AI services if available
+	aiHandler, filesHandler, dirsHandler, err := c.initializeAIServices(queries, logger, projectsDir, organizationService, keyManagementService, networksService)
+	if err != nil {
+		logger.Warnf("Failed to initialize AI services: %v", err)
+		return nil
+	}
+	var projectsHandler *projects.ProjectsHandler
+	if aiHandler != nil {
+		logger.Info("AI services initialized successfully")
+
+		// Initialize directory and file services
+		dirsService := dirs.NewDirsService(projectsDir)
+		filesService := files.NewFilesService()
+		runner := projectrunner.NewRunner(queries)
+		projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
+		if err != nil {
+			logger.Warnf("Failed to create projects service: %v - AI services will not be available", err)
+			return nil
+		}
+		chaincodeProjectInvocationService := projects.NewChaincodeService(queries, logger, projectsService, networksService, nodesService)
+		projectsHandler = projects.NewProjectsHandler(projectsService, projectsDir, chaincodeProjectInvocationService, logger)
+		// Create handlers
+		dirsHandler = dirs.NewDirsHandler(dirsService, projectsService)
+		filesHandler = files.NewFilesHandler(filesService, projectsService)
+	} else {
+		logger.Info("AI services not available - continuing without AI functionality")
+	}
+
 	// Setup router
 	r := chi.NewRouter()
 
@@ -544,6 +575,21 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 
 			// Register smart contract deployment routes
 			scHandler.RegisterRoutes(r)
+
+			// Mount AI/ML routes if available
+			if aiHandler != nil {
+				aiHandler.RegisterRoutes(r)
+			}
+			// Register files and dirs routes
+			if dirsHandler != nil {
+				dirsHandler.RegisterRoutes(r)
+			}
+			if filesHandler != nil {
+				filesHandler.RegisterRoutes(r)
+			}
+			if projectsHandler != nil {
+				projectsHandler.RegisterRoutes(r)
+			}
 		})
 	})
 	r.Get("/api/swagger/*", httpSwagger.Handler(
@@ -573,30 +619,58 @@ func setupServer(queries *db.Queries, authService *auth.AuthService, views embed
 	return r
 }
 
-func runMigrations(database *sql.DB, migrationsFS embed.FS) error {
-	driver, err := sqlite3.WithInstance(database, &sqlite3.Config{})
-	if err != nil {
-		return fmt.Errorf("could not create sqlite driver: %v", err)
+// initializeAIServices initializes AI-related services and returns the AI handler if successful
+func (c *serveCmd) initializeAIServices(queries *db.Queries, logger *logger.Logger, projectsDir string, organizationService *fabricservice.OrganizationService, keyManagementService *service.KeyManagementService, networksService *networksservice.NetworkService) (*ai.AIHandler, *files.FilesHandler, *dirs.DirsHandler, error) {
+	// Check if AI provider is configured
+	if c.aiProvider == "" {
+		return nil, nil, nil, nil
 	}
 
-	// Use embedded migrations instead of file system
-	d, err := iofs.New(migrationsFS, "pkg/db/migrations")
+	var aiClient ai.AIClient
+	switch c.aiProvider {
+	case "anthropic", "claude":
+		if c.anthropicKey == "" {
+			logger.Warn("ANTHROPIC_API_KEY is not set and --anthropic-key not provided - AI services will not be available")
+			return nil, nil, nil, nil
+		}
+		aiClient = ai.NewClaudeAdapter(c.anthropicKey)
+	case "openai":
+		if c.openaiKey == "" {
+			logger.Warn("OPENAI_API_KEY is not set and --openai-key not provided - AI services will not be available")
+			return nil, nil, nil, nil
+		}
+		aiClient = ai.NewOpenAIAdapter(c.openaiKey)
+	default:
+		logger.Warnf("Unknown AI provider: %s - AI services will not be available", c.aiProvider)
+		return nil, nil, nil, nil
+	}
+	_ = aiClient
+	chatService := ai.NewChatService(queries)
+	openAIchatService := ai.NewOpenAIChatService(c.openaiKey, logger, chatService, queries, projectsDir)
+
+	// Initialize projectsService
+	runner := projectrunner.NewRunner(queries)
+	projectsService, err := projects.NewProjectsService(queries, runner, projectsDir, organizationService, keyManagementService, networksService)
 	if err != nil {
-		return fmt.Errorf("could not create iofs driver: %v", err)
+		logger.Warnf("Failed to create projects service: %v - AI services will not be available", err)
+		return nil, nil, nil, nil
 	}
 
-	m, err := migrate.NewWithInstance(
-		"iofs", d,
-		"sqlite3", driver,
-	)
+	// Initialize directory and file services
+	dirsService := dirs.NewDirsService(projectsDir)
+	dirsHandler := dirs.NewDirsHandler(dirsService, projectsService)
+	filesService := files.NewFilesService()
+	filesHandler := files.NewFilesHandler(filesService, projectsService)
+
+	// Initialize boilerplate service
+	boilerplateService, err := boilerplates.NewBoilerplateService(queries)
 	if err != nil {
-		return fmt.Errorf("could not create migrate instance: %v", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("could not run migrations: %v", err)
+		logger.Warnf("Failed to create boilerplate service: %v - AI services will not be available", err)
+		return nil, nil, nil, nil
 	}
 
-	return nil
+	// Create and return AI handler
+	return ai.NewAIHandler(openAIchatService, chatService, projectsService, boilerplateService), filesHandler, dirsHandler, nil
 }
 
 type serveCmd struct {
@@ -609,8 +683,14 @@ type serveCmd struct {
 	tlsKeyFile  string
 	dataPath    string
 	dev         bool
+	projectsDir string
 
 	queries *db.Queries
+
+	openaiKey    string
+	anthropicKey string
+	aiProvider   string
+	aiModel      string
 }
 
 // validate validates the serve command configuration
@@ -672,7 +752,7 @@ func (c *serveCmd) preRun() error {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	// Run migrations
-	if err := runMigrations(database, c.configCMD.MigrationsFS); err != nil {
+	if err := db.RunMigrations(database); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
@@ -756,7 +836,7 @@ func (c *serveCmd) run() error {
 	}
 
 	// Setup and start HTTP server
-	router := setupServer(c.queries, authService, c.configCMD.Views, c.dev, c.dbPath, c.dataPath)
+	router := c.setupServer(c.queries, authService, c.configCMD.Views, c.dev, c.dbPath, c.dataPath, c.projectsDir)
 
 	// Start HTTP server in a goroutine
 	httpServer := &http.Server{
@@ -822,6 +902,9 @@ For example:
 	cmd.Flags().StringVar(&serveCmd.tlsCertFile, "tls-cert", "", "Path to TLS certificate file for HTTP server (required)")
 	cmd.Flags().StringVar(&serveCmd.tlsKeyFile, "tls-key", "", "Path to TLS key file for HTTP server (required)")
 
+	// Add projects directory flag
+	cmd.Flags().StringVar(&serveCmd.projectsDir, "projects", "projects-data", "Path to projects directory")
+
 	// Update the default data path to use the OS-specific user config directory
 	defaultDataPath := ""
 	if configDir, err := os.UserConfigDir(); err == nil {
@@ -836,6 +919,12 @@ For example:
 	cmd.Flags().StringVar(&serveCmd.dataPath, "data", defaultDataPath, "Path to data directory")
 	// Add development mode flag
 	cmd.Flags().BoolVar(&serveCmd.dev, "dev", false, "Run in development mode")
+
+	// Add new flags
+	cmd.Flags().StringVar(&serveCmd.openaiKey, "openai-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key (or set OPENAI_API_KEY env var)")
+	cmd.Flags().StringVar(&serveCmd.anthropicKey, "anthropic-key", os.Getenv("ANTHROPIC_API_KEY"), "Anthropic API key (or set ANTHROPIC_API_KEY env var)")
+	cmd.Flags().StringVar(&serveCmd.aiProvider, "ai-provider", "openai", "AI provider to use: openai or anthropic")
+	cmd.Flags().StringVar(&serveCmd.aiModel, "ai-model", "gpt-4o", "AI model to use (e.g. gpt-4o, claude-3-opus-20240229)")
 
 	return cmd
 }

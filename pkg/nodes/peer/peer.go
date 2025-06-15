@@ -3201,3 +3201,26 @@ func (p *LocalPeer) GetPeerClient(ctx context.Context) (*chaincode.Peer, *grpc.C
 	peer := chaincode.NewPeer(peerConn, adminIdentity)
 	return peer, peerConn, nil
 }
+
+func (p *LocalPeer) GetGatewayClient(ctx context.Context) (*client.Gateway, *grpc.ClientConn, error) {
+	peerUrl := p.GetPeerAddress()
+	tlsCACert, err := p.GetTLSRootCACert(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get TLS CA cert: %w", err)
+	}
+
+	adminIdentity, signer, err := p.GetAdminIdentity(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get admin identity: %w", err)
+	}
+	peerConn, err := p.CreatePeerConnection(ctx, peerUrl, tlsCACert)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create peer connection: %w", err)
+	}
+
+	gateway, err := client.Connect(adminIdentity, client.WithClientConnection(peerConn), client.WithSign(signer))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to gateway: %w", err)
+	}
+	return gateway, peerConn, nil
+}

@@ -2,7 +2,7 @@
 SELECT * FROM chaincode_projects ORDER BY created_at DESC;
 
 -- name: CreateProject :one
-INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING *;
+INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id, endorsement_policy) VALUES (?, ?, ?, ?, ?, ?) RETURNING *;
 
 -- name: DeleteProject :exec
 DELETE FROM chaincode_projects WHERE id = ?;

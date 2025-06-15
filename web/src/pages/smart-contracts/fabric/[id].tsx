@@ -1,79 +1,83 @@
 import { getChaincodeProjectsByIdOptions } from '@/api/client/@tanstack/react-query.gen'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Code } from 'lucide-react'
 
 export default function ChaincodeProjectDetailPage() {
-	const { id } = useParams<{ id: string }>()
+	const { id } = useParams()
+	const navigate = useNavigate()
+	const projectId = parseInt(id || '0', 10)
 
-	// Fetch project details
-	const { data: project, isLoading } = useQuery({
-		...getChaincodeProjectsByIdOptions({
-			path: {
-				id: Number(id),
-			},
-		}),
+	const { data: project, isLoading, error } = useQuery({
+		...getChaincodeProjectsByIdOptions({ path: { id: projectId } }),
+		enabled: !!projectId,
 	})
 
-	// Log project details for now
-	console.log('Project details:', project)
-
-	if (isLoading) {
-		return (
-			<div className="flex-1 p-8">
-				<div className="text-center text-muted-foreground">Loading project details...</div>
-			</div>
-		)
-	}
-
-	if (!project) {
-		return (
-			<div className="flex-1 p-8">
-				<div className="text-center text-red-500">Project not found</div>
-			</div>
-		)
-	}
+	if (isLoading) return <div className="container p-8">Loading...</div>
+	if (error) return <div className="container p-8 text-red-500">Error loading project</div>
+	if (!project) return <div className="container p-8">Project not found</div>
 
 	return (
-		<div className="flex-1 p-8">
-			<div className="mb-6">
-				<h1 className="text-2xl font-semibold">{project.name}</h1>
-				<p className="text-muted-foreground">{project.description}</p>
+		<div className="container p-8">
+			<div className="flex justify-between items-center mb-6">
+				<h1 className="text-2xl font-bold">{project.name}</h1>
+				<Button onClick={() => navigate(`/sc/fabric/projects/chaincodes/${project.id}/editor`)}>
+					<Code className="mr-2 h-4 w-4" />
+					Open Editor
+				</Button>
 			</div>
 
-			{/* Placeholder for project details */}
-			<div className="grid gap-6">
-				<div className="rounded-lg border p-6">
-					<h2 className="text-lg font-semibold mb-4">Project Information</h2>
-					<div className="space-y-2 text-sm">
-						<div>
-							<span className="font-medium">ID:</span> {project.id}
-						</div>
-						<div>
-							<span className="font-medium">Network ID:</span> {project.networkId}
-						</div>
-						<div>
-							<span className="font-medium">Boilerplate:</span> {project.boilerplate}
-						</div>
-						<div>
-							<span className="font-medium">Status:</span> {project.status}
-						</div>
-						{project.containerPort && (
+			<div className="grid gap-4">
+				<Card>
+					<CardHeader>
+						<CardTitle>Project Details</CardTitle>
+						<CardDescription>Information about this chaincode project</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="grid gap-4">
 							<div>
-								<span className="font-medium">Container Port:</span> {project.containerPort}
+								<h3 className="font-semibold mb-1">Description</h3>
+								<p className="text-muted-foreground">{project.description || 'No description provided'}</p>
 							</div>
-						)}
-						{project.lastStartedAt && (
 							<div>
-								<span className="font-medium">Last Started:</span> {new Date(project.lastStartedAt).toLocaleString()}
+								<h3 className="font-semibold mb-1">ID</h3>
+								<p className="text-muted-foreground">{project.id}</p>
 							</div>
-						)}
-						{project.lastStoppedAt && (
 							<div>
-								<span className="font-medium">Last Stopped:</span> {new Date(project.lastStoppedAt).toLocaleString()}
+								<h3 className="font-semibold mb-1">Network ID</h3>
+								<p className="text-muted-foreground">{project.networkId}</p>
 							</div>
-						)}
-					</div>
-				</div>
+							<div>
+								<h3 className="font-semibold mb-1">Boilerplate</h3>
+								<p className="text-muted-foreground">{project.boilerplate}</p>
+							</div>
+							<div>
+								<h3 className="font-semibold mb-1">Status</h3>
+								<p className="text-muted-foreground">{project.status}</p>
+							</div>
+							{project.containerPort && (
+								<div>
+									<h3 className="font-semibold mb-1">Container Port</h3>
+									<p className="text-muted-foreground">{project.containerPort}</p>
+								</div>
+							)}
+							{project.lastStartedAt && (
+								<div>
+									<h3 className="font-semibold mb-1">Last Started</h3>
+									<p className="text-muted-foreground">{new Date(project.lastStartedAt).toLocaleString()}</p>
+								</div>
+							)}
+							{project.lastStoppedAt && (
+								<div>
+									<h3 className="font-semibold mb-1">Last Stopped</h3>
+									<p className="text-muted-foreground">{new Date(project.lastStoppedAt).toLocaleString()}</p>
+								</div>
+							)}
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 		</div>
 	)

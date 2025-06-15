@@ -22,15 +22,16 @@ func (q *Queries) CreateConversation(ctx context.Context, projectID int64) (*Con
 }
 
 const CreateProject = `-- name: CreateProject :one
-INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id) VALUES (?, ?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id
+INSERT INTO chaincode_projects (name, description, boilerplate, slug, network_id, endorsement_policy) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id, endorsement_policy
 `
 
 type CreateProjectParams struct {
-	Name        string         `json:"name"`
-	Description sql.NullString `json:"description"`
-	Boilerplate sql.NullString `json:"boilerplate"`
-	Slug        string         `json:"slug"`
-	NetworkID   sql.NullInt64  `json:"networkId"`
+	Name              string         `json:"name"`
+	Description       sql.NullString `json:"description"`
+	Boilerplate       sql.NullString `json:"boilerplate"`
+	Slug              string         `json:"slug"`
+	NetworkID         sql.NullInt64  `json:"networkId"`
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (*ChaincodeProject, error) {
@@ -40,6 +41,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 		arg.Boilerplate,
 		arg.Slug,
 		arg.NetworkID,
+		arg.EndorsementPolicy,
 	)
 	var i ChaincodeProject
 	err := row.Scan(
@@ -57,6 +59,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg *CreateProjectParams) (
 		&i.LastStoppedAt,
 		&i.ContainerPort,
 		&i.NetworkID,
+		&i.EndorsementPolicy,
 	)
 	return &i, err
 }

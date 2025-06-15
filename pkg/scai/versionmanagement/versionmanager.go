@@ -22,11 +22,11 @@ type VersionEntry struct {
 
 // VersionManager defines the interface for versioning operations.
 type VersionManager interface {
-	CommitChange(ctx context.Context, message string) error
-	ListHistory(ctx context.Context) ([]VersionEntry, error)
-	CheckoutVersion(ctx context.Context, versionID string) error
-	GetCurrentVersion(ctx context.Context) (VersionEntry, error)
-	DiffVersions(ctx context.Context, fromID, toID string) (string, error)
+	CommitChange(ctx context.Context, dir string, message string) error
+	ListHistory(ctx context.Context, dir string) ([]VersionEntry, error)
+	CheckoutVersion(ctx context.Context, dir string, versionID string) error
+	GetCurrentVersion(ctx context.Context, dir string) (VersionEntry, error)
+	DiffVersions(ctx context.Context, dir string, fromID, toID string) (string, error)
 }
 
 // DefaultManager is the default implementation using Git as backend.

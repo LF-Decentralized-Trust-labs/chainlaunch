@@ -74,20 +74,21 @@ type BlockchainPlatform struct {
 }
 
 type ChaincodeProject struct {
-	ID            int64          `json:"id"`
-	Name          string         `json:"name"`
-	Description   sql.NullString `json:"description"`
-	Boilerplate   sql.NullString `json:"boilerplate"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
-	Slug          string         `json:"slug"`
-	ContainerID   sql.NullString `json:"containerId"`
-	ContainerName sql.NullString `json:"containerName"`
-	Status        sql.NullString `json:"status"`
-	LastStartedAt sql.NullTime   `json:"lastStartedAt"`
-	LastStoppedAt sql.NullTime   `json:"lastStoppedAt"`
-	ContainerPort sql.NullInt64  `json:"containerPort"`
-	NetworkID     sql.NullInt64  `json:"networkId"`
+	ID                int64          `json:"id"`
+	Name              string         `json:"name"`
+	Description       sql.NullString `json:"description"`
+	Boilerplate       sql.NullString `json:"boilerplate"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	Slug              string         `json:"slug"`
+	ContainerID       sql.NullString `json:"containerId"`
+	ContainerName     sql.NullString `json:"containerName"`
+	Status            sql.NullString `json:"status"`
+	LastStartedAt     sql.NullTime   `json:"lastStartedAt"`
+	LastStoppedAt     sql.NullTime   `json:"lastStoppedAt"`
+	ContainerPort     sql.NullInt64  `json:"containerPort"`
+	NetworkID         sql.NullInt64  `json:"networkId"`
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
 }
 
 type Conversation struct {

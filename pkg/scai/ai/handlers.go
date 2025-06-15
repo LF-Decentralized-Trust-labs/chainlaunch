@@ -2,14 +2,20 @@ package ai
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/boilerplates"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/projects"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/sessionchanges"
+	"github.com/chainlaunch/chainlaunch/pkg/scai/versionmanagement"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -61,6 +67,7 @@ func (h *AIHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/boilerplates", response.Middleware(h.GetBoilerplates))
 		r.Get("/models", response.Middleware(h.GetModels))
 		r.Post("/generate", response.Middleware(h.Generate))
+		r.Post("/{projectId}/chat", response.Middleware(h.Chat))
 		r.Get("/{projectId}/conversations", response.Middleware(h.GetConversations))
 		r.Get("/{projectId}/conversations/{conversationId}", response.Middleware(h.GetConversationMessages))
 		r.Get("/{projectId}/conversations/{conversationId}/export", response.Middleware(h.GetConversationDetail))
@@ -323,4 +330,219 @@ type ToolCallResponse struct {
 type ParentMessageDetailResponse struct {
 	Message  MessageDetailResponse   `json:"message"`
 	Children []MessageDetailResponse `json:"children"`
+}
+
+type ChatMessagePart struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+type ChatMessage struct {
+	Role    string            `json:"role"`
+	Content string            `json:"content"`
+	Parts   []ChatMessagePart `json:"parts"`
+}
+
+type ChatRequest struct {
+	ID        string        `json:"id"`
+	Messages  []ChatMessage `json:"messages"`
+	ProjectID string        `json:"projectId"`
+}
+
+// ChatResponse is not used for streaming, but kept for reference.
+type ChatResponse struct {
+	Reply string `json:"reply"`
+}
+
+// EventType is a string type for SSE event types
+// (stringer is optional, but helps with enums)
+//
+//go:generate stringer -type=EventType
+type EventType string
+
+const (
+	EventTypeLLM             EventType = "llm"
+	EventTypeToolStart       EventType = "tool_start"
+	EventTypeToolUpdate      EventType = "tool_update"
+	EventTypeToolExecute     EventType = "tool_execute"
+	EventTypeToolResult      EventType = "tool_result"
+	EventTypeMaxStepsReached EventType = "max_steps_reached"
+)
+
+// Update all event structs to use EventType for the Type field
+
+type TokenEvent struct {
+	Type  EventType `json:"type"`
+	Token string    `json:"token"`
+}
+
+type LLMEvent struct {
+	Type    EventType `json:"type"`
+	Content string    `json:"content"`
+}
+
+type ToolStartEvent struct {
+	Type       EventType `json:"type"`
+	ToolCallID string    `json:"toolCallID"`
+	Name       string    `json:"name"`
+}
+
+type ToolUpdateEvent struct {
+	Type       EventType `json:"type"`
+	ToolCallID string    `json:"toolCallID"`
+	Name       string    `json:"name"`
+	Arguments  string    `json:"arguments"`
+}
+
+type ToolExecuteEvent struct {
+	Type       EventType              `json:"type"`
+	ToolCallID string                 `json:"toolCallID"`
+	Name       string                 `json:"name"`
+	Args       map[string]interface{} `json:"args"`
+}
+
+type ToolResultEvent struct {
+	Type       EventType   `json:"type"`
+	ToolCallID string      `json:"toolCallID"`
+	Name       string      `json:"name"`
+	Result     interface{} `json:"result"`
+	Error      string      `json:"error,omitempty"`
+}
+
+type MaxStepsReachedEvent struct {
+	Type EventType `json:"type"`
+}
+
+// sseAgentStepObserver streams agent step events as SSE to the client
+// Needs access to http.ResponseWriter and http.Flusher
+// We'll store them as fields in the struct
+type sseAgentStepObserver struct {
+	w       http.ResponseWriter
+	flusher http.Flusher
+}
+
+func (o *sseAgentStepObserver) OnLLMContent(content string) {
+	if content == "" {
+		return
+	}
+	evt := LLMEvent{Type: EventTypeLLM, Content: content}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+func (o *sseAgentStepObserver) OnToolCallStart(toolCallID, name string) {
+	evt := ToolStartEvent{Type: EventTypeToolStart, ToolCallID: toolCallID, Name: name}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+func (o *sseAgentStepObserver) OnToolCallUpdate(toolCallID, name, arguments string) {
+	evt := ToolUpdateEvent{Type: EventTypeToolUpdate, ToolCallID: toolCallID, Name: name, Arguments: arguments}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+func (o *sseAgentStepObserver) OnToolCallExecute(toolCallID, name string, args map[string]interface{}) {
+	evt := ToolExecuteEvent{Type: EventTypeToolExecute, ToolCallID: toolCallID, Name: name, Args: args}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+func (o *sseAgentStepObserver) OnToolCallResult(toolCallID, name string, result interface{}, err error) {
+	evt := ToolResultEvent{Type: EventTypeToolResult, ToolCallID: toolCallID, Name: name, Result: result}
+	if err != nil {
+		evt.Error = err.Error()
+	}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+func (o *sseAgentStepObserver) OnMaxStepsReached() {
+	evt := MaxStepsReachedEvent{Type: EventTypeMaxStepsReached}
+	data, _ := json.Marshal(evt)
+	fmt.Fprintf(o.w, "data: %s\n\n", data)
+	o.flusher.Flush()
+}
+
+// Chat godoc
+// @Summary      Chat with AI assistant
+// @Description  Stream a conversation with the AI assistant using Server-Sent Events (SSE)
+// @Tags         ai
+// @Accept       json
+// @Produce      text/event-stream
+// @Param        projectId path int true "Project ID"
+// @Param        request body ChatRequest true "Chat request containing project ID and messages"
+// @Success      200 {string} string "SSE stream of chat responses"
+// @Failure      400 {string} string "Invalid request"
+// @Failure      500 {string} string "Internal server error"
+// @Router       /ai/{projectId}/chat [post]
+func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) error {
+	var req ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+	projectIdStr := chi.URLParam(r, "projectId")
+	if projectIdStr == "" {
+		return fmt.Errorf("projectId is required")
+	}
+
+	// Use projectId from path or from body (prefer path param)
+	projectID, err := strconv.ParseInt(projectIdStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid projectId: %w", err)
+	}
+
+	if len(req.Messages) == 0 {
+		return fmt.Errorf("messages are required")
+	}
+
+	// Use the last user message as the prompt
+	var userMessage string
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if req.Messages[i].Role == "user" {
+			userMessage = req.Messages[i].Content
+			break
+		}
+	}
+	if userMessage == "" {
+		return fmt.Errorf("no user message found")
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		return fmt.Errorf("streaming unsupported")
+	}
+
+	observer := &sseAgentStepObserver{w: w, flusher: flusher}
+
+	err = h.OpenAIChatService.ChatWithPersistence(r.Context(), projectID, userMessage, observer, 0)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("chat error: %w", err)
+	}
+
+	// After chat session, commit all changed files in the correct project directory
+	files := sessionchanges.GetAndResetChanges()
+	if len(files) > 0 {
+		msg := "AI Chat Session: Modified files:\n- " + strings.Join(files, "\n- ")
+		vm := versionmanagement.NewDefaultManager()
+		ctx := r.Context()
+		// Get project directory from projectID
+		proj, err := h.Projects.GetProject(ctx, projectID)
+		if err == nil {
+			projectDir := filepath.Join(h.Projects.ProjectsDir, proj.Name)
+			if err := vm.CommitChange(ctx, projectDir, msg); err != nil {
+				fmt.Printf("Failed to commit session changes: %v\n", err)
+			}
+		}
+	}
+	return nil
 }

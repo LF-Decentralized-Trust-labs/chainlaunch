@@ -62,6 +62,7 @@ import FabricChaincodesPage from './pages/smart-contracts/fabric'
 import BesuContractsPage from './pages/smart-contracts/besu'
 import FabricChaincodeDefinitionDetail from './pages/smart-contracts/fabric/definition'
 import ChaincodeProjectDetailPage from './pages/smart-contracts/fabric/[id]'
+import ChaincodeProjectEditorPage from './pages/smart-contracts/fabric/[id]/editor'
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -140,6 +141,7 @@ const App = () => {
 														<Route path="platform/analytics" element={<AnalyticsPage />} />
 														<Route path="sc/fabric/chaincodes/:id" element={<FabricChaincodeDefinitionDetail />} />
 														<Route path="sc/fabric/projects/chaincodes/:id" element={<ChaincodeProjectDetailPage />} />
+														<Route path="sc/fabric/projects/chaincodes/:id/editor" element={<ChaincodeProjectEditorPage />} />
 													</Route>
 													<Route path="*" element={<NotFoundPage />} />
 												</Routes>

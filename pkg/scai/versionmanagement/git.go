@@ -14,8 +14,8 @@ import (
 )
 
 // CommitChange commits all staged changes with the provided message using go-git.
-func (m *DefaultManager) CommitChange(ctx context.Context, message string) error {
-	repo, err := git.PlainOpen(".")
+func (m *DefaultManager) CommitChange(ctx context.Context, dir string, message string) error {
+	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return fmt.Errorf("failed to open git repo: %w", err)
 	}
@@ -58,8 +58,8 @@ func (m *DefaultManager) CommitChange(ctx context.Context, message string) error
 }
 
 // ListHistory returns the commit history.
-func (m *DefaultManager) ListHistory(ctx context.Context) ([]VersionEntry, error) {
-	repo, err := git.PlainOpen(".")
+func (m *DefaultManager) ListHistory(ctx context.Context, dir string) ([]VersionEntry, error) {
+	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open git repo: %w", err)
 	}
@@ -90,8 +90,8 @@ func (m *DefaultManager) ListHistory(ctx context.Context) ([]VersionEntry, error
 }
 
 // CheckoutVersion checks out the specified commit or branch.
-func (m *DefaultManager) CheckoutVersion(ctx context.Context, versionID string) error {
-	repo, err := git.PlainOpen(".")
+func (m *DefaultManager) CheckoutVersion(ctx context.Context, dir string, versionID string) error {
+	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return fmt.Errorf("failed to open git repo: %w", err)
 	}
@@ -121,8 +121,8 @@ func (m *DefaultManager) CheckoutVersion(ctx context.Context, versionID string) 
 }
 
 // GetCurrentVersion returns the current commit info.
-func (m *DefaultManager) GetCurrentVersion(ctx context.Context) (VersionEntry, error) {
-	repo, err := git.PlainOpen(".")
+func (m *DefaultManager) GetCurrentVersion(ctx context.Context, dir string) (VersionEntry, error) {
+	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return VersionEntry{}, fmt.Errorf("failed to open git repo: %w", err)
 	}
@@ -143,8 +143,8 @@ func (m *DefaultManager) GetCurrentVersion(ctx context.Context) (VersionEntry, e
 }
 
 // DiffVersions returns the diff between two versions.
-func (m *DefaultManager) DiffVersions(ctx context.Context, fromID, toID string) (string, error) {
-	repo, err := git.PlainOpen(".")
+func (m *DefaultManager) DiffVersions(ctx context.Context, dir string, fromID, toID string) (string, error) {
+	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return "", fmt.Errorf("failed to open git repo: %w", err)
 	}

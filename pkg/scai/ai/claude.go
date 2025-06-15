@@ -148,7 +148,8 @@ func (a *ClaudeStreamAdapter) Close() {
 // NewClaudeChatService creates a new chat service using Claude
 func NewClaudeChatService(apiKey string, logger *logger.Logger, chatService *ChatService, queries *db.Queries, projectsDir string) *OpenAIChatService {
 	return &OpenAIChatService{
-		Client:      NewClaudeAdapter(apiKey),
+		// Client:      NewClaudeAdapter(apiKey),
+		Client:      nil,
 		Logger:      logger,
 		ChatService: chatService,
 		Queries:     queries,

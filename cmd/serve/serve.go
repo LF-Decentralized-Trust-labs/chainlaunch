@@ -491,14 +491,13 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 	notificationHandler := notificationhttp.NewNotificationHandler(notificationService)
 	authHandler := auth.NewHandler(authService)
 	auditHandler := audit.NewHandler(auditService, logger)
-	var projectsHandler *projects.ProjectsHandler
 	// Initialize AI services if available
 	aiHandler, filesHandler, dirsHandler, err := c.initializeAIServices(queries, logger, projectsDir, organizationService, keyManagementService, networksService)
 	if err != nil {
 		logger.Warnf("Failed to initialize AI services: %v", err)
 		return nil
 	}
-
+	var projectsHandler *projects.ProjectsHandler
 	if aiHandler != nil {
 		logger.Info("AI services initialized successfully")
 
@@ -511,7 +510,8 @@ func (c *serveCmd) setupServer(queries *db.Queries, authService *auth.AuthServic
 			logger.Warnf("Failed to create projects service: %v - AI services will not be available", err)
 			return nil
 		}
-		projectsHandler = projects.NewProjectsHandler(projectsService, projectsDir)
+		chaincodeProjectInvocationService := projects.NewChaincodeService(queries, logger, projectsService, networksService, nodesService)
+		projectsHandler = projects.NewProjectsHandler(projectsService, projectsDir, chaincodeProjectInvocationService, logger)
 		// Create handlers
 		dirsHandler = dirs.NewDirsHandler(dirsService, projectsService)
 		filesHandler = files.NewFilesHandler(filesService, projectsService)
@@ -644,9 +644,9 @@ func (c *serveCmd) initializeAIServices(queries *db.Queries, logger *logger.Logg
 		logger.Warnf("Unknown AI provider: %s - AI services will not be available", c.aiProvider)
 		return nil, nil, nil, nil
 	}
-
+	_ = aiClient
 	chatService := ai.NewChatService(queries)
-	openAIchatService := ai.NewOpenAIChatServiceWithClient(aiClient, logger, chatService, queries, projectsDir, c.aiModel)
+	openAIchatService := ai.NewOpenAIChatService(c.openaiKey, logger, chatService, queries, projectsDir)
 
 	// Initialize projectsService
 	runner := projectrunner.NewRunner(queries)

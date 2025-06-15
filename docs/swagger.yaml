@@ -1,5 +1,34 @@
 basePath: /api/v1
 definitions:
+  ai.ChatMessage:
+    properties:
+      content:
+        type: string
+      parts:
+        items:
+          $ref: '#/definitions/ai.ChatMessagePart'
+        type: array
+      role:
+        type: string
+    type: object
+  ai.ChatMessagePart:
+    properties:
+      text:
+        type: string
+      type:
+        type: string
+    type: object
+  ai.ChatRequest:
+    properties:
+      id:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/ai.ChatMessage'
+        type: array
+      projectId:
+        type: string
+    type: object
   ai.ConversationDetail:
     properties:
       id:
@@ -2749,6 +2778,45 @@ definitions:
         example: myproject-abc12
         type: string
     type: object
+  projects.HandlerRequest:
+    properties:
+      args:
+        example:
+        - '["asset1"'
+        - '"100"]'
+        items:
+          type: string
+        type: array
+      function:
+        example: createAsset
+        type: string
+      keyId:
+        example: 1
+        type: integer
+      orgId:
+        example: 1
+        type: integer
+    type: object
+  projects.HandlerResponse:
+    properties:
+      args:
+        items:
+          type: string
+        type: array
+      chaincode:
+        type: string
+      channel:
+        type: string
+      function:
+        type: string
+      message:
+        type: string
+      project:
+        type: string
+      result: {}
+      status:
+        type: string
+    type: object
   projects.ListProjectsResponse:
     properties:
       projects:
@@ -3629,6 +3697,42 @@ info:
   title: ChainLaunch API
   version: "1.0"
 paths:
+  /ai/{projectId}/chat:
+    post:
+      consumes:
+      - application/json
+      description: Stream a conversation with the AI assistant using Server-Sent Events
+        (SSE)
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      - description: Chat request containing project ID and messages
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ai.ChatRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of chat responses
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Chat with AI assistant
+      tags:
+      - ai
   /ai/{projectId}/conversations:
     get:
       description: Returns a list of all chat conversations associated with a specific
@@ -4785,6 +4889,47 @@ paths:
       summary: Get file contents at a specific commit
       tags:
       - projects
+  /chaincode-projects/{id}/invoke:
+    post:
+      consumes:
+      - application/json
+      description: Invokes a transaction on the specified chaincode project
+      parameters:
+      - description: Chaincode Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Transaction parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/projects.HandlerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transaction result
+          schema:
+            $ref: '#/definitions/projects.HandlerResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Invoke a chaincode transaction
+      tags:
+      - Chaincode Projects
   /chaincode-projects/{id}/logs:
     get:
       description: Stream or return the logs for the project's running container
@@ -4847,6 +4992,47 @@ paths:
       summary: Stream real-time logs for a project server
       tags:
       - projects
+  /chaincode-projects/{id}/query:
+    post:
+      consumes:
+      - application/json
+      description: Queries the state of the specified chaincode project
+      parameters:
+      - description: Chaincode Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Query parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/projects.HandlerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Query result
+          schema:
+            $ref: '#/definitions/projects.HandlerResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Query a chaincode transaction
+      tags:
+      - Chaincode Projects
   /chaincode-projects/{id}/start:
     post:
       description: Start the server process for a given project using its boilerplate

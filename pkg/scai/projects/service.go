@@ -40,16 +40,17 @@ type ProjectsService struct {
 }
 
 type Project struct {
-	ID            int64   `json:"id" example:"1" description:"Project ID"`
-	Name          string  `json:"name" example:"myproject" description:"Project name"`
-	Slug          string  `json:"slug" example:"myproject-abc12" description:"Project slug (used for proxying and folder name)"`
-	Description   string  `json:"description" example:"A sample project" description:"Project description"`
-	Boilerplate   string  `json:"boilerplate" example:"go-basic" description:"Boilerplate template used for scaffolding"`
-	Status        string  `json:"status" example:"running" description:"Project container status (running/stopped/etc)"`
-	LastStartedAt *string `json:"lastStartedAt,omitempty" description:"Last time the project was started (RFC3339)"`
-	LastStoppedAt *string `json:"lastStoppedAt,omitempty" description:"Last time the project was stopped (RFC3339)"`
-	ContainerPort *int    `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
-	NetworkID     *int64  `json:"networkId,omitempty" description:"ID of the linked network"`
+	ID                int64   `json:"id" example:"1" description:"Project ID"`
+	Name              string  `json:"name" example:"myproject" description:"Project name"`
+	Slug              string  `json:"slug" example:"myproject-abc12" description:"Project slug (used for proxying and folder name)"`
+	Description       string  `json:"description" example:"A sample project" description:"Project description"`
+	Boilerplate       string  `json:"boilerplate" example:"go-basic" description:"Boilerplate template used for scaffolding"`
+	Status            string  `json:"status" example:"running" description:"Project container status (running/stopped/etc)"`
+	LastStartedAt     *string `json:"lastStartedAt,omitempty" description:"Last time the project was started (RFC3339)"`
+	LastStoppedAt     *string `json:"lastStoppedAt,omitempty" description:"Last time the project was stopped (RFC3339)"`
+	ContainerPort     *int    `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
+	NetworkID         *int64  `json:"networkId,omitempty" description:"ID of the linked network"`
+	EndorsementPolicy string  `json:"endorsementPolicy,omitempty" example:"OR('Org1MSP.member','Org2MSP.member')" description:"Endorsement policy for the chaincode"`
 }
 
 // ProjectProcessManager manages running server processes for projects
@@ -140,17 +141,18 @@ func generateSlug(name string, queries *db.Queries, ctx context.Context) (string
 	}
 }
 
-func (s *ProjectsService) CreateProject(ctx context.Context, name, description, boilerplate string, networkID *int64) (Project, error) {
+func (s *ProjectsService) CreateProject(ctx context.Context, name, description, boilerplate string, networkID *int64, endorsementPolicy string) (Project, error) {
 	slug, err := generateSlug(name, s.Queries, ctx)
 	if err != nil {
 		return Project{}, err
 	}
 	proj, err := s.Queries.CreateProject(ctx, &db.CreateProjectParams{
-		Name:        name,
-		Description: sql.NullString{String: description, Valid: description != ""},
-		Boilerplate: sql.NullString{String: boilerplate, Valid: boilerplate != ""},
-		Slug:        slug,
-		NetworkID:   sql.NullInt64{Int64: *networkID, Valid: networkID != nil},
+		Name:              name,
+		Description:       sql.NullString{String: description, Valid: description != ""},
+		Boilerplate:       sql.NullString{String: boilerplate, Valid: boilerplate != ""},
+		Slug:              slug,
+		NetworkID:         sql.NullInt64{Int64: *networkID, Valid: networkID != nil},
+		EndorsementPolicy: sql.NullString{String: endorsementPolicy, Valid: endorsementPolicy != ""},
 	})
 	if err != nil {
 		zap.L().Error("DB error in CreateProject", zap.String("name", name), zap.Error(err), zap.String("request_id", getReqID(ctx)))
@@ -176,15 +178,9 @@ func (s *ProjectsService) CreateProject(ctx context.Context, name, description, 
 			}
 		}
 		vm := versionmanagement.NewDefaultManager()
-		cwd, _ := os.Getwd()
-		if err := os.Chdir(projectDir); err == nil {
-			err = vm.CommitChange(ctx, "Initial commit for project "+name)
-			if err != nil {
-				zap.L().Error("failed to commit", zap.Error(err))
-			}
-			if err := os.Chdir(cwd); err != nil {
-				zap.L().Error("failed to return to original directory", zap.Error(err))
-			}
+		err = vm.CommitChange(ctx, projectDir, "Initial commit for project "+name)
+		if err != nil {
+			zap.L().Error("failed to commit", zap.Error(err))
 		}
 	}
 	return dbProjectToAPI(proj), nil
@@ -238,16 +234,17 @@ func dbProjectToAPI(p *db.ChaincodeProject) Project {
 		networkID = &p.NetworkID.Int64
 	}
 	return Project{
-		ID:            p.ID,
-		Name:          p.Name,
-		Slug:          p.Slug,
-		Description:   p.Description.String,
-		Boilerplate:   p.Boilerplate.String,
-		Status:        p.Status.String,
-		LastStartedAt: started,
-		LastStoppedAt: stopped,
-		ContainerPort: containerPort,
-		NetworkID:     networkID,
+		ID:                p.ID,
+		Name:              p.Name,
+		Slug:              p.Slug,
+		Description:       p.Description.String,
+		Boilerplate:       p.Boilerplate.String,
+		Status:            p.Status.String,
+		LastStartedAt:     started,
+		LastStoppedAt:     stopped,
+		ContainerPort:     containerPort,
+		NetworkID:         networkID,
+		EndorsementPolicy: p.EndorsementPolicy.String,
 	}
 }
 

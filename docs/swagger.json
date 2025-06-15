@@ -153,6 +153,59 @@
                 }
             }
         },
+        "/ai/{projectId}/chat": {
+            "post": {
+                "description": "Stream a conversation with the AI assistant using Server-Sent Events (SSE)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "ai"
+                ],
+                "summary": "Chat with AI assistant",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Chat request containing project ID and messages",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE stream of chat responses",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/ai/{projectId}/conversations": {
             "get": {
                 "description": "Returns a list of all chat conversations associated with a specific project",
@@ -1769,6 +1822,70 @@
                 }
             }
         },
+        "/chaincode-projects/{id}/invoke": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Invokes a transaction on the specified chaincode project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode Projects"
+                ],
+                "summary": "Invoke a chaincode transaction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transaction parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/projects.HandlerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction result",
+                        "schema": {
+                            "$ref": "#/definitions/projects.HandlerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/chaincode-projects/{id}/logs": {
             "get": {
                 "description": "Stream or return the logs for the project's running container",
@@ -1856,6 +1973,70 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chaincode-projects/{id}/query": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Queries the state of the specified chaincode project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chaincode Projects"
+                ],
+                "summary": "Query a chaincode transaction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Chaincode Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Query parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/projects.HandlerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query result",
+                        "schema": {
+                            "$ref": "#/definitions/projects.HandlerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -8882,6 +9063,51 @@
         }
     },
     "definitions": {
+        "ai.ChatMessage": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ai.ChatMessagePart"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.ChatMessagePart": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.ChatRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ai.ChatMessage"
+                    }
+                },
+                "projectId": {
+                    "type": "string"
+                }
+            }
+        },
         "ai.ConversationDetail": {
             "type": "object",
             "properties": {
@@ -12799,6 +13025,63 @@
                 "slug": {
                     "type": "string",
                     "example": "myproject-abc12"
+                }
+            }
+        },
+        "projects.HandlerRequest": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"asset1\"",
+                        "\"100\"]"
+                    ]
+                },
+                "function": {
+                    "type": "string",
+                    "example": "createAsset"
+                },
+                "keyId": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "orgId": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "projects.HandlerResponse": {
+            "type": "object",
+            "properties": {
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "chaincode": {
+                    "type": "string"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "project": {
+                    "type": "string"
+                },
+                "result": {},
+                "status": {
+                    "type": "string"
                 }
             }
         },

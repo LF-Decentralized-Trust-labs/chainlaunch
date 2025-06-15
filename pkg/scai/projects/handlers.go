@@ -9,39 +9,46 @@ import (
 
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
 	"github.com/chainlaunch/chainlaunch/pkg/http/response"
+	"github.com/chainlaunch/chainlaunch/pkg/logger"
 	"github.com/chainlaunch/chainlaunch/pkg/scai/versionmanagement"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
-func NewProjectsHandler(service *ProjectsService, root string) *ProjectsHandler {
+func NewProjectsHandler(service *ProjectsService, root string, chaincodeService *ChaincodeService, logger *logger.Logger) *ProjectsHandler {
 	return &ProjectsHandler{
-		Root:    root,
-		Service: service,
+		Root:             root,
+		Service:          service,
+		chaincodeService: chaincodeService,
+		logger:           logger,
 	}
 }
 
 type ProjectsHandler struct {
-	Root    string
-	Service *ProjectsService
+	Root             string
+	Service          *ProjectsService
+	chaincodeService *ChaincodeService
+	logger           *logger.Logger
 }
 
 type CreateProjectRequest struct {
-	Name        string `json:"name" validate:"required" example:"myproject" description:"Project name"`
-	Description string `json:"description" example:"A sample project" description:"Project description"`
-	Boilerplate string `json:"boilerplate" example:"go-basic" description:"Boilerplate template to use for scaffolding"`
-	NetworkID   *int64 `json:"networkId,omitempty" example:"1" description:"ID of the network to link with"`
+	Name              string `json:"name" validate:"required" example:"myproject" description:"Project name"`
+	Description       string `json:"description" example:"A sample project" description:"Project description"`
+	Boilerplate       string `json:"boilerplate" example:"go-basic" description:"Boilerplate template to use for scaffolding"`
+	NetworkID         *int64 `json:"networkId,omitempty" example:"1" description:"ID of the network to link with"`
+	EndorsementPolicy string `json:"endorsementPolicy,omitempty" example:"OR('Org1MSP.member','Org2MSP.member')" description:"Endorsement policy for the chaincode"`
 }
 
 type CreateProjectResponse struct {
-	ID            int64  `json:"id" example:"1" description:"Project ID"`
-	Name          string `json:"name" example:"myproject" description:"Project name"`
-	Slug          string `json:"slug" example:"myproject-abc12" description:"Project slug (used for proxying and folder name)"`
-	Description   string `json:"description" example:"A sample project" description:"Project description"`
-	Boilerplate   string `json:"boilerplate" example:"go-basic" description:"Boilerplate template used for scaffolding"`
-	ContainerPort *int   `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
-	NetworkID     *int64 `json:"networkId,omitempty" description:"ID of the linked network"`
+	ID                int64  `json:"id" example:"1" description:"Project ID"`
+	Name              string `json:"name" example:"myproject" description:"Project name"`
+	Slug              string `json:"slug" example:"myproject-abc12" description:"Project slug (used for proxying and folder name)"`
+	Description       string `json:"description" example:"A sample project" description:"Project description"`
+	Boilerplate       string `json:"boilerplate" example:"go-basic" description:"Boilerplate template used for scaffolding"`
+	ContainerPort     *int   `json:"containerPort,omitempty" description:"Host port mapped to the container, if running"`
+	NetworkID         *int64 `json:"networkId,omitempty" description:"ID of the linked network"`
+	EndorsementPolicy string `json:"endorsementPolicy,omitempty" example:"OR('Org1MSP.member','Org2MSP.member')" description:"Endorsement policy for the chaincode"`
 }
 
 type ListProjectsResponse struct {
@@ -95,6 +102,8 @@ func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/commits/{commitHash}", response.Middleware(h.GetProjectCommitDetail))
 		r.Get("/{id}/diff", response.Middleware(h.GetProjectFileDiff))
 		r.Get("/{id}/file_at_commit", response.Middleware(h.GetProjectFileAtCommit))
+		r.Post("/{id}/invoke", response.Middleware(h.InvokeTransaction))
+		r.Post("/{id}/query", response.Middleware(h.QueryTransaction))
 	})
 }
 
@@ -136,7 +145,7 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 		return errors.NewConflictError("project already exists", nil)
 	}
 
-	proj, err := h.Service.CreateProject(r.Context(), req.Name, req.Description, req.Boilerplate, req.NetworkID)
+	proj, err := h.Service.CreateProject(r.Context(), req.Name, req.Description, req.Boilerplate, req.NetworkID, req.EndorsementPolicy)
 	if err != nil {
 		return errors.NewInternalError("failed to create project", err, nil)
 	}
@@ -144,13 +153,14 @@ func (h *ProjectsHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 	zap.L().Info("created project", zap.Int64("id", proj.ID), zap.String("name", proj.Name), zap.String("request_id", middleware.GetReqID(r.Context())))
 
 	return response.WriteJSON(w, http.StatusCreated, CreateProjectResponse{
-		ID:            proj.ID,
-		Name:          proj.Name,
-		Slug:          proj.Slug,
-		Description:   proj.Description,
-		Boilerplate:   proj.Boilerplate,
-		ContainerPort: proj.ContainerPort,
-		NetworkID:     proj.NetworkID,
+		ID:                proj.ID,
+		Name:              proj.Name,
+		Slug:              proj.Slug,
+		Description:       proj.Description,
+		Boilerplate:       proj.Boilerplate,
+		ContainerPort:     proj.ContainerPort,
+		NetworkID:         proj.NetworkID,
+		EndorsementPolicy: proj.EndorsementPolicy,
 	})
 }
 

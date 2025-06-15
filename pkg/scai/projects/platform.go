@@ -14,13 +14,14 @@ import (
 
 // ProjectLifecycleParams contains common parameters for all lifecycle hooks
 type ProjectLifecycleParams struct {
-	ProjectID   int64
-	ProjectName string
-	ProjectSlug string
-	NetworkID   int64
-	NetworkName string
-	Platform    string
-	Boilerplate string
+	ProjectID         int64
+	ProjectName       string
+	ProjectSlug       string
+	NetworkID         int64
+	NetworkName       string
+	Platform          string
+	Boilerplate       string
+	EndorsementPolicy string
 }
 
 // PreStartParams contains parameters for the PreStart lifecycle hook

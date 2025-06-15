@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/chainlaunch/chainlaunch/pkg/errors"
@@ -38,6 +39,10 @@ type CreateProjectRequest struct {
 	Boilerplate       string `json:"boilerplate" example:"go-basic" description:"Boilerplate template to use for scaffolding"`
 	NetworkID         *int64 `json:"networkId,omitempty" example:"1" description:"ID of the network to link with"`
 	EndorsementPolicy string `json:"endorsementPolicy,omitempty" example:"OR('Org1MSP.member','Org2MSP.member')" description:"Endorsement policy for the chaincode"`
+}
+
+type UpdateProjectEndorsementPolicyRequest struct {
+	EndorsementPolicy string `json:"endorsementPolicy" validate:"required" example:"OR('Org1MSP.member','Org2MSP.member')" description:"Endorsement policy for the chaincode"`
 }
 
 type CreateProjectResponse struct {
@@ -104,6 +109,7 @@ func (h *ProjectsHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/{id}/file_at_commit", response.Middleware(h.GetProjectFileAtCommit))
 		r.Post("/{id}/invoke", response.Middleware(h.InvokeTransaction))
 		r.Post("/{id}/query", response.Middleware(h.QueryTransaction))
+		r.Put("/{id}/endorsement-policy", response.Middleware(h.UpdateProjectEndorsementPolicy))
 	})
 }
 
@@ -401,7 +407,7 @@ func (h *ProjectsHandler) GetProjectCommits(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	projectDir := h.Service.ProjectsDir + "/" + proj.Name
+	projectDir := filepath.Join(h.Service.ProjectsDir, proj.Slug)
 	maxCommits := page * pageSize
 	commits, err := versionmanagement.ListCommitsWithFileChanges(r.Context(), projectDir, maxCommits)
 	if err != nil {
@@ -465,7 +471,7 @@ func (h *ProjectsHandler) GetProjectCommitDetail(w http.ResponseWriter, r *http.
 		return errors.NewInternalError("failed to get project", err, nil)
 	}
 
-	projectDir := h.Service.ProjectsDir + "/" + proj.Name
+	projectDir := filepath.Join(h.Service.ProjectsDir, proj.Slug)
 	commits, err := versionmanagement.ListCommitsWithFileChanges(r.Context(), projectDir, 1000)
 	if err != nil {
 		return errors.NewInternalError("failed to get commits", err, nil)
@@ -587,4 +593,46 @@ func (h *ProjectsHandler) GetProjectFileAtCommit(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(content))
 	return nil
+}
+
+// UpdateProjectEndorsementPolicy godoc
+// @Summary      Update a project's endorsement policy
+// @Description  Update the endorsement policy of an existing project
+// @Tags         projects
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Project ID"
+// @Param        request body UpdateProjectEndorsementPolicyRequest true "Update project endorsement policy request"
+// @Success      200 {object} Project
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /chaincode-projects/{id}/endorsement-policy [put]
+func (h *ProjectsHandler) UpdateProjectEndorsementPolicy(w http.ResponseWriter, r *http.Request) error {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return errors.NewValidationError("invalid project id", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	var req UpdateProjectEndorsementPolicyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return errors.NewValidationError("invalid request body", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	proj, err := h.Service.UpdateProjectEndorsementPolicy(r.Context(), id, req.EndorsementPolicy)
+	if err != nil {
+		if err == ErrNotFound {
+			return errors.NewNotFoundError("project not found", nil)
+		}
+		return errors.NewInternalError("failed to update project endorsement policy", err, nil)
+	}
+
+	zap.L().Info("updated project endorsement policy", zap.Int64("id", proj.ID), zap.String("name", proj.Name), zap.String("request_id", middleware.GetReqID(r.Context())))
+
+	return response.WriteJSON(w, http.StatusOK, proj)
 }

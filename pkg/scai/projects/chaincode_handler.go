@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/chainlaunch/chainlaunch/pkg/errors"
+
 	"github.com/chainlaunch/chainlaunch/pkg/http/response"
 	"github.com/go-chi/chi/v5"
 )
@@ -20,14 +22,17 @@ type HandlerRequest struct {
 
 // HandlerResponse represents the response structure for both invoke and query operations
 type HandlerResponse struct {
-	Status    string      `json:"status"`
-	Message   string      `json:"message"`
-	Project   string      `json:"project"`
-	Function  string      `json:"function"`
-	Args      []string    `json:"args"`
-	Result    interface{} `json:"result"`
-	Channel   string      `json:"channel"`
-	Chaincode string      `json:"chaincode"`
+	Status        string      `json:"status"`
+	Message       string      `json:"message"`
+	Project       string      `json:"project"`
+	Function      string      `json:"function"`
+	Args          []string    `json:"args"`
+	Result        interface{} `json:"result"`
+	Channel       string      `json:"channel"`
+	Chaincode     string      `json:"chaincode"`
+	BlockNumber   int64       `json:"blockNumber"`
+	TransactionID string      `json:"transactionId"`
+	Code          int32       `json:"code"`
 }
 
 // @Summary Invoke a chaincode transaction
@@ -38,9 +43,9 @@ type HandlerResponse struct {
 // @Param id path int true "Chaincode Project ID"
 // @Param request body HandlerRequest true "Transaction parameters"
 // @Success 200 {object} HandlerResponse "Transaction result"
-// @Failure 400 {object} response.ErrorResponse "Invalid request"
-// @Failure 404 {object} response.ErrorResponse "Project not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Failure 400 {object} response.Response "Invalid request"
+// @Failure 404 {object} response.Response "Project not found"
+// @Failure 500 {object} response.Response "Internal server error"
 // @Security ApiKeyAuth
 // @Router /chaincode-projects/{id}/invoke [post]
 func (h *ProjectsHandler) InvokeTransaction(w http.ResponseWriter, r *http.Request) error {
@@ -66,19 +71,29 @@ func (h *ProjectsHandler) InvokeTransaction(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.chaincodeService.InvokeTransaction(r.Context(), serviceReq)
 	if err != nil {
-		return fmt.Errorf("failed to invoke transaction: %w", err)
+		return errors.NewInternalError("failed to invoke transaction", err, map[string]interface{}{
+			"error":      err.Error(),
+			"project_id": projectID,
+			"function":   req.Function,
+			"args":       req.Args,
+			"org_id":     req.OrgID,
+			"key_id":     req.KeyID,
+		})
 	}
 
 	// Convert service response to handler response
 	handlerResp := HandlerResponse{
-		Status:    result.Status,
-		Message:   result.Message,
-		Project:   result.Project,
-		Function:  result.Function,
-		Args:      result.Args,
-		Result:    result.Result,
-		Channel:   result.Channel,
-		Chaincode: result.Chaincode,
+		Status:        result.Status,
+		Message:       result.Message,
+		Project:       result.Project,
+		Function:      result.Function,
+		Args:          result.Args,
+		Result:        result.Result,
+		Channel:       result.Channel,
+		Chaincode:     result.Chaincode,
+		BlockNumber:   result.BlockNumber,
+		TransactionID: result.TransactionID,
+		Code:          result.Code,
 	}
 
 	response.JSON(w, http.StatusOK, handlerResp)
@@ -93,9 +108,9 @@ func (h *ProjectsHandler) InvokeTransaction(w http.ResponseWriter, r *http.Reque
 // @Param id path int true "Chaincode Project ID"
 // @Param request body HandlerRequest true "Query parameters"
 // @Success 200 {object} HandlerResponse "Query result"
-// @Failure 400 {object} response.ErrorResponse "Invalid request"
-// @Failure 404 {object} response.ErrorResponse "Project not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Failure 400 {object} response.Response "Invalid request"
+// @Failure 404 {object} response.Response "Project not found"
+// @Failure 500 {object} response.Response "Internal server error"
 // @Security ApiKeyAuth
 // @Router /chaincode-projects/{id}/query [post]
 func (h *ProjectsHandler) QueryTransaction(w http.ResponseWriter, r *http.Request) error {
@@ -121,7 +136,14 @@ func (h *ProjectsHandler) QueryTransaction(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.chaincodeService.QueryTransaction(r.Context(), serviceReq)
 	if err != nil {
-		return fmt.Errorf("failed to query transaction: %w", err)
+		return errors.NewInternalError("failed to invoke transaction", err, map[string]interface{}{
+			"error":      err.Error(),
+			"project_id": projectID,
+			"function":   req.Function,
+			"args":       req.Args,
+			"org_id":     req.OrgID,
+			"key_id":     req.KeyID,
+		})
 	}
 
 	// Convert service response to handler response

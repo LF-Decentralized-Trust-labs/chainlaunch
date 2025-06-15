@@ -85,7 +85,7 @@ func (q *Queries) GetDefaultConversationForProject(ctx context.Context, projectI
 }
 
 const GetProject = `-- name: GetProject :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects WHERE id = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id, endorsement_policy FROM chaincode_projects WHERE id = ?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id int64) (*ChaincodeProject, error) {
@@ -106,12 +106,13 @@ func (q *Queries) GetProject(ctx context.Context, id int64) (*ChaincodeProject, 
 		&i.LastStoppedAt,
 		&i.ContainerPort,
 		&i.NetworkID,
+		&i.EndorsementPolicy,
 	)
 	return &i, err
 }
 
 const GetProjectBySlug = `-- name: GetProjectBySlug :one
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects WHERE slug = ?
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id, endorsement_policy FROM chaincode_projects WHERE slug = ?
 `
 
 func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*ChaincodeProject, error) {
@@ -132,6 +133,7 @@ func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (*Chaincode
 		&i.LastStoppedAt,
 		&i.ContainerPort,
 		&i.NetworkID,
+		&i.EndorsementPolicy,
 	)
 	return &i, err
 }
@@ -262,7 +264,7 @@ func (q *Queries) ListMessagesForConversation(ctx context.Context, conversationI
 }
 
 const ListProjects = `-- name: ListProjects :many
-SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id FROM chaincode_projects ORDER BY created_at DESC
+SELECT id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id, endorsement_policy FROM chaincode_projects ORDER BY created_at DESC
 `
 
 func (q *Queries) ListProjects(ctx context.Context) ([]*ChaincodeProject, error) {
@@ -289,6 +291,7 @@ func (q *Queries) ListProjects(ctx context.Context) ([]*ChaincodeProject, error)
 			&i.LastStoppedAt,
 			&i.ContainerPort,
 			&i.NetworkID,
+			&i.EndorsementPolicy,
 		); err != nil {
 			return nil, err
 		}
@@ -409,4 +412,40 @@ func (q *Queries) UpdateProjectContainerInfo(ctx context.Context, arg *UpdatePro
 		arg.ID,
 	)
 	return err
+}
+
+const UpdateProjectEndorsementPolicy = `-- name: UpdateProjectEndorsementPolicy :one
+UPDATE chaincode_projects
+SET endorsement_policy = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING id, name, description, boilerplate, created_at, updated_at, slug, container_id, container_name, status, last_started_at, last_stopped_at, container_port, network_id, endorsement_policy
+`
+
+type UpdateProjectEndorsementPolicyParams struct {
+	EndorsementPolicy sql.NullString `json:"endorsementPolicy"`
+	ID                int64          `json:"id"`
+}
+
+func (q *Queries) UpdateProjectEndorsementPolicy(ctx context.Context, arg *UpdateProjectEndorsementPolicyParams) (*ChaincodeProject, error) {
+	row := q.db.QueryRowContext(ctx, UpdateProjectEndorsementPolicy, arg.EndorsementPolicy, arg.ID)
+	var i ChaincodeProject
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Boilerplate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Slug,
+		&i.ContainerID,
+		&i.ContainerName,
+		&i.Status,
+		&i.LastStartedAt,
+		&i.LastStoppedAt,
+		&i.ContainerPort,
+		&i.NetworkID,
+		&i.EndorsementPolicy,
+	)
+	return &i, err
 }

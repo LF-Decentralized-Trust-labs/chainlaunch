@@ -214,6 +214,33 @@ func (s *ProjectsService) GetProject(ctx context.Context, id int64) (Project, er
 	return dbProjectToAPI(p), nil
 }
 
+// UpdateProjectEndorsementPolicy updates the endorsement policy of a project
+func (s *ProjectsService) UpdateProjectEndorsementPolicy(ctx context.Context, id int64, endorsementPolicy string) (Project, error) {
+	// First check if project exists
+	_, err := s.Queries.GetProject(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			zap.L().Warn("project not found", zap.Int64("id", id), zap.String("request_id", getReqID(ctx)))
+			return Project{}, ErrNotFound
+		}
+		zap.L().Error("DB error in GetProject", zap.Int64("id", id), zap.Error(err), zap.String("request_id", getReqID(ctx)))
+		return Project{}, err
+	}
+
+	proj, err := s.Queries.UpdateProjectEndorsementPolicy(ctx, &db.UpdateProjectEndorsementPolicyParams{
+		ID:                id,
+		EndorsementPolicy: sql.NullString{String: endorsementPolicy, Valid: endorsementPolicy != ""},
+	})
+	if err != nil {
+		zap.L().Error("DB error in UpdateProjectEndorsementPolicy", zap.Int64("id", id), zap.Error(err), zap.String("request_id", getReqID(ctx)))
+		return Project{}, err
+	}
+
+	zap.L().Info("updated project endorsement policy", zap.Int64("id", proj.ID), zap.String("name", proj.Name), zap.String("request_id", getReqID(ctx)))
+
+	return dbProjectToAPI(proj), nil
+}
+
 func dbProjectToAPI(p *db.ChaincodeProject) Project {
 	var started, stopped *string
 	if p.LastStartedAt.Valid {
@@ -322,13 +349,14 @@ func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int6
 	if lifecycle != nil {
 		preStartParams := PreStartParams{
 			ProjectLifecycleParams: ProjectLifecycleParams{
-				ProjectID:   project.ID,
-				ProjectName: project.Name,
-				ProjectSlug: project.Slug,
-				NetworkID:   project.NetworkID.Int64,
-				NetworkName: networkDB.Name,
-				Platform:    networkDB.Platform,
-				Boilerplate: project.Boilerplate.String,
+				ProjectID:         project.ID,
+				ProjectName:       project.Name,
+				ProjectSlug:       project.Slug,
+				NetworkID:         project.NetworkID.Int64,
+				NetworkName:       networkDB.Name,
+				Platform:          networkDB.Platform,
+				Boilerplate:       project.Boilerplate.String,
+				EndorsementPolicy: project.EndorsementPolicy.String,
 			},
 			Image:       image,
 			Port:        port,
@@ -357,13 +385,14 @@ func (s *ProjectsService) StartProjectServer(ctx context.Context, projectID int6
 	if lifecycle != nil {
 		postStartParams := PostStartParams{
 			ProjectLifecycleParams: ProjectLifecycleParams{
-				ProjectID:   project.ID,
-				ProjectName: project.Name,
-				ProjectSlug: project.Slug,
-				NetworkID:   project.NetworkID.Int64,
-				NetworkName: networkDB.Name,
-				Platform:    networkDB.Platform,
-				Boilerplate: project.Boilerplate.String,
+				ProjectID:         project.ID,
+				ProjectName:       project.Name,
+				ProjectSlug:       project.Slug,
+				NetworkID:         project.NetworkID.Int64,
+				NetworkName:       networkDB.Name,
+				Platform:          networkDB.Platform,
+				Boilerplate:       project.Boilerplate.String,
+				EndorsementPolicy: project.EndorsementPolicy.String,
 			},
 			ContainerID: project.ContainerID.String,
 			Image:       image,
@@ -413,13 +442,14 @@ func (s *ProjectsService) StopProjectServer(ctx context.Context, projectID int64
 	if lifecycle != nil {
 		preStopParams := PreStopParams{
 			ProjectLifecycleParams: ProjectLifecycleParams{
-				ProjectID:   project.ID,
-				ProjectName: project.Name,
-				ProjectSlug: project.Slug,
-				NetworkID:   project.NetworkID.Int64,
-				NetworkName: networkDB.Name,
-				Platform:    networkDB.Platform,
-				Boilerplate: project.Boilerplate.String,
+				ProjectID:         project.ID,
+				ProjectName:       project.Name,
+				ProjectSlug:       project.Slug,
+				NetworkID:         project.NetworkID.Int64,
+				NetworkName:       networkDB.Name,
+				Platform:          networkDB.Platform,
+				Boilerplate:       project.Boilerplate.String,
+				EndorsementPolicy: project.EndorsementPolicy.String,
 			},
 			ContainerID: project.ContainerID.String,
 			StartedAt:   project.LastStartedAt.Time,
@@ -442,13 +472,14 @@ func (s *ProjectsService) StopProjectServer(ctx context.Context, projectID int64
 		now := time.Now()
 		postStopParams := PostStopParams{
 			ProjectLifecycleParams: ProjectLifecycleParams{
-				ProjectID:   project.ID,
-				ProjectName: project.Name,
-				ProjectSlug: project.Slug,
-				NetworkID:   project.NetworkID.Int64,
-				NetworkName: networkDB.Name,
-				Platform:    networkDB.Platform,
-				Boilerplate: project.Boilerplate.String,
+				ProjectID:         project.ID,
+				ProjectName:       project.Name,
+				ProjectSlug:       project.Slug,
+				NetworkID:         project.NetworkID.Int64,
+				NetworkName:       networkDB.Name,
+				Platform:          networkDB.Platform,
+				Boilerplate:       project.Boilerplate.String,
+				EndorsementPolicy: project.EndorsementPolicy.String,
 			},
 			ContainerID: project.ContainerID.String,
 			StartedAt:   project.LastStartedAt.Time,

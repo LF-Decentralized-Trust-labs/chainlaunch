@@ -256,7 +256,7 @@ func (f *FabricLifecycle) PreStart(ctx context.Context, params PreStartParams) (
 		}
 
 		// Create chaincode definition
-		applicationPolicy, err := chaincode.NewApplicationPolicy("OR('Org1MSP123.member')", "")
+		applicationPolicy, err := chaincode.NewApplicationPolicy(params.EndorsementPolicy, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create application policy: %w", err)
 		}
@@ -445,7 +445,7 @@ func (f *FabricLifecycle) PreStart(ctx context.Context, params PreStartParams) (
 	}
 
 	// Create chaincode definition
-	applicationPolicy, err := chaincode.NewApplicationPolicy("OR('Org1MSP123.member')", "")
+	applicationPolicy, err := chaincode.NewApplicationPolicy(params.EndorsementPolicy, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create application policy: %w", err)
 	}

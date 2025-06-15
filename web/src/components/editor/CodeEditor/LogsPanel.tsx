@@ -3,7 +3,7 @@ import { ResizablePanel } from '@/components/ui/resizable'
 import type { LogsPanelProps } from './types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-export function LogsPanel({ projectId }: LogsPanelProps) {
+export function LogsPanel({ projectId, reloadKey }: LogsPanelProps & { reloadKey?: string | number }) {
 	const [logs, setLogs] = useState<string[]>([])
 	const logsEndRef = useRef<HTMLDivElement>(null)
 	const eventSourceRef = useRef<EventSource | null>(null)
@@ -16,6 +16,9 @@ export function LogsPanel({ projectId }: LogsPanelProps) {
 			console.log('Closing existing connection')
 			eventSourceRef.current.close()
 		}
+
+		// Clear logs on reload
+		setLogs([])
 
 		// Create new connection
 		const eventSource = new EventSource(`/api/v1/chaincode-projects/${projectId}/logs/stream`, {
@@ -58,7 +61,7 @@ export function LogsPanel({ projectId }: LogsPanelProps) {
 				eventSourceRef.current = null
 			}
 		}
-	}, [projectId])
+	}, [projectId, reloadKey])
 
 	// Auto-scroll to bottom when new logs arrive
 	useEffect(() => {
@@ -71,21 +74,24 @@ export function LogsPanel({ projectId }: LogsPanelProps) {
 				<div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
 					<h3 className="text-sm font-medium text-muted-foreground">Logs</h3>
 				</div>
-				<ScrollArea className="flex-1">
-					<div className="p-4 font-mono text-sm">
-						{logs.length === 0 ? (
-							<div className="text-muted-foreground">Waiting for logs...</div>
-						) : (
-							logs.map((log, index) => (
-								<div key={index} className="text-popover-foreground whitespace-pre-wrap">
-									{log}
-								</div>
-							))
-						)}
-						<div ref={logsEndRef} />
-					</div>
-				</ScrollArea>
+				<div className="flex flex-col md:flex-row gap-8 h-full w-full max-h-[70vh] overflow-y-auto flex-1 overflow-auto p-2 space-y-2">
+					{/* Playground form (left) */}
+					<ScrollArea className="flex-1  border rounded bg-background shadow-sm my-4">
+						<div className="p-4 font-mono text-sm">
+							{logs.length === 0 ? (
+								<div className="text-muted-foreground">Waiting for logs...</div>
+							) : (
+								logs.map((log, index) => (
+									<div key={index} className="text-popover-foreground whitespace-pre-wrap">
+										{log}
+									</div>
+								))
+							)}
+							<div ref={logsEndRef} />
+						</div>
+					</ScrollArea>
+				</div>
 			</div>
 		</ResizablePanel>
 	)
-} 
+}

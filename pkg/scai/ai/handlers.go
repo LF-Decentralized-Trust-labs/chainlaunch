@@ -524,13 +524,15 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) error {
 
 	observer := &sseAgentStepObserver{w: w, flusher: flusher}
 
-	err = h.OpenAIChatService.ChatWithPersistence(r.Context(), projectID, userMessage, observer, 0)
+	// Create a new session changes tracker for this chat session
+	sessionTracker := sessionchanges.NewTracker()
+	err = h.OpenAIChatService.ChatWithPersistence(r.Context(), projectID, userMessage, observer, 0, sessionTracker)
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("chat error: %w", err)
 	}
 
 	// After chat session, commit all changed files in the correct project directory
-	files := sessionchanges.GetAndResetChanges()
+	files := sessionTracker.GetAndResetChanges()
 	if len(files) > 0 {
 		msg := "AI Chat Session: Modified files:\n- " + strings.Join(files, "\n- ")
 		vm := versionmanagement.NewDefaultManager()
@@ -538,7 +540,7 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) error {
 		// Get project directory from projectID
 		proj, err := h.Projects.GetProject(ctx, projectID)
 		if err == nil {
-			projectDir := filepath.Join(h.Projects.ProjectsDir, proj.Name)
+			projectDir := filepath.Join(h.Projects.ProjectsDir, proj.Slug)
 			if err := vm.CommitChange(ctx, projectDir, msg); err != nil {
 				fmt.Printf("Failed to commit session changes: %v\n", err)
 			}

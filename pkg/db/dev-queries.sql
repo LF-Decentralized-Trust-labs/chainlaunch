@@ -13,6 +13,13 @@ SELECT * FROM chaincode_projects WHERE id = ?;
 -- name: GetProjectBySlug :one
 SELECT * FROM chaincode_projects WHERE slug = ?;
 
+-- name: UpdateProjectEndorsementPolicy :one
+UPDATE chaincode_projects
+SET endorsement_policy = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+RETURNING *;
+
 -- name: CreateConversation :one
 INSERT INTO conversations (project_id) VALUES (?) RETURNING *;
 

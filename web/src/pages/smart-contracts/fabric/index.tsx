@@ -24,6 +24,7 @@ const developChaincodeFormSchema = z.object({
 	networkId: z.string().min(1, 'Network is required'),
 	boilerplate: z.string().min(1, 'Boilerplate is required'),
 	description: z.string().min(1, 'Description is required'),
+	endorsementPolicy: z.string().min(1, 'Endorsement policy is required'),
 })
 
 type ChaincodeFormValues = z.infer<typeof chaincodeFormSchema>
@@ -40,7 +41,13 @@ export default function FabricChaincodesPage() {
 	})
 	const developForm = useForm<DevelopChaincodeFormValues>({
 		resolver: zodResolver(developChaincodeFormSchema),
-		defaultValues: { name: '', networkId: '', boilerplate: '', description: '' },
+		defaultValues: { 
+			name: '', 
+			networkId: '', 
+			boilerplate: '', 
+			description: '',
+			endorsementPolicy: ''
+		},
 	})
 	const navigate = useNavigate()
 
@@ -111,6 +118,7 @@ export default function FabricChaincodesPage() {
 					networkId: Number(data.networkId),
 					boilerplate: data.boilerplate,
 					description: data.description,
+					endorsementPolicy: data.endorsementPolicy,
 				},
 			})
 			return response.data
@@ -120,7 +128,7 @@ export default function FabricChaincodesPage() {
 			developForm.reset()
 			setDevelopError(null)
 			if (data.id) {
-				navigate(`/sc/fabric/chaincodes/${data.id}`)
+				navigate(`/sc/fabric/projects/chaincodes/${data.id}`)
 			}
 		},
 		onError: (error: any) => {
@@ -174,20 +182,7 @@ export default function FabricChaincodesPage() {
 												<FormItem>
 													<FormLabel>Name</FormLabel>
 													<FormControl>
-														<Input {...field} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											control={developForm.control}
-											name="description"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Description</FormLabel>
-													<FormControl>
-														<Input {...field} />
+														<Input placeholder="Enter chaincode name" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -206,9 +201,9 @@ export default function FabricChaincodesPage() {
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															{networks?.networks?.map((n) => (
-																<SelectItem key={n.id} value={n.id.toString()}>
-																	{n.name}
+															{networks?.networks?.map((network) => (
+																<SelectItem key={network.id} value={network.id?.toString() || ''}>
+																	{network.name}
 																</SelectItem>
 															))}
 														</SelectContent>
@@ -230,9 +225,9 @@ export default function FabricChaincodesPage() {
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															{boilerplates?.map((b) => (
-																<SelectItem key={b.id} value={b.id || ''}>
-																	{b.name}
+															{boilerplates?.map((boilerplate) => (
+																<SelectItem key={boilerplate.id} value={boilerplate.id?.toString() || ''}>
+																	{boilerplate.name}
 																</SelectItem>
 															))}
 														</SelectContent>
@@ -241,11 +236,44 @@ export default function FabricChaincodesPage() {
 												</FormItem>
 											)}
 										/>
-										{developError && (
-											<div className="rounded bg-red-100 border border-red-300 text-red-700 px-3 py-2 text-sm mb-2" role="alert">
-												{developError}
-											</div>
-										)}
+										<FormField
+											control={developForm.control}
+											name="description"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Description</FormLabel>
+													<FormControl>
+														<Input placeholder="Enter chaincode description" {...field} />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={developForm.control}
+											name="endorsementPolicy"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Endorsement Policy</FormLabel>
+													<FormControl>
+														<Input 
+															placeholder="e.g. OR('Org1MSP.member')" 
+															{...field} 
+														/>
+													</FormControl>
+													<FormMessage />
+													<div className="text-xs text-muted-foreground mt-1">
+														Example policies:
+														<ul className="list-disc list-inside mt-1">
+															<li>OR('Org1MSP.member') - Any member of Org1</li>
+															<li>AND('Org1MSP.member', 'Org2MSP.member') - Both Org1 and Org2 members</li>
+															<li>OR('Org1MSP.member', 'Org2MSP.member') - Any member of Org1 or Org2</li>
+														</ul>
+													</div>
+												</FormItem>
+											)}
+										/>
+										{developError && <div className="text-sm text-red-500">{developError}</div>}
 										<DialogFooter>
 											<Button type="submit" disabled={developChaincodeMutation.isPending}>
 												{developChaincodeMutation.isPending ? 'Creating...' : 'Create'}

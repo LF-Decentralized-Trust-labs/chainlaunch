@@ -1761,6 +1761,65 @@
                 }
             }
         },
+        "/chaincode-projects/{id}/endorsement-policy": {
+            "put": {
+                "description": "Update the endorsement policy of an existing project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Update a project's endorsement policy",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update project endorsement policy request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/projects.UpdateProjectEndorsementPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/projects.Project"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/chaincode-projects/{id}/file_at_commit": {
             "get": {
                 "description": "Get the contents of a file at a specific commit hash",
@@ -1868,19 +1927,19 @@
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Project not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -2026,19 +2085,19 @@
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Project not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -11049,6 +11108,9 @@
                 "endorsementPlugin": {
                     "type": "string"
                 },
+                "endorsementPolicy": {
+                    "type": "string"
+                },
                 "initRequired": {
                     "type": "boolean"
                 },
@@ -12987,6 +13049,10 @@
                     "type": "string",
                     "example": "A sample project"
                 },
+                "endorsementPolicy": {
+                    "type": "string",
+                    "example": "OR('Org1MSP.member','Org2MSP.member')"
+                },
                 "name": {
                     "type": "string",
                     "example": "myproject"
@@ -13010,6 +13076,10 @@
                 "description": {
                     "type": "string",
                     "example": "A sample project"
+                },
+                "endorsementPolicy": {
+                    "type": "string",
+                    "example": "OR('Org1MSP.member','Org2MSP.member')"
                 },
                 "id": {
                     "type": "integer",
@@ -13064,11 +13134,17 @@
                         "type": "string"
                     }
                 },
+                "blockNumber": {
+                    "type": "integer"
+                },
                 "chaincode": {
                     "type": "string"
                 },
                 "channel": {
                     "type": "string"
+                },
+                "code": {
+                    "type": "integer"
                 },
                 "function": {
                     "type": "string"
@@ -13081,6 +13157,9 @@
                 },
                 "result": {},
                 "status": {
+                    "type": "string"
+                },
+                "transactionId": {
                     "type": "string"
                 }
             }
@@ -13110,6 +13189,10 @@
                     "type": "string",
                     "example": "A sample project"
                 },
+                "endorsementPolicy": {
+                    "type": "string",
+                    "example": "OR('Org1MSP.member','Org2MSP.member')"
+                },
                 "id": {
                     "type": "integer",
                     "example": 1
@@ -13134,6 +13217,18 @@
                 "status": {
                     "type": "string",
                     "example": "running"
+                }
+            }
+        },
+        "projects.UpdateProjectEndorsementPolicyRequest": {
+            "type": "object",
+            "required": [
+                "endorsementPolicy"
+            ],
+            "properties": {
+                "endorsementPolicy": {
+                    "type": "string",
+                    "example": "OR('Org1MSP.member','Org2MSP.member')"
                 }
             }
         },

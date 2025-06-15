@@ -204,6 +204,7 @@ type Querier interface {
 	UpdateOrganizationCRL(ctx context.Context, arg *UpdateOrganizationCRLParams) error
 	UpdatePlugin(ctx context.Context, arg *UpdatePluginParams) (*Plugin, error)
 	UpdateProjectContainerInfo(ctx context.Context, arg *UpdateProjectContainerInfoParams) error
+	UpdateProjectEndorsementPolicy(ctx context.Context, arg *UpdateProjectEndorsementPolicyParams) (*ChaincodeProject, error)
 	UpdatePrometheusConfig(ctx context.Context, arg *UpdatePrometheusConfigParams) (*PrometheusConfig, error)
 	UpdateProviderTestResults(ctx context.Context, arg *UpdateProviderTestResultsParams) (*NotificationProvider, error)
 	UpdateSetting(ctx context.Context, arg *UpdateSettingParams) (*Setting, error)

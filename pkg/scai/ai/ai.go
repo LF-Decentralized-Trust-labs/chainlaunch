@@ -64,6 +64,7 @@ func GetDefaultToolSchemas(projectRoot string) []ToolSchema {
 				if err := os.WriteFile(absPath, []byte(content), 0644); err != nil {
 					return nil, err
 				}
+				// Register the change with the global tracker for backward compatibility
 				sessionchanges.RegisterChange(absPath)
 				return map[string]interface{}{"result": "file written successfully"}, nil
 			},
@@ -171,7 +172,15 @@ func (s *OpenAIChatService) handleToolCall(toolCall openai.ToolCall, projectRoot
 }
 
 // StreamChat uses a multi-step tool execution loop with OpenAI function-calling.
-func (s *OpenAIChatService) StreamChat(ctx context.Context, project *db.ChaincodeProject, conversationID int64, messages []Message, observer AgentStepObserver, maxSteps int) error {
+func (s *OpenAIChatService) StreamChat(
+	ctx context.Context,
+	project *db.ChaincodeProject,
+	conversationID int64,
+	messages []Message,
+	observer AgentStepObserver,
+	maxSteps int,
+	sessionTracker *sessionchanges.Tracker,
+) error {
 	var chatMsgs []openai.ChatCompletionMessage
 	projectID := project.ID
 	projectSlug := project.Slug
@@ -185,21 +194,35 @@ func (s *OpenAIChatService) StreamChat(ctx context.Context, project *db.Chaincod
 		Content: systemPrompt,
 	})
 	var lastParentMsgID *int64
-	for i, m := range messages {
+	for _, m := range messages {
 		role := openai.ChatMessageRoleUser
 		if m.Sender == "assistant" {
 			role = openai.ChatMessageRoleAssistant
 		}
-		msg := openai.ChatCompletionMessage{
+		chatMsgs = append(chatMsgs, openai.ChatCompletionMessage{
 			Role:    role,
 			Content: m.Content,
-		}
-		chatMsgs = append(chatMsgs, msg)
-		s.Logger.Debugf("[StreamChat] input message: %d, %v", i, msg)
-		// No DB insert here for user/assistant messages
+		})
 	}
 
+	// Update the tool schemas to use the session tracker
 	toolSchemas := getToolSchemas(projectRoot)
+	for i := range toolSchemas {
+		originalHandler := toolSchemas[i].Handler
+		toolSchemas[i].Handler = func(name string, args map[string]interface{}) (interface{}, error) {
+			result, err := originalHandler(name, args)
+			if err == nil && sessionTracker != nil {
+				// If the tool call was successful and we have a session tracker,
+				// register any file changes
+				if filePath, ok := args["path"].(string); ok {
+					absPath := filepath.Join(projectRoot, filePath)
+					sessionTracker.RegisterChange(absPath)
+				}
+			}
+			return result, err
+		}
+	}
+
 	toolSchemasMap := make(map[string]ToolSchema)
 	for _, tool := range toolSchemas {
 		toolSchemasMap[tool.Name] = tool
@@ -498,6 +521,7 @@ func (s *OpenAIChatService) ChatWithPersistence(
 	userMessage string,
 	observer AgentStepObserver,
 	maxSteps int,
+	sessionTracker *sessionchanges.Tracker,
 ) error {
 	project, err := s.Queries.GetProject(ctx, projectID)
 	if err != nil {
@@ -539,7 +563,7 @@ func (s *OpenAIChatService) ChatWithPersistence(
 			assistantReply.WriteString(token)
 		},
 	}
-	err = s.StreamChat(ctx, project, conv.ID, messages, streamObserver, maxSteps)
+	err = s.StreamChat(ctx, project, conv.ID, messages, streamObserver, maxSteps, sessionTracker)
 	if err != nil {
 		return err
 	}

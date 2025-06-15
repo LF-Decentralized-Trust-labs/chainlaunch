@@ -7,6 +7,7 @@ import {
 	getProjectsByProjectIdFilesEntries,
 	getProjectsByProjectIdFilesRead,
 	postProjectsByProjectIdFilesWrite,
+	ProjectsProject,
 } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -19,17 +20,17 @@ import * as monaco from 'monaco-editor'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
-import { useParams } from 'react-router-dom'
 import type { SyntaxHighlighterProps } from 'react-syntax-highlighter'
+import SyntaxHighlighter from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { toast } from 'sonner'
 import { EditorContent } from './EditorContent'
 import { EditorTabs } from './EditorTabs'
 import { FileTree } from './FileTree'
 import { LogsPanel } from './LogsPanel'
+import { Playground } from './Playground'
 import type { File, FilesDirectoryTreeNode } from './types'
 import { getMonacoLanguage } from './types'
-import SyntaxHighlighter from 'react-syntax-highlighter'
 const SyntaxHighlighterComp = SyntaxHighlighter as unknown as React.ComponentType<SyntaxHighlighterProps>
 interface MessagePart {
 	type: 'text' | 'tool'
@@ -415,14 +416,7 @@ const Message = React.memo(({ message }: MessageProps) => {
 				{message.parts.map((part, j) => {
 					if (part.type === 'text' && part.content) {
 						return (
-							<div
-								key={j}
-								className={`rounded-lg p-3 ${
-									message.role === 'user'
-										? 'bg-background text-foreground border border-border'
-									: 'bg-muted text-foreground'
-								}`}
-							>
+							<div key={j} className={`rounded-lg p-3 ${message.role === 'user' ? 'bg-background text-foreground border border-border' : 'bg-muted text-foreground'}`}>
 								<MarkdownRenderer content={part.content} />
 							</div>
 						)
@@ -447,6 +441,19 @@ interface ToolEventProps {
 	event: ToolEvent
 }
 const ToolSummaryCard = ({ event, summary, children }: { event: ToolEvent; summary: string; children?: React.ReactNode }) => {
+	if (event.name === 'read_file' || event.name === 'write_file') {
+		return (
+			<div className="bg-muted/70 rounded-lg p-4 my-2 shadow border border-border flex flex-col min-h-[140px]">
+				<div className="flex items-center gap-2 mb-4">
+					<div className="rounded-full p-2 flex items-center justify-center min-w-[44px] min-h-[44px]">
+						<span className="font-semibold text-sm leading-tight text-center block">{event.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
+					</div>
+				</div>
+				<div className="text-sm mb-4">{summary}</div>
+				<div className="flex-1">{children}</div>
+			</div>
+		)
+	}
 	return (
 		<div className="bg-muted/70 rounded-lg p-4 my-2 shadow border border-border flex flex-col min-h-[140px]">
 			<div className="flex items-center gap-2 mb-4">
@@ -535,24 +542,7 @@ const ToolEventRenderer = React.memo(({ event }: ToolEventProps) => {
 						path = args.path || ''
 					} catch {}
 				}
-				const resultContent = typeof event.result === 'string' ? event.result : JSON.stringify(event.result, null, 2)
-				details = (
-					<Dialog>
-						<DialogTrigger asChild>
-							<Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleViewContents}>
-								View Contents
-							</Button>
-						</DialogTrigger>
-						<DialogContent className="max-w-2xl">
-							<DialogHeader>
-								<DialogTitle>File: {path}</DialogTitle>
-							</DialogHeader>
-							<ScrollArea className="max-h-[60vh]">
-								<pre className="p-4 bg-muted rounded-lg overflow-x-auto">{resultContent}</pre>
-							</ScrollArea>
-						</DialogContent>
-					</Dialog>
-				)
+				details = <></>
 			} else if (event.result) {
 				details = (
 					<Dialog>
@@ -785,11 +775,11 @@ function ChatPanel({ projectId = 1, chatState }: { projectId: number; chatState:
 					parts: [
 						...(msg.sender !== 'tool' && msg.content
 							? [
-							{
-								type: 'text' as const,
-								content: msg.content || '',
-							},
-						]
+									{
+										type: 'text' as const,
+										content: msg.content || '',
+									},
+								]
 							: []),
 						...(msg.toolCalls?.map((tool) => ({
 							type: 'tool' as const,
@@ -798,8 +788,8 @@ function ChatPanel({ projectId = 1, chatState }: { projectId: number; chatState:
 								toolCallID: tool.id?.toString() || '',
 								name: tool.toolName || '',
 								arguments: tool.arguments,
-								result: tool.result && tool.result.valid ? tool.result.string ?? '' : '',
-								error: tool.error && tool.error.valid ? tool.error.string ?? '' : '',
+								result: tool.result && tool.result.valid ? (tool.result.string ?? '') : '',
+								error: tool.error && tool.error.valid ? (tool.error.string ?? '') : '',
 							},
 						})) || []),
 					],
@@ -1141,19 +1131,25 @@ const CommitDetails = ({ projectId, commitHash, onClose }: CommitDetailsProps) =
 	)
 }
 
-export function CodeEditor() {
-	const { id: projectIdParam } = useParams()
-	const projectId = parseInt(projectIdParam || '1', 10)
+interface CodeEditorProps {
+	mode?: 'editor' | 'playground'
+	projectId?: number
+	chaincodeProject: ProjectsProject
+}
+
+export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: CodeEditorProps) {
 	const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+	const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({})
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [openTabs, setOpenTabs] = useState<File[]>([])
-	const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({})
 	const [dirtyFiles, setDirtyFiles] = useState<string[]>([])
 
-	const { data: tree, refetch: refetchTree } = useQuery({
+	const { data: treeData, refetch: refetchTree } = useQuery({
 		queryKey: ['files', projectId],
-		queryFn: () => getProjectsByProjectIdFilesEntries({ path: { projectId } }),
+		queryFn: () => getProjectsByProjectIdFilesEntries({ path: { projectId: projectId } }),
 	})
+
+	const tree = treeData?.data
 
 	const { refetch: refetchCommits } = useQuery({
 		queryKey: ['commits', projectId],
@@ -1304,51 +1300,83 @@ export function CodeEditor() {
 		})
 
 	return (
-		<div className="flex h-full w-full flex-col bg-background text-foreground">
-			<ResizablePanelGroup direction="horizontal">
-				<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
-					<ChatPanel projectId={projectId} chatState={chatState} />
-				</ResizablePanel>
-				<ResizableHandle />
-				<ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
-					<div className="h-full w-full overflow-y-auto border-r p-4 bg-background text-foreground">
-						{tree &&
-							sortNodes(tree?.data?.children)?.map((child) => (
-								<FileTree
-									key={child.path || child.name}
-									projectId={projectId}
-									node={child}
-									openFolders={openFolders}
-									setOpenFolders={setOpenFolders}
-									selectedFile={selectedFile}
-									handleFileClick={handleFileClick}
-									refetchTree={refetchTree}
-								/>
-							))}
-					</div>
-				</ResizablePanel>
-				<ResizableHandle>
-					<div className="flex items-center justify-center h-full w-4 cursor-col-resize bg-muted/50 hover:bg-muted transition-colors">
-						<GripVertical className="text-gray-400" />
-					</div>
-				</ResizableHandle>
-				<ResizablePanel defaultSize={65} minSize={40} maxSize={80}>
-					<ResizablePanelGroup direction="vertical">
-						<ResizablePanel defaultSize={80} minSize={40}>
-							<div className="flex h-full flex-col bg-background text-foreground">
-								<EditorTabs openTabs={openTabs} selectedFile={selectedFile} handleTabClick={handleTabClick} handleTabClose={handleTabClose} dirtyFiles={dirtyFiles} />
-								<EditorContent selectedFile={selectedFile} openTabs={openTabs} handleEditorChange={handleEditorChange} handleEditorMount={handleEditorMount} handleSave={handleSave} />
-							</div>
-						</ResizablePanel>
-						<ResizableHandle />
-						<ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
-							<div className="bg-background text-foreground h-full">
-								<LogsPanel projectId={projectId} />
-							</div>
-						</ResizablePanel>
-					</ResizablePanelGroup>
-				</ResizablePanel>
-			</ResizablePanelGroup>
+		<div className="h-full max-h-[90vh] flex flex-col">
+			{mode === 'editor' ? (
+				<ResizablePanelGroup direction="horizontal">
+					<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
+						<ChatPanel projectId={projectId} chatState={chatState} />
+					</ResizablePanel>
+					<ResizableHandle />
+					<ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
+						<div className="h-full w-full overflow-y-auto border-r p-4 bg-background text-foreground">
+							{tree &&
+								sortNodes(tree?.children)?.map((child) => (
+									<FileTree
+										key={child.path || child.name}
+										projectId={projectId}
+										node={child}
+										openFolders={openFolders}
+										setOpenFolders={setOpenFolders}
+										selectedFile={selectedFile}
+										handleFileClick={handleFileClick}
+										refetchTree={refetchTree}
+									/>
+								))}
+						</div>
+					</ResizablePanel>
+					<ResizableHandle>
+						<div className="flex items-center justify-center h-full w-4 cursor-col-resize bg-muted/50 hover:bg-muted transition-colors">
+							<GripVertical className="text-gray-400" />
+						</div>
+					</ResizableHandle>
+					<ResizablePanel defaultSize={65} minSize={40} maxSize={80}>
+						<ResizablePanelGroup direction="vertical">
+							<ResizablePanel defaultSize={80} minSize={40}>
+								<div className="flex h-full flex-col bg-background text-foreground">
+									<EditorTabs openTabs={openTabs} selectedFile={selectedFile} handleTabClick={handleTabClick} handleTabClose={handleTabClose} dirtyFiles={dirtyFiles} />
+									<EditorContent
+										selectedFile={selectedFile}
+										openTabs={openTabs}
+										handleEditorChange={handleEditorChange}
+										handleEditorMount={handleEditorMount}
+										handleSave={handleSave}
+									/>
+								</div>
+							</ResizablePanel>
+							<ResizableHandle />
+							<ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+								<div className="bg-background text-foreground h-full">
+									<LogsPanel projectId={projectId} />
+								</div>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			) : (
+				<ResizablePanelGroup direction="horizontal" className="h-full w-full">
+					<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
+						<ChatPanel projectId={projectId} chatState={chatState} />
+					</ResizablePanel>
+					<ResizableHandle />
+					<ResizablePanel defaultSize={75} minSize={40} maxSize={80}>
+						<ResizablePanelGroup direction="vertical">
+							<ResizablePanel defaultSize={80} minSize={40}>
+								<div className="p-4">
+									<Playground projectId={projectId} networkId={chaincodeProject.networkId} />
+								</div>
+							</ResizablePanel>
+							<ResizableHandle />
+							<ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+								<div className="bg-background text-foreground h-full">
+									<LogsPanel projectId={projectId} />
+								</div>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			)}
 		</div>
 	)
 }
+
+export { ChatPanel, useStreamingChat }

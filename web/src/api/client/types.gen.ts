@@ -870,6 +870,7 @@ export type HttpChainInfoResponse = {
 
 export type HttpChaincodeResponse = {
     endorsementPlugin?: string;
+    endorsementPolicy?: string;
     initRequired?: boolean;
     name?: string;
     sequence?: number;
@@ -1648,6 +1649,7 @@ export type ProjectsCommitsListResponse = {
 export type ProjectsCreateProjectRequest = {
     boilerplate?: string;
     description?: string;
+    endorsementPolicy?: string;
     name: string;
     networkId?: number;
 };
@@ -1656,6 +1658,7 @@ export type ProjectsCreateProjectResponse = {
     boilerplate?: string;
     containerPort?: number;
     description?: string;
+    endorsementPolicy?: string;
     id?: number;
     name?: string;
     networkId?: number;
@@ -1671,13 +1674,16 @@ export type ProjectsHandlerRequest = {
 
 export type ProjectsHandlerResponse = {
     args?: Array<string>;
+    blockNumber?: number;
     chaincode?: string;
     channel?: string;
+    code?: number;
     function?: string;
     message?: string;
     project?: string;
     result?: unknown;
     status?: string;
+    transactionId?: string;
 };
 
 export type ProjectsListProjectsResponse = {
@@ -1688,6 +1694,7 @@ export type ProjectsProject = {
     boilerplate?: string;
     containerPort?: number;
     description?: string;
+    endorsementPolicy?: string;
     id?: number;
     lastStartedAt?: string;
     lastStoppedAt?: string;
@@ -1695,6 +1702,10 @@ export type ProjectsProject = {
     networkId?: number;
     slug?: string;
     status?: string;
+};
+
+export type ProjectsUpdateProjectEndorsementPolicyRequest = {
+    endorsementPolicy: string;
 };
 
 export type RegistryPluginMetadata = {
@@ -3516,6 +3527,47 @@ export type GetChaincodeProjectsByIdDiffResponses = {
 
 export type GetChaincodeProjectsByIdDiffResponse = GetChaincodeProjectsByIdDiffResponses[keyof GetChaincodeProjectsByIdDiffResponses];
 
+export type PutChaincodeProjectsByIdEndorsementPolicyData = {
+    /**
+     * Update project endorsement policy request
+     */
+    body: ProjectsUpdateProjectEndorsementPolicyRequest;
+    path: {
+        /**
+         * Project ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/chaincode-projects/{id}/endorsement-policy';
+};
+
+export type PutChaincodeProjectsByIdEndorsementPolicyErrors = {
+    /**
+     * Bad Request
+     */
+    400: ResponseErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ResponseErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ResponseErrorResponse;
+};
+
+export type PutChaincodeProjectsByIdEndorsementPolicyError = PutChaincodeProjectsByIdEndorsementPolicyErrors[keyof PutChaincodeProjectsByIdEndorsementPolicyErrors];
+
+export type PutChaincodeProjectsByIdEndorsementPolicyResponses = {
+    /**
+     * OK
+     */
+    200: ProjectsProject;
+};
+
+export type PutChaincodeProjectsByIdEndorsementPolicyResponse = PutChaincodeProjectsByIdEndorsementPolicyResponses[keyof PutChaincodeProjectsByIdEndorsementPolicyResponses];
+
 export type GetChaincodeProjectsByIdFileAtCommitData = {
     body?: never;
     path: {
@@ -3582,15 +3634,15 @@ export type PostChaincodeProjectsByIdInvokeErrors = {
     /**
      * Invalid request
      */
-    400: ResponseErrorResponse;
+    400: ResponseResponse;
     /**
      * Project not found
      */
-    404: ResponseErrorResponse;
+    404: ResponseResponse;
     /**
      * Internal server error
      */
-    500: ResponseErrorResponse;
+    500: ResponseResponse;
 };
 
 export type PostChaincodeProjectsByIdInvokeError = PostChaincodeProjectsByIdInvokeErrors[keyof PostChaincodeProjectsByIdInvokeErrors];
@@ -3699,15 +3751,15 @@ export type PostChaincodeProjectsByIdQueryErrors = {
     /**
      * Invalid request
      */
-    400: ResponseErrorResponse;
+    400: ResponseResponse;
     /**
      * Project not found
      */
-    404: ResponseErrorResponse;
+    404: ResponseResponse;
     /**
      * Internal server error
      */
-    500: ResponseErrorResponse;
+    500: ResponseResponse;
 };
 
 export type PostChaincodeProjectsByIdQueryError = PostChaincodeProjectsByIdQueryErrors[keyof PostChaincodeProjectsByIdQueryErrors];

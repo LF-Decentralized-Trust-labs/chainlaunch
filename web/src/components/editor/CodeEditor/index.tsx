@@ -1301,35 +1301,13 @@ export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: Cod
 
 	return (
 		<div className="h-full max-h-[90vh] flex flex-col">
-			{mode === 'editor' ? (
-				<ResizablePanelGroup direction="horizontal">
-					<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
-						<ChatPanel projectId={projectId} chatState={chatState} />
-					</ResizablePanel>
-					<ResizableHandle />
-					<ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
-						<div className="h-full w-full overflow-y-auto border-r p-4 bg-background text-foreground">
-							{tree &&
-								sortNodes(tree?.children)?.map((child) => (
-									<FileTree
-										key={child.path || child.name}
-										projectId={projectId}
-										node={child}
-										openFolders={openFolders}
-										setOpenFolders={setOpenFolders}
-										selectedFile={selectedFile}
-										handleFileClick={handleFileClick}
-										refetchTree={refetchTree}
-									/>
-								))}
-						</div>
-					</ResizablePanel>
-					<ResizableHandle>
-						<div className="flex items-center justify-center h-full w-4 cursor-col-resize bg-muted/50 hover:bg-muted transition-colors">
-							<GripVertical className="text-gray-400" />
-						</div>
-					</ResizableHandle>
-					<ResizablePanel defaultSize={65} minSize={40} maxSize={80}>
+			<ResizablePanelGroup direction="horizontal">
+				<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
+					<ChatPanel projectId={projectId} chatState={chatState} />
+				</ResizablePanel>
+				<ResizableHandle />
+				<ResizablePanel defaultSize={75} minSize={40} maxSize={90}>
+					{mode === 'editor' ? (
 						<ResizablePanelGroup direction="vertical">
 							<ResizablePanel defaultSize={80} minSize={40}>
 								<div className="flex h-full flex-col bg-background text-foreground">
@@ -1350,15 +1328,7 @@ export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: Cod
 								</div>
 							</ResizablePanel>
 						</ResizablePanelGroup>
-					</ResizablePanel>
-				</ResizablePanelGroup>
-			) : (
-				<ResizablePanelGroup direction="horizontal" className="h-full w-full">
-					<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
-						<ChatPanel projectId={projectId} chatState={chatState} />
-					</ResizablePanel>
-					<ResizableHandle />
-					<ResizablePanel defaultSize={75} minSize={40} maxSize={80}>
+					) : (
 						<ResizablePanelGroup direction="vertical">
 							<ResizablePanel defaultSize={80} minSize={40}>
 								<div className="p-4">
@@ -1372,9 +1342,9 @@ export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: Cod
 								</div>
 							</ResizablePanel>
 						</ResizablePanelGroup>
-					</ResizablePanel>
-				</ResizablePanelGroup>
-			)}
+					)}
+				</ResizablePanel>
+			</ResizablePanelGroup>
 		</div>
 	)
 }

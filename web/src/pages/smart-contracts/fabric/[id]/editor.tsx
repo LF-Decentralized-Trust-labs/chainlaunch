@@ -1,10 +1,11 @@
 import { getChaincodeProjectsByIdOptions, postChaincodeProjectsByIdStartMutation, postChaincodeProjectsByIdStopMutation } from '@/api/client/@tanstack/react-query.gen'
 import { CodeEditor } from '@/components/editor/CodeEditor'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Code2, PlayCircle } from 'lucide-react'
+import { ArrowLeft, Code2, Loader2, PlayCircle, StopCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -68,10 +69,10 @@ export default function ChaincodeProjectEditorPage() {
 			<div className="h-screen flex flex-col items-center justify-center">
 				<Alert variant="destructive" className="max-w-md w-full">
 					<AlertTitle>Error loading project</AlertTitle>
-					<AlertDescription>
-						{error instanceof Error ? error.message : 'An unknown error occurred.'}
-					</AlertDescription>
-					<Button variant="outline" onClick={() => refetch()} className="mt-4">Retry</Button>
+					<AlertDescription>{error instanceof Error ? error.message : 'An unknown error occurred.'}</AlertDescription>
+					<Button variant="outline" onClick={() => refetch()} className="mt-4">
+						Retry
+					</Button>
 				</Alert>
 			</div>
 		)
@@ -83,7 +84,22 @@ export default function ChaincodeProjectEditorPage() {
 				<Button variant="ghost" size="icon" onClick={() => navigate(`/sc/fabric/projects/chaincodes/${projectId}`)}>
 					<ArrowLeft className="h-4 w-4" />
 				</Button>
-				<h1 className="text-lg font-semibold">Chaincode Editor</h1>
+				<div className="flex items-center gap-2">
+					<h1 className="text-lg font-semibold">{project?.name}</h1>
+
+					<Badge variant={project?.status === 'running' ? 'success' : project?.status === 'stopped' ? 'destructive' : 'secondary'} className="ml-2">
+						{project?.status}
+					</Badge>
+					{project?.status === 'running' ? (
+						<Button onClick={handleStop} disabled={stopMutation.isPending} variant="destructive" size="icon">
+							{stopMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <StopCircle className="h-4 w-4" />}
+						</Button>
+					) : (
+						<Button onClick={handleStart} disabled={startMutation.isPending} size="icon">
+							{startMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
+						</Button>
+					)}
+				</div>
 				<div className="ml-auto flex gap-2 items-center">
 					<Button variant={mode === 'editor' ? 'default' : 'outline'} size="icon" onClick={() => setMode('editor')} title="Editor mode">
 						<Code2 className="h-5 w-5" />
@@ -91,16 +107,6 @@ export default function ChaincodeProjectEditorPage() {
 					<Button variant={mode === 'playground' ? 'default' : 'outline'} size="icon" onClick={() => setMode('playground')} title="Playground mode">
 						<PlayCircle className="h-5 w-5" />
 					</Button>
-					{project?.status === 'running' ? (
-						<Button onClick={handleStop} disabled={stopMutation.isPending} variant="destructive">
-							{stopMutation.isPending ? 'Stopping...' : 'Stop Project'}
-						</Button>
-					) : (
-						<Button onClick={handleStart} disabled={startMutation.isPending}>
-							{startMutation.isPending ? 'Starting...' : 'Start Project'}
-						</Button>
-					)}
-					<span className="text-muted-foreground text-xs">Status: {project?.status}</span>
 				</div>
 			</div>
 			<div className="flex-1 p-4">

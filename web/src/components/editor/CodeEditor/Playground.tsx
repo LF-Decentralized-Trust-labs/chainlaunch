@@ -47,7 +47,7 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 	const [fn, setFn] = useState('')
 	const [args, setArgs] = useState('')
 	const [selectedKey, setSelectedKey] = useState<{ orgId: number; keyId: number } | undefined>(undefined)
-	const [responses, setResponses] = useState<{ type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[]>([])
+	const [responses, setResponses] = useState<{ type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[]>([])
 	const [operations, setOperations] = useState<Operation[]>([])
 	const [loadingInvoke, setLoadingInvoke] = useState(false)
 	const [loadingQuery, setLoadingQuery] = useState(false)
@@ -63,7 +63,7 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 				setArgs(parsed.args || '')
 				setSelectedKey(parsed.selectedKey)
 				setOperations(parsed.operations || [])
-				setResponses(Array.isArray(parsed.responses) ? (parsed.responses.filter(isValidResponse) as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[]) : [])
+				setResponses(Array.isArray(parsed.responses) ? (parsed.responses.filter(isValidResponse) as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[]) : [])
 			} catch {}
 		}
 	}, [projectId])
@@ -130,22 +130,23 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 					orgId: selectedKey.orgId,
 				},
 			})
+			toast.dismiss(toastId)
 			let nextResponses
 			if (res.error) {
-				nextResponses = [...responses, { type: 'invoke', response: null, error: res.error.message, timestamp: Date.now() }]
-				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+				nextResponses = [...responses, { type: 'invoke', response: null, error: res.error.message, timestamp: Date.now(), fn, args }]
+				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			} else {
-				nextResponses = [...responses, { type: 'invoke', response: res.data, timestamp: Date.now() }]
-				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+				nextResponses = [...responses, { type: 'invoke', response: res.data, timestamp: Date.now(), fn, args }]
+				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			}
 			saveOperation('invoke', nextResponses)
 		} catch (err: any) {
+			toast.dismiss(toastId)
 			const msg = err?.response?.data?.message || err?.message || 'Unknown error'
-			const nextResponses = [...responses, { type: 'invoke', response: null, error: msg, timestamp: Date.now() }]
-			setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+			const nextResponses = [...responses, { type: 'invoke', response: null, error: msg, timestamp: Date.now(), fn, args }]
+			setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			saveOperation('invoke', nextResponses)
 		} finally {
-			toast.dismiss(toastId)
 			setLoadingInvoke(false)
 		}
 	}
@@ -170,18 +171,18 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 			toast.dismiss(toastId)
 			let nextResponses
 			if (res.error) {
-				nextResponses = [...responses, { type: 'query', response: null, error: res.error.message, timestamp: Date.now() }]
-				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+				nextResponses = [...responses, { type: 'query', response: null, error: res.error.message, timestamp: Date.now(), fn, args }]
+				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			} else {
-				nextResponses = [...responses, { type: 'query', response: res.data, timestamp: Date.now() }]
-				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+				nextResponses = [...responses, { type: 'query', response: res.data, timestamp: Date.now(), fn, args }]
+				setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			}
 			saveOperation('query', nextResponses)
 		} catch (err: any) {
 			toast.dismiss(toastId)
 			const msg = err?.response?.data?.message || err?.message || 'Unknown error'
-			const nextResponses = [...responses, { type: 'query', response: null, error: msg, timestamp: Date.now() }]
-			setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number }[])
+			const nextResponses = [...responses, { type: 'query', response: null, error: msg, timestamp: Date.now(), fn, args }]
+			setResponses(nextResponses as { type: 'invoke' | 'query'; response: any; error?: string; timestamp: number; fn: string; args: string }[])
 			saveOperation('query', nextResponses)
 		} finally {
 			setLoadingQuery(false)
@@ -307,6 +308,9 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 								<div className="flex items-center gap-2 mb-1">
 									<span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{response.type === 'invoke' ? 'Invoke' : 'Query'}</span>
 									<span className="text-xs text-muted-foreground">{new Date(response.timestamp).toLocaleTimeString()}</span>
+								</div>
+								<div className="text-xs text-muted-foreground mb-1">
+									fn: <span className="font-semibold">{response.fn}</span> &nbsp; args: <span className="font-mono">{response.args}</span>
 								</div>
 								<div className="text-sm whitespace-pre-wrap break-all">
 									{response.error ? (

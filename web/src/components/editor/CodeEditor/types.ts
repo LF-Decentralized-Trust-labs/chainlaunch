@@ -57,6 +57,7 @@ export interface FileTreeProps {
 	selectedFile: File | null
 	handleFileClick: (file: { name: string; path: string }) => void
 	refetchTree: () => void
+	isRoot?: boolean
 }
 
 export interface LogsPanelProps {

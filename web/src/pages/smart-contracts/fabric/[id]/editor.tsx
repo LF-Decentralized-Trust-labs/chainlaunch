@@ -7,12 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Code2, Loader2, PlayCircle, StopCircle } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 export default function ChaincodeProjectEditorPage() {
 	const { id } = useParams()
 	const navigate = useNavigate()
+	const [searchParams, setSearchParams] = useSearchParams()
 	const projectId = parseInt(id || '0', 10)
 
 	const { data: project, isLoading, error, refetch } = useQuery(getChaincodeProjectsByIdOptions({ path: { id: projectId } }))
@@ -20,7 +21,17 @@ export default function ChaincodeProjectEditorPage() {
 	const startMutation = useMutation(postChaincodeProjectsByIdStartMutation())
 	const stopMutation = useMutation(postChaincodeProjectsByIdStopMutation())
 
-	const [mode, setMode] = useState<'editor' | 'playground'>('editor')
+	const initialMode = (searchParams.get('mode') === 'playground' ? 'playground' : 'editor') as 'editor' | 'playground'
+	const [mode, setModeState] = useState<'editor' | 'playground'>(initialMode)
+
+	const setMode = (newMode: 'editor' | 'playground') => {
+		setModeState(newMode)
+		setSearchParams((prev) => {
+			const params = new URLSearchParams(prev)
+			params.set('mode', newMode)
+			return params
+		})
+	}
 
 	const handleStart = async () => {
 		try {

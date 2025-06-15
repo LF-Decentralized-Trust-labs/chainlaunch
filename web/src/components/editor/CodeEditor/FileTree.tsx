@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ export function FileTree({
 	selectedFile,
 	handleFileClick,
 	refetchTree,
+	isRoot = false,
 }: FileTreeProps) {
 	const [creatingNode, setCreatingNode] = useState<{ path: string | null; type: 'file' | 'folder' | null }>({ path: null, type: null })
 	const [newName, setNewName] = useState('')
@@ -26,13 +27,13 @@ export function FileTree({
 	const [deletePath, setDeletePath] = useState<string | null>(null)
 
 	// Sort children: folders first (case-insensitive), then files (case-insensitive)
-	const sortedChildren = node.children?.sort((a, b) => {
+	const sortedChildren = useMemo(() => node?.children?.sort((a, b) => {
 		// Folders first, then files
 		if (a.isDir && !b.isDir) return -1
 		if (!a.isDir && b.isDir) return 1
 		// If both are same type, sort alphabetically
 		return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
-	})
+	}), [node?.children])
 
 	const startCreate = (type: 'file' | 'folder', path: string | null) => {
 		setCreatingNode({ path, type })
@@ -96,6 +97,27 @@ export function FileTree({
 	}
 
 	if (!node) return null
+
+	if (isRoot) {
+		// Render only children, not the root node itself
+		return (
+			<div className="ml-2">
+				{node.children?.map((child) => (
+					<FileTree
+						key={child.path || child.name}
+						projectId={projectId}
+						node={child}
+						openFolders={openFolders}
+						setOpenFolders={setOpenFolders}
+						selectedFile={selectedFile}
+						handleFileClick={handleFileClick}
+						refetchTree={refetchTree}
+					/>
+				))}
+			</div>
+		)
+	}
+
 	const isOpen = openFolders[node.path || node.name || ''] || false
 	const isDir = node.isDir
 	const hasChildren = node.children && node.children.length > 0

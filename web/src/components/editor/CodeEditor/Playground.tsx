@@ -222,11 +222,11 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 	}, [fn, args])
 
 	return (
-		<div className="flex flex-col md:flex-row gap-8 h-full w-full max-h-[70vh] overflow-y-auto flex-1 overflow-auto p-2 space-y-2">
+		<div className="grid grid-cols-1 md:grid-cols-6 gap-8">
 			{/* Playground form (left) */}
-			<ScrollArea className="flex-1 min-w-[320px] max-w-[480px] border rounded bg-background shadow-sm my-4">
-				<div className="px-4 py-4 flex flex-col gap-4 h-full">
-					<h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+			<ScrollArea className="md:col-span-2 min-w-[320px] max-w-[480px] border rounded bg-background shadow-sm my-4">
+				<div className="px-4 py-4 grid gap-4 h-full">
+					<h2 className="text-xl font-bold mb-2 grid grid-flow-col auto-cols-max items-center gap-2">
 						<PlayCircle className="h-5 w-5" /> Playground
 					</h2>
 					<Label>Key & Organization</Label>
@@ -235,7 +235,7 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 					<Input id="fn" value={fn} onChange={(e) => setFn(e.target.value)} placeholder="e.g. queryAsset" />
 					<Label htmlFor="args">Arguments (comma separated)</Label>
 					<Input id="args" value={args} onChange={(e) => setArgs(e.target.value)} placeholder="e.g. asset1, 100" />
-					<div className="flex gap-2 mt-2">
+					<div className="grid grid-flow-col auto-cols-max gap-2 mt-2">
 						<Button onClick={handleInvoke} disabled={loadingInvoke || !fn || !selectedKey}>
 							<PlayCircle className="h-4 w-4 mr-2" />
 							Invoke
@@ -249,11 +249,11 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 					{operations.length > 0 && (
 						<div className="mt-6">
 							<h3 className="text-md font-semibold mb-2">Recent Operations</h3>
-							<div className="flex flex-col gap-2">
+							<div className="grid gap-2">
 								{operations.map((op) => (
-									<div key={op.timestamp} className="flex items-center gap-2 p-2 border rounded bg-muted/50">
+									<div key={op.timestamp} className="grid grid-flow-col auto-cols-max items-center gap-2 p-2 border rounded bg-muted/50">
 										<div className="flex-1">
-											<div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+											<div className="text-xs text-muted-foreground mb-1 grid grid-flow-col auto-cols-max items-center gap-1">
 												{op.type === 'invoke' ? <PlayCircle className="h-4 w-4" /> : <Search className="h-4 w-4" />}
 												{op.type.toUpperCase()} &middot; {new Date(op.timestamp).toLocaleTimeString()}
 											</div>
@@ -298,14 +298,14 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 				</div>
 			</ScrollArea>
 			{/* Responses (right) */}
-			<ScrollArea className="flex-1 min-h-[400px] max-h-[700px] border rounded bg-muted/30 p-2 my-4">
+			<ScrollArea className="md:col-span-4 max-h-[700px] border rounded bg-muted/30 p-2 my-4">
 				{responses.length === 0 ? (
 					<div className="text-muted-foreground text-center py-8">No responses yet</div>
 				) : (
-					<div className="flex flex-col gap-2">
+					<div className="grid gap-2">
 						{sortedResponses.map((response) => (
 							<div key={response.timestamp} className="p-3 border-b border-muted bg-background rounded">
-								<div className="flex items-center gap-2 mb-1">
+								<div className="grid grid-flow-col auto-cols-max items-center gap-2 mb-1">
 									<span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{response.type === 'invoke' ? 'Invoke' : 'Query'}</span>
 									<span className="text-xs text-muted-foreground">{new Date(response.timestamp).toLocaleTimeString()}</span>
 								</div>
@@ -314,10 +314,10 @@ export function Playground({ projectId, networkId }: PlaygroundProps) {
 								</div>
 								<div className="text-sm whitespace-pre-wrap break-all">
 									{response.error ? (
-										<span className="text-destructive">{response.error}</span>
+										<span className="text-destructive">Error</span>
 									) : (
 										<>
-											<div className="max-h-64 overflow-auto">{renderResponseContent(response.response.result)}</div>
+											<div className="max-h-64 overflow-auto overflow-x-auto">{renderResponseContent(response.response.result)}</div>
 											{networkId && response.response && !!response.response.blockNumber && !!response.response.transactionId && (
 												<a
 													href={`/networks/${networkId}/blocks/${response.response.blockNumber}`}

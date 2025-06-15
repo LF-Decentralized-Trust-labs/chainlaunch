@@ -296,23 +296,7 @@ function MarkdownRenderer({ content }: { content: string }) {
 			</em>
 		),
 
-		// Lists
-		ul: ({ children, ...props }) => (
-			<ul className="list-disc list-inside mb-4 space-y-1" {...props}>
-				{children}
-			</ul>
-		),
-		ol: ({ children, ...props }) => (
-			<ol className="list-decimal list-inside mb-4 space-y-1" {...props}>
-				{children}
-			</ol>
-		),
-		li: ({ children, ...props }) => (
-			<li className="mb-1" {...props}>
-				{children}
-			</li>
-		),
-
+		
 		// Links
 		a: ({ children, ...props }) => (
 			<a className="text-blue-500 hover:text-blue-600 underline" {...props}>
@@ -1302,23 +1286,44 @@ export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: Cod
 	return (
 		<div className="h-full max-h-[90vh] flex flex-col">
 			<ResizablePanelGroup direction="horizontal">
-				<ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
-					<ChatPanel projectId={projectId} chatState={chatState} />
+				<ResizablePanel defaultSize={20} minSize={10} maxSize={20}>
+						<ChatPanel projectId={projectId} chatState={chatState} />
 				</ResizablePanel>
 				<ResizableHandle />
-				<ResizablePanel defaultSize={75} minSize={40} maxSize={90}>
+				<ResizablePanel defaultSize={80} minSize={40} maxSize={80}>
 					{mode === 'editor' ? (
 						<ResizablePanelGroup direction="vertical">
 							<ResizablePanel defaultSize={80} minSize={40}>
-								<div className="flex h-full flex-col bg-background text-foreground">
+								<div className="grid h-full grid-rows-[auto_1fr] bg-background text-foreground">
 									<EditorTabs openTabs={openTabs} selectedFile={selectedFile} handleTabClick={handleTabClick} handleTabClose={handleTabClose} dirtyFiles={dirtyFiles} />
-									<EditorContent
-										selectedFile={selectedFile}
-										openTabs={openTabs}
-										handleEditorChange={handleEditorChange}
-										handleEditorMount={handleEditorMount}
-										handleSave={handleSave}
-									/>
+									<div className="grid grid-rows-1">
+										<ResizablePanelGroup direction="horizontal">
+											<ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+												<div className="h-full border-r border-border">
+													<FileTree
+														projectId={projectId}
+														node={tree}
+														openFolders={openFolders}
+														setOpenFolders={setOpenFolders}
+														selectedFile={selectedFile}
+														handleFileClick={handleFileClick}
+														refetchTree={refetchTree}
+														isRoot={true}
+													/>
+												</div>
+											</ResizablePanel>
+											<ResizableHandle />
+											<ResizablePanel defaultSize={80} minSize={70}>
+												<EditorContent
+													selectedFile={selectedFile}
+													openTabs={openTabs}
+													handleEditorChange={handleEditorChange}
+													handleEditorMount={handleEditorMount}
+													handleSave={handleSave}
+												/>
+											</ResizablePanel>
+										</ResizablePanelGroup>
+									</div>
 								</div>
 							</ResizablePanel>
 							<ResizableHandle />
@@ -1330,8 +1335,8 @@ export function CodeEditor({ mode = 'editor', projectId, chaincodeProject }: Cod
 						</ResizablePanelGroup>
 					) : (
 						<ResizablePanelGroup direction="vertical">
-							<ResizablePanel defaultSize={80} minSize={40}>
-								<div className="p-4">
+							<ResizablePanel defaultSize={75} minSize={40}>
+								<div className="m-4">
 									<Playground projectId={projectId} networkId={chaincodeProject.networkId} />
 								</div>
 							</ResizablePanel>
